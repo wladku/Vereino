@@ -273,6 +273,8 @@ Spec cross-references use the spec's own IDs (DD-xx, Q-xxx, V-x, TEST-xxx).
 
 ## 9. Open-source project hygiene (MIT)
 
+> *Superseded in part on 2026-11-22 by D-035: the licence is AGPL-3.0-only and a CLA is added to the DCO before outside contributions (#647, #648). The rest of this section still applies.*
+
 ### (a) Engineering requirements
 - `LICENSE` (MIT, copyright holder = the legal entity/persons), `NOTICE` optional for MIT but useful to list bundled third-party licences (Open Mercato's licence must be compatible — verify before publishing; if it is not MIT/Apache, document the boundary).
 - `CONTRIBUTING.md`: how to run locally (Docker compose, seed club), branch/PR flow, commit style, DCO sign-off requirement, test expectations, i18n rule (both `pl` and `en` strings), security rule (no PII in fixtures), "spec first" rule for product changes.

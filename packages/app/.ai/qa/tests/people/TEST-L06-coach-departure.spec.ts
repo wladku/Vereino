@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext, type TestInfo } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import { addDays, createActivity, listOccurrences, type OccurrenceItem } from '../_fixtures/activities'
@@ -107,7 +108,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
   const club = await createClub(request, 'test-l06')
   try {
     const family = await familyFor(request, club)
-    const admin = club.adminToken
+    let admin = club.adminToken
     const today = calendarDate()
     const since = addDays(today, -30)
     const lastDay = addDays(today, 10)
@@ -213,6 +214,26 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     expect(blocked.status).toBe(409)
     expect(blocked.body?.code).toBe('departure_blocked')
     expect(await leftOn(request, admin, wojtek.personId)).toBeNull()
+
+    // The Leaving tab shows the same refusal (AC-L05, #598): the cash blocker names the amount, "Confirm leaving" stays
+    // disabled, and the link opens B-33 "Cash to settle" with Wojtek's cash on it. `signInBrowser` ends the admin's API
+    // token, so a fresh one is taken from the returned password.
+    const adminPassword = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+    admin = await getAuthToken(request, club.tenant.email, adminPassword)
+    club.adminToken = admin
+    await page.goto(`/backend/people/persons/${wojtek.personId}?tab=leaving`)
+    const blockers = page.getByTestId('people-leaving-blockers')
+    await expect(blockers).toBeVisible()
+    await expect(blockers).toContainText(uiText('people.leaving.preview.blocks'))
+    await expect(blockers).toContainText('Odchodzi')
+    await expect(blockers).toContainText(/150[.,]00/)
+    await expect(page.getByTestId('people-leaving-confirm')).toBeDisabled()
+    const cashLink = page.getByTestId('people-leaving-cash-link')
+    await expect(cashLink).toHaveText(uiText('people.leaving.blocker.cashLink', { exact: true }))
+    await expect(cashLink).toHaveAttribute('href', '/backend/payments/cash-custody')
+    await cashLink.click()
+    await expect(page).toHaveURL(/\/backend\/payments\/cash-custody$/)
+    await expect(page.getByTestId('custody-person')).toContainText('Odchodzi')
 
     // The administrator accepts the cash on B-33; the blocker is gone.
     const custody = await call<{ items?: { collectorPersonId: string; payments: { paymentId: string }[] }[] }>(

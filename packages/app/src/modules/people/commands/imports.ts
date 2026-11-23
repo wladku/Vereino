@@ -15,6 +15,11 @@
 // re-run processes only those rows and writes nothing else. Without waiting rows, or without the hook, a committed
 // import answers 409 as before.
 //
+// Progress (foundation spec AC-F08, TEST-F08; #585): the first commit writes its rows inside a platform
+// `ProgressService` job (`services/import-progress.ts`), advanced per row and completed after the transaction commits;
+// a progress service that does not answer refuses the commit with 503 `import_progress_unavailable` and leaves the
+// import `previewed`, and a rolled-back commit fails its job. The membership re-run writes no rows and has no job.
+//
 // `create` is not undoable (the bytes are not in the stored input; `cancel` is the compensating action), `commit`
 // is not undoable as a whole (each person and guardianship it wrote has its own undoable entry); `decide_row` and
 // `cancel` are undoable while the import is still open.
@@ -63,6 +68,7 @@ import {
 } from '../lib/import-rules'
 import { clubToday } from '../services/club-clock'
 import { loadImportDirectory } from '../services/import-directory'
+import { startImportCommitJob, type ImportCommitJob } from '../services/import-progress'
 import { membershipImporter, type ImportMembershipItem, type MembershipImporter } from '../services/membership-importer'
 import type { GuardianshipCommandResult } from './guardianships'
 import type { PersonCommandResult } from './persons'
@@ -651,6 +657,8 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
   isUndoable: false,
   async execute(rawInput, ctx) {
     const written = newWritten()
+    // The first commit's progress job (#585); a membership re-run writes no rows and runs without one.
+    let job: ImportCommitJob | null = null
     const result = await inWriteTransaction(ctx, 'people.imports.commit', async (em) => {
       const authorized = await authorizeScoped(
         {
@@ -684,6 +692,12 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
       const { plans, directory } = await planStoredImport(em, record, rows, today)
       const pending = plans.filter((plan) => plan.needsDecision).map((plan) => plan.rowNo)
       if (pending.length > 0) return peopleErrors.throw('import_review_pending', { rowNos: pending.slice(0, 50) })
+      job = await startImportCommitJob(ctx.container, scope, {
+        importId: record.id,
+        totalCount: plans.length,
+        userId: ctx.auth?.sub ?? null,
+      })
+      const progress = job
 
       const bus = ctx.container.resolve<CommandBus>('commandBus')
       const nested = nestedContext(ctx, em)
@@ -699,6 +713,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         row.matchedPersonId = plan.matchedPersonId
         if (plan.idle) {
           skipped += 1
+          await progress.advance()
           continue
         }
         const rowResult = await writeRow(plan, bus, nested, keys, written, today, directory)
@@ -710,6 +725,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         if (plan.group) {
           candidates.push({ row, participantPersonId: rowResult.participantPersonId, groupName: plan.group })
         }
+        await progress.advance()
       }
       await settleMemberships(em, nested, importer, scope, today, candidates, written)
       const summary: ImportSummary = {
@@ -739,7 +755,12 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         membershipIds: written.membershipIds,
         membershipRerun: false,
       }
+    }).catch(async (error: unknown) => {
+      // The transaction rolled back: the import is still `previewed`; the job records why it ended.
+      await job?.fail(error)
+      throw error
     })
+    await (job as ImportCommitJob | null)?.complete({ ...result.record.summary })
     // After the commit: the events and index updates the nested commands deferred, then the import's own event.
     const dataEngine = ctx.container.resolve<DataEngine>('dataEngine')
     for (const person of written.persons.values()) {
