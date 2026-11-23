@@ -1,7 +1,7 @@
 # Run: overdue reminder counters per charge (#404)
 
 - **Goal and trigger:** Cezar run of `om-auto-fix-issue` for [#404](https://github.com/wladku/Vereino/issues/404) (label `cezar`). Owner decision (a), 2026-11-19: raise `reminder_count` only for charges whose `reminderDue` is true; the message still lists every overdue charge.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-payments.md` (DD-C09, *Domain Vocabulary* → Overdue reminder). The spec already states the rule per charge, so no spec text changes; one changelog file records the alignment.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (DD-C09, *Domain Vocabulary* → Overdue reminder). The spec already states the rule per charge, so no spec text changes; one changelog file records the alignment.
 - **Branch:** `fix/issue-404-overdue-reminder-counters`.
 
 ## Steps

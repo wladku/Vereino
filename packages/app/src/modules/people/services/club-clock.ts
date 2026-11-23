@@ -1,7 +1,7 @@
 // The club's calendar: today's date in the club time zone, from `club_core`'s settings service (foundation spec
 // DD-F16; resolved through DI with `hasRegistration`, so `people` degrades to the default zone without `club_core`).
 import type { AwilixContainer } from 'awilix'
-import type { CalendarDate } from '@vereino/core'
+import { clubAccent, type CalendarDate, type ClubAccent } from '@vereino/core'
 import type { ClubCoreSettingsService, ClubSettingsSnapshot } from '../../club_core/services/settings'
 import { calendarDateInZone } from '../lib/people-rules'
 
@@ -40,6 +40,13 @@ export async function clubLogoUrl(container: AwilixContainer, scope: ClubScope):
   if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
   const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
   return (await service.get(scope)).publicSettings.logoUrl
+}
+
+/** The club's colour for the member header bar (#486), or null (the default) without one or without `club_core`. */
+export async function clubAccentOf(container: AwilixContainer, scope: ClubScope): Promise<ClubAccent | null> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return clubAccent((await service.get(scope)).publicSettings.accentColor)
 }
 
 /** The club's full name for the Today header (R06.1, E20-S14 #493): the platform organization's name, or null. */

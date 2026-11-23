@@ -57,7 +57,16 @@ export type FlaggedRental = RescheduleEntry & { kind: 'rental' }
 /** `staff`: sessions and club bookings only (link to the place's day); `admin`: a rental among them (link to B-24). */
 export type RescheduleAudience = 'staff' | 'admin'
 
-export type RescheduleNotice = { personId: string; audience: RescheduleAudience; entries: RescheduleEntry[] }
+/**
+ * One person's message. `coordinatedSectionIds`: the sections of its sessions the person is told about as a
+ * coordinator (by first appearance) — their link opens the "Needs a new time" view of the section calendar (AC-R14).
+ */
+export type RescheduleNotice = {
+  personId: string
+  audience: RescheduleAudience
+  entries: RescheduleEntry[]
+  coordinatedSectionIds: string[]
+}
 
 /** The idempotency key of one person's message about one cause (renter: the rental id in place of the person). */
 export function rescheduleNoticeKey(cause: RescheduleCause, recipientId: string): string {
@@ -76,16 +85,24 @@ export function planRescheduleNotices(input: {
   coordinatorsOf: (sectionId: string, date: CalendarDate) => readonly string[]
   dayOf: (instant: Date) => CalendarDate
 }): RescheduleNotice[] {
-  const byPerson = new Map<string, { audience: RescheduleAudience; entries: Map<string, RescheduleEntry> }>()
-  const add = (personId: string, entry: RescheduleEntry) => {
-    const notice = byPerson.get(personId) ?? { audience: 'staff' as RescheduleAudience, entries: new Map() }
+  const byPerson = new Map<
+    string,
+    { audience: RescheduleAudience; entries: Map<string, RescheduleEntry>; sections: Set<string> }
+  >()
+  const add = (personId: string, entry: RescheduleEntry, coordinatedSectionId: string | null = null) => {
+    const notice = byPerson.get(personId) ?? {
+      audience: 'staff' as RescheduleAudience,
+      entries: new Map(),
+      sections: new Set<string>(),
+    }
     if (entry.kind === 'rental') notice.audience = 'admin'
     notice.entries.set(`${entry.kind}:${entry.id}`, entry)
+    if (coordinatedSectionId) notice.sections.add(coordinatedSectionId)
     byPerson.set(personId, notice)
   }
   for (const session of input.sessions) {
     const coordinators = session.sectionId ? input.coordinatorsOf(session.sectionId, input.dayOf(session.startsAt)) : []
-    for (const personId of coordinators) add(personId, entryOf(session))
+    for (const personId of coordinators) add(personId, entryOf(session), session.sectionId)
     if (session.coachPersonId) add(session.coachPersonId, entryOf(session))
   }
   for (const booking of input.bookings) add(booking.bookedByPersonId, entryOf(booking))
@@ -96,6 +113,7 @@ export function planRescheduleNotices(input: {
     personId,
     audience: notice.audience,
     entries: [...notice.entries.values()].sort(byStart),
+    coordinatedSectionIds: [...notice.sections],
   }))
 }
 
@@ -143,11 +161,30 @@ function byStart(a: RescheduleEntry, b: RescheduleEntry): number {
 export const RENTALS_TO_MOVE_HREF = '/backend/facilities/rentals?view=to_move'
 
 /**
- * The staff message's link: the place's day on M-11 filtered "Do przeniesienia" (AC-R14 fallback while the groups
- * spec's "Needs a new time" view does not exist).
+ * The staff message's fallback link (AC-R14): the place's day on M-11 filtered "Do przeniesienia" — for a coach or a
+ * booker, who have no "Needs a new time" view of their own.
  */
 export function placeDayToMoveHref(placeId: string, date: CalendarDate): string {
   return `/club/places/${encodeURIComponent(placeId)}?date=${date}&view=to_move`
+}
+
+/**
+ * The staff message's link (AC-R14): a section coordinator's opens the groups and activities spec's "Needs a new time"
+ * view of the section calendar (REQ-A10, `/club/calendar?as=coordinator&view=reschedule`), narrowed to the section
+ * when the message names only one; anyone else's the place's day on M-11 (`placeDayToMoveHref`).
+ */
+export function rescheduleStaffHref(link: {
+  placeId: string
+  date: CalendarDate
+  coordinatedSectionIds?: readonly string[]
+}): string {
+  const sections = link.coordinatedSectionIds ?? []
+  if (sections.length === 0) return placeDayToMoveHref(link.placeId, link.date)
+  // The activities module's `sectionCalendarHref('reschedule', section)` URL; a module may not import another's code
+  // (eslint boundaries), so it is built here and `TEST-R18-reschedule-notices` opens it.
+  const params = new URLSearchParams({ as: 'coordinator', view: 'reschedule' })
+  if (sections.length === 1) params.set('section', sections[0])
+  return `/club/calendar?${params.toString()}`
 }
 
 /** M-11's "Do przeniesienia" filter in the address (`view=to_move`). */

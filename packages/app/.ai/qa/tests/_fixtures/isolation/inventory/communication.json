@@ -1,0 +1,208 @@
+{
+  "$comment": "Cross-club isolation probes of the communication routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/communication/audience/preview": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "section", "ids": ["$B:section"] } },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts), the same as a target outside the author's grants, so nothing is revealed."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "group", "ids": ["$B:group"] } },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "activity", "ids": ["$B:announcementActivity"] } },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "occurrence", "ids": ["$B:announcementOccurrence"] } },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "persons", "ids": ["$A:plainPerson", "$B:plainPerson"] } },
+          "expect": [403],
+          "why": "A persons id outside the author's scope answers 403 scope_denied by design (foundation resolveAudience)."
+        }
+      ]
+    },
+    "/api/communication/audience/targets": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "kind": "section" } },
+        { "probe": "read", "query": { "kind": "group" } },
+        { "probe": "read", "query": { "kind": "activity" } },
+        { "probe": "read", "query": { "kind": "occurrence" } }
+      ]
+    },
+    "/api/communication/direct": {
+      "GET": { "probe": "read" },
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "personId": "$B:childPerson",
+            "groupId": "$A:group",
+            "to": "coaches",
+            "subject": "Probe",
+            "body": "Probe"
+          },
+          "expect": [403],
+          "why": "A person outside the caller's household, or a group the person does not take part in, answers 403 scope_denied by design (start_direct), whether or not the record exists."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "personId": "$A:childPerson",
+            "groupId": "$B:group",
+            "to": "coaches",
+            "subject": "Probe",
+            "body": "Probe"
+          },
+          "expect": [403],
+          "why": "A group the person does not take part in today answers 403 scope_denied by design (start_direct), whether or not it exists."
+        }
+      ]
+    },
+    "/api/communication/share-text": {
+      "GET": [
+        { "probe": "read", "query": { "threadId": "$A:groupThread" } },
+        { "probe": "foreign-id", "query": { "threadId": "$B:groupThread" } },
+        {
+          "probe": "foreign-id",
+          "query": { "occurrenceId": "$B:announcementOccurrence" },
+          "expect": [403],
+          "why": "A session's share text authorizes the session as an audience target first; an unknown or foreign target answers 403 scope_denied by design (services/targets.ts)."
+        }
+      ]
+    },
+    "/api/communication/threads": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "as": "member" } },
+        { "probe": "read", "query": { "scopeType": "group", "scopeId": "$B:group" } },
+        { "probe": "read", "query": { "sectionId": "$B:section" } },
+        { "probe": "read", "query": { "wardId": "$B:childPerson" } }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "section", "ids": ["$B:section"] }, "subject": "Probe", "body": "Probe" },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts), the same as a target outside the author's grants."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "audience": { "kind": "group", "ids": ["$B:group"] }, "subject": "Probe", "body": "Probe" },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "audience": { "kind": "activity", "ids": ["$B:announcementActivity"] },
+            "subject": "Probe",
+            "body": "Probe"
+          },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "audience": { "kind": "occurrence", "ids": ["$B:announcementOccurrence"] },
+            "subject": "Probe",
+            "body": "Probe"
+          },
+          "expect": [403],
+          "why": "An unknown or foreign audience target answers 403 scope_denied by design (services/targets.ts)."
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "audience": { "kind": "persons", "ids": ["$A:plainPerson", "$B:plainPerson"] },
+            "subject": "Probe",
+            "body": "Probe"
+          },
+          "expect": [403],
+          "why": "A persons id outside the author's scope answers 403 scope_denied by design (foundation resolveAudience)."
+        }
+      ]
+    },
+    "/api/communication/threads/[id]": {
+      "GET": [
+        { "probe": "foreign-id", "params": { "id": "$B:groupThread" } },
+        { "probe": "foreign-id", "params": { "id": "$B:directThread" } }
+      ]
+    },
+    "/api/communication/threads/[id]/case": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:groupThread" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/communication/threads/[id]/deliveries": {
+      "GET": [
+        { "probe": "foreign-id", "params": { "id": "$B:groupThread" } },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:groupThread" },
+          "query": { "messageId": "$B:groupMessage" }
+        }
+      ]
+    },
+    "/api/communication/threads/[id]/messages/[messageId]": {
+      "PATCH": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:groupThread", "messageId": "$B:groupMessage" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "body": "Probe" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:groupThread", "messageId": "$B:groupMessage" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "body": "Probe" }
+        }
+      ],
+      "DELETE": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:groupThread", "messageId": "$B:replyMessage" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:groupThread", "messageId": "$B:replyMessage" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ]
+    },
+    "/api/communication/threads/[id]/read": {
+      "POST": [
+        { "probe": "foreign-id", "params": { "id": "$B:groupThread" } },
+        { "probe": "foreign-id", "params": { "id": "$B:directThread" } }
+      ]
+    },
+    "/api/communication/threads/[id]/replies": {
+      "POST": [
+        { "probe": "foreign-id", "params": { "id": "$B:groupThread" }, "body": { "body": "Probe" } },
+        { "probe": "foreign-id", "params": { "id": "$B:directThread" }, "body": { "body": "Probe" } }
+      ]
+    },
+    "/api/communication/threads/unread-count": {
+      "GET": { "probe": "read" }
+    }
+  }
+}

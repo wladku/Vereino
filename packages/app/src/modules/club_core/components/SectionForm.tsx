@@ -284,7 +284,7 @@ export function SectionEditForm({ id }: { id: string }) {
               title={t('club_core.logo.section.title')}
               description={t('club_core.logo.section.description')}
               imageUrl={staffLogoUrl(logo.attachmentId)}
-              initial={nameInitial(branding?.shortName)}
+              initial={nameInitial(section.name)}
               source={logo.source}
               removable={Boolean(section.logoAttachmentId)}
               updatedAt={section.updatedAt}

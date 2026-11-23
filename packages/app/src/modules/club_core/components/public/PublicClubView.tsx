@@ -71,14 +71,18 @@ export function PublicClubView({ clubSlug, initial }: { clubSlug: string; initia
   const places = blocks.places
   return (
     <PublicFrame club={club}>
-      <section className="flex items-start gap-4" aria-labelledby="public-club-title">
-        <LogoMark logo={club.logo} size="lg" />
+      <section
+        className="bg-club-accent text-club-accent-foreground flex items-start gap-4 rounded-lg p-4"
+        aria-labelledby="public-club-title"
+        data-testid="public-hero"
+      >
+        <LogoMark logo={club.logo} size="lg" onAccent />
         <div className="flex flex-col gap-2">
           <h1 id="public-club-title" className="text-2xl font-semibold" data-testid="public-club-name">
             {club.name}
           </h1>
           {club.description ? (
-            <p className="text-muted-foreground max-w-prose whitespace-pre-line" data-testid="public-club-description">
+            <p className="max-w-prose whitespace-pre-line" data-testid="public-club-description">
               {club.description}
             </p>
           ) : null}

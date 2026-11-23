@@ -8,6 +8,7 @@ import {
   placeDayToMoveHref,
   planRescheduleNotices,
   rescheduleNoticeKey,
+  rescheduleStaffHref,
   sectionDays,
   type FlaggedBooking,
   type FlaggedRental,
@@ -74,9 +75,15 @@ describe('reschedule notices (REQ-R18, J-R05)', () => {
         expect.objectContaining({ kind: 'session', id: 's1' }),
         expect.objectContaining({ kind: 'session', id: 's2' }),
       ],
+      coordinatedSectionIds: ['section-a'],
     })
     expect(byPerson.get('coach')?.entries.map((entry) => entry.id)).toEqual(['s1', 's2'])
-    expect(byPerson.get('booker')).toMatchObject({ audience: 'staff', entries: [{ id: 'booking-1' }] })
+    expect(byPerson.get('coach')?.coordinatedSectionIds).toEqual([])
+    expect(byPerson.get('booker')).toMatchObject({
+      audience: 'staff',
+      entries: [{ id: 'booking-1' }],
+      coordinatedSectionIds: [],
+    })
     expect(byPerson.get('admin-1')).toMatchObject({ audience: 'admin', entries: [{ id: 'rental-1' }] })
     // Only the entry's fields: no section or coach leaves the plan.
     expect(byPerson.get('coach')?.entries[0]).not.toHaveProperty('coachPersonId')
@@ -92,8 +99,26 @@ describe('reschedule notices (REQ-R18, J-R05)', () => {
       dayOf,
     })
     expect(notices).toHaveLength(1)
-    expect(notices[0]).toMatchObject({ personId: 'admin', audience: 'admin' })
+    expect(notices[0]).toMatchObject({ personId: 'admin', audience: 'admin', coordinatedSectionIds: ['section-a'] })
     expect(notices[0].entries.map((entry) => entry.id)).toEqual(['s1', 'rental-1'])
+  })
+
+  it('names each section a person coordinates once, and not the sections they only coach in', () => {
+    const notices = planRescheduleNotices({
+      sessions: [
+        session('s1', '2026-11-20T16:00:00Z', { sectionId: 'section-b', coachPersonId: 'both' }),
+        session('s2', '2026-11-20T17:00:00Z'),
+        session('s3', '2026-11-20T18:00:00Z'),
+      ],
+      bookings: [],
+      rentals: [],
+      admins: [],
+      coordinatorsOf: (sectionId) => (sectionId === 'section-a' ? ['both'] : []),
+      dayOf,
+    })
+    const both = notices.find((notice) => notice.personId === 'both')
+    expect(both?.entries.map((entry) => entry.id)).toEqual(['s1', 's2', 's3'])
+    expect(both?.coordinatedSectionIds).toEqual(['section-a'])
   })
 
   it('tells nobody about a session without a section or coach, and orders equal starts by id', () => {
@@ -168,8 +193,17 @@ describe('reschedule notices (REQ-R18, J-R05)', () => {
     expect(limited.more).toBe(1)
   })
 
-  it('links staff to the place’s day filtered and administrators to B-24', () => {
+  it('links a coordinator to "Needs a new time", other staff to the place’s day filtered and administrators to B-24', () => {
     expect(placeDayToMoveHref(PLACE, '2026-11-20')).toBe(`/club/places/${PLACE}?date=2026-11-20&view=to_move`)
+    const day = { placeId: PLACE, date: '2026-11-20' }
+    expect(rescheduleStaffHref(day)).toBe(`/club/places/${PLACE}?date=2026-11-20&view=to_move`)
+    expect(rescheduleStaffHref({ ...day, coordinatedSectionIds: [] })).toBe(placeDayToMoveHref(PLACE, '2026-11-20'))
+    expect(rescheduleStaffHref({ ...day, coordinatedSectionIds: ['section-a'] })).toBe(
+      '/club/calendar?as=coordinator&view=reschedule&section=section-a',
+    )
+    expect(rescheduleStaffHref({ ...day, coordinatedSectionIds: ['section-a', 'section-b'] })).toBe(
+      '/club/calendar?as=coordinator&view=reschedule',
+    )
     expect(RENTALS_TO_MOVE_HREF).toBe('/backend/facilities/rentals?view=to_move')
     expect(isToMoveView('to_move')).toBe(true)
     expect(isToMoveView(null)).toBe(false)

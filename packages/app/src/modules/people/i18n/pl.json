@@ -873,5 +873,8 @@
   "people.erasure.module.facilities": "obiekty",
   "people.club.leave.errors.summary": "Sprawdź prośbę",
   "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę.",
-  "people.club.today.shortcuts": "Na skróty"
+  "people.club.today.shortcuts": "Na skróty",
+  "people.errors.import_progress_unavailable": "Import nie mógł raportować postępu, więc niczego nie zatwierdzono. Spróbuj ponownie za chwilę.",
+  "people.imports.record.committing": "Zatwierdzanie importu…",
+  "people.imports.record.committingRows": "Zatwierdzanie importu: {processed} z {total} wierszy"
 }

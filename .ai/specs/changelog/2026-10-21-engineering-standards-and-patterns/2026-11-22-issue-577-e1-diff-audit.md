@@ -1,0 +1,1 @@
+| 2026-11-22 | ENG-AC-03 ticked (#577): audit of the E1 diff (`39afaa34`) matched its four changed platform-owned files to the `CONTRIBUTING.md` local-patch rows; the root scaffold `.gitignore` was unlisted and got a row; root files Vereino rewrote as a whole (`package.json`, `yarn.lock`, `AGENTS.md`, `.ai/agentic.config.json`) noted as needing none |
