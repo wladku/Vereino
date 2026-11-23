@@ -187,12 +187,9 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     expect(exported.output).toMatchObject({ status: 'exported', files: 1, missingFiles: [] })
     expect(fs.readFileSync(`${archive}.sha256`, 'utf8')).toContain(String(exported.output?.sha256))
     const data = await archiveData(archive)
-    for (const module of ['foundation', 'club_core', 'people', 'groups', 'activities', 'communication', 'payments']) {
-      expect(data.has(`data/${module}.json`), module).toBe(true)
-    }
-    for (const module of ['facilities', 'directory', 'auth', 'attachments', 'audit_logs', 'entities']) {
-      expect(data.has(`data/${module}.json`), module).toBe(true)
-    }
+    const modules = ['foundation', 'club_core', 'people', 'groups', 'activities', 'communication', 'payments']
+    modules.push('facilities', 'directory', 'auth', 'attachments', 'audit_logs', 'entities')
+    for (const name of modules) expect(data.has(`data/${name}.json`), name).toBe(true)
     const people = data.get('data/people.json') as { people_persons: Record<string, unknown>[] }
     expect(people.people_persons.find((row) => row.id === personId)).toMatchObject({
       first_name: 'Zofia',

@@ -28,13 +28,15 @@ export function clubDeleteContributorToken(module: string): string {
  * twice, so a typo fails when the module loads instead of leaving a table behind at deletion.
  */
 export function clubDataContributor(module: string, tables: readonly string[]): ClubDataContributor {
-  if (!IDENTIFIER.test(module)) throw new Error(`[internal] club data contributor: invalid module id "${module}"`)
-  if (tables.length === 0) throw new Error(`[internal] club data contributor ${module}: no tables`)
+  if (!IDENTIFIER.test(module)) throw new Error(`[internal] club data contributor, invalid module id: ${module}`)
+  if (tables.length === 0) throw new Error(`[internal] club data contributor without tables: ${module}`)
   for (const table of tables) {
-    if (!IDENTIFIER.test(table)) throw new Error(`[internal] club data contributor ${module}: invalid table "${table}"`)
+    if (!IDENTIFIER.test(table)) {
+      throw new Error(`[internal] club data contributor, invalid table: ${[module, table].join(' / ')}`)
+    }
   }
   if (new Set(tables).size !== tables.length) {
-    throw new Error(`[internal] club data contributor ${module}: a table is listed twice`)
+    throw new Error(`[internal] club data contributor lists a table twice: ${module}`)
   }
   return Object.freeze({ module, tables: Object.freeze([...tables]) })
 }

@@ -51,8 +51,8 @@ describe('clubTables', () => {
         { module: 'a', tables: ['shared'] },
         { module: 'b', tables: ['shared'] },
       ]),
-    ).toThrow('claimed by a and b')
-    expect(() => clubTables([{ module: 'people', tables: ['users'] }])).toThrow('claimed by people and auth')
+    ).toThrow('two owners: shared / a / b')
+    expect(() => clubTables([{ module: 'people', tables: ['users'] }])).toThrow('two owners: users / people / auth')
   })
 })
 

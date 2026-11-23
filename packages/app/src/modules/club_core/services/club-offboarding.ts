@@ -245,7 +245,9 @@ async function exportRows(
     // Fail closed: a value still sealed means the key is missing, and the archive would carry unreadable data.
     for (const field of present) {
       if (isEncryptedPayloadShape(plain[field])) {
-        throw new Error(`[internal] ${entry.table}.${field} of row ${String(row.id)} could not be decrypted`)
+        throw new Error(
+          `[internal] a value could not be decrypted: ${[entry.table, field, String(row.id)].join(' / ')}`,
+        )
       }
     }
     decryptedRows.push(plain)
@@ -270,7 +272,7 @@ export async function exportClub(
     () => true,
     () => false,
   )
-  if (exists) throw new Error(`[internal] the archive ${target} already exists; choose another --out`)
+  if (exists) throw new Error(`[internal] the archive already exists, choose another --out: ${target}`)
   const scope = { tenantId: club.tenantId, organizationId: club.organizationId }
   const encryption = encryptionService(container)
   const zip = new JSZip()
@@ -425,7 +427,7 @@ export async function deleteClub(
   }
   if (container.hasRegistration('cache')) {
     const cache = container.resolve<CacheStrategy>('cache')
-    summary.cacheEntriesCleared = Number(await runWithCacheTenant(scope.tenantId, () => cache.clear())) || 0
+    summary.cacheEntriesCleared = (await runWithCacheTenant(scope.tenantId, () => cache.clear())) || 0
   }
   return summary
 }
@@ -513,7 +515,7 @@ async function restoreBlocker(
   const mismatched = plan.manifest.tables
     .filter((table) => {
       const columns = catalogue.columns.get(table.table)
-      const first = archiveRows(plan, table)[0]
+      const first = archiveRows(plan, table).at(0)
       if (!columns) return true
       return first !== undefined && Object.keys(first).some((column) => !columns.includes(column))
     })
@@ -540,13 +542,13 @@ async function encryptRows(
   const sealed: Row[] = []
   for (const row of rows) {
     sealed.push(
-      (await encryption.encryptEntityPayload(
+      await encryption.encryptEntityPayload(
         entityId,
         row,
         (row.tenant_id as string | null) ?? scope.tenantId,
         (row.organization_id as string | null) ?? null,
         { em },
-      )) as Row,
+      ),
     )
   }
   return sealed
@@ -604,7 +606,7 @@ export async function restoreClub(
       const rows = archiveRows(plan, table)
       if (rows.length === 0) continue
       const writable = new Set(catalogue.columns.get(table.table) ?? [])
-      const columns = Object.keys(rows[0] as Row).filter((column) => writable.has(column))
+      const columns = Object.keys(rows[0]).filter((column) => writable.has(column))
       const sealed = await encryptRows(tx, encryption, entityIds.get(table.table), rows, scope)
       await insertRows(tx, table.table, columns, sealed)
       summary.tables.push({ module: table.module, table: table.table, rows: rows.length })

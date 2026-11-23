@@ -34,7 +34,7 @@ import {
 import { CLUB_SETTINGS_RESOURCE_KIND } from './settings'
 import { inWriteTransaction } from './shared'
 
-const settingsIdSchema = z.object({ settingsId: z.string().uuid() })
+const settingsIdSchema = z.object({ settingsId: z.uuid() })
 
 /** Authorizes the operator's job context for the club and returns its scope. */
 async function authorizeClubJob<TSchema extends z.ZodType>(
@@ -97,7 +97,7 @@ const offboardClubCommand: CommandHandler<Record<string, unknown>, OffboardClubR
     return inWriteTransaction(ctx, 'club_core.clubs.offboard', async (em) => {
       const authorized = await authorizeClubJob(offboardSchema, rawInput, ctx, em)
       const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-      const input = authorized.parsed as z.output<typeof offboardSchema>
+      const input = authorized.parsed
       const row = await em.findOne(
         ClubSettings,
         { id: input.settingsId, ...scope, deletedAt: null },
@@ -159,7 +159,7 @@ const exportClubCommand: CommandHandler<Record<string, unknown>, ExportClubResul
     const authorized = await inWriteTransaction(ctx, 'club_core.clubs.export', (em) =>
       authorizeClubJob(exportSchema, rawInput, ctx, em),
     )
-    const input = authorized.parsed as z.output<typeof exportSchema>
+    const input = authorized.parsed
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
     const summary = await exportClub(
       ctx.container,
@@ -205,7 +205,7 @@ const deleteClubCommand: CommandHandler<Record<string, unknown>, DeleteClubResul
   async execute(rawInput, ctx) {
     const authorized = await inWriteTransaction(ctx, 'club_core.clubs.delete', async (em) => {
       const granted = await authorizeClubJob(deleteSchema, rawInput, ctx, em)
-      const parsed = granted.parsed as z.output<typeof deleteSchema>
+      const parsed = granted.parsed
       const row = await em.findOne(ClubSettings, {
         id: parsed.settingsId,
         tenantId: granted.tenantId,
@@ -218,7 +218,7 @@ const deleteClubCommand: CommandHandler<Record<string, unknown>, DeleteClubResul
       }
       return granted
     })
-    const input = authorized.parsed as z.output<typeof deleteSchema>
+    const input = authorized.parsed
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
     const summary = await deleteClub(
       ctx.container,
@@ -275,7 +275,7 @@ const restoreClubCommand: CommandHandler<Record<string, unknown>, RestoreClubRes
     const authorized = await inWriteTransaction(ctx, 'club_core.clubs.restore', (em) =>
       authorizeClubJob(restoreSchema, rawInput, ctx, em),
     )
-    const input = authorized.parsed as z.output<typeof restoreSchema>
+    const input = authorized.parsed
     const base = {
       tenantId: authorized.tenantId,
       organizationId: authorized.organizationId,

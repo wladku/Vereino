@@ -19,9 +19,11 @@ describe('clubDataContributor', () => {
   })
 
   it('refuses a malformed module id, an empty list, a malformed table and a table listed twice', () => {
-    expect(() => clubDataContributor('Payments', ['payments_fees'])).toThrow('invalid module id')
-    expect(() => clubDataContributor('payments', [])).toThrow('no tables')
-    expect(() => clubDataContributor('payments', ['payments fees'])).toThrow('invalid table')
-    expect(() => clubDataContributor('payments', ['payments_fees', 'payments_fees'])).toThrow('listed twice')
+    expect(() => clubDataContributor('Payments', ['payments_fees'])).toThrow('invalid module id: Payments')
+    expect(() => clubDataContributor('payments', [])).toThrow('without tables: payments')
+    expect(() => clubDataContributor('payments', ['payments fees'])).toThrow('invalid table: payments / payments fees')
+    expect(() => clubDataContributor('payments', ['payments_fees', 'payments_fees'])).toThrow(
+      'lists a table twice: payments',
+    )
   })
 })

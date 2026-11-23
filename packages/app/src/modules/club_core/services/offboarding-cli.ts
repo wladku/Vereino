@@ -59,7 +59,9 @@ function print(output: Output): void {
 /** Prints a refusal and fails the command (the platform CLI exits 1 only on a thrown error). */
 function refuse(command: OffboardingCommand, output: Output): never {
   print(output)
-  throw new Error(`[internal] ${command} refused, nothing was written: ${String(output.reason ?? output.status)}`)
+  throw new Error(
+    `[internal] refused, nothing was written: ${[command, typeof output.reason === 'string' ? output.reason : output.status].join(' / ')}`,
+  )
 }
 
 function readRaw(argv: string[]): OffboardingRawOptions {
@@ -79,7 +81,7 @@ function readRaw(argv: string[]): OffboardingRawOptions {
   })
   return Object.fromEntries(
     Object.entries(values).filter(([, value]) => typeof value === 'string' || typeof value === 'boolean'),
-  ) as OffboardingRawOptions
+  )
 }
 
 function options<T>(command: OffboardingCommand, parsed: Parsed<T>): T {
@@ -186,15 +188,17 @@ async function deleteCommand(argv: string[]): Promise<void> {
     const releaseAt = slugReleaseAt(club.deletedAt)
     if (now.getTime() >= releaseAt.getTime() && !opts.dryRun) {
       await releaseClubSlug(container, { ...scopeOf(club), slug: club.slug, settingsId: club.settingsId })
-      return print({ status: 'slug_released', slug: club.slug, ...scopeOf(club) })
+      print({ status: 'slug_released', slug: club.slug, ...scopeOf(club) })
+      return
     }
-    return print({
+    print({
       status: 'already_deleted',
       slug: club.slug,
       ...scopeOf(club),
       deletedAt: club.deletedAt.toISOString(),
       slugReleaseAt: releaseAt.toISOString(),
     })
+    return
   }
   const state = offboardingState(club.deleteAfter, now)
   if (state.state === 'active') return refuse('delete-club', { status: 'refused', reason: 'not_offboarded' })
@@ -219,7 +223,8 @@ async function deleteCommand(argv: string[]): Promise<void> {
         missing: error.missing,
       })
     }
-    return print({ status: 'dry-run', slug: club.slug, ...scopeOf(club), tables: summary.tables })
+    print({ status: 'dry-run', slug: club.slug, ...scopeOf(club), tables: summary.tables })
+    return
   }
   const result = await execute<{ deletedAt: string; summary: ClubDeletionSummary }>(
     'delete-club',

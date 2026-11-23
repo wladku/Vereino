@@ -131,7 +131,8 @@ export function clubTables(modules: readonly ModuleTables[]): ClubTable[] {
   const seen = new Map<string, string>()
   for (const entry of all) {
     const owner = seen.get(entry.table)
-    if (owner) throw new Error(`[internal] club table ${entry.table} is claimed by ${owner} and ${entry.module}`)
+    if (owner)
+      throw new Error(`[internal] club table claimed by two owners: ${[entry.table, owner, entry.module].join(' / ')}`)
     seen.set(entry.table, entry.module)
   }
   return all
@@ -404,7 +405,7 @@ export function parseRowJson(text: string): Record<string, unknown> {
     typeof value === 'number' && context?.source !== undefined && String(value) !== context.source
       ? context.source
       : value
-  const row: unknown = JSON.parse(text, reviver as (key: string, value: unknown) => unknown)
+  const row: unknown = JSON.parse(text, reviver)
   if (!isRecord(row)) throw new Error('[internal] a table row is not a JSON object')
   return row
 }
