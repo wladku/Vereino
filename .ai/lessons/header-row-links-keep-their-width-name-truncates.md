@@ -21,8 +21,8 @@ breakpoint passed locally and failed on CI, whose fonts are wider: the row had n
 `min-w`), truncate the name with its full text in `title`, and let the links keep their own width (`flex: 0 1 auto`,
 `min-w-0`) so they scroll only once the name is at its minimum. Never put `justify-end` (or `justify-center`) on
 content inside an `overflow-x-auto` box. Pick the one-row breakpoint where the links really fit, measured in both
-locales with real headroom (CI fonts are wider than a
-local machine's; assert a minimum width left for the name), and prove it with a bounding-box plus `elementFromPoint` hit test on every link at each width.
+locales with real headroom (CI fonts are wider than a local machine's; assert a minimum width left for the name), and
+prove it with a bounding-box plus `elementFromPoint` hit test on every link at each width.
 
 **Applies to**: `packages/ui/src/public/public-header.tsx` and any header or toolbar row in `packages/ui` or module
 pages; test `ISSUE-488-public-header-long-club-name`.
