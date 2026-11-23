@@ -2,6 +2,7 @@
   "name": "vereino",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "type": "module",
   "packageManager": "yarn@4.17.1+sha512.ccbfabf7d7b6b32075088be9386fb9a2e00bb6887ef07fa56effabc890a56d53da1ccc4128d62db245fcbd3961b236d75335bdf7d5320ed6eafb7588b7ad4697",
   "workspaces": [
@@ -53,6 +54,7 @@
     "lessons:check": "node ./scripts/check-lessons.mjs",
     "lessons:list": "node ./scripts/check-lessons.mjs --list",
     "spec-changelogs:check": "node ./scripts/check-spec-changelogs.mjs",
+    "dockerfiles:check": "node ./scripts/check-dockerfiles.mjs",
     "secrets:check": "node ./scripts/check-secrets.mjs",
     "guard": "node ./scripts/guard.mjs",
     "licenses:check": "node ./scripts/check-licenses.mjs",
@@ -61,6 +63,7 @@
     "format": "yarn workspace @vereino/app format",
     "format:check": "yarn workspace @vereino/app format:check",
     "contracts:check": "yarn workspace @vereino/app contracts:check",
+    "route-isolation:check": "yarn workspace @vereino/app route-isolation:check",
     "settings-prefixes:check": "yarn workspace @vereino/app settings-prefixes:check",
     "glossary:check": "yarn workspace @vereino/app glossary:check",
     "qa-texts:check": "yarn workspace @vereino/app qa-texts:check",
@@ -71,7 +74,7 @@
   "resolutions": {
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "zod": "4.4.3",
+    "zod": "4.6.7",
     "handlebars": "4.7.10",
     "happy-dom": "21.0.4",
     "node-forge": "1.4.3",

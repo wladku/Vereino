@@ -6,6 +6,23 @@
       "name": "club_core_club_settings",
       "schema": "public",
       "columns": {
+        "accent_color": {
+          "name": "accent_color",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "bank_account": {
           "name": "bank_account",
           "type": "text",

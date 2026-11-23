@@ -8,6 +8,7 @@ import { Organization } from '@open-mercato/core/modules/directory/data/entities
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { ClubSettings } from '../data/entities'
 import { parseConsentTexts, type ConsentTexts } from '../lib/consent-texts'
+import { clubAccent } from '@vereino/core'
 import { staffLogoUrl } from '../lib/files'
 import { resolvePublication, type Publication } from '../lib/publication'
 import {
@@ -32,6 +33,8 @@ export type ClubPublicSettings = {
   /** The URLs of the club's rules and privacy policy in the public page footer (#195). */
   rulesUrl: string | null
   privacyPolicyUrl: string | null
+  /** The club's own colour (`#rrggbb`, #486), or null for the default. */
+  accentColor: string | null
   logoAttachmentId: string | null
   /** The logo through the platform's authenticated image route (same organization only); null without a logo. */
   logoUrl: string | null
@@ -88,6 +91,7 @@ export function publicSettingsOf(row: ClubSettings | null): ClubPublicSettings {
     bankAccount: row?.bankAccount ?? null,
     rulesUrl: row?.rulesUrl ?? null,
     privacyPolicyUrl: row?.privacyPolicyUrl ?? null,
+    accentColor: clubAccent(row?.accentColor)?.color ?? null,
     logoAttachmentId,
     logoUrl: staffLogoUrl(logoAttachmentId),
     publication: resolvePublication(row?.publication ?? null),

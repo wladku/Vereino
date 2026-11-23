@@ -29,11 +29,13 @@ describe('club_core error codes', () => {
       },
       { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
       { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
+      { code: 'accent_color_invalid', status: 422, messageKey: 'club_core.errors.accent_color_invalid' },
       { code: 'consent_text_too_long', status: 422, messageKey: 'club_core.errors.consent_text_too_long' },
       { code: 'section_has_active_groups', status: 409, messageKey: 'club_core.errors.section_has_active_groups' },
       { code: 'section_name_length', status: 422, messageKey: 'club_core.errors.section_name_length' },
       { code: 'section_name_taken', status: 409, messageKey: 'club_core.errors.section_name_taken' },
       { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
+      { code: 'slug_reserved', status: 400, messageKey: 'club_core.errors.slug_reserved' },
       { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
       {
         code: 'publication_requests_need_calendar',

@@ -1,0 +1,314 @@
+{
+  "$comment": "Cross-club isolation probes of the groups routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/groups/age-categories": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "seasonId": "$B:season" } }],
+      "POST": {
+        "probe": "exempt",
+        "why": "Adds an entry with its range to the caller's own age category dictionary; the body (label and range) names no record. The created entry is read back by the GET probes."
+      }
+    },
+    "/api/groups/age-categories/[entryId]/range": {
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "entryId": "$B:ageCategory" },
+          "body": { "uFrom": 8, "uTo": 9, "updatedAt": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "entryId": "$B:ageCategoryEntry" },
+          "body": { "uFrom": 8, "uTo": 9, "updatedAt": "2020-01-01T00:00:00.000Z" }
+        }
+      ]
+    },
+    "/api/groups/external-teams": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "ids": "$B:externalTeam" } }],
+      "POST": { "probe": "foreign-ref", "body": { "name": "Probe", "institutionId": "$B:institution" } },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:externalTeam", "name": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:externalTeamUpdatedAt" },
+          "body": { "id": "$A:externalTeam", "institutionId": "$B:institution" }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:externalTeam" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/groups/groups": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "ids": "$B:seasonGroup" } },
+        { "probe": "read", "query": { "sectionId": "$B:section" } },
+        { "probe": "read", "query": { "seasonId": "$B:season" } },
+        { "probe": "read", "query": { "ageCategoryEntryId": "$B:ageCategory" } }
+      ],
+      "POST": [
+        { "probe": "foreign-ref", "body": { "sectionId": "$B:section", "name": "Probe", "kind": "team" } },
+        {
+          "probe": "foreign-ref",
+          "body": { "sectionId": "$A:section", "name": "Probe", "kind": "team", "seasonId": "$B:season" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "sectionId": "$A:section", "name": "Probe", "kind": "team", "ageCategoryEntryId": "$B:ageCategory" }
+        }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:seasonGroup", "name": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:seasonGroupUpdatedAt" },
+          "body": { "id": "$A:seasonGroup", "sectionId": "$B:section" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:seasonGroupUpdatedAt" },
+          "body": { "id": "$A:seasonGroup", "seasonId": "$B:season2" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:seasonGroupUpdatedAt" },
+          "body": { "id": "$A:seasonGroup", "ageCategoryEntryId": "$B:ageCategoryEntry" }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:group2" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/groups/groups/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:seasonGroup" } }
+    },
+    "/api/groups/member-groups": {
+      "GET": { "probe": "read" }
+    },
+    "/api/groups/memberships": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "ids": "$B:membership" } },
+        { "probe": "read", "query": { "groupId": "$B:group" } },
+        { "probe": "read", "query": { "personId": "$B:memberPerson" } },
+        { "probe": "read", "query": { "sortField": "roster" } },
+        { "probe": "read", "query": { "sortField": "roster", "groupId": "$B:group" } },
+        { "probe": "read", "query": { "sortField": "roster", "personId": "$B:memberPerson" } }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "personId": "$A:plainPerson",
+            "role": "participant",
+            "validFrom": "$A:today"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "personId": "$B:plainPerson",
+            "role": "participant",
+            "validFrom": "$A:today"
+          }
+        }
+      ],
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "id": "$B:membership", "role": "participant" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:membership" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/groups/memberships/[id]/end": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:membership" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/groups/memberships/move": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "membershipId": "$B:membership", "toGroupId": "$A:group2", "date": "$A:nextWeek" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:moveMembershipUpdatedAt" },
+          "body": { "membershipId": "$A:moveMembership", "toGroupId": "$B:group2", "date": "$A:nextWeek" }
+        }
+      ]
+    },
+    "/api/groups/memberships/move-many": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "body": {
+            "fromGroupId": "$B:group",
+            "toGroupId": "$A:group2",
+            "date": "$A:nextWeek",
+            "membershipIds": ["$A:childMembership"],
+            "dryRun": true
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "body": {
+            "fromGroupId": "$B:group",
+            "toGroupId": "$A:group2",
+            "date": "$A:nextWeek",
+            "membershipIds": ["$A:childMembership"],
+            "previewToken": "probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromGroupId": "$A:group",
+            "toGroupId": "$B:group2",
+            "date": "$A:nextWeek",
+            "membershipIds": ["$A:childMembership"],
+            "dryRun": true
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromGroupId": "$A:group",
+            "toGroupId": "$A:group2",
+            "date": "$A:nextWeek",
+            "membershipIds": ["$B:childMembership"],
+            "dryRun": true
+          }
+        },
+        { "probe": "foreign-ref", "body": { "undoToken": "$B:moveUndoToken" } }
+      ]
+    },
+    "/api/groups/options/age-categories": {
+      "GET": { "probe": "read" }
+    },
+    "/api/groups/seasons": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "ids": "$B:season" } }],
+      "POST": {
+        "probe": "exempt",
+        "why": "Creates a season in the caller's club from a name and two dates; the body names no record. The created season is read back by the GET probes."
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "id": "$B:season", "name": "Probe" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:season2" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/groups/seasons/rollover": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "body": {
+            "fromSeasonId": "$B:season",
+            "season": { "name": "Sezon próbny", "startsOn": "2098-09-01", "endsOn": "2099-08-31" },
+            "groups": [],
+            "previewToken": "probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromSeasonId": "$A:season",
+            "season": { "id": "$B:season2" },
+            "groups": [{ "groupId": "$A:seasonGroup", "action": "continue" }],
+            "previewToken": "probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromSeasonId": "$A:season",
+            "season": { "id": "$A:season2" },
+            "groups": [{ "groupId": "$B:seasonGroup", "action": "continue" }],
+            "previewToken": "probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromSeasonId": "$A:season",
+            "season": { "id": "$A:season2" },
+            "groups": [
+              {
+                "groupId": "$A:seasonGroup",
+                "action": "rename",
+                "name": "Probe",
+                "ageCategoryEntryId": "$B:ageCategory"
+              }
+            ],
+            "previewToken": "probe"
+          }
+        }
+      ]
+    },
+    "/api/groups/seasons/rollover/preview": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "body": {
+            "fromSeasonId": "$B:season",
+            "season": { "name": "Sezon próbny", "startsOn": "2098-09-01", "endsOn": "2099-08-31" },
+            "groups": []
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "fromSeasonId": "$A:season", "season": { "id": "$B:season2" }, "groups": [] }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromSeasonId": "$A:season",
+            "season": { "id": "$A:season2" },
+            "groups": [{ "groupId": "$B:seasonGroup", "action": "continue" }]
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "fromSeasonId": "$A:season",
+            "season": { "id": "$A:season2" },
+            "groups": [
+              {
+                "groupId": "$A:seasonGroup",
+                "action": "rename",
+                "name": "Probe",
+                "ageCategoryEntryId": "$B:ageCategory"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

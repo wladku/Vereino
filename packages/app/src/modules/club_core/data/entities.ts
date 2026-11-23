@@ -53,6 +53,7 @@ export class ClubSettings extends ScopedEntityBase {
     | 'publicDescription'
     | 'rulesUrl'
     | 'privacyPolicyUrl'
+    | 'accentColor'
     | 'publication'
     | 'consentTexts'
     | 'formerParticipantRetentionMonths'
@@ -153,6 +154,13 @@ export class ClubSettings extends ScopedEntityBase {
   /** The URL of the club's privacy policy, linked in the public page footer when set (#195). */
   @Property({ name: 'privacy_policy_url', type: 'text', nullable: true })
   privacyPolicyUrl?: string | null
+
+  /**
+   * The club's own colour (design tokens R06.2, #486): `#rrggbb` in lower case, painting the member header bar, the
+   * public hero and the fallback logo; null uses the default, `--primary`. Read through `clubAccent` of `@vereino/core`.
+   */
+  @Property({ name: 'accent_color', type: 'text', nullable: true })
+  accentColor?: string | null
 
   /**
    * The club's consent texts (DD-39; people life-cycle spec REQ-L10, DD-L11; #309): `{ <key>: { text, changedAt } }`

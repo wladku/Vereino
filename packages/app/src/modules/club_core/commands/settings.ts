@@ -17,11 +17,12 @@ import { emitCrudSideEffects, emitCrudUndoSideEffects } from '@open-mercato/shar
 import type { CrudEventsConfig } from '@open-mercato/shared/lib/crud/types'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
-import { normalizeBankAccount, type ActingRole } from '@vereino/core'
+import { normalizeBankAccount, normalizeHexColor, type ActingRole } from '@vereino/core'
 import { assertSupportedLocale, authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
+import { isReservedClubSlug } from '../lib/club-onboarding'
 import { clubSettingsUpdateSchema } from '../data/validators'
 import {
   applyConsentTextsPatch,
@@ -79,6 +80,8 @@ type SettingsSnapshot = Record<ClubSettingKey, unknown> & {
   // The footer links (#195); absent in log entries written before them.
   rulesUrl?: string | null
   privacyPolicyUrl?: string | null
+  // The club's colour (#486); absent in log entries written before it.
+  accentColor?: string | null
   publication?: Publication
   // The consent texts (#309); absent in log entries written before them.
   consentTexts?: ConsentTexts
@@ -105,6 +108,7 @@ function snapshot(row: ClubSettings): SettingsSnapshot {
     bankAccount: row.bankAccount ?? null,
     rulesUrl: row.rulesUrl ?? null,
     privacyPolicyUrl: row.privacyPolicyUrl ?? null,
+    accentColor: row.accentColor ?? null,
     publication: resolvePublication(row.publication),
     consentTexts: parseConsentTexts(row.consentTexts),
   }
@@ -188,6 +192,7 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   if (before.bankAccount !== undefined) row.bankAccount = before.bankAccount
   if (before.rulesUrl !== undefined) row.rulesUrl = before.rulesUrl
   if (before.privacyPolicyUrl !== undefined) row.privacyPolicyUrl = before.privacyPolicyUrl
+  if (before.accentColor !== undefined) row.accentColor = before.accentColor
   if (before.publication !== undefined) row.publication = resolvePublication(before.publication)
   if (before.consentTexts !== undefined) row.consentTexts = { ...parseConsentTexts(before.consentTexts) }
   row.updatedAt = new Date()
@@ -259,12 +264,28 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
               row.bankAccount =
                 normalizeBankAccount(bankAccount) ?? (await throwFieldError('bank_account_invalid', 'bankAccount'))
             }
+            // The club's colour (#486): a hex colour stored as `#rrggbb`, or 422 `accent_color_invalid`.
+            const accentColor = patch.accentColor
+            if (accentColor === null) row.accentColor = null
+            else if (typeof accentColor === 'string') {
+              row.accentColor =
+                normalizeHexColor(accentColor) ?? (await throwFieldError('accent_color_invalid', 'accentColor'))
+            }
             // The club's consent texts (#309): the limit first, then the change with its instant.
             const consentPatch = patch.consentTexts as ConsentTextsPatch | undefined
             const tooLong = consentPatch ? consentTextTooLong(consentPatch) : null
             if (tooLong) await throwFieldError('consent_text_too_long', `consentTexts.${tooLong}`)
             const texts = applyConsentTextsPatch(parseConsentTexts(row.consentTexts), consentPatch, new Date())
             if (texts.changed.length > 0) row.consentTexts = { ...texts.texts }
+            // The club's slug becomes its subdomain (many clubs spec, *Club address*; #630): a new reserved label is
+            // refused; a slug the club already holds stays as it is.
+            if (
+              typeof patch.publicSlug === 'string' &&
+              patch.publicSlug !== row.publicSlug &&
+              isReservedClubSlug(patch.publicSlug)
+            ) {
+              await throwFieldError('slug_reserved', 'publicSlug')
+            }
             const problem = writePublicSettings(row, patch)
             if (problem?.code === 'publication_requests_need_calendar')
               await throwFieldError(problem.code, problem.field)

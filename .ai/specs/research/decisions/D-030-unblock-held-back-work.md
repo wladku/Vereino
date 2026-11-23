@@ -3,7 +3,7 @@ number: D-030
 date: 2026-11-04
 owner: Władek Kuć
 source: the owner's answers in the coordinator session of 2026-11-04, asked to unblock the held-back backlog items (#92, E07 #106, #95, #96, #105, E08 #119)
-status: confirmed
+status: confirmed; the treasurer hold of point 2 superseded by D-037 (2026-11-19)
 ---
 # D-030 Unblock held-back work: modules, phase 4 without the treasurer role, A05, REQ-017 and phase 5 on the example club
 
@@ -19,6 +19,8 @@ status: confirmed
 **Why:** the backlog of phases 1–3 is nearly built, and the remaining items were waiting only on these decisions; the owner chose to build with the risks accepted rather than wait for interviews or the pilot.
 
 **Still held back:** the treasurer role and screens (#118, REQ-034); any other module, dependency or migration stays Ask First.
+
+**Superseded in part (2026-11-19):** the treasurer hold of point 2 and of the line above was lifted by the owner on #245; see [D-037](D-037-treasurer-role-released.md). B-33 was built for the administrator by #118 (PR #421) and the treasurer role by #245 (PR #432). The rest of this record stands.
 
 **To change:** a superseding record approved by the owner.
 

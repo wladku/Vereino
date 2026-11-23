@@ -1,6 +1,6 @@
 # Run: issue #296 — E12-S06 an administrator refunds an online payment from the charge and finds every overpayment under "To refund"
 
-- **Goal and trigger:** cezar task 7af286dc (`om-auto-fix-issue 296`, label `cezar`): build phase 6 of `.ai/specs/2026-11-14-vereino-parity-payments.md` (REQ-C08; TEST-C09; AC-C08; DD-C10; J-C05 step 4).
+- **Goal and trigger:** cezar task 7af286dc (`om-auto-fix-issue 296`, label `cezar`): build phase 6 of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (REQ-C08; TEST-C09; AC-C08; DD-C10; J-C05 step 4).
 - **Spec / issue / branch:** spec `In progress`, Ready for implementation since the owner's approval of 2026-11-16 on #254 (the issue's "spec is Draft" open question is resolved by that approval; Q-C08 confirmed, Q-C22 answered "no"); issue #296; branch `feat/issue-296-refund-online-payment-from-charge`.
 
 ## Steps
@@ -50,7 +50,7 @@
 ## Follow-up run: base merge of PR #391 (2026-11-18, cezar task 4d7b7729, `om-auto-fix-pr 391`)
 
 - **Trigger:** the merge train labeled the PR `merge-train-conflict` after #389 (E12-S04, #294) landed on `main`.
-- **Conflict:** only the `**Status**` line of `.ai/specs/2026-11-14-vereino-parity-payments.md`; resolved by keeping both entries (phase 6 in #296 and phase 4 in #294). Fixtures, README and i18n catalogs auto-merged; both catalogs parse.
+- **Conflict:** only the `**Status**` line of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`; resolved by keeping both entries (phase 6 in #296 and phase 4 in #294). Fixtures, README and i18n catalogs auto-merged; both catalogs parse.
 - **Semantic check:** #294's TEST-C05 / TEST-042 assert nothing on the charges list or refunds; the only caller of the changed `visiblePerspectives` signature already uses the new shape.
 - **Commands:** `yarn verify`: all 17 steps passed. Integration is left to CI (no container runtime for this user).
 - **History:** a concurrent session pushed the identical merge (099423a5, empty tree diff against this run's d8f6ceb8) first; this run kept that commit and pushed only this log entry. No force-push.
