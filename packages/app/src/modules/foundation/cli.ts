@@ -63,7 +63,7 @@ const USAGE = {
  */
 function fail(command: keyof typeof USAGE, message: string): never {
   process.stderr.write(`${message}\n${USAGE[command]}\n`)
-  throw new Error(`[internal] foundation ${command}: invalid options`)
+  throw new Error('[internal] foundation club job command: invalid options')
 }
 
 /**
