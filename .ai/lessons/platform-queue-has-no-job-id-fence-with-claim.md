@@ -16,7 +16,9 @@ platform queue (#629).
 and development, async in production) and duplicate its telemetry and abandon handling.
 
 **Rule**: Put the claim into the job payload (`foundation/lib/club-job-run.ts`: the row's due time and the lease value
-the sweep wrote, both from JS dates so they compare exactly at millisecond precision) and start the run with a
+the sweep wrote) and compare them with `date_trunc('milliseconds', …)`: the claim travels as JS dates (milliseconds),
+a row written by SQL (`now() - interval …`, a test fixture) holds microseconds, and an exact `=` then skips every run
+(TEST-M06's first local run, #629) and start the run with a
 conditional update on both (`startClubJobRun`); finish only while the run's own lease still holds
 (`finishClubJobRun`). A copy enqueued before its lease was taken over, or one of a due time already done, matches
 nothing and is skipped. Compute the next due time from `max(now, claimed due time)`, so a worker clock behind the

@@ -21,7 +21,7 @@ which the gate does not run; the typecheck and unit tests stay green.
 wording), and run those tests locally in the same PR. Since #629 a per-club job is declared in the module's
 `lib/club-jobs.ts` (`dailyAt` local `HH:MM` or `everyMinutes`), set up through the foundation's `setUpClubJob` and
 wrapped in `clubJobWorker`; the foundation moves daily jobs on a time-zone change, so no module subscriber is needed.
-A new job type also adds a sweep schedule: update the count in `TEST-M06` (`SWEEP_SCHEDULES`, `CLUB_JOBS`).
+A new job type also adds a sweep schedule: update the counts in `foundation/ISSUE-629-retire-club-schedules.spec.ts` (`SWEEP_SCHEDULES`, `CLUB_JOBS`).
 
 **Applies to**: `packages/app/src/modules/*/services/club-setup.ts`, `*/cli.ts` `set-up-club`, the integration tests
 under `packages/app/.ai/qa/tests/{activities,payments,facilities,people}`.

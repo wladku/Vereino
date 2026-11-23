@@ -2,7 +2,7 @@ import { expect, test, type APIRequestContext } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { OPTIMISTIC_LOCK_HEADER, call, createClub, mercato, type Club } from '../_fixtures/club'
 
-// TEST-M05 (many-clubs spec REQ-M04, DD-M04…DD-M06, BR-M2, BR-M3; issue #629 E22-S03): one sweep per job type.
+// Many-clubs spec TEST-M05 (spec REQ-M04, DD-M04…DD-M06, BR-M2, BR-M3; issue #629 E22-S03): one sweep per job type.
 // - Three clubs: A and C in Europe/Warsaw, B moved to America/New_York after its setup. Each club's 06:00 charge
 //   generation is due at 06:00–06:20 local time (a stable offset per club); B's time-of-day jobs follow its new zone,
 //   `people` jobs included (`foundation:reschedule-club-jobs`).
@@ -121,7 +121,9 @@ async function finishedRun(club: Club): Promise<JobRow> {
   return row
 }
 
-test('TEST-M05 the sweep runs each club at its local time and only when its run is due', async ({ request }) => {
+test('many-clubs TEST-M05 the sweep runs each club at its local time and only when its run is due', async ({
+  request,
+}) => {
   const clubs: Club[] = []
   try {
     const a = await createClub(request, 'test-m05-a')

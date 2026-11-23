@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { createClub, mercato, type Club } from '../_fixtures/club'
 
-// TEST-M06 (many-clubs spec REQ-M04, AC-M04, *Rollout*; issue #629 E22-S03): two clubs set up the old way, each with
+// Many-clubs spec TEST-M06 (spec REQ-M04, AC-M04, *Rollout*; issue #629 E22-S03): two clubs set up the old way, each with
 // its per-club schedules (`set-up-club` of `activities`, `payments`, `facilities`; `people` from `bootstrap-admin`).
 // - `retire-club-schedules --dry-run` changes nothing; `retire-club-schedules` leaves no per-club schedule of a
 //   declared job type and one system-scope sweep schedule per job type (19 rows, whatever the number of clubs), and a
@@ -88,7 +88,7 @@ function retire(dryRun = false): RetireRun {
   return mercato(['foundation', 'retire-club-schedules', ...(dryRun ? ['--dry-run'] : [])]) as RetireRun
 }
 
-test('TEST-M06 retire-club-schedules moves every club onto one sweep per job type', async ({ request }) => {
+test('many-clubs TEST-M06 retire-club-schedules moves every club onto one sweep per job type', async ({ request }) => {
   const clubs: Club[] = []
   let retired = false
   try {

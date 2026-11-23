@@ -333,7 +333,8 @@ export async function insertClubJob(
 /**
  * A run starts (BR-M2): only the run the sweep enqueued for this due time and this lease may start — a copy enqueued
  * by an earlier pass whose lease was taken over, or one of a due time already finished, matches nothing and is
- * skipped. The lease is extended to the job's timeout. Returns true when this run may go ahead.
+ * skipped. The lease is extended to the job's timeout. Returns true when this run may go ahead. Both sides compare at
+ * millisecond precision: the claim travels as JS dates, while a row written by SQL (`now()`) holds microseconds.
  */
 export async function startClubJobRun(
   em: EntityManager,
@@ -345,7 +346,8 @@ export async function startClubJobRun(
 ): Promise<boolean> {
   const rows = await em.execute<Array<{ id: string }>>(
     `update foundation_club_jobs set lease_until = ?, last_started_at = ?, updated_at = ?
-     where tenant_id = ? and organization_id = ? and job_key = ? and next_due_at = ? and lease_until = ?
+     where tenant_id = ? and organization_id = ? and job_key = ?
+       and date_trunc('milliseconds', next_due_at) = ? and date_trunc('milliseconds', lease_until) = ?
      returning id`,
     [runLeaseUntil, now, now, scope.tenantId, scope.organizationId, jobKey, claim.dueAt, claim.leaseUntil],
   )
@@ -367,7 +369,7 @@ export async function finishClubJobRun(
   const rows = await em.execute<Array<{ id: string }>>(
     `update foundation_club_jobs set next_due_at = ?, lease_until = null, last_finished_at = ?, last_error = ?,
        updated_at = ?
-     where tenant_id = ? and organization_id = ? and job_key = ? and lease_until = ?
+     where tenant_id = ? and organization_id = ? and job_key = ? and date_trunc('milliseconds', lease_until) = ?
      returning id`,
     [outcome.nextDueAt, now, outcome.error, now, scope.tenantId, scope.organizationId, jobKey, runLeaseUntil],
   )
