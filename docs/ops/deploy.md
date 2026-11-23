@@ -207,7 +207,8 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
    ```
 
    It reports each check (`health`, `sign-in page`, `security headers`, `no-store`) and exits 0, or 1 naming the failed
-   checks. The `no-store` check signs in with a dedicated smoke account given in `VEREINO_SMOKE_EMAIL` and
+   checks. `security headers` requires the S8.4 set — CSP (without `'unsafe-eval'`), `Referrer-Policy`,
+   `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy` and `Strict-Transport-Security`. The `no-store` check signs in with a dedicated smoke account given in `VEREINO_SMOKE_EMAIL` and
    `VEREINO_SMOKE_PASSWORD` (a user without club data; never a real person's account) and is skipped without them.
 2. Run the per-club setup steps below when the release notes name one.
 
@@ -256,4 +257,7 @@ and leaves the other clubs alone. Roll back only when that is not enough:
   deploy, and expect the deploy to be marked failed while the previous release keeps serving.
 - ENG-TEST-13 (local, same filter): `scripts/railway-start.sh` with an empty `DATABASE_URL` fails and never initialises.
   On staging: point the app service at an empty database URL and deploy; the pre-deploy command fails.
-- ENG-TEST-11: `node scripts/smoke.mjs <staging-url>` with the smoke account, once E18-S02 adds the remaining headers.
+- ENG-TEST-11 (local): `yarn test:integration:vereino --filter ENG-TEST-11` checks the headers on the production build,
+  `no-store` on authenticated API responses, runs the smoke check with a throwaway smoke account and opens the admin UI
+  under the CSP without a violation. On staging: `node scripts/smoke.mjs <staging-url>` with the smoke account; every
+  check must pass (none skipped).
