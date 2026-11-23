@@ -1,0 +1,1 @@
+| 2026-11-23 | Owner answered Q-E01…Q-E05 as recommended (PR #660): private repository + overlay, `vereino-lic.v1` Ed25519 keys, 14-day grace then read-only, municipality view first, admin key screen later; phases 1a and 1b approved; status set to `Ready for implementation` |

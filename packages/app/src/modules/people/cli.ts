@@ -33,8 +33,7 @@ const syncRoleExpiry: ModuleCli = {
       process.stderr.write(
         'Usage: mercato people sync-role-expiry --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people sync-role-expiry: invalid options')
     }
     await runJobCommand('people.persons.sync_roles', { tenantId: tenant, organizationId: org }, today ? { today } : {})
   },
@@ -56,8 +55,7 @@ const bootstrapAdmin: ModuleCli = {
       process.stderr.write(
         'Usage: mercato people bootstrap-admin --tenant <tenantId> --org <organizationId> --user <userId> --first-name <name> --last-name <name> [--email <email>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people bootstrap-admin: invalid options')
     }
     const scope = { tenantId: tenant, organizationId: org }
     const container = await createRequestContainer()
@@ -85,8 +83,7 @@ const checkOwnPayments: ModuleCli = {
       process.stderr.write(
         'Usage: mercato people check-own-payments --tenant <tenantId> --org <organizationId> --user <userId>\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people check-own-payments: invalid options')
     }
     const container = await createRequestContainer()
     const gate = container.resolve<PaymentsGate>(PEOPLE_PAYMENTS_GATE)
@@ -113,8 +110,7 @@ const purgeImportRows: ModuleCli = {
       process.stderr.write(
         'Usage: mercato people purge-import-rows --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people purge-import-rows: invalid options')
     }
     await runJobCommand('people.imports.purge', { tenantId: tenant, organizationId: org }, now ? { now } : {})
   },
@@ -151,8 +147,7 @@ const lifeCycle: ModuleCli = {
       process.stderr.write(
         'Usage: mercato people life-cycle --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people life-cycle: invalid options')
     }
     const scope = { tenantId: tenant, organizationId: org }
     await runJobCommand('people.persons.life_cycle', scope, {
@@ -162,7 +157,7 @@ const lifeCycle: ModuleCli = {
     if (register) {
       const registered = await registerLifeCycleSchedule(await createRequestContainer(), scope)
       process.stdout.write(`${JSON.stringify({ scheduleRegistered: registered })}\n`)
-      if (!registered) process.exitCode = 1
+      if (!registered) throw new Error('[internal] people:life-cycle schedule not registered')
     }
   },
 }

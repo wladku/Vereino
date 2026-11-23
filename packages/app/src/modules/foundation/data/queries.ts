@@ -502,3 +502,20 @@ export async function clubsWithDueDeliveries(em: EntityManager, limit: number): 
   )
   return rows.map((row) => ({ tenantId: row.tenant_id, organizationId: row.organization_id }))
 }
+
+/**
+ * The value stored by the pre-deploy role-ACL sync wrapper (DD-M11, #673) in the platform's instance-scoped module
+ * config, read from the row and not through `moduleConfigService.getValue`, whose cache may still hold a value the
+ * database no longer has (a restore, a by-hand change) and would skip a sync that is due. Instance-wide by design: the
+ * row belongs to no tenant (`tenant_id is null`) and holds no club data.
+ */
+export async function readInstanceModuleConfigValue(
+  em: EntityManager,
+  key: { moduleId: string; name: string },
+): Promise<unknown> {
+  const rows = await em.execute<Array<{ value_json: unknown }>>(
+    'select value_json from module_configs where module_id = ? and name = ? and tenant_id is null limit 1',
+    [key.moduleId, key.name],
+  )
+  return rows[0]?.value_json ?? null
+}

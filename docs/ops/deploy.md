@@ -83,8 +83,8 @@ through a club setting (below).
 2. **The demo club.** Production carries one club the maintainers own, with synthetic data and no real person in it.
    After the production deploy, the smoke check passes and the maintainer repeats the release-notes walk in this club
    before announcing anything. A behaviour behind a club setting is switched on here first and watched for at least a
-   day. Until the club-creation command of #630 exists, the demo club is created by hand once, with the per-club setup
-   commands below.
+   day. The demo club, like every club, is created with `yarn mercato club_core create-club`
+   ([`clubs.md`](clubs.md)).
 3. **Every club.** The release is announced. A behaviour behind a club setting is switched on for chosen clubs, then
    for every club, in later steps that need no deploy.
 
@@ -173,8 +173,8 @@ Every deploy of the **app** service runs, in this order (ADR-013, S14.5):
 
 1. **Build** the `Dockerfile` (`runner` stage; production build of the app).
 2. **Pre-deploy** `sh ./scripts/railway-predeploy.sh` (`preDeployCommand` in `railway.toml`): the boot check, then
-   `yarn db:migrate`, then `yarn mercato auth sync-role-acls`. It runs once per deploy, never per replica. Any failure
-   fails the deploy and the previous release keeps serving.
+   `yarn db:migrate`, then `yarn mercato foundation sync-role-acls-if-changed` ([role ACL sync](#role-acl-sync)). It
+   runs once per deploy, never per replica. Any failure fails the deploy and the previous release keeps serving.
 3. **Start** `sh ./scripts/railway-start.sh`: the boot check, then `yarn start`. It never migrates and never runs
    `yarn initialize`: an empty or wrong `DATABASE_URL` fails the start instead of setting up a new, empty database.
 4. **Health check** `/api/healthz` (probes PostgreSQL and, with `CACHE_STRATEGY=redis`, Redis) must answer 2xx within
@@ -189,6 +189,26 @@ The **worker** service (`sh ./scripts/railway-worker.sh`) runs the boot check an
   [checklist](#production-release-checklist). A maintainer opens the production environment in Railway, deploys the
   tagged commit to the app service, waits for it to turn healthy, then deploys the same commit to the worker.
 
+### Role ACL sync
+
+The platform's `yarn mercato auth sync-role-acls` adds every module's default role features (`setup.ts`
+`defaultRoleFeatures`) to the roles of **every tenant**, and each club is a tenant (DD-M01 of the many clubs spec), so
+with many clubs it costs tens of thousands of queries per deploy. The pre-deploy step therefore runs
+`yarn mercato foundation sync-role-acls-if-changed` (DD-M11, #673):
+
+- It hashes the merged role-feature defaults of every enabled module and the installed `@open-mercato/core` version
+  (a platform upgrade may change the sync itself) and compares the hash with the one stored after the last successful
+  sync (module config `foundation` / `role_acl_defaults_hash`, instance scope).
+- Equal: no sync; it prints `{"status":"skipped","reason":"unchanged",…}`.
+- Different, or nothing stored yet: it runs `auth sync-role-acls` once over every tenant (one `Synced role ACLs for
+  tenant …` line per club), stores the new hash and prints `{"status":"synced","reason":"changed"|"first-run",…}`. A
+  failed sync stores nothing and fails the deploy, so the next deploy syncs again.
+- `--force` always syncs. Use it when role ACLs must be re-applied although no default changed, for example after a
+  restore of the database or a by-hand change to a role's ACL:
+  open a shell on the app service (`railway ssh` or the service's shell in Railway) and run
+  `yarn mercato foundation sync-role-acls-if-changed --force`.
+- The sync only **adds** features; it never removes one a release dropped (`auth/AGENTS.md`).
+
 ### First deploy of a new environment (one time)
 
 The start and pre-deploy commands never initialise a database. On a new, empty database:
@@ -196,7 +216,8 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
 1. Deploy once; the pre-deploy command creates the schema through the migrations.
 2. From a Railway shell on the app service (`railway ssh` or the service's shell), with `OM_INIT_ADMIN_PASSWORD` set,
    run `yarn initialize --no-examples` once. It refuses to run on a database that already has users.
-3. Remove `OM_INIT_ADMIN_PASSWORD`, sign in as the superadmin and set up the club; then run the per-club setup below.
+3. Remove `OM_INIT_ADMIN_PASSWORD`. Create each club, starting with the demo club, with `yarn mercato club_core
+   create-club` ([`clubs.md`](clubs.md)); it runs the per-club setup below itself.
 
 ## After every deploy
 
@@ -207,7 +228,8 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
    ```
 
    It reports each check (`health`, `sign-in page`, `security headers`, `no-store`) and exits 0, or 1 naming the failed
-   checks. The `no-store` check signs in with a dedicated smoke account given in `VEREINO_SMOKE_EMAIL` and
+   checks. `security headers` requires the S8.4 set — CSP (without `'unsafe-eval'`), `Referrer-Policy`,
+   `X-Content-Type-Options`, `X-Frame-Options`, `Permissions-Policy` and `Strict-Transport-Security`. The `no-store` check signs in with a dedicated smoke account given in `VEREINO_SMOKE_EMAIL` and
    `VEREINO_SMOKE_PASSWORD` (a user without club data; never a real person's account) and is skipped without them.
 2. Run the per-club setup steps below when the release notes name one.
 
@@ -290,4 +312,7 @@ and leaves the other clubs alone. Roll back only when that is not enough:
   deploy, and expect the deploy to be marked failed while the previous release keeps serving.
 - ENG-TEST-13 (local, same filter): `scripts/railway-start.sh` with an empty `DATABASE_URL` fails and never initialises.
   On staging: point the app service at an empty database URL and deploy; the pre-deploy command fails.
-- ENG-TEST-11: `node scripts/smoke.mjs <staging-url>` with the smoke account, once E18-S02 adds the remaining headers.
+- ENG-TEST-11 (local): `yarn test:integration:vereino --filter ENG-TEST-11` checks the headers on the production build,
+  `no-store` on authenticated API responses, runs the smoke check with a throwaway smoke account and opens the admin UI
+  under the CSP without a violation. On staging: `node scripts/smoke.mjs <staging-url>` with the smoke account; every
+  check must pass (none skipped).

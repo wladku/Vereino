@@ -19,7 +19,9 @@ TEST-R10 and TEST-R16).
 **Rule**: To render a signed-in club user's pages in a given language, set the club's `defaultLocale` through
 `PUT /api/club_core/settings`, using the `updatedAt` lock token from the GET (`updateClubSettings` in
 `_fixtures/members.ts`, or `page.request` after `signInBrowser`). Alternatively, set the person's own language through
-`PUT /api/people/me`. Check one screenshot per locale before trusting a batch.
+`PUT /api/people/me`. Check one screenshot per locale before trusting a batch. A test that loops over locales asserts
+`<html lang>` after every navigation: `uiText()` patterns match both catalogs, so a pass that silently rendered the
+other language still passes (TEST-C12 set only the cookie in its loops until #641).
 
 **Applies to**: integration tests and evidence scripts under `packages/app/.ai/qa/`, agent-browser checks of `/backend`
 and `/club` pages in both locales.
