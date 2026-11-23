@@ -1,0 +1,1 @@
+| 2026-11-22 | AC-F02 ticked (#583): `TEST-F02-admin-guardian-declares-absence` proves an administrator declaring her own ward's absence is recorded as `guardian` (response and audit entry); the status line's "left" list is not edited (*Spec status line* rule) |

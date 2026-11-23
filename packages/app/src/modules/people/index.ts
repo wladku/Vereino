@@ -7,5 +7,5 @@ export const metadata: ModuleInfo = {
   description:
     'Persons, staff role assignments, guardianships with the primary payer and consents; record scope, accounts and auth role sync (#38, #26; #27 adds the member side).',
   author: 'Vereino',
-  license: 'MIT',
+  license: 'AGPL-3.0-only',
 }
