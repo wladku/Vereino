@@ -231,19 +231,43 @@ test('TEST-L23 the age categories carry their PZPN birth years and a team propos
     await page.goto('about:blank')
     await page.context().clearCookies()
     await signInBrowser(page, request, club, staffAdmin.userId, staffAdmin.email)
+    // This is the session's first backend page, so it has no organization cookies to seed its scope from (lesson
+    // `admin-lists-load-once-scope-seed`). The switcher's first answer then bumps the scope version, which loads the
+    // list again under a new query key. On a slow CI runner that answer came after the editors had rendered: they
+    // remounted and dropped the typed "U do", and Save stayed disabled (#545). Hold the answer back to make that
+    // order certain: a value typed before it must survive the reload.
+    let releaseSwitcher: () => void = () => undefined
+    const switcherHeld = new Promise<void>((resolve) => {
+      releaseSwitcher = resolve
+    })
+    await page.route('**/api/directory/organization-switcher**', async (route) => {
+      await switcherHeld
+      await route.continue()
+    })
     await page.goto('/backend/groups/age-categories')
     const tabs = page.getByRole('tablist', { name: uiText('groups.nav.tabs.label', { exact: true }) })
     await expect(tabs.getByRole('tab', { selected: true })).toHaveText(
       uiText('groups.nav.tabs.ageCategories', { exact: true }),
     )
+    // Today's season is 2026/27 as well, so the reference line reads 2026/27 before the choice too: wait for the
+    // chosen season's own list instead. The table keeps its rows (and what is typed in them) while it loads (#431).
+    const seasonList = page.waitForResponse(
+      (response) => response.url().includes(`/api/groups/age-categories?seasonId=${season}`) && response.ok(),
+    )
     await page.locator('#age-categories-season').selectOption({ label: '2026/27' })
-    // The season's list loads under a new query key: until it answers, the table shows the previous rows (with the same
-    // birth years) and then remounts its editors, which drops a value typed before (#431). Its reference line comes
-    // with the new list.
+    await seasonList
     await expect(page.getByTestId('age-categories-reference')).toContainText('2026/27')
     await expect(page.getByTestId('age-birth-years-orlik')).toHaveText('2016–2017')
     const skrzat = page.getByTestId('age-range-editor-skrzat')
     await skrzat.locator('input').nth(1).fill('5')
+    // The switcher answers now; the list loads again under the real scope and the typed value stays.
+    const scopedList = page.waitForResponse(
+      (response) => response.url().includes(`/api/groups/age-categories?seasonId=${season}`) && response.ok(),
+    )
+    releaseSwitcher()
+    await scopedList
+    await expect(skrzat.locator('input').nth(1)).toHaveValue('5')
+    await page.unroute('**/api/directory/organization-switcher**')
     await skrzat.getByRole('button', { name: uiText('groups.common.save', { exact: true }) }).click()
     await expect(skrzat.getByRole('alert')).toBeVisible()
     await skrzat.locator('input').nth(1).fill('8')

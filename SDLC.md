@@ -30,6 +30,7 @@ Before any of that, `om-discover` establishes the product context every later de
 | Review loop | The reviewer reads the diff against the `om-code-review` checklist and approves or requests changes. Requested changes are addressed (`om-auto-continue-pr` resumes agent PRs from the tracking plan) and the PR is re-reviewed until approved. | `om-auto-review-pr` (single PR), `om-review-prs` (sweep), or a human | Approving review submitted |
 | Merge | `om-merge-buddy` reports, read-only, which PRs can merge now and which are close but blocked. `om-approve-merge-pr` re-checks every gate, approves, and squash-merges. | `om-merge-buddy` + `om-approve-merge-pr`, or a human | PR squash-merged into `main` |
 | Post-merge housekeeping | Close issues the merged PR fixes; comment on issues whose PRs were closed without merging; turn leftover asks or review comments into tracked follow-up issues. | `om-close-fixed-issues`, `om-followup-issue-from-pr` | Tracker reconciled, follow-ups filed |
+| Release | The owner cuts a `vX.Y.Z` release from `main`; a maintainer takes it through staging, the demo club and production inside the release window, with release notes for club administrators in Polish and English. See "Releasing to production" below. | A maintainer (`docs/ops/deploy.md`) | Tag deployed to production, checklist recorded |
 
 <!-- discovery:start -->
 ## Definition of Ready
@@ -133,7 +134,19 @@ The train needs the `MERGE_TRAIN_TOKEN` secret: a fine-grained token of the owne
 
 **Nobody else refreshes a PR from `main`.** People and agents (Cezar, `om-auto-fix-pr`, side sessions) do not merge `main` into an open PR just to rerun CI or to clear "behind"; the train does it when the PR's turn comes. A PR's author fixes real failures and real conflicts on its branch and pushes, and the train picks the PR up again. A test that fails on `main` for reasons outside the PR is quarantined (`test.fixme` with a tracking issue) in its own PR labelled `priority-high`, which the train takes first; the PR it blocks does not work around it. One problem gets one fix: before opening a PR for a failure, check the open PRs for one that already addresses it.
 
+**The change guard** (`yarn guard`, `scripts/guard.mjs`, #520) checks what a PR changes, not whether it builds: it compares the branch with its merge base on `origin/main` and blocks a deleted test file, an added `skip`/`only`/`xit`/`xdescribe`, a `test.fixme` without `// quarantine: #<issue>` (same line or the line above, the issue open and labelled `bug`), a lowered coverage threshold or new coverage exclusion, a new entry in `dependencies`/`devDependencies`/`resolutions` of any `package.json` or a new package in `yarn.lock`, and a secret on a changed line (the `secrets:check` matcher). Changes to `AGENTS.md`, `CLAUDE.md`, the skills, `.github/`, `scripts/verify.mjs` and the guard itself are listed as warnings only; lessons never are. CI runs it in the required `gate` job after `yarn verify` and writes the report to the job summary. A blocking finding fails `gate` unless the PR carries `guard-approved`, a label only the owner adds; the label is read when the job runs, so the owner adds it and reruns `gate`. Agents run `yarn guard` before pushing; on a blocking finding they stop, explain it in the PR and ask the owner, and never add the label or work around the guard.
+
 The implementing skills run the gate before opening a PR, and `om-check-and-commit` runs it before pushing a hand-worked branch. The command list lives in `.ai/agentic.config.json`; when it changes, update it there and in this section together.
+
+## Releasing to production
+
+One production instance serves every club, and one deploy updates every club at once (owner decision D-034, `.ai/specs/research/decisions/D-034-many-clubs-on-one-instance.md`). The release process lives in `docs/ops/deploy.md`, section "Production release", with the checklist a maintainer runs for each release. What it asks of every pull request:
+
+- **Expand, then contract.** A migration works with the code of the release before it, because the previous release keeps serving while the new one migrates and comes back on a rollback. A breaking schema change (rename, drop, type change, new `NOT NULL` without a default) is split across two releases: expand in one, contract in a later one after the first has served production for at least a week (engineering standards S5.4). A pull request with a contract step names the release that shipped its expand step.
+- **Risky behaviour behind a club setting.** A behaviour that should reach chosen clubs first ships behind a club setting whose default keeps the old behaviour; the maintainer switches it on for the demo club, then for chosen clubs, then for all. There is no feature-flag framework (ADR-019, still valid under D-034).
+- **Notes for club administrators.** A pull request that changes what administrators, coaches, guardians or members see or must do says so in plain words in its description, so the release notes in Polish and English can be written from the merged pull requests.
+
+Production releases happen inside the release window (Tuesday to Thursday, 20:30–22:30 Europe/Warsaw); only a `priority-extreme` fix goes outside it.
 
 ## Amending this process
 

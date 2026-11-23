@@ -93,8 +93,28 @@ test('checkSignInPage names a wrong page and every missing header', async () => 
   assert.deepEqual(headers, {
     name: 'security headers',
     status: 'fail',
-    detail: 'missing: content-security-policy, referrer-policy, x-content-type-options',
+    detail:
+      'missing: content-security-policy, referrer-policy, x-content-type-options, permissions-policy, strict-transport-security',
   })
+})
+
+test("checkSignInPage fails a CSP that still allows 'unsafe-eval'", async () => {
+  const csp = { ...SECURE, 'content-security-policy': "script-src 'self' 'unsafe-eval'" }
+  const [, headers] = await checkSignInPage({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch({ '/login': html(200, csp) }).fetchImpl,
+  })
+  assert.deepEqual(headers, {
+    name: 'security headers',
+    status: 'fail',
+    detail: "content-security-policy allows 'unsafe-eval'",
+  })
+  const both = { 'content-security-policy': "script-src 'unsafe-eval'" }
+  const [, worse] = await checkSignInPage({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch({ '/login': html(200, both) }).fetchImpl,
+  })
+  assert.match(worse.detail, /^missing: referrer-policy, .*; content-security-policy allows 'unsafe-eval'$/)
 })
 
 test('checkSignInPage fails both checks on a network error', async () => {

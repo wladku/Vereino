@@ -24,6 +24,7 @@ import {
   createAccount,
   createPerson,
   mercato,
+  mercatoAsync,
   signInAs,
   uniqueSuffix,
   userRoles,
@@ -300,6 +301,22 @@ export function runExpiry(club: Club, nowIso: string): ExpiryResult {
     '--now',
     nowIso,
   ]) as ExpiryResult | null
+  if (!result) throw new Error('[internal] activities expire-guardian-confirmations printed no result')
+  return result
+}
+
+/** The same as `runExpiry`, without blocking the test (TEST-G03 races it against a guardian's decision). */
+export async function runExpiryAsync(club: Club, nowIso: string): Promise<ExpiryResult> {
+  const result = (await mercatoAsync([
+    'activities',
+    'expire-guardian-confirmations',
+    '--tenant',
+    club.tenant.tenantId,
+    '--org',
+    club.tenant.organizationId,
+    '--now',
+    nowIso,
+  ])) as ExpiryResult | null
   if (!result) throw new Error('[internal] activities expire-guardian-confirmations printed no result')
   return result
 }

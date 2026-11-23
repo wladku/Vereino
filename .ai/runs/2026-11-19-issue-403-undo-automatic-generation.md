@@ -1,7 +1,7 @@
 # Run: issue #403 — an administrator undoes an automatic charge generation
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 403`, label `cezar`): the payments parity spec's risk row *Automatic generation creates charges the club did not expect* names "the generation undo of #108" as the mitigation, but `payments.charges.generate_due` (the 06:00 job) is not undoable — no user owns its audit entry. Owner decision (a) of 2026-11-19 on the issue: an admin action on a generation list that runs the #108 undo for automatic runs; the new route and command contract is approved there (Ask First).
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-payments.md` (API rows, risk row, TEST-C17; changelog file `2026-11-19-issue-403-undo-automatic-generation.md`); issue #403; branch `feat/issue-403-undo-automatic-charge-generation`; cezar worktree `05ea1c30-…`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (API rows, risk row, TEST-C17; changelog file `2026-11-19-issue-403-undo-automatic-generation.md`); issue #403; branch `feat/issue-403-undo-automatic-charge-generation`; cezar worktree `05ea1c30-…`.
 
 ## Steps
 
@@ -30,7 +30,7 @@
 - `packages/app/src/modules/payments/components/ChargeGenerationsTable.tsx` (new), `ChargesTable.tsx`, `client-helpers.ts`
 - `packages/app/src/modules/payments/i18n/en.json`, `pl.json`, `README.md`
 - `packages/app/.ai/qa/tests/payments/TEST-C17-undo-automatic-generation.spec.ts` (new)
-- `.ai/specs/2026-11-14-vereino-parity-payments.md`, spec changelog file, this log
+- `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`, spec changelog file, this log
 
 ## Commands and results
 

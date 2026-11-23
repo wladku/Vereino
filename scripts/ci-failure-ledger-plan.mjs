@@ -151,7 +151,7 @@ export function renderQuarantine({ testId, file, evidence }) {
       '',
       ...evidence.map((url) => `- ${url}`),
       '',
-      'Per `SDLC.md` ("Validation gate"), open one pull request labelled `priority-high` that marks this test `test.fixme` with a comment linking this issue, so the train stops failing unrelated PRs. Reference this issue with `Refs #`, not `Closes #`: the issue stays open as the tracking item for the real fix (find the cause, fix the test or the code, remove the `fixme`).',
+      'Per `SDLC.md` ("Validation gate"), open one pull request labelled `priority-high` that marks this test `test.fixme` with the comment `// quarantine: #<this issue>` on the same line or the line above (`yarn guard` accepts a `fixme` only with it, while this issue is open and labelled `bug`), so the train stops failing unrelated PRs. Reference this issue with `Refs #`, not `Closes #`: the issue stays open as the tracking item for the real fix (find the cause, fix the test or the code, remove the `fixme`).',
       '',
       'Before quarantining, check `main` and the open PRs: if a fix for this failure already exists, comment the link here instead.',
     ].join('\n'),

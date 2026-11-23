@@ -33,6 +33,9 @@ export const errorCodes = [
   { code: 'section_name_taken', status: 409, messageKey: 'club_core.errors.section_name_taken' },
   // Publication (#29): the club's slug is globally unique, a section's slug unique in the club.
   { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
+  // Many clubs spec glossary *Club address* (#630): a club's slug is its subdomain, so the instance's own host names and
+  // the cell labels are refused (`lib/club-onboarding.ts` `RESERVED_CLUB_SLUGS`).
+  { code: 'slug_reserved', status: 400, messageKey: 'club_core.errors.slug_reserved' },
   { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
   // Online booking requests need the facility calendar (navigation spec REQ-N12, DD-N13; #262).
   {

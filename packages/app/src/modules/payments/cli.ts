@@ -2,7 +2,7 @@
 // payments spec *Events* row `payments:reconcile-checkouts` (DD-42; #110): late captures are booked, `created`
 // checkouts older than 24 hours expire. `close-order-campaigns` is the `payments:close-order-campaigns` sweep of order
 // campaigns (#115). Both shipped as commands run by hand; since #301 (payments parity spec DD-C08) the scheduler runs
-// them every 15 minutes, and the two commands stay for operators. `set-up-club` registers the club's four schedules
+// them every 15 minutes, and the two commands stay for operators. `set-up-club` registers the club's six schedules
 // (the backfill for a club created before them) and `run-job` runs one scheduled job now, optionally with `--now`.
 import { parseArgs } from 'node:util'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
@@ -27,8 +27,7 @@ const reconcile: ModuleCli = {
     const organizationId = typeof values.org === 'string' ? values.org : undefined
     if (!tenantId || !organizationId) {
       process.stderr.write('Usage: mercato payments reconcile-checkouts --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments reconcile-checkouts: invalid options')
     }
     const container = await createRequestContainer()
     const summary = await reconcileCheckouts(container, { tenantId, organizationId })
@@ -51,8 +50,7 @@ const closeCampaigns: ModuleCli = {
     const organizationId = typeof values.org === 'string' ? values.org : undefined
     if (!tenantId || !organizationId) {
       process.stderr.write('Usage: mercato payments close-order-campaigns --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments close-order-campaigns: invalid options')
     }
     const container = await createRequestContainer()
     const summary = await closeOrderCampaigns(container, { tenantId, organizationId })
@@ -68,7 +66,7 @@ function readOptions(argv: string[], names: readonly string[]): Record<string, s
 }
 
 /**
- * `payments set-up-club --tenant <id> --org <id>`: re-runs the club's `payments` setup — the four schedules — and
+ * `payments set-up-club --tenant <id> --org <id>`: re-runs the club's `payments` setup — the six schedules — and
  * prints what it registered. Idempotent (an upsert of each schedule); the backfill for a club created before #301.
  */
 const setUpClub: ModuleCli = {
@@ -77,13 +75,13 @@ const setUpClub: ModuleCli = {
     const { tenant, org } = readOptions(argv, ['tenant', 'org'])
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato payments set-up-club --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments set-up-club: invalid options')
     }
     const container = await createRequestContainer()
     const result = await setUpClubPayments(container, { tenantId: tenant, organizationId: org })
     process.stdout.write(`${JSON.stringify(result)}\n`)
-    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+    if (!Object.values(result.schedules).every(Boolean))
+      throw new Error('[internal] payments set-up-club: a schedule was not registered')
   },
 }
 
@@ -93,6 +91,8 @@ const JOB_COMMANDS: Readonly<Record<string, string>> = {
   'overdue-reminders': 'payments.charges.remind_overdue',
   'reconcile-checkouts': 'payments.checkouts.reconcile',
   'close-order-campaigns': 'payments.order_campaigns.close_due',
+  'purge-order-links': 'payments.order_links.purge_dead',
+  'verify-invariants': 'payments.invariants.verify',
 }
 
 /**
@@ -109,8 +109,7 @@ const runJob: ModuleCli = {
       process.stderr.write(
         `Usage: mercato payments run-job --job <${Object.keys(JOB_COMMANDS).join('|')}> --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n`,
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments run-job: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')

@@ -3,7 +3,7 @@
 - **Date:** 2026-10-27
 - **Agent / tool:** Claude Code (Opus 5.5), `om-spec-writing` (interactive) with two read-only subagents (V-4 platform verification; one fresh-context review)
 - **Trigger:** product owner — "Chcę stworzyć specyfikację na podstawie issue #23. Ważne jest jednak to, żeby w trakcie pisania specyfikacji powstał nie tylko sam feature, ale też framework pod spodem …", then "Przyjmij rekomendowane odpowiedzi Q1–Q11 i kontynuuj projekt." and "Przyjmij Q14 = C (poprawka S12 na 1.0 plus propozycja upstream) i Q15 = B (wszystkie szablony fazy 3 bez wypisu), potem otwórz PR."
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md`; issue #23 (E04) with #35 and #36 as consumers; branch `docs/foundation-iii-spec`, started from `docs/foundation-review-blockers` (PR #44, itself on PR #43) because foundation I and II as amended exist only there
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md`; issue #23 (E04) with #35 and #36 as consumers; branch `docs/foundation-iii-spec`, started from `docs/foundation-review-blockers` (PR #44, itself on PR #43) because foundation I and II as amended exist only there
 - **Status:** completed — the spec is Draft, blocked only on the owner's approval on the PR and on enabling the e-mail modules (Ask First)
 
 ## Goal
@@ -31,7 +31,7 @@ Design the communication phase (E04) and the foundation underneath it — audien
 
 ## Files changed
 
-- `.ai/specs/2026-10-27-vereino-foundation-messaging-primitives.md` — new
+- `.ai/specs/implemented/2026-10-27-vereino-foundation-messaging-primitives.md` — new
 - `.ai/specs/2026-10-20-vereino-club-management.md` — phase 3 readiness and the rows above
 - `.ai/specs/2026-10-27-vereino-club-payments.md`, `.ai/specs/implemented/2026-10-27-vereino-facilities.md` — e-mail rows through `dispatch`
 - `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` — S12.3–S12.6 1.0 amendment

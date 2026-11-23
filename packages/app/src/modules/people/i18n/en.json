@@ -130,7 +130,7 @@
   "people.club.ward.notYourWard": "This person is not one of your wards.",
   "people.club.ward.pageTitle": "Ward",
   "people.club.ward.primaryPayer": "You are the primary payer",
-  "people.club.wards.birthDate": "Born {date}",
+  "people.club.wards.birthDate": "Date of birth: {date}",
   "people.club.wards.consentsSummary": "Consents: {granted} of {total}",
   "people.club.wards.hasAccount": "Own account",
   "people.club.wards.title": "Your wards",
@@ -837,7 +837,7 @@
   "people.erasure.anonymise.title": "Anonymise this person?",
   "people.erasure.anonymise.irreversible": "This cannot be undone.",
   "people.erasure.anonymise.now": "Erased now: phone, e-mail, notes, PESEL, external id, photo, birth date, language and consents. Attendance, charges, payments and messages stay under \"Former member\".",
-  "people.erasure.anonymise.hold": "The name stays until 31 December of the fifth year after the latest payment on this person's charges, visible only to administrators, and is erased then. Without such a payment it is erased now.",
+  "people.erasure.anonymise.hold": "The name stays until 31 December of the sixth year after the latest payment on this person's charges, visible only to administrators, and is erased then. Without such a payment it is erased now.",
   "people.erasure.anonymise.request": "Recorded request",
   "people.erasure.anonymise.noRequest": "No request to delete data is recorded. Record one in Requests first.",
   "people.erasure.anonymise.lastName": "Type the last name to confirm",
@@ -872,5 +872,8 @@
   "people.erasure.module.facilities": "facilities",
   "people.club.leave.errors.summary": "Check the request",
   "people.club.leave.errors.whoRequired": "Choose at least one person.",
-  "people.club.today.shortcuts": "Shortcuts"
+  "people.club.today.shortcuts": "Shortcuts",
+  "people.errors.import_progress_unavailable": "The import could not report its progress, so nothing was committed. Try again in a moment.",
+  "people.imports.record.committing": "Committing the import…",
+  "people.imports.record.committingRows": "Committing the import: {processed} of {total} rows"
 }

@@ -19,8 +19,15 @@ import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import type { GrantKind, Recipient } from '@vereino/core'
-import { authorizeScoped, contactResolver, type DispatchService } from '@/modules/foundation'
+import type { CalendarDate, GrantKind, Recipient } from '@vereino/core'
+import {
+  authorizeScoped,
+  contactResolver,
+  prefetchSessionScope,
+  trustedScopeOf,
+  type DispatchService,
+  type PrefetchedSessionScope,
+} from '@/modules/foundation'
 import type { GroupDirectoryEntry } from '../../groups/services/group-directory'
 import { paymentsErrors } from '../api/errors'
 import { Charge, Order, OrderCampaign, Payment } from '../data/entities'
@@ -28,9 +35,19 @@ import { groupCashSchema, groupRemindSchema, orderHandOverSchema } from '../data
 import type { ChargeReminderParams } from '../emails/templates'
 import { amountDueOf, paidTotal, remainingOf } from '../lib/charge-ledger'
 import { coachCashRefusal, handOverRefusal, overdueByPayer } from '../lib/group-charges'
+import type { CoachFeeAccess } from '../lib/payments-rules'
 import { clubClock, findGroups, findPersons, type PaymentsScope } from '../services/directory'
 import { childGroupCharges, feeAccessFor, groupParticipants } from '../services/group-charges'
-import { acceptCashOnCharges, afterCashCommit, enqueueConfirmation, selfPersonId, type CashPaymentLine } from './cash'
+import { chargePayers } from '../services/ledger'
+import {
+  acceptCashOnCharges,
+  afterCashCommit,
+  callerSettlesCash,
+  enqueueConfirmation,
+  readConfirmations,
+  selfPersonId,
+  type CashPaymentLine,
+} from './cash'
 import { PAYMENT_RESOURCE_KIND } from './ledger'
 import { ORDER_RESOURCE_KIND } from './orders'
 import { emitAfterCommit, inWriteTransaction, paymentsLog, trustedTenantId, type PaymentsCommandResult } from './shared'
@@ -51,14 +68,29 @@ function groupLoader(ctx: CommandRuntimeContext) {
 }
 
 /**
+ * What a group write reads through other services, each on its own pooled connection: the session scope, the club's
+ * today and the caller's fee access. Read before the write transaction opens (#549, #554); see `cashAcceptanceFacts`.
+ */
+type GroupChildFacts = { sessionScope: PrefetchedSessionScope; today: CalendarDate; access: CoachFeeAccess }
+
+async function groupChildFacts(ctx: CommandRuntimeContext, scope: PaymentsScope): Promise<GroupChildFacts | null> {
+  const [sessionScope, { today }] = await Promise.all([prefetchSessionScope(ctx), clubClock(ctx.container, scope)])
+  if (!sessionScope) return null
+  const { access } = await feeAccessFor(ctx.container, scope, sessionScope.scope)
+  return { sessionScope, today, access }
+}
+
+/**
  * Authorizes a group write: the group must be within the caller's grants (403 `scope_denied`) and the child one of
- * its participants today (403 `charge_out_of_scope`).
+ * its participants today (403 `charge_out_of_scope`). `facts` read before the transaction are used only when
+ * `authorizeScoped` took their session scope; otherwise they are read here.
  */
 async function authorizeGroupChild<TSchema extends typeof groupCashSchema | typeof groupRemindSchema>(
   schema: TSchema,
   rawInput: unknown,
   ctx: CommandRuntimeContext,
   em: EntityManager,
+  facts: GroupChildFacts | null = null,
 ) {
   const authorized = await authorizeScoped(
     {
@@ -76,13 +108,15 @@ async function authorizeGroupChild<TSchema extends typeof groupCashSchema | type
     rawInput,
     ctx,
     em,
+    { sessionScope: facts?.sessionScope ?? null },
   )
   const parsed = authorized.parsed as z.output<TSchema>
   const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-  const { today } = await clubClock(ctx.container, scope)
+  const prefetched = facts && authorized.scope === facts.sessionScope.scope ? facts : null
+  const today = prefetched ? prefetched.today : (await clubClock(ctx.container, scope)).today
   const children = await groupParticipants(ctx.container, scope, parsed.groupId, today, em)
   if (!children.includes(parsed.participantPersonId)) await paymentsErrors.throw('charge_out_of_scope')
-  const { access } = await feeAccessFor(ctx.container, scope, authorized.scope)
+  const { access } = prefetched ?? (await feeAccessFor(ctx.container, scope, authorized.scope))
   const charges = await childGroupCharges(ctx.container, em, scope, {
     groupId: parsed.groupId,
     personId: parsed.participantPersonId,
@@ -110,14 +144,31 @@ const collectCashCommand: CommandHandler<Record<string, unknown>, GroupCashResul
   id: 'payments.cash.collect',
   isUndoable: false,
   async execute(rawInput, ctx) {
+    // Read on their own pooled connections, so before the transaction holds one (#549, #554): the caller's facts and,
+    // with the e-mail on, what the confirmations need (the payers' contacts, the charges' texts, the collector).
+    const trusted = trustedScopeOf(ctx)
+    const [settlesCash, facts] = trusted
+      ? await Promise.all([callerSettlesCash(ctx, trusted), groupChildFacts(ctx, trusted)])
+      : [false, null]
+    const request = groupCashSchema.safeParse(rawInput)
+    const reads =
+      trusted && facts && request.success && request.data.notify
+        ? await readConfirmations(ctx, trusted, {
+            grants: facts.sessionScope.scope,
+            payerPersonIds: await chargePayers(ctx.container, trusted, request.data.chargeIds),
+            chargeIds: request.data.chargeIds,
+            collectorPersonId: selfPersonId(facts.sessionScope.scope),
+          })
+        : null
     const result = await inWriteTransaction(ctx, 'payments.cash.collect', async (em) => {
       const {
         authorized,
         parsed,
         scope,
+        today,
         access,
         charges: shown,
-      } = await authorizeGroupChild(groupCashSchema, rawInput, ctx, em)
+      } = await authorizeGroupChild(groupCashSchema, rawInput, ctx, em, facts)
       const byId = new Map(shown.map((charge) => [charge.id, charge]))
       for (const id of parsed.chargeIds) {
         const charge = byId.get(id)
@@ -136,6 +187,7 @@ const collectCashCommand: CommandHandler<Record<string, unknown>, GroupCashResul
         amount: parsed.amount,
         paidOn: parsed.paidOn,
         collectorPersonId,
+        facts: { today, settlesCash },
       })
       const payerOf = new Map(locked.map((charge) => [charge.id, charge.payerPersonId as string]))
       const payerPersonIds = [...new Set(lines.map((line) => payerOf.get(line.chargeId) as string))]
@@ -158,6 +210,7 @@ const collectCashCommand: CommandHandler<Record<string, unknown>, GroupCashResul
             },
             lines: payerLines,
             idempotencyKey: `payments:cash:${receiptNumber}:${payerPersonId}`,
+            reads,
           })
           if (dispatchId) dispatchIds.push(dispatchId)
         }

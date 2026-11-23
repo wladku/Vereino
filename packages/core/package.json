@@ -2,6 +2,7 @@
   "name": "@vereino/core",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "description": "Reusable Vereino domain logic: pure TypeScript, no React, Next.js or database access.",
   "type": "module",
   "main": "./src/index.ts",

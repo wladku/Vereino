@@ -34,14 +34,11 @@ export const ALLOWED_LICENSES = [
 // platform variants of one native binary); a name matches every version. Adding an entry needs product-owner
 // approval (S16.1, `AGENTS.md` -> Ask First); the review of the pull request that adds it records it.
 export const LICENSE_EXCEPTIONS = {
-  '@open-mercato/enterprise': {
-    license: 'SEE LICENSE IN LICENSE.md',
-    reason: 'Commercial licence; installed by the platform scaffold, its modules stay disabled (ADR-023, ENG-Q-10).',
-  },
   '@newrelic/security-agent': {
     license: 'New Relic Software License v1.0',
     reason: 'Proprietary; a dependency of `newrelic` (Apache-2.0), which the platform scaffold lists in'
-      + ' packages/app. Loaded only when the New Relic agent is configured; keep or remove with ENG-Q-10.',
+      + ' packages/app. Loaded only when the New Relic agent is configured. ENG-Q-10 (#466) removed only'
+      + ' @open-mercato/enterprise; removing `newrelic` needs its own owner decision.',
   },
   '@img/sharp-libvips-*': {
     license: 'LGPL-3.0-or-later',
@@ -181,7 +178,8 @@ function productionDependencies(manifest) {
 
 // Every installed production package reachable from the workspaces, once per installed copy:
 // `{ name, version, license, dir }`. Workspace packages are walked through but not listed (they are this
-// repository's own code, MIT). A non-optional dependency that is not installed is reported in `missing`.
+// repository's own code, AGPL-3.0-only since D-035; third-party packages stay within the permissive
+// allowlist so the owner can still license the code commercially). A non-optional dependency that is not installed is reported in `missing`.
 export function collectPackages(rootDir) {
   const workspaces = listWorkspaces(rootDir)
   const workspaceDirs = new Set(workspaces.map((dir) => fs.realpathSync(dir)))

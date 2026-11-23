@@ -6,7 +6,7 @@ import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireRequestsJobResult } from './commands/requests'
 import type { MaintenanceRemindersJobResult } from './commands/maintenance'
-import type { LifecycleJobResult } from './commands/rentals'
+import type { LifecycleJobResult, PurgeRentalLinksJobResult } from './commands/rentals'
 import { setUpClubFacilities } from './services/club-setup'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
@@ -29,8 +29,7 @@ const rentalLifecycle: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities rental-lifecycle --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities rental-lifecycle: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -56,8 +55,7 @@ const expireRequests: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities expire-requests --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities expire-requests: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -85,8 +83,7 @@ const maintenanceReminders: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities maintenance-reminders --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities maintenance-reminders: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -102,8 +99,36 @@ const maintenanceReminders: ModuleCli = {
 }
 
 /**
+ * `facilities purge-rental-links --tenant <id> --org <id> [--now <ISO instant>]`: runs the daily purge of dead rental
+ * links now (engineering standards S9.5; #525) — the command the `facilities:purge-rental-links` job dispatches — and
+ * prints how many rows it deleted. `--now` moves the clock (an operator; the integration tests).
+ */
+const purgeRentalLinks: ModuleCli = {
+  command: 'purge-rental-links',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato facilities purge-rental-links --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      throw new Error('[internal] facilities purge-rental-links: invalid options')
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, PurgeRentalLinksJobResult>(
+      'facilities.rental_links.purge_dead',
+      {
+        input: now ? { now } : {},
+        ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }),
+      },
+    )
+    process.stdout.write(`${JSON.stringify({ now: result.now, deleted: result.deleted })}\n`)
+  },
+}
+
+/**
  * `facilities set-up-club --tenant <id> --org <id>`: re-runs the club's `facilities` setup — the rental lifecycle,
- * request expiry and maintenance reminder schedules — and prints what it registered; exit code 1 when a schedule was
+ * request expiry, maintenance reminder and rental-link purge schedules — and prints what it registered; exit code 1 when a schedule was
  * refused. Idempotent (an upsert of each schedule); the backfill for a club set up before a schedule existed (#221 L4,
  * `docs/ops/deploy.md`).
  */
@@ -113,16 +138,16 @@ const setUpClub: ModuleCli = {
     const { tenant, org } = readOptions(argv, ['tenant', 'org'])
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato facilities set-up-club --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities set-up-club: invalid options')
     }
     const container = await createRequestContainer()
     const result = await setUpClubFacilities(container, { tenantId: tenant, organizationId: org })
     process.stdout.write(`${JSON.stringify(result)}\n`)
-    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+    if (!Object.values(result.schedules).every(Boolean))
+      throw new Error('[internal] facilities set-up-club: a schedule was not registered')
   },
 }
 
-const commands: ModuleCli[] = [rentalLifecycle, expireRequests, maintenanceReminders, setUpClub]
+const commands: ModuleCli[] = [rentalLifecycle, expireRequests, maintenanceReminders, purgeRentalLinks, setUpClub]
 
 export default commands

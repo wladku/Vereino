@@ -1,6 +1,6 @@
 # Run: issue #299 — E12-S09 a guardian follows a kit order on the phone: stage, deadlines, pickup and who handed it over
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 299`, label `cezar`): build phase 9 of `.ai/specs/2026-11-14-vereino-parity-payments.md` (REQ-C11; TEST-C12; AC-C11; J-C06 steps 1–3 and 5).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 299`, label `cezar`): build phase 9 of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (REQ-C11; TEST-C12; AC-C11; J-C06 steps 1–3 and 5).
 - **Spec / issue / branch:** spec `In progress`, Ready for implementation since the owner's approval of 2026-11-16 on #254 (this resolves the issue's "spec is Draft" open question; Q-C12 confirmed there); dependency #298 (E12-S08, `?pay=`) closed; issue #299; branch `feat/issue-299-guardian-follows-kit-order`.
 
 ## Steps

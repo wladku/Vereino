@@ -130,7 +130,7 @@
   "people.club.ward.notYourWard": "Ta osoba nie jest Twoim podopiecznym.",
   "people.club.ward.pageTitle": "Podopieczny",
   "people.club.ward.primaryPayer": "Jesteś głównym płatnikiem",
-  "people.club.wards.birthDate": "Urodzony(-a) {date}",
+  "people.club.wards.birthDate": "Data urodzenia: {date}",
   "people.club.wards.consentsSummary": "Zgody: {granted} z {total}",
   "people.club.wards.hasAccount": "Własne konto",
   "people.club.wards.title": "Twoi podopieczni",
@@ -837,7 +837,7 @@
   "people.erasure.anonymise.title": "Zanonimizować tę osobę?",
   "people.erasure.anonymise.irreversible": "Tego nie można cofnąć.",
   "people.erasure.anonymise.now": "Od razu usuwamy: telefon, e-mail, notatki, PESEL, identyfikator zewnętrzny, zdjęcie, datę urodzenia, język i zgody. Obecności, należności, wpłaty i wiadomości zostają jako „Były członek”.",
-  "people.erasure.anonymise.hold": "Imię i nazwisko zostają do 31 grudnia piątego roku po ostatniej wpłacie na należności tej osoby, widoczne tylko dla administratorów, i wtedy zostaną usunięte. Bez takiej wpłaty usuwamy je od razu.",
+  "people.erasure.anonymise.hold": "Imię i nazwisko zostają do 31 grudnia szóstego roku po ostatniej wpłacie na należności tej osoby, widoczne tylko dla administratorów, i wtedy zostaną usunięte. Bez takiej wpłaty usuwamy je od razu.",
   "people.erasure.anonymise.request": "Zapisana prośba",
   "people.erasure.anonymise.noRequest": "Nie zapisano prośby o usunięcie danych. Najpierw zapisz ją w sekcji Prośby.",
   "people.erasure.anonymise.lastName": "Wpisz nazwisko, aby potwierdzić",
@@ -872,5 +872,8 @@
   "people.erasure.module.facilities": "obiekty",
   "people.club.leave.errors.summary": "Sprawdź prośbę",
   "people.club.leave.errors.whoRequired": "Wybierz co najmniej jedną osobę.",
-  "people.club.today.shortcuts": "Na skróty"
+  "people.club.today.shortcuts": "Na skróty",
+  "people.errors.import_progress_unavailable": "Import nie mógł raportować postępu, więc niczego nie zatwierdzono. Spróbuj ponownie za chwilę.",
+  "people.imports.record.committing": "Zatwierdzanie importu…",
+  "people.imports.record.committingRows": "Zatwierdzanie importu: {processed} z {total} wierszy"
 }

@@ -5,7 +5,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import type { ExpireJobResult } from './commands/attendance'
-import type { RemindersJobResult } from './commands/declaration-links'
+import type { PurgeDeclarationLinksResult, RemindersJobResult } from './commands/declaration-links'
 import type { GenerateJobResult, WarnUnassignedJobResult } from './commands/jobs'
 import { setUpClubActivities } from './services/club-setup'
 import { checkAppendOnly, listContactAccessLog } from './services/contact-access-log'
@@ -29,8 +29,7 @@ const generateOccurrences: ModuleCli = {
       process.stderr.write(
         'Usage: mercato activities generate-occurrences --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities generate-occurrences: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -56,8 +55,7 @@ const expireGuardianConfirmations: ModuleCli = {
       process.stderr.write(
         'Usage: mercato activities expire-guardian-confirmations --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities expire-guardian-confirmations: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -82,8 +80,7 @@ const sendDeclarationReminders: ModuleCli = {
       process.stderr.write(
         'Usage: mercato activities send-declaration-reminders --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities send-declaration-reminders: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -92,6 +89,31 @@ const sendDeclarationReminders: ModuleCli = {
       { input: now ? { now } : {}, ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }) },
     )
     process.stdout.write(`${JSON.stringify({ now: result.now, ...result.counts })}\n`)
+  },
+}
+
+/**
+ * `activities purge-declaration-links --tenant <id> --org <id> [--now <ISO instant>]`: runs the daily purge of dead
+ * declaration links now (engineering standards S9.5; #525) — the same command the `activities:purge-declaration-links`
+ * job dispatches — and prints how many rows it deleted. `--now` moves the clock (an operator; the integration tests).
+ */
+const purgeDeclarationLinks: ModuleCli = {
+  command: 'purge-declaration-links',
+  async run(argv) {
+    const { tenant, org, now } = readOptions(argv, ['tenant', 'org', 'now'])
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato activities purge-declaration-links --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
+      )
+      throw new Error('[internal] activities purge-declaration-links: invalid options')
+    }
+    const container = await createRequestContainer()
+    const commandBus = container.resolve<CommandBus>('commandBus')
+    const { result } = await commandBus.execute<unknown, PurgeDeclarationLinksResult>(
+      'activities.declaration_links.purge_dead',
+      { input: now ? { now } : {}, ctx: jobCommandContext(container, { tenantId: tenant, organizationId: org }) },
+    )
+    process.stdout.write(`${JSON.stringify({ now: result.now, deleted: result.deleted })}\n`)
   },
 }
 
@@ -108,8 +130,7 @@ const warnUnassignedSessions: ModuleCli = {
       process.stderr.write(
         'Usage: mercato activities warn-unassigned-sessions --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities warn-unassigned-sessions: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -133,13 +154,13 @@ const setUpClub: ModuleCli = {
     const { tenant, org } = readOptions(argv, ['tenant', 'org'])
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato activities set-up-club --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities set-up-club: invalid options')
     }
     const container = await createRequestContainer()
     const result = await setUpClubActivities(container, { tenantId: tenant, organizationId: org })
     process.stdout.write(`${JSON.stringify(result)}\n`)
-    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+    if (!Object.values(result.schedules).every(Boolean))
+      throw new Error('[internal] activities set-up-club: a schedule was not registered')
   },
 }
 
@@ -156,8 +177,7 @@ const contactAccessLogCli: ModuleCli = {
       process.stderr.write(
         'Usage: mercato activities contact-access-log --tenant <tenantId> --org <organizationId> [--occurrence <id>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities contact-access-log: invalid options')
     }
     const container = await createRequestContainer()
     const rows = await listContactAccessLog(container, { tenantId: tenant, organizationId: org }, occurrence)
@@ -176,8 +196,7 @@ const checkAppendOnlyCli: ModuleCli = {
     const { tenant, org } = readOptions(argv, ['tenant', 'org'])
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato activities check-append-only --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] activities check-append-only: invalid options')
     }
     const container = await createRequestContainer()
     const result = await checkAppendOnly(container, { tenantId: tenant, organizationId: org })
@@ -189,6 +208,7 @@ const commands: ModuleCli[] = [
   generateOccurrences,
   expireGuardianConfirmations,
   sendDeclarationReminders,
+  purgeDeclarationLinks,
   warnUnassignedSessions,
   setUpClub,
   contactAccessLogCli,

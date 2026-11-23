@@ -30,6 +30,7 @@ describe('club_core error codes', () => {
       { code: 'section_name_length', status: 422, messageKey: 'club_core.errors.section_name_length' },
       { code: 'section_name_taken', status: 409, messageKey: 'club_core.errors.section_name_taken' },
       { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
+      { code: 'slug_reserved', status: 400, messageKey: 'club_core.errors.slug_reserved' },
       { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
       {
         code: 'publication_requests_need_calendar',

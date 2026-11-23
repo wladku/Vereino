@@ -22,6 +22,7 @@ import { assertSupportedLocale, authorizeScoped, trustedScopeOf, type AuthorizeS
 import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
 import { ensureClubSettingsRow } from '../data/queries'
+import { isReservedClubSlug } from '../lib/club-onboarding'
 import { clubSettingsUpdateSchema } from '../data/validators'
 import {
   applyConsentTextsPatch,
@@ -271,6 +272,15 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
             if (tooLong) await throwFieldError('consent_text_too_long', `consentTexts.${tooLong}`)
             const texts = applyConsentTextsPatch(parseConsentTexts(row.consentTexts), consentPatch, new Date())
             if (texts.changed.length > 0) row.consentTexts = { ...texts.texts }
+            // The club's slug becomes its subdomain (many clubs spec, *Club address*; #630): a new reserved label is
+            // refused; a slug the club already holds stays as it is.
+            if (
+              typeof patch.publicSlug === 'string' &&
+              patch.publicSlug !== row.publicSlug &&
+              isReservedClubSlug(patch.publicSlug)
+            ) {
+              await throwFieldError('slug_reserved', 'publicSlug')
+            }
             const problem = writePublicSettings(row, patch)
             if (problem?.code === 'publication_requests_need_calendar')
               await throwFieldError(problem.code, problem.field)

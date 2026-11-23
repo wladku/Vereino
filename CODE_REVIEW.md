@@ -42,7 +42,7 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 ### App modules (`packages/app/src/modules/<id>/`)
 - A new Vereino module id is added to `packages/app/vereino-modules.json` in the same PR — otherwise strict lint,
   format, `i18n --strict`, coverage thresholds and `contracts:check` silently skip it. Scaffold modules
-  (`example`, `example_customers_sync`, `ratelimit_probe`, `agent_examples`) are platform-owned, never listed.
+  (`example`, `example_customers_sync`, `ratelimit_probe`; `agent_examples` deleted in #466) are platform-owned, never listed.
 - Vereino module shape (S4.1): `lib/` (pure), `lib/error-codes.ts` (plain `errorCodes` array), `api/errors.ts`
   (`CrudHttpError` factory), `__tests__/` next to code, `README.md` (entities, commands, events, DI tokens, codes).
 - Layering (S4.2): route → `data/validators.ts` → command → `lib/`; pages go through the module API only;
@@ -53,7 +53,7 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 - Platform-owned files (anything in `packages/app` outside Vereino paths) change only in an upgrade or as a listed
   local patch (S3.1 table). An unlisted patch needs a changelog entry for the standards spec first.
 - Never hand-edit `.mercato/generated/**`, `node_modules/**` or shipped migrations. `@open-mercato/enterprise`
-  modules stay disabled in `src/modules.ts` unless explicitly approved (licensing lesson).
+  is not installed (ENG-Q-10, #466); `yarn forbidden-packages:check` fails on any import or install (licensing lesson).
 
 ### API and validation
 - Validation is Zod (`zod` pinned via root `resolutions`); untrusted input enters as `unknown` and is parsed; types
@@ -143,8 +143,9 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 ## Validation gate
 
 - **`yarn verify`** is the single gate, identical locally and in CI (`gate` job). `yarn verify --list` prints the
-  13 steps: generate, typecheck, typecheck:packages, typecheck:qa, lint, format:check, ds:check,
-  i18n:check-hardcoded --strict, contracts:check, lessons:check, test, test:scripts, build.
+  19 steps: generate, typecheck, typecheck:packages, typecheck:qa, lint, secrets:check, format:check,
+  ds:check, i18n:check-hardcoded --strict, contracts:check, settings-prefixes:check, glossary:check,
+  qa-texts:check, di-commands:check, lessons:check, spec-changelogs:check, test, test:scripts, build.
   `yarn verify --from <step>` resumes after a fix.
 - Integration: **`yarn test:integration:vereino`** (Testcontainers PostgreSQL 17, production build, Playwright;
   focused `--filter <TEST-ID>`). Never `yarn test:integration:ephemeral` — it waits for the `customers` module,

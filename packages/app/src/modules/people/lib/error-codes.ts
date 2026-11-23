@@ -76,6 +76,9 @@ export const errorCodes = [
   { code: 'import_review_pending', status: 422, messageKey: 'people.errors.import_review_pending' },
   { code: 'import_decision_invalid', status: 422, messageKey: 'people.errors.import_decision_invalid' },
   { code: 'import_person_not_found', status: 422, messageKey: 'people.errors.import_person_not_found' },
+  // The commit's progress job could not be created or advanced (foundation spec TEST-F08; #585): nothing was written,
+  // the import stays open and the commit can be retried.
+  { code: 'import_progress_unavailable', status: 503, messageKey: 'people.errors.import_progress_unavailable' },
   // The people list's filters (UX parity spec REQ-U01): a membership filter without `groups`, a filter resolving to
   // more ids than the list loads, and a failed `groups.personFilter` call (retryable).
   { code: 'people_filter_age_range', status: 400, messageKey: 'people.errors.people_filter_age_range' },

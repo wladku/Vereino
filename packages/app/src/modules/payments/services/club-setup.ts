@@ -1,6 +1,7 @@
 // Setting up a club's `payments` schedules (payments parity spec DD-C08, *Events, Jobs*; REQ-C13; #301): the daily
 // charge generation at 06:00 and the overdue reminders at 09:00 in the club's time zone, and the 15-minute checkout
-// reconciliation (DD-42) and order-campaign closing. Idempotent (`registerModuleSchedule` upserts on the stable id of
+// reconciliation (DD-42) and order-campaign closing, the daily purge of dead order links (engineering standards
+// S9.5; #525) and the nightly invariant check at 03:00 in the club's time zone (club spec REQ-043; #531). Idempotent (`registerModuleSchedule` upserts on the stable id of
 // job and organization), so a second run registers nothing twice; used by `setup.ts` `seedDefaults` and by the
 // operator command `payments set-up-club`, the backfill for a club created before the schedules existed.
 import type { AwilixContainer } from 'awilix'
@@ -13,6 +14,12 @@ export const GENERATE_CHARGES_CRON = '0 6 * * *'
 /** Daily at 09:00 in the club's time zone (DD-C09). */
 export const OVERDUE_REMINDERS_CRON = '0 9 * * *'
 
+/** Once a day: the order links dead for 30 days are deleted (engineering standards S9.5; #525). */
+export const PURGE_ORDER_LINKS_INTERVAL = '1d' as const
+
+/** Nightly at 03:00 in the club's time zone: the invariant check (club spec REQ-043; #531). */
+export const VERIFY_INVARIANTS_CRON = '0 3 * * *'
+
 /** Every 15 minutes: the checkout sweep (DD-42) and the campaign closing. */
 export const PAYMENTS_SWEEP_INTERVAL = '15m' as const
 
@@ -21,9 +28,11 @@ export type PaymentsSchedules = {
   'overdue-reminders': boolean
   'reconcile-checkouts': boolean
   'close-order-campaigns': boolean
+  'purge-order-links': boolean
+  'verify-invariants': boolean
 }
 
-/** Registers the four schedules of the club; each value says whether its registration succeeded. */
+/** Registers the six schedules of the club; each value says whether its registration succeeded. */
 export async function setUpClubPayments(
   container: AwilixContainer,
   scope: PaymentsScope,
@@ -55,6 +64,16 @@ export async function setUpClubPayments(
         'close-order-campaigns',
         { interval: PAYMENTS_SWEEP_INTERVAL },
         'Close the order campaigns past their orders deadline.',
+      ),
+      'purge-order-links': await register(
+        'purge-order-links',
+        { interval: PURGE_ORDER_LINKS_INTERVAL },
+        'Delete the order links that expired 30 days ago.',
+      ),
+      'verify-invariants': await register(
+        'verify-invariants',
+        { cron: VERIFY_INVARIANTS_CRON, timezone: timeZone },
+        'Check that charges match their payments and receipt numbers run without gaps.',
       ),
     },
   }

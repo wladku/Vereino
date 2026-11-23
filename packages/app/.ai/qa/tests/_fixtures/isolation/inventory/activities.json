@@ -1,0 +1,603 @@
+{
+  "$comment": "Cross-club isolation probes of the activities routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/activities/activities": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "groupId": "$B:group" } },
+        { "probe": "read", "query": { "sectionId": "$B:section" } },
+        { "probe": "read", "query": { "ids": "$B:activity" } }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$A:place",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$B:place",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$A:place",
+            "coachPersonId": "$B:coachPerson",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "match",
+            "placeId": "$A:place",
+            "opponentExternalTeamId": "$B:opponentTeam",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "tournament",
+            "placeId": "$A:place",
+            "invitedExternalTeamIds": ["$B:opponentTeam"],
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:activity", "name": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activityUpdatedAt" },
+          "body": { "id": "$A:activity", "placeId": "$B:place" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activityUpdatedAt" },
+          "body": { "id": "$A:activity", "coachPersonId": "$B:coachPerson" }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:activity" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/activities/activities/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:activity" } }
+    },
+    "/api/activities/activities/preview": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$A:place",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$B:place",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$A:place",
+            "coachPersonId": "$B:coachPerson",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "activityId": "$B:activity",
+            "groupId": "$A:group",
+            "name": "Probe",
+            "type": "training",
+            "placeId": "$A:place",
+            "startsOn": "$A:probeDay",
+            "startTime": "06:00",
+            "endTime": "07:00"
+          }
+        }
+      ]
+    },
+    "/api/activities/attendance-policies": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "groupId": "$B:group" } },
+        { "probe": "read", "query": { "ids": "$B:attendancePolicy" } }
+      ],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": { "scope": "group", "groupId": "$B:group2", "minorDeclarationMode": "immediate" }
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "id": "$B:attendancePolicy", "minorDeclarationMode": "immediate" }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:attendancePolicy" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/activities/attendance/[id]/guardian-decision": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:attendance" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "approve": true }
+      }
+    },
+    "/api/activities/attendance/declare": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": { "occurrenceId": "$B:occurrence", "personId": "$A:memberPerson", "declared": "no" }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": { "occurrenceId": "$A:occurrence", "personId": "$B:memberPerson", "declared": "no" }
+        }
+      ]
+    },
+    "/api/activities/calendar": {
+      "GET": [
+        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "self" } },
+        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "guardian" } },
+        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "coach" } },
+        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "coordinator" } },
+        {
+          "probe": "read",
+          "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "guardian", "personId": "$B:childPerson" }
+        },
+        {
+          "probe": "read",
+          "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "coordinator", "sectionId": "$B:section" }
+        }
+      ]
+    },
+    "/api/activities/calendar/[id]": {
+      "GET": [
+        { "probe": "foreign-id", "params": { "id": "$B:occurrence" }, "query": { "as": "self" } },
+        { "probe": "foreign-id", "params": { "id": "$B:occurrence" }, "query": { "as": "coach" } },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:occurrence" },
+          "query": { "as": "guardian", "personId": "$B:childPerson" },
+          "expect": [403],
+          "why": "A personId that is not one of the caller's wards answers 403 scope_denied (calendar.ts memberPersons), a club B person and an unknown id alike."
+        }
+      ]
+    },
+    "/api/activities/club-events": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "sectionId": "$B:section" } },
+        { "probe": "read", "query": { "ids": "$B:activitiesClubEvent" } }
+      ],
+      "POST": [
+        { "probe": "foreign-ref", "body": { "name": "Probe event", "sectionId": "$B:section", "placeId": "$A:place" } },
+        { "probe": "foreign-ref", "body": { "name": "Probe event", "sectionId": "$A:section", "placeId": "$B:place" } }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:activitiesClubEvent", "name": "Probe event" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventUpdatedAt" },
+          "body": { "id": "$A:activitiesClubEvent", "placeId": "$B:place" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventUpdatedAt" },
+          "body": { "id": "$A:activitiesClubEvent", "sectionId": "$B:section" }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:activitiesClubEvent" } }
+    },
+    "/api/activities/club-events/[id]/cancel": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:activitiesClubEvent" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe reason" }
+      }
+    },
+    "/api/activities/club-events/[id]/files": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:activitiesClubEvent" },
+        "body": { "$multipart": { "file": { "$file": "png" }, "kind": "poster" } }
+      }
+    },
+    "/api/activities/club-events/[id]/files/[fileId]": {
+      "DELETE": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventFile" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventFile" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/parts": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent" },
+          "body": {
+            "title": "Probe part",
+            "groupId": "$A:group",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:activitiesClubEvent" },
+          "body": {
+            "title": "Probe part",
+            "groupId": "$B:group",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:activitiesClubEvent" },
+          "body": {
+            "title": "Probe part",
+            "groupId": "$A:group",
+            "coachPersonId": "$B:coachPerson",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:activitiesClubEvent" },
+          "body": {
+            "title": "Probe part",
+            "groupId": "$A:group",
+            "visitingTeamIds": ["$B:opponentTeam"],
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/parts/[partId]": {
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "title": "Probe part" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "title": "Probe part" }
+        }
+      ],
+      "DELETE": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/parts/[partId]/cancel": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "reason": "Probe reason" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "reason": "Probe reason" }
+        }
+      ]
+    },
+    "/api/activities/club-events/options": {
+      "GET": { "probe": "read" }
+    },
+    "/api/activities/declaration-links": {
+      "POST": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "why": "The link request always answers 202 with the same body (no enumeration, REQ-017); a read proves the answer holds nothing of club B for club A's slug with club B's session.",
+          "body": {
+            "email": "probe-628@example.org",
+            "clubSlug": "$A:clubSlug",
+            "occurrencePublicRef": "$B:occurrence"
+          }
+        },
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "why": "The same with club B's slug and club A's session.",
+          "body": {
+            "email": "probe-628@example.org",
+            "clubSlug": "$B:clubSlug",
+            "occurrencePublicRef": "$A:occurrence"
+          }
+        }
+      ]
+    },
+    "/api/activities/declaration-links/[token]": {
+      "GET": { "probe": "read", "roles": ["anonymous"], "params": { "token": "$A:declarationToken" } },
+      "POST": [
+        {
+          "probe": "public",
+          "params": { "token": "$A:declarationToken" },
+          "body": { "personId": "$B:childPerson", "declared": "no" },
+          "expect": [403],
+          "why": "The link declares only for the link holder's own children (TEST-017): any other person answers 403 scope_denied, a club B person and an unknown id alike."
+        },
+        {
+          "probe": "public",
+          "params": { "token": "$A:declarationToken" },
+          "body": { "personId": "$B:memberPerson", "declared": "no" },
+          "expect": [403],
+          "why": "The link declares only for the link holder's own children (TEST-017): any other person answers 403 scope_denied, a club B person and an unknown id alike."
+        }
+      ]
+    },
+    "/api/activities/events": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "type": "match",
+            "name": "Probe",
+            "placeId": "$A:place",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "type": "match",
+            "name": "Probe",
+            "placeId": "$B:place",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "type": "match",
+            "name": "Probe",
+            "placeId": "$A:place",
+            "coachPersonId": "$B:coachPerson",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$A:group",
+            "type": "match",
+            "name": "Probe",
+            "placeId": "$A:place",
+            "opponentExternalTeamId": "$B:opponentTeam",
+            "startsAt": "$A:probeStartsAt",
+            "endsAt": "$A:probeEndsAt"
+          }
+        }
+      ]
+    },
+    "/api/activities/events/options": {
+      "GET": { "probe": "read" }
+    },
+    "/api/activities/occurrences": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "groupId": "$B:group" } },
+        { "probe": "read", "query": { "sectionId": "$B:section" } },
+        { "probe": "read", "query": { "activityId": "$B:activity" } },
+        { "probe": "read", "query": { "ids": "$B:occurrence" } }
+      ]
+    },
+    "/api/activities/occurrences/[id]": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } },
+      "PATCH": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:occurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "coachPersonId": "$A:coachPerson" }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:occurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt" },
+          "body": { "placeId": "$B:place" }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:occurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt" },
+          "body": { "coachPersonId": "$B:coachPerson" }
+        }
+      ]
+    },
+    "/api/activities/occurrences/[id]/absence": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:occurrence" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/activities/occurrences/[id]/attendance": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:startedOccurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "entries": [{ "personId": "$A:memberPerson", "actual": "present" }] }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:startedOccurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:startedOccurrenceUpdatedAt" },
+          "body": { "entries": [{ "personId": "$B:memberPerson", "actual": "present" }] }
+        }
+      ]
+    },
+    "/api/activities/occurrences/[id]/cancel": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:occurrence" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe reason" }
+      }
+    },
+    "/api/activities/occurrences/[id]/coach": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } },
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:occurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "coachPersonId": "$A:coordinatorPerson" }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:occurrence" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt" },
+          "body": { "coachPersonId": "$B:coordinatorPerson" }
+        }
+      ]
+    },
+    "/api/activities/occurrences/[id]/guardian-contacts": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } }
+    },
+    "/api/activities/occurrences/[id]/restore": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:occurrence" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe reason" }
+      }
+    },
+    "/api/activities/occurrences/[id]/score": {
+      "PUT": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:startedOccurrence" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "scoreHome": 1, "scoreAway": 0 }
+      }
+    },
+    "/api/activities/occurrences/[id]/take-over": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } }
+    },
+    "/api/activities/options/coaches": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "search": "Trener" } }]
+    },
+    "/api/activities/public/[clubSlug]/sessions/[occurrenceId]": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "occurrenceId": "$A:occurrence" }
+        },
+        { "probe": "public", "params": { "clubSlug": "$A:clubSlug", "occurrenceId": "$B:occurrence" } },
+        { "probe": "public", "params": { "clubSlug": "$B:clubSlug", "occurrenceId": "$A:occurrence" } }
+      ]
+    },
+    "/api/activities/reports/coach-units": {
+      "GET": [
+        { "probe": "read", "query": { "month": "$A:period" } },
+        { "probe": "read", "query": { "month": "$A:period", "mine": "1" } },
+        { "probe": "read", "query": { "month": "$A:period", "format": "csv" } },
+        { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section" } },
+        { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section", "format": "csv" } }
+      ]
+    }
+  }
+}

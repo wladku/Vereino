@@ -1,7 +1,6 @@
 // Central place to enable modules and their source.
 // - id: module id (plural snake_case; special cases: 'auth')
 // - from: '@open-mercato/core' | '@app' | custom alias/path in future
-import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 import type { ModuleOverrides } from '@open-mercato/shared/modules/overrides'
 
 export type ModuleEntry = { id: string; from?: '@open-mercato/core' | '@app' | string; overrides?: ModuleOverrides }
@@ -83,30 +82,6 @@ enabledModules.push({ id: 'payments', from: '@app' })
 // migrations approved by the product owner on 2026-11-05 for epic #119).
 enabledModules.push({ id: 'facilities', from: '@app' })
 
-const enterpriseModulesEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES, false)
-const enterpriseSsoEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_SSO, false)
-const enterpriseSecurityEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_SECURITY, false)
-const enterpriseAgentsEnabled = parseBooleanWithDefault(process.env.OM_ENABLE_ENTERPRISE_MODULES_AGENTS, false)
-
-if (enterpriseModulesEnabled) {
-  enabledModules.push(
-    { id: 'record_locks', from: '@open-mercato/enterprise' },
-    { id: 'system_status_overlays', from: '@open-mercato/enterprise' },
-  )
-}
-
-if (enterpriseModulesEnabled && enterpriseSsoEnabled) {
-  enabledModules.push({ id: 'sso', from: '@open-mercato/enterprise' })
-}
-
-if (enterpriseModulesEnabled && enterpriseSecurityEnabled) {
-  enabledModules.push({ id: 'security', from: '@open-mercato/enterprise' })
-}
-
-if (enterpriseModulesEnabled && enterpriseAgentsEnabled) {
-  enabledModules.push({ id: 'agent_orchestrator', from: '@open-mercato/enterprise' })
-  // Example app module: shows how to declare an Agent Orchestrator agent from a
-  // brand-new module. Its source ships in every preset; it imports the
-  // orchestrator SDK, so it is only enabled alongside it.
-  enabledModules.push({ id: 'agent_examples', from: '@app' })
-}
+// Vereino: the commercially licensed `@open-mercato/enterprise` package is not installed (ADR-023, ENG-Q-10, #466),
+// so its modules (`record_locks`, `system_status_overlays`, `sso`, `security`, `agent_orchestrator`) and the scaffold
+// example `agent_examples` are not registered. `yarn forbidden-packages:check` fails if it comes back.

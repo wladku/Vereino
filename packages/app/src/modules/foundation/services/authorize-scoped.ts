@@ -85,6 +85,44 @@ export type AuthorizeScopedOptions = {
    * replays `execute` (the context carries the audit route's `replayTransactionGuard`) is treated the same way.
    */
   mode?: 'execute' | 'replay'
+  /**
+   * The session scope this command resolved with `prefetchSessionScope(ctx)` before it opened its write transaction
+   * (#549). Used only for the session source, only when it was prefetched for this same `ctx` and only for the
+   * tenant and organization the session still names; otherwise the scope is resolved here as usual.
+   */
+  sessionScope?: PrefetchedSessionScope | null
+}
+
+/** A session scope resolved before the write transaction by `prefetchSessionScope`. */
+export type PrefetchedSessionScope = Readonly<TrustedScope & { scope: Scope }>
+
+/** The context each prefetched scope was resolved for: a value not made by `prefetchSessionScope` is never used. */
+const prefetchedFor = new WeakMap<PrefetchedSessionScope, CommandRuntimeContext>()
+
+/**
+ * Resolves the caller's session scope before the command opens its write transaction (#549). The scope provider
+ * reads on its own pooled connection, so calling it inside the transaction holds one connection while it waits for a
+ * second: with as many concurrent commands as the pool has connections, every command waits and none proceeds until
+ * the acquire timeout. A command that many callers run at once (e.g. "Accept cash", whose receipt numbering
+ * serializes them) prefetches the scope and passes it as `options.sessionScope`; the scope check itself still runs
+ * in `authorizeScoped`, inside the transaction. Null when the context carries no session scope.
+ */
+export async function prefetchSessionScope(ctx: CommandRuntimeContext): Promise<PrefetchedSessionScope | null> {
+  const trusted = sessionScope(ctx)
+  if (!trusted) return null
+  const prefetched: PrefetchedSessionScope = Object.freeze({ ...trusted, scope: await resolveScope(ctx) })
+  prefetchedFor.set(prefetched, ctx)
+  return prefetched
+}
+
+function prefetchedScopeFor(
+  ctx: CommandRuntimeContext,
+  trusted: TrustedScope,
+  prefetched: PrefetchedSessionScope | null | undefined,
+): Scope | null {
+  if (!prefetched || prefetchedFor.get(prefetched) !== ctx) return null
+  if (prefetched.tenantId !== trusted.tenantId || prefetched.organizationId !== trusted.organizationId) return null
+  return prefetched.scope
 }
 
 export type AuthorizedCommand<TSchema extends z.ZodType, TEntity extends object> = {
@@ -157,6 +195,7 @@ function tokenScope(ctx: CommandRuntimeContext, subject: TokenScopeSubject): Tru
 async function deriveScope(
   source: ScopeSource | undefined,
   ctx: CommandRuntimeContext,
+  prefetched?: PrefetchedSessionScope | null,
 ): Promise<(TrustedScope & { scope: Scope }) | null> {
   if (source && 'job' in source) {
     const job = jobScope(ctx)
@@ -171,7 +210,7 @@ async function deriveScope(
   if (source && 'marker' in source) {
     return { ...trusted, scope: [{ kind: 'self_user', ids: [ctx.auth.sub] }] }
   }
-  return { ...trusted, scope: await resolveScope(ctx) }
+  return { ...trusted, scope: prefetchedScopeFor(ctx, trusted, prefetched) ?? (await resolveScope(ctx)) }
 }
 
 async function matchOrRefuse(
@@ -214,7 +253,8 @@ function lockTokenOf(explicit: string | Date | null | undefined, request: Reques
 
 /**
  * Parses the input, derives the trusted scope, refuses an account with no linked person of this club before any
- * lookup (403 `scope_unlinked`, session scope only, #76), loads and row-locks the target, checks it against the
+ * lookup (403 `scope_unlinked`, session scope only, #76), loads and row-locks the target (404 when it is missing or
+ * belongs to another club, #628), checks it against the
  * allowed grants (403 `scope_denied`, or `scope_unlinked` for an unlinked account of a command that allows
  * `self_user`), requires the lock token (400 `lock_token_required`), asserts it on the locked row (409
  * `optimistic_lock_conflict`) and returns the acting role. `em` is the command's transactional EntityManager.
@@ -230,7 +270,7 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
     throw new Error('[internal] authorizeScoped must run inside the write transaction (foundation DD-F18)')
   }
   const { parsed, custom } = await parseInput(spec.input, input)
-  const derived = await deriveScope(spec.scopeSource, ctx)
+  const derived = await deriveScope(spec.scopeSource, ctx, options.sessionScope)
   if (!derived) return foundationErrors.throw('scope_denied')
   const { tenantId, organizationId, scope } = derived
   // Only the session scope says whether a person is linked: a marker scope is `self_user` by construction, a job
@@ -250,6 +290,13 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
 
   const target = spec.resolveTarget(parsed, entity, { tenantId, organizationId })
   if (target.tenantId !== tenantId || target.organizationId !== organizationId) {
+    // A loaded record of another club answers exactly like a record that does not exist (#628, D-034): a 403 here
+    // would tell the caller that the id exists in some other club. A create's target comes from the input, so a
+    // foreign scope there is a refusal, not a lookup.
+    if (entity) {
+      const { translate } = await resolveTranslations()
+      throw notFound(translate('foundation.errors.not_found', 'Not found'))
+    }
     return foundationErrors.throw('scope_denied')
   }
   const denial = sessionSource ? scopeDenialCode(scope) : 'scope_denied'

@@ -382,6 +382,7 @@
   "groups.memberships.moveMany.help": "Each child's membership ends on the day before the chosen day and a participant membership starts in the other group. Coaches and assistants are moved one by one with \"Move…\".",
   "groups.memberships.moveMany.children": "Children to move: {count} of {total}",
   "groups.memberships.moveMany.fits.range": "Fits {group} ({from}–{to} years)",
+  "groups.memberships.moveMany.fits.birthYears": "Fits {group} (born {years})",
   "groups.memberships.moveMany.fits.from": "Fits {group} (from {from} years)",
   "groups.memberships.moveMany.fits.to": "Fits {group} (up to {to} years)",
   "groups.memberships.moveMany.fitsTag": "Fits",

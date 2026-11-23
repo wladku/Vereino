@@ -1,6 +1,30 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type APIRequestContext } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
-import { birthDateTurning, calendarDate, call, createClub, createPerson } from '../_fixtures/club'
+import {
+  addDays,
+  createActivity,
+  getOccurrence,
+  listOccurrences,
+  readNotifications,
+  type OccurrenceItem,
+} from '../_fixtures/activities'
+import {
+  addParticipants,
+  familyFor,
+  readAttendanceList,
+  rowOf,
+  saveAttendanceList,
+  sessionsOf,
+  startNow,
+} from '../_fixtures/attendance'
+import {
+  OPTIMISTIC_LOCK_HEADER,
+  birthDateTurning,
+  calendarDate,
+  call,
+  createClub,
+  createPerson,
+} from '../_fixtures/club'
 import { create as createStructure } from '../_fixtures/club-structure'
 import {
   addMembership,
@@ -13,14 +37,16 @@ import {
   postGroup,
   postMembership,
   roster,
+  signedInStaff,
   updateGroup,
 } from '../_fixtures/groups'
 
 // TEST-030 (club spec phase 2 step 2; issue #30 criterion 1, membership part): a `team` group with a season in the
 // academy and a `class_group` in a non-football section; both kinds go through the same membership cycle (add, read
 // the roster, end, keep the history, add again); team fields on a class group → 422. The PZPN age category (the
-// `dictionaries` module) is covered by `E06-S10-team-age-category.spec.ts` (#92); the `training` activity, attendance,
-// substitution and `match` → 422 for a class group arrive with `activities` (#31 / #33).
+// `dictionaries` module) is covered by `E06-S10-team-age-category.spec.ts` (#92); `match` → 422 for a class group by
+// `E03-S02-scope-and-validation.spec.ts`. The second test (#592, AC-004) runs a training of each kind through an
+// absence, a substitute and the attendance check-off and expects the same results for both.
 test.describe.configure({ timeout: 300_000 })
 
 test('TEST-030 a team and a class group go through the same membership cycle; team fields on a class group are refused with 422', async ({
@@ -253,6 +279,190 @@ test('TEST-030 external teams keep their contact encrypted at rest and decrypted
       headers: { 'x-om-ext-optimistic-lock-expected-updated-at': String(row?.updatedAt) },
     })
     expect(removed.status).toBe(200)
+  } finally {
+    await club.cleanup()
+  }
+})
+
+type SubstitutionDetail = OccurrenceItem & {
+  substituteForPersonId: string | null
+  substitutions: { kind: string; previousCoachPersonId: string | null; newCoachPersonId: string | null }[]
+}
+
+async function sessionDetail(request: APIRequestContext, token: string, id: string): Promise<SubstitutionDetail> {
+  const result = await getOccurrence(request, token, id)
+  expect(result.status, JSON.stringify(result.body)).toBe(200)
+  return result.body as SubstitutionDetail
+}
+
+const lockOf = (updatedAt: string | null | undefined): Record<string, string> =>
+  updatedAt ? { [OPTIMISTIC_LOCK_HEADER]: updatedAt } : {}
+
+test('TEST-030 a class group training goes through substitution and attendance exactly like a team training', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'test-030-sessions')
+  try {
+    // The TEST-008 family: the team Żaki (coach Marek, academy coordinator) and the class group "Basen — początkujący"
+    // (instructor Irena, pool coordinator); Hania is in both. Bartek is a club coach in neither group.
+    const family = await familyFor(request, club)
+    const bartek = await signedInStaff(request, club, { firstName: 'Bartek', lastName: 'Zastępca', role: 'coach' })
+    const tomorrow = addDays(calendarDate(), 1)
+    const kinds = [
+      {
+        kind: 'team',
+        groupId: family.zaki,
+        placeId: family.pitch,
+        name: 'Trening Żaków',
+        startTime: '15:00',
+        endTime: '16:00',
+        coach: family.coach,
+        coordinator: family.academyCoordinator,
+      },
+      {
+        kind: 'class_group',
+        groupId: family.poolGroup,
+        placeId: family.poolPlace,
+        name: 'Nauka pływania',
+        startTime: '17:00',
+        endTime: '18:00',
+        coach: family.instructor,
+        coordinator: family.poolCoordinator,
+      },
+    ] as const
+    const outcomes: Record<string, unknown> = {}
+
+    for (const input of kinds) {
+      expect((await getGroup(request, club.adminToken, input.groupId)).body?.kind).toBe(input.kind)
+      const [newcomer] = await addParticipants(request, club, input.groupId, 1)
+      const { id: activityId } = await createActivity(request, club.adminToken, {
+        groupId: input.groupId,
+        name: input.name,
+        type: 'training',
+        placeId: input.placeId,
+        coachPersonId: input.coach.personId,
+        startsOn: tomorrow,
+        startTime: input.startTime,
+        endTime: input.endTime,
+      })
+      const session = (await sessionsOf(request, club, activityId)).at(0)
+      if (!session) throw new Error(`[test] the ${input.kind} training has no session`)
+      expect(session.coachPersonId).toBe(input.coach.personId)
+
+      // The group's coach reports an absence: the session has no coach, the section coordinator is notified and
+      // finds it in "Needing a coach".
+      const absence = await call<{ ok?: boolean }>(
+        request,
+        'POST',
+        `/api/activities/occurrences/${session.id}/absence`,
+        input.coach.token,
+        { data: { reason: 'Choroba' }, headers: lockOf(session.updatedAt) },
+      )
+      expect(absence.status, `${input.kind} absence ${JSON.stringify(absence.body)}`).toBe(200)
+      const afterAbsence = await sessionDetail(request, club.adminToken, session.id)
+      expect(afterAbsence.coachPersonId).toBeNull()
+      await expect
+        .poll(async () =>
+          (await readNotifications(request, input.coordinator.token)).some(
+            (item) => item.type === 'activities.coach_needed' && item.sourceEntityId === session.id,
+          ),
+        )
+        .toBe(true)
+      const needing = await listOccurrences(request, input.coordinator.token, '&unassigned=1')
+      expect(needing.items.map((item) => item.id)).toContain(session.id)
+
+      // The coordinator sees Bartek free and assigns him; Bartek is notified and stands in for the group's coach.
+      const options = await call<{ items?: { id: string; busy: unknown }[] }>(
+        request,
+        'GET',
+        `/api/activities/occurrences/${session.id}/coach`,
+        input.coordinator.token,
+      )
+      expect(options.status, JSON.stringify(options.body)).toBe(200)
+      expect(options.body?.items?.find((item) => item.id === bartek.personId)?.busy).toBeNull()
+      const assigned = await call<{ kind?: string }>(
+        request,
+        'POST',
+        `/api/activities/occurrences/${session.id}/coach`,
+        input.coordinator.token,
+        { data: { coachPersonId: bartek.personId }, headers: lockOf(afterAbsence.updatedAt) },
+      )
+      expect(assigned.status, `${input.kind} assign ${JSON.stringify(assigned.body)}`).toBe(200)
+      await expect
+        .poll(async () =>
+          (await readNotifications(request, bartek.token)).some(
+            (item) => item.type === 'activities.substitution_assigned' && item.sourceEntityId === session.id,
+          ),
+        )
+        .toBe(true)
+
+      // Before the start the check-off is closed; once the session has started Bartek checks off the roster and
+      // closes the session.
+      const before = await readAttendanceList(request, bartek.token, session.id)
+      expect(before.status, JSON.stringify(before.body)).toBe(200)
+      const version = await startNow(request, club, session.id)
+      const open = await readAttendanceList(request, bartek.token, session.id)
+      expect(open.status, JSON.stringify(open.body)).toBe(200)
+      const closed = await saveAttendanceList(
+        request,
+        bartek.token,
+        session.id,
+        {
+          entries: [
+            { personId: family.younger.personId, actual: 'present' },
+            { personId: newcomer, actual: 'absent' },
+          ],
+          complete: true,
+        },
+        version,
+      )
+      expect(closed.status, `${input.kind} check-off ${JSON.stringify(closed.body)}`).toBe(200)
+      const list = await readAttendanceList(request, bartek.token, session.id)
+      expect(list.status, JSON.stringify(list.body)).toBe(200)
+      const marks = [family.younger.personId, newcomer].map((personId) => {
+        const row = rowOf(list.body ?? {}, personId)
+        expect(row.markedByPersonId).toBe(bartek.personId)
+        return { onRoster: row.onRoster, actual: row.actual, markedAsRole: row.markedAsRole }
+      })
+      const done = await sessionDetail(request, club.adminToken, session.id)
+      expect(done.status).toBe('done')
+      expect(done.coachPersonId).toBe(bartek.personId)
+      expect(done.substituteForPersonId).toBe(input.coach.personId)
+
+      // The outcome with the group's own ids replaced by their role in the scenario.
+      const roleOf = (personId: string | null) =>
+        personId === input.coach.personId ? 'group coach' : personId === bartek.personId ? 'substitute' : personId
+      outcomes[input.kind] = {
+        assignKind: assigned.body?.kind,
+        checkOffBefore: before.body?.checkOff,
+        checkOffOpen: open.body?.checkOff,
+        actingRole: open.body?.actingRole,
+        marks,
+        status: done.status,
+        substitutions: done.substitutions.map((entry) => [
+          entry.kind,
+          roleOf(entry.previousCoachPersonId),
+          roleOf(entry.newCoachPersonId),
+        ]),
+      }
+    }
+
+    expect(outcomes.team).toEqual({
+      assignKind: 'substitute_assigned',
+      checkOffBefore: 'not_started',
+      checkOffOpen: 'open',
+      actingRole: 'coach',
+      marks: [
+        { onRoster: true, actual: 'present', markedAsRole: 'coach' },
+        { onRoster: true, actual: 'absent', markedAsRole: 'coach' },
+      ],
+      status: 'done',
+      substitutions: [
+        ['absence_reported', 'group coach', null],
+        ['substitute_assigned', null, 'substitute'],
+      ],
+    })
+    expect(outcomes.class_group).toEqual(outcomes.team)
   } finally {
     await club.cleanup()
   }
