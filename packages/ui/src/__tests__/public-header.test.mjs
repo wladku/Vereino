@@ -84,7 +84,7 @@ test('a club logo is an image with an empty alt; a wide page widens the header',
     html,
     /<img src="\/logo.png" alt="" width="40" height="40" class="bg-muted size-10 shrink-0 rounded-md object-contain" data-testid="public-logo" data-logo-source="club"\/>/,
   )
-  assert.doesNotMatch(html, /order-2 sm:order-3/)
+  assert.doesNotMatch(html, /public-header-end/)
 })
 
 test('no club yet: the title alone, no links, the header end kept', () => {
