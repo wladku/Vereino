@@ -9,6 +9,7 @@ import {
   archiveScopeViolations,
   clubTables,
   countsByModule,
+  encryptedRowKeys,
   fileEntryName,
   missingTables,
   moduleEntryName,
@@ -27,6 +28,7 @@ import {
   slugReleaseAt,
   uncoveredTables,
   type ClubArchiveManifest,
+  type ClubTableKey,
 } from '../club-offboarding'
 
 const DAY = 86_400_000
@@ -51,6 +53,14 @@ describe('clubTables', () => {
     expect(byName.get('sessions')).toMatchObject({ key: 'user', kind: 'secret' })
     expect(byName.get('integration_credentials')).toMatchObject({ key: 'tenant', kind: 'secret' })
     expect(byName.get('search_tokens')).toMatchObject({ key: 'tenant', kind: 'derived' })
+  })
+
+  it('keys the user-owned rows with a nullable tenant by tenant or user (#681)', () => {
+    const byName = new Map(PLATFORM_CLUB_TABLES.map((entry) => [entry.table, entry]))
+    for (const table of ['user_consents', 'user_sidebar_preferences', 'sidebar_variants']) {
+      expect(byName.get(table)).toEqual({ module: 'auth', table, key: 'tenant_or_user', kind: 'data' })
+    }
+    expect(byName.get('role_sidebar_preferences')).toMatchObject({ key: 'tenant' })
   })
 
   it('refuses a table claimed twice', () => {
@@ -244,6 +254,8 @@ describe('parseManifest', () => {
 
   it('accepts a club export of this version', () => {
     expect(parse(valid)).toEqual(valid)
+    const userOwned = { ...valid, tables: [{ ...valid.tables[0], table: 'user_consents', key: 'tenant_or_user' }] }
+    expect(parse(userOwned)).toEqual(userOwned)
   })
 
   it('refuses anything else', () => {
@@ -316,9 +328,7 @@ describe('redactExportRow', () => {
 
 describe('archiveScopeViolations', () => {
   const tables = clubTables([{ module: 'people', tables: ['people_persons'] }])
-  const manifestOf = (
-    entries: { module: string; table: string; key: 'tenant' | 'user' | 'tenant_row' }[],
-  ): ClubArchiveManifest => ({
+  const manifestOf = (entries: { module: string; table: string; key: ClubTableKey }[]): ClubArchiveManifest => ({
     format: CLUB_ARCHIVE_FORMAT,
     version: CLUB_ARCHIVE_VERSION,
     exportedAt: '2026-11-23T10:00:00.000Z',
@@ -328,7 +338,7 @@ describe('archiveScopeViolations', () => {
     checksums: {},
   })
   const check = (
-    entries: { module: string; table: string; key: 'tenant' | 'user' | 'tenant_row' }[],
+    entries: { module: string; table: string; key: ClubTableKey }[],
     rows: Record<string, Record<string, unknown>[]>,
   ) => archiveScopeViolations(manifestOf(entries), (table) => rows[table.table] ?? [], tables)
 
@@ -381,6 +391,54 @@ describe('archiveScopeViolations', () => {
       'tenants: a row of another tenant',
       'user_roles: a row of another tenant',
     ])
+  })
+
+  it('takes a user-owned row without a tenant when its user is the club own, also from an older archive (#681)', () => {
+    const users = { module: 'auth', table: 'users', key: 'tenant' as const }
+    expect(
+      check(
+        [
+          users,
+          { module: 'auth', table: 'user_consents', key: 'tenant_or_user' },
+          { module: 'auth', table: 'sidebar_variants', key: 'tenant' },
+        ],
+        {
+          users: [{ id: USER, tenant_id: TENANT }],
+          user_consents: [
+            { id: FILE, tenant_id: TENANT, user_id: USER },
+            { id: USER, tenant_id: null, user_id: USER },
+          ],
+          sidebar_variants: [{ id: FILE, user_id: USER }],
+        },
+      ),
+    ).toEqual([])
+    expect(
+      check([users, { module: 'auth', table: 'user_consents', key: 'tenant_or_user' }], {
+        users: [{ id: USER, tenant_id: TENANT }],
+        user_consents: [{ id: FILE, tenant_id: null, user_id: FILE }],
+      }),
+    ).toEqual(['user_consents: a row of another tenant'])
+    expect(
+      check([{ module: 'auth', table: 'user_consents', key: 'tenant_or_user' }], {
+        user_consents: [{ id: FILE, tenant_id: OTHER_TENANT, user_id: USER }],
+      }),
+    ).toEqual(['user_consents: a row of another tenant'])
+    expect(check([{ module: 'auth', table: 'user_consents', key: 'user' }], {})).toEqual([
+      'user_consents: not a table of a club export',
+    ])
+  })
+})
+
+describe('encryptedRowKeys', () => {
+  it('maps each encryption-map field to the key the row has, in any spelling, sorted and once (#681)', () => {
+    const row = { id: FILE, first_name: 'x', last_name: 'y', notes: 'z', ipAddress: '1' }
+    expect(encryptedRowKeys(['notes', 'firstName', 'last_name', 'ip_address', 'first_name', 'missing'], row)).toEqual([
+      'first_name',
+      'ipAddress',
+      'last_name',
+      'notes',
+    ])
+    expect(encryptedRowKeys([], row)).toEqual([])
   })
 })
 

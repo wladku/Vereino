@@ -34,6 +34,7 @@ import {
   moduleEntryName,
   orderForInsert,
   archiveScopeViolations,
+  encryptedRowKeys,
   parseManifest,
   parseRowJson,
   presentTables,
@@ -67,7 +68,8 @@ type StorageDriver = {
   deleteStrict?(partitionCode: string, storagePath: string): Promise<void>
 }
 type StorageDriverFactory = { resolveForPartition(partitionCode: string): Promise<StorageDriver> }
-type SchedulerService = { unregister(scheduleId: string): Promise<void> }
+/** The scheduler's BullMQ service (`bullmqSchedulerService`, registered only with `QUEUE_STRATEGY=async`). */
+type BullmqScheduler = { unregister(scheduleId: string): Promise<void> }
 
 /** Rows written per `insert … select … from json_populate_recordset` statement. */
 const INSERT_BATCH = 500
@@ -172,6 +174,12 @@ function clubWhere(entry: ClubTable, scope: ClubScope): { sql: string; params: s
   if (entry.key === 'user') {
     return { sql: 'user_id in (select id from users where tenant_id = ?)', params: [scope.tenantId] }
   }
+  if (entry.key === 'tenant_or_user') {
+    return {
+      sql: '(tenant_id = ? or (tenant_id is null and user_id in (select id from users where tenant_id = ?)))',
+      params: [scope.tenantId, scope.tenantId],
+    }
+  }
   return { sql: 'tenant_id = ?', params: [scope.tenantId] }
 }
 
@@ -244,7 +252,7 @@ async function exportRows(
     ignoreRuntimeHealth: true,
     em,
   })
-  const present = fields.filter((field) => field in (rows[0] as Row))
+  const present = encryptedRowKeys(fields, rows[0])
   if (present.length === 0) return { rows, decrypted: [] }
   const decryptedRows: Row[] = []
   for (const row of rows) {
@@ -265,7 +273,7 @@ async function exportRows(
     }
     decryptedRows.push(redactExportRow(entry.table, plain))
   }
-  return { rows: decryptedRows, decrypted: present.sort() }
+  return { rows: decryptedRows, decrypted: present }
 }
 
 /**
@@ -281,11 +289,15 @@ export async function exportClub(
   now: Date,
 ): Promise<ClubExportSummary> {
   const target = path.resolve(outPath)
-  const exists = await fs.stat(target).then(
-    () => true,
-    () => false,
-  )
-  if (exists) throw new Error(`[internal] the archive already exists, choose another --out: ${target}`)
+  // Neither the archive nor its checksum file may exist: both are written with `wx` (#681), and a checksum file left
+  // over would otherwise fail the run after the archive was written.
+  for (const file of [target, `${target}.sha256`]) {
+    const exists = await fs.stat(file).then(
+      () => true,
+      () => false,
+    )
+    if (exists) throw new Error(`[internal] the archive already exists, choose another --out: ${file}`)
+  }
   const scope = { tenantId: club.tenantId, organizationId: club.organizationId }
   const encryption = encryptionService(container)
   const zip = new JSZip()
@@ -347,7 +359,7 @@ export async function exportClub(
   await fs.mkdir(path.dirname(target), { recursive: true })
   await fs.writeFile(target, bytes, { flag: 'wx', mode: 0o600 })
   const digest = sha256(bytes)
-  await fs.writeFile(`${target}.sha256`, `${digest}  ${path.basename(target)}\n`, { mode: 0o600 })
+  await fs.writeFile(`${target}.sha256`, `${digest}  ${path.basename(target)}\n`, { flag: 'wx', mode: 0o600 })
   return { path: target, sha256: digest, bytes: bytes.length, tables, files: files.length, missingFiles }
 }
 
@@ -358,6 +370,8 @@ export type ClubDeletionSummary = {
   /** Rows deleted (or, on a dry run, to delete) per table, in deletion order; empty tables are left out. */
   tables: { module: string; table: string; rows: number }[]
   schedulesUnregistered: number
+  /** Schedules whose BullMQ repeatable could not be removed after the commit; their rows are deleted (#681). */
+  schedulesFailed: number
   filesDeleted: number
   filesFailed: number
   cacheEntriesCleared: number
@@ -372,8 +386,9 @@ const TOMBSTONE_SCRUB = `
 /**
  * Deletes every row of the club from every covered table, in one transaction, children first; the club's settings row
  * stays as the slug's tombstone (`deleted_at` set, the slug, time zone and notice dates kept) until the slug is
- * released. Before it, the club's schedules are unregistered through the scheduler (which also removes their BullMQ
- * repeatables); after the commit, the attachment files are deleted from storage and the club's cache entries cleared.
+ * released. The transaction deletes the club's `scheduled_jobs` and `attachments` rows with the rest; only after the
+ * commit are the schedules' BullMQ repeatables removed, the attachment files deleted from storage and the club's cache
+ * entries cleared, each from the rows the transaction deleted (#681).
  * With `dryRun` it only counts. The data-encryption key is derived from the master secret and the tenant id (Q-M07), so
  * there is no key to destroy until a key store holds the keys.
  */
@@ -389,6 +404,7 @@ export async function deleteClub(
   const summary: ClubDeletionSummary = {
     tables: [],
     schedulesUnregistered: 0,
+    schedulesFailed: 0,
     filesDeleted: 0,
     filesFailed: 0,
     cacheEntriesCleared: 0,
@@ -400,18 +416,10 @@ export async function deleteClub(
     }
     return summary
   }
-  const schedules = await em.execute<{ id: string }[]>(`select id from scheduled_jobs where tenant_id = ?`, [
-    scope.tenantId,
-  ])
-  if (schedules.length > 0) {
-    const scheduler = container.resolve<SchedulerService>('schedulerService')
-    for (const schedule of schedules) await scheduler.unregister(schedule.id)
-    summary.schedulesUnregistered = schedules.length
-  }
-  const attachments = await em.execute<AttachmentRow[]>(
-    `select id, partition_code, storage_path, file_name from attachments where tenant_id = ?`,
-    [scope.tenantId],
-  )
+  // The schedules and the attachment files are taken from the rows the transaction deletes (#681): a failed deletion
+  // leaves a live club its schedules, and a file uploaded meanwhile is deleted with its row, not left in storage.
+  let scheduleIds: string[] = []
+  let attachments: AttachmentRow[] = []
   await em.transactional(async (tx) => {
     // The notice is checked again in the deletion's own transaction: the update locks the settings row, so an
     // `offboard-club --cancel` that commits first leaves no due row here and nothing is deleted.
@@ -426,13 +434,31 @@ export async function deleteClub(
     for (const entry of deleteOrder) {
       const where = clubWhere(entry, scope)
       const keepTombstone = entry.table === 'club_core_club_settings'
-      const result = await tx.execute<{ id: string }[]>(
-        `delete from ${quoteIdent(entry.table)} where ${where.sql}${keepTombstone ? ' and id <> ?' : ''} returning id`,
+      const returning = entry.table === 'attachments' ? 'id, partition_code, storage_path, file_name' : 'id'
+      const result = await tx.execute<AttachmentRow[]>(
+        `delete from ${quoteIdent(entry.table)} where ${where.sql}${keepTombstone ? ' and id <> ?' : ''} returning ${returning}`,
         keepTombstone ? [...where.params, club.settingsId] : where.params,
       )
+      if (entry.table === 'attachments') attachments = result
+      if (entry.table === 'scheduled_jobs') scheduleIds = result.map((row) => row.id)
       if (result.length > 0) summary.tables.push({ module: entry.module, table: entry.table, rows: result.length })
     }
   })
+  // The rows are gone, so the scheduler service's `unregister` (which looks the row up first) would do nothing: the
+  // repeatable jobs are removed from BullMQ directly. The local strategy polls the table and needs nothing more.
+  if (scheduleIds.length > 0 && container.hasRegistration('bullmqSchedulerService')) {
+    const bullmq = container.resolve<BullmqScheduler>('bullmqSchedulerService')
+    for (const id of scheduleIds) {
+      try {
+        await bullmq.unregister(id)
+        summary.schedulesUnregistered += 1
+      } catch {
+        summary.schedulesFailed += 1
+      }
+    }
+  } else {
+    summary.schedulesUnregistered = scheduleIds.length
+  }
   const factory = container.resolve<StorageDriverFactory>('storageDriverFactory')
   for (const attachment of attachments) {
     try {
@@ -618,13 +644,13 @@ export async function restoreClub(
   const { club } = plan.manifest
   const scope = { tenantId: club.tenantId, organizationId: club.organizationId }
   const em = emOf(container)
-  const blocker = await restoreBlocker(container, em, plan)
-  if (blocker) return blocker
   const summary: ClubRestoreSummary = { club, tables: [], files: 0 }
   const ordered = [...plan.manifest.tables].sort(
     (a, b) => Number(b.table === 'encryption_maps') - Number(a.table === 'encryption_maps'),
   )
   if (options.dryRun) {
+    const blocker = await restoreBlocker(container, em, plan)
+    if (blocker) return blocker
     summary.tables = ordered
       .filter((table) => table.rows > 0)
       .map((table) => ({ module: table.module, table: table.table, rows: table.rows }))
@@ -632,7 +658,12 @@ export async function restoreClub(
     return summary
   }
   const encryption = encryptionService(container)
-  await em.transactional(async (tx) => {
+  return em.transactional(async (tx): Promise<ClubRestoreSummary | ClubRestoreRefusal> => {
+    // The checks run in the restore's own transaction (#681), behind a lock on the club's tenant, so two restores of one
+    // archive cannot both pass them; nothing has been written when one refuses.
+    await tx.execute(`select pg_advisory_xact_lock(hashtext(?))`, [`club_core.restore:${club.tenantId}`])
+    const blocker = await restoreBlocker(container, tx, plan)
+    if (blocker) return blocker
     const { catalogue } = await clubTargets(container, tx)
     const entityIds = entityIdsByTable(tx)
     await tx.execute(
@@ -680,6 +711,6 @@ export async function restoreClub(
       }
       summary.files += 1
     }
+    return summary
   })
-  return summary
 }

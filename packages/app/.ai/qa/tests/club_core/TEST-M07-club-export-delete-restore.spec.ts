@@ -21,7 +21,9 @@ import { getSettings, png, publicGet, publish, upload } from '../_fixtures/publi
 // write a file outside its partition is refused. `restore-club` brings club A back — its administrator signs in again
 // (after setting a password) and reads the
 // decrypted person, the public logo is served — and the archive round-trips into an empty, freshly migrated database:
-// the export taken there equals the original apart from the audit log.
+// the export taken there equals the original apart from the audit log. A sidebar preference of club A's administrator
+// without a tenant (the platform allows a null `tenant_id` there) is exported, deleted with the club and restored
+// (#681), and an export whose checksum file already exists is refused before it writes the archive.
 test.describe.configure({ timeout: 900_000 })
 
 type Cli = { exitCode: number | null; output: Record<string, unknown> | null }
@@ -97,7 +99,29 @@ async function userKeyedRows(userId: string): Promise<number> {
   return withClient(async (client) => {
     const { rows } = await client.query<{ count: string }>(
       `select ((select count(*) from sessions where user_id = $1) + (select count(*) from password_resets where user_id = $1)
-        + (select count(*) from user_roles where user_id = $1))::text as count`,
+        + (select count(*) from user_roles where user_id = $1)
+        + (select count(*) from user_sidebar_preferences where user_id = $1))::text as count`,
+      [userId],
+    )
+    return Number(rows[0]?.count ?? 0)
+  })
+}
+
+/** A sidebar preference of `userId` with a null `tenant_id`, a row the platform's schema allows (#681). */
+async function seedTenantlessPreference(userId: string): Promise<void> {
+  await withClient((client) =>
+    client.query(
+      `insert into user_sidebar_preferences (user_id, tenant_id, organization_id, locale, settings_json, created_at)
+       values ($1, null, null, 'en', '{"m07": true}'::jsonb, now())`,
+      [userId],
+    ),
+  )
+}
+
+async function tenantlessPreferences(userId: string): Promise<number> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ count: string }>(
+      `select count(*)::text as count from user_sidebar_preferences where user_id = $1 and tenant_id is null`,
       [userId],
     )
     return Number(rows[0]?.count ?? 0)
@@ -223,6 +247,7 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     // A running instance has the pgvector driver's run-time `vector_search` table (no migration creates it); the
     // commands must cover it like any index. One vector row per club; the staging database below has no such table.
     createdVectorTable = await seedVectorRows([clubA, clubB])
+    await seedTenantlessPreference(clubA.adminUserId)
     const rowsB = await tenantRows(clubB.tenantId)
     expect(rowsB).toMatchObject({ vector_search: 1 })
 
@@ -268,8 +293,17 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     expect(auth.users).toEqual([expect.objectContaining({ email: emailA, password_hash: null })])
     expect(auth.sessions).toBeUndefined()
     expect(auth.password_resets).toBeUndefined()
+    expect(auth.user_sidebar_preferences).toEqual([
+      expect.objectContaining({ user_id: clubA.adminUserId, tenant_id: null, settings_json: { m07: true } }),
+    ])
     const existing = clubCli(['export-club', '--slug', slugA, '--out', archive])
     expect(existing.exitCode).toBe(1)
+    // A checksum file left at the target refuses the export too, before the archive is written (#681).
+    const stale = path.join(work, 'stale.zip')
+    fs.writeFileSync(`${stale}.sha256`, 'stale\n')
+    expect(clubCli(['export-club', '--slug', slugA, '--out', stale]).exitCode).toBe(1)
+    expect(fs.existsSync(stale)).toBe(false)
+    expect(fs.readFileSync(`${stale}.sha256`, 'utf8')).toBe('stale\n')
 
     // The deletion after the notice: only the tombstone and the deletion's audit entry stay; club B is untouched.
     await moveDeletionDate(clubA.tenantId)
@@ -281,6 +315,7 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     expect(deleted.exitCode, JSON.stringify(deleted.output)).toBe(0)
     expect(deleted.output).toMatchObject({
       status: 'deleted',
+      schedulesFailed: 0,
       filesDeleted: 1,
       filesFailed: 0,
       encryptionKey: 'derived',
@@ -365,6 +400,7 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     const restored = clubCli(['restore-club', '--in', archive])
     expect(restored.exitCode, JSON.stringify(restored.output)).toBe(0)
     expect(restored.output).toMatchObject({ status: 'restored', tenantId: clubA.tenantId, files: 1 })
+    expect(await tenantlessPreferences(clubA.adminUserId)).toBe(1)
     expect(clubCli(['restore-club', '--in', archive]).output).toEqual({ status: 'refused', reason: 'tenant_exists' })
     // The deletion ended the administrator's sessions; the helper's token cache would hand back the dead token. The
     // archive carries no password hash, so the administrator sets a password again (here through the superadmin).

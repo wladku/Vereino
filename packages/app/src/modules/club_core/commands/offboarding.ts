@@ -248,6 +248,7 @@ const deleteClubCommand: CommandHandler<Record<string, unknown>, DeleteClubResul
         deletedAt: result.deletedAt,
         tables: Object.fromEntries(result.summary.tables.map((entry) => [entry.table, entry.rows])),
         schedulesUnregistered: result.summary.schedulesUnregistered,
+        schedulesFailed: result.summary.schedulesFailed,
         filesDeleted: result.summary.filesDeleted,
         filesFailed: result.summary.filesFailed,
         encryptionKey: 'derived',

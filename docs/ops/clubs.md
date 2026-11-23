@@ -183,7 +183,7 @@ line with a `status`, and a refusal exits 1 before anything is written.
    checksums), one `data/<module>.json` per module with `{ <table>: rows[] }` — the Vereino modules and the platform
    (`auth`, `directory`, `attachments`, `audit_logs` …) — and every attachment under `files/<id>/`. Encrypted columns
    are decrypted, so the club can read everything. The file is written readable only by the operator, next to a
-   `.sha256` file; `status: "exported"` prints its path, checksum, size, file count and rows per module, and the audit
+   `.sha256` file; neither may exist yet, so choose a new `--out` for each export; `status: "exported"` prints its path, checksum, size, file count and rows per module, and the audit
    log records the export with the file name and checksum. The archive holds the club's **accounting records**
    (charges, payments, cash handovers, bank imports and statements): the club keeps them for the legal period from
    now on (`docs/compliance/retention.md` R1). Sign-in tokens, API keys, provider credentials and search indexes are
@@ -196,11 +196,14 @@ line with a `status`, and a refusal exits 1 before anything is written.
    yarn mercato club_core delete-club --slug orlik-zielonka --confirm orlik-zielonka
    ```
 
-   The dry run prints the rows per table it would delete. The real run unregisters the club's schedules, deletes every
-   row of the club's tenant from every table in one transaction — the Vereino modules' tables (each module names them
-   in `lib/club-tables.ts`), the platform tables of `PLATFORM_CLUB_TABLES` (`club_core/lib/club-offboarding.ts`), and
-   the sessions, password resets and role links of the club's users — then the attachment files and the club's cache
-   entries, and prints the counts (`status: "deleted"`). It refuses `not_offboarded` without a notice and
+   The dry run prints the rows per table it would delete. The real run deletes every row of the club's tenant from
+   every table in one transaction — the Vereino modules' tables (each module names them in `lib/club-tables.ts`), the
+   platform tables of `PLATFORM_CLUB_TABLES` (`club_core/lib/club-offboarding.ts`) with the club's schedules, the
+   sessions, password resets and role links of the club's users, and their consents and sidebar settings also where
+   the platform stored them without a tenant — and only after the commit removes the schedules' queue jobs, the
+   attachment files of the deleted rows and the club's cache entries, so a failed run leaves the club whole. It prints
+   the counts (`status: "deleted"`); `schedulesFailed` or `filesFailed` above 0 names queue jobs or files to remove by
+   hand. It refuses `not_offboarded` without a notice and
    `notice_running` (with `deleteAfter`) before the date. It also refuses `tables_not_covered` when the database has
    a table with a `tenant_id` column that no list names (a new module table or a platform upgrade): add the table to
    its module's `lib/club-tables.ts` or to `PLATFORM_CLUB_TABLES` in a pull request first. Two rows stay: the club's
