@@ -69,3 +69,11 @@ See the PR diff: `packages/app/src/modules/foundation/**` (entity, migration, li
 - The state-store-down path (503 `identity_unavailable`) is not driven by an integration test: a running app's cache cannot be stopped from a test.
 - Before the pilot: the owner creates the real Google OAuth client (consent screen) and sets `VEREINO_OAUTH_GOOGLE_CLIENT_ID` / `_SECRET` on Railway; existing tenants need `yarn mercato auth sync-role-acls` for the new features; the migration is applied by the owner.
 - Phase 2 (Facebook) is a separate story.
+
+## CI repair round (2026-11-23, Cezar task on PR #610)
+
+- Trigger: required check `integration (shard 6/6)` red on head `e7952ac0` (run 45106619691).
+- Cause (infra, not the PR): the shard died in "Install Playwright browser" before any test ran — the job landed on an `ubuntu-latest` runner with the Ubuntu 26.04 image, where `npx playwright install --with-deps chromium` fails with `E: Unable to locate package fonts-unifont` … `E: Package 'fonts-freefont-ttf' has no installation candidate` / `Error: Installation process exited with code: 100`. The other five shards and every later CI run on other branches installed the browser and passed. No code change; lesson `ci-playwright-install-deps-fails-on-new-runner-image`.
+- Merged `origin/main` (`1802c6e1`, 3 commits, no conflicts) and pushed, so CI reruns on the current base.
+- Local runs after the merge (`sg docker -c "yarn test:integration:vereino --filter <ID>"`): TEST-S01 `1 passed (52.7s)`, TEST-S02 `1 passed (44.1s)`, TEST-S04 `1 passed (42.9s)`, ISSUE-628-cross-club-isolation `1 passed (2.2m)`.
+- `gate` stays red on `yarn guard` (new dependency `arctic`) until the owner adds `guard-approved`; not worked around.
