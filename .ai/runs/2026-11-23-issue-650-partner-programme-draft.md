@@ -33,7 +33,10 @@
 
 ## Commands and results
 
-See the PR body for `yarn guard` and `yarn verify` results.
+- `yarn guard`: no blocking findings.
+- `yarn verify`: all 21 steps passed (exit 0).
+- Relative-link check over `docs/partners/*.md`: every link resolves.
+- No integration tests: docs only, no code or test files changed.
 
 ## Open problems / next steps
 
