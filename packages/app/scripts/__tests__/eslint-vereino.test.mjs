@@ -8,11 +8,13 @@ import {
   DIALOG_CONTENT_RESTRICTIONS,
   FOUNDATION_PUBLIC_ENTRY,
   FRAMEWORK_FREE_IMPORT_RESTRICTIONS,
+  MODULE_CLI_EXIT_CODE_RESTRICTIONS,
   ORM_ALLOWED_MODULE_PATHS,
   STATUS_PILL_RESTRICTIONS,
   VEREINO_REACT_RULES,
   VEREINO_TYPESCRIPT_RULES,
   vereinoModuleBoundaryConfigs,
+  vereinoModuleCliConfigs,
   vereinoReactConfigs,
   vereinoStatusPillConfigs,
   vereinoTypeScriptConfigs,
@@ -150,4 +152,35 @@ test('the status-pill rule allows StatusTag, type imports and category tags', ()
     ].join('\n'),
   )
   assert.deepEqual(messages, [])
+})
+
+test('the module CLI exit-code rule is empty without modules and scoped to each cli.ts', () => {
+  assert.deepEqual(vereinoModuleCliConfigs({ moduleIds: [] }), [])
+  const [config] = vereinoModuleCliConfigs({ moduleIds: ['a', 'b'] })
+  assert.deepEqual(config.files, ['src/modules/a/cli.ts', 'src/modules/b/cli.ts'])
+  assert.equal(config.rules, MODULE_CLI_EXIT_CODE_RESTRICTIONS)
+})
+
+// #642: `mercato` exits 0 after a command that set `process.exitCode`, so a module CLI fails by throwing.
+test('the module CLI exit-code rule rejects process.exitCode assignments and allows reads and throws', () => {
+  const messages = new Linter({ configType: 'flat' }).verify(
+    [
+      'export async function run(ok: boolean) {',
+      '  if (!ok) process.exitCode = 1',
+      '  process.exitCode ??= 2',
+      '  const code = process.exitCode',
+      "  if (code) throw new Error('[internal] people sync-role-expiry: invalid options')",
+      '}',
+    ].join('\n'),
+    [{ files: ['**/*.ts'], languageOptions: { parser: tseslint.parser }, rules: MODULE_CLI_EXIT_CODE_RESTRICTIONS }],
+    'src/modules/people/cli.ts',
+  )
+  assert.deepEqual(
+    messages.map((message) => [message.ruleId, message.line]),
+    [
+      ['no-restricted-syntax', 2],
+      ['no-restricted-syntax', 3],
+    ],
+  )
+  assert.match(messages[0].message, /throw new Error/)
 })

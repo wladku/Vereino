@@ -29,8 +29,7 @@ const rentalLifecycle: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities rental-lifecycle --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities rental-lifecycle: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -56,8 +55,7 @@ const expireRequests: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities expire-requests --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities expire-requests: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -85,8 +83,7 @@ const maintenanceReminders: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities maintenance-reminders --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities maintenance-reminders: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -114,8 +111,7 @@ const purgeRentalLinks: ModuleCli = {
       process.stderr.write(
         'Usage: mercato facilities purge-rental-links --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities purge-rental-links: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')
@@ -142,13 +138,13 @@ const setUpClub: ModuleCli = {
     const { tenant, org } = readOptions(argv, ['tenant', 'org'])
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato facilities set-up-club --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] facilities set-up-club: invalid options')
     }
     const container = await createRequestContainer()
     const result = await setUpClubFacilities(container, { tenantId: tenant, organizationId: org })
     process.stdout.write(`${JSON.stringify(result)}\n`)
-    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+    if (!Object.values(result.schedules).every(Boolean))
+      throw new Error('[internal] facilities set-up-club: a schedule was not registered')
   },
 }
 

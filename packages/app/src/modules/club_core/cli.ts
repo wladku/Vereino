@@ -25,8 +25,7 @@ const checkBookablePlace: ModuleCli = {
       process.stderr.write(
         'Usage: mercato club_core check-bookable-place --tenant <tenantId> --org <organizationId> --place <placeId>\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] club_core check-bookable-place: invalid options')
     }
     const container = await createRequestContainer()
     const places = container.resolve<ClubCorePlacesService>(CLUB_CORE_PLACES_SERVICE)

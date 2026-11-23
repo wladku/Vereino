@@ -8,6 +8,7 @@ import jsxA11y from 'eslint-plugin-jsx-a11y'
 import boundaries from 'eslint-plugin-boundaries'
 import {
   vereinoModuleBoundaryConfigs,
+  vereinoModuleCliConfigs,
   vereinoReactConfigs,
   vereinoStatusPillConfigs,
   vereinoTypeScriptConfigs,
@@ -65,6 +66,7 @@ export default [
     : []),
   ...vereinoModuleBoundaryConfigs({ boundaries, moduleIds: vereinoModuleIds }),
   ...vereinoReactConfigs({ moduleIds: vereinoModuleIds }),
+  ...vereinoModuleCliConfigs({ moduleIds: vereinoModuleIds }),
   ...vereinoStatusPillConfigs({
     files: vereinoModuleIds.map((id) => `src/modules/${id}/**/*.tsx`),
     ignores: PLATFORM_FILES_IN_VEREINO_PATHS,
