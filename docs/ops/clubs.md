@@ -116,7 +116,9 @@ Send the administrator, in Polish and English as they prefer:
      staged rows and the file are deleted 30 days after the commit (`people:purge-import-rows`);
    - re-importing the same sheet with the identifier column matches the people instead of creating them twice.
 6. **Fees** (`/backend/payments/fees`) and discounts, if the club collects fees through Vereino; the first charges
-   are generated at 06:00 club time.
+   are generated at 06:00 club time by the first daily run on or after the generation day (default the 1st) once the
+   fees exist. A run before that (no fee schedules
+   or members yet) records nothing, so the month is still generated once the fees are added (#666).
 7. **Coaches**: for each coach, the person record (from the import or `/backend/people/persons/create`) → **Roles**
    → `coach` of their section or group; then **Account** → **Create account** with the coach's e-mail. The coach gets
    an invitation e-mail.
