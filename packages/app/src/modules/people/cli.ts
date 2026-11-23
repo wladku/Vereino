@@ -193,8 +193,7 @@ const retentionSweep: ModuleCli = {
       process.stderr.write(
         'Usage: mercato people retention-sweep --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] people retention-sweep: invalid options')
     }
     const scope = { tenantId: tenant, organizationId: org }
     await runJobCommand('people.persons.retention_sweep', scope, {
@@ -204,7 +203,7 @@ const retentionSweep: ModuleCli = {
     if (register) {
       const registered = await registerRetentionSweepSchedule(await createRequestContainer(), scope)
       process.stdout.write(`${JSON.stringify({ scheduleRegistered: registered })}\n`)
-      if (!registered) process.exitCode = 1
+      if (!registered) throw new Error('[internal] people:retention-sweep schedule not registered')
     }
   },
 }
