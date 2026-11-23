@@ -1,13 +1,13 @@
 # Many clubs on one instance
 
 **Date**: 2026-11-22
-**Status**: Draft (issue #627, epic E22 #626, decision D-034; design only. The owner chooses Q-M01 and Q-M02 before any phase starts, and every phase is Ask First: each adds a migration, a contract change or a new system-scope read, listed in *Ask First items*.)
+**Status**: Ready for implementation (design approved by the owner on 2026-11-23, PR #644: answers to Q-M01…Q-M08; issue #627, epic E22 #626, decision D-034. Every phase stays Ask First for its migrations and destructive steps unless an approval is recorded on its story, listed in *Ask First items*.)
 
 ## TLDR
 
 D-034 (2026-11-22) puts many clubs on one production instance, updated with one deploy: about 1,000 clubs, 150,000
 participants and 300,000 accounts per instance, then identical cells. This spec says how. **One club = one tenant with
-one organization** (recommended; DD-02 today says "1 tenant + 1 organization per instance"). A club is reached by its
+one organization** (owner's decision Q-M01, 2026-11-23; DD-02 said "1 tenant + 1 organization per instance"). A club is reached by its
 **own address**, `<public_slug>.<club domain>`, which replaces `VEREINO_HOME_CLUB_SLUG` and the single `APP_URL` in
 e-mails. The 19 schedules each club registers today become **one sweep job per job type**, which visits only the clubs
 with due work, in each club's time zone. One command creates a club; another exports it and deletes it after notice.
@@ -87,7 +87,7 @@ joins, and every guardian who opens a link from an e-mail.
   two clubs has two accounts with the same e-mail; linking them is D-014's work.
 - Pricing, invoicing clubs, and the entity that signs the processing agreements (D-034 "Not decided here").
 - Self-service club sign-up. The maintainers create clubs.
-- Custom club domains (`www.klub.pl`) in the first release; Q-M02 recommends adding them later through
+- Custom club domains (`www.klub.pl`) in the first release; the owner decided to add them later (Q-M02, 2026-11-23) through
   `customer_accounts:domain_mapping` or an own table.
 - Moving a club between cells, and a cell router. A club is created in one cell and stays there; each cell has its own
   club domain (`<slug>.c1.<domain>` or its own DNS records).
@@ -101,15 +101,15 @@ joins, and every guardian who opens a link from an e-mail.
 
 | Decision | Rationale | Alternative considered | Why rejected / deferred |
 |---|---|---|---|
-| **DD-M01** One club = one `directory:tenant` with one `directory:organization` (amends DD-02 of the club management spec; owner's choice Q-M01) | Strongest isolation the platform has: every platform query, cache key, query index row and audit row is tenant-scoped. Each tenant has its own data-encryption key (`kms.createTenantDek`, `auth/lib/setup-app.js:262-267`), so deleting a club can destroy its key. Roles are unique per `(tenantId, name)` (`auth/data/entities.js:93`), so `vereino_payer`, `vereino_treasurer`, `vereino_member` keep their keys in every club (protected contract, `BACKWARD_COMPATIBILITY.md`). The scheduler cap of 100 active schedules per tenant (`OM_SCHEDULER_MAX_ACTIVE_SCHEDULES_PER_TENANT`) is not reached. A club's export and deletion are "everything with this `tenant_id`" | Many clubs as organizations under one tenant | Roles are tenant-wide: one `vereino_member` role would serve every club, and a role ACL with `organizationsJson` null or `__all__` sees **every** organization of the tenant (`rbacService.js:358-361`), so a missing restriction leaks across clubs (fail-open). One encryption key for all clubs; no crypto-shredding. The 100-schedule cap is hit at the 6th club (until phase 1). Gain — one account across clubs (D-014) — is out of scope |
-| **DD-M02** The club address is a subdomain of one club domain, `<public_slug>.<VEREINO_CLUB_DOMAIN>`, resolved from the existing `club_core_club_settings.public_slug` (owner's choice Q-M02) | Reuses the existing globally unique slug and the existing approved system-scope lookup (D-024/D-026, `lookupClubByPublicSlug`, `club_core/data/queries.ts:77-89`): no new table, no new lookup key, one wildcard DNS record and certificate. The slug is already on notice boards and QR codes (`/p/<slug>`) | Enable `customer_accounts` and use `domain_mappings` for every club | `customer_accounts` brings the customer portal, its entities, migrations and ACL sync for a feature Vereino does not use; its resolver only accepts `active` mappings verified through Traefik (`resolveTenantContext.js:44-100`), and Railway is not Traefik. Worth it only for custom domains (deferred) |
+| **DD-M01** One club = one `directory:tenant` with one `directory:organization` (amends DD-02 of the club management spec; owner's decision Q-M01, 2026-11-23) | Strongest isolation the platform has: every platform query, cache key, query index row and audit row is tenant-scoped. Each tenant has its own data-encryption key (`kms.createTenantDek`, `auth/lib/setup-app.js:262-267`), so deleting a club can destroy its key. Roles are unique per `(tenantId, name)` (`auth/data/entities.js:93`), so `vereino_payer`, `vereino_treasurer`, `vereino_member` keep their keys in every club (protected contract, `BACKWARD_COMPATIBILITY.md`). The scheduler cap of 100 active schedules per tenant (`OM_SCHEDULER_MAX_ACTIVE_SCHEDULES_PER_TENANT`) is not reached. A club's export and deletion are "everything with this `tenant_id`" | Many clubs as organizations under one tenant | Roles are tenant-wide: one `vereino_member` role would serve every club, and a role ACL with `organizationsJson` null or `__all__` sees **every** organization of the tenant (`rbacService.js:358-361`), so a missing restriction leaks across clubs (fail-open). One encryption key for all clubs; no crypto-shredding. The 100-schedule cap is hit at the 6th club (until phase 1). Gain — one account across clubs (D-014) — is out of scope |
+| **DD-M02** The club address is a subdomain of one club domain, `<public_slug>.<VEREINO_CLUB_DOMAIN>`, resolved from the existing `club_core_club_settings.public_slug` (owner's decision Q-M02, 2026-11-23: subdomains now, custom domains later; `/p/<slug>` keeps working) | Reuses the existing globally unique slug and the existing approved system-scope lookup (D-024/D-026, `lookupClubByPublicSlug`, `club_core/data/queries.ts:77-89`): no new table, no new lookup key, one wildcard DNS record and certificate. The slug is already on notice boards and QR codes (`/p/<slug>`) | Enable `customer_accounts` and use `domain_mappings` for every club | `customer_accounts` brings the customer portal, its entities, migrations and ACL sync for a feature Vereino does not use; its resolver only accepts `active` mappings verified through Traefik (`resolveTenantContext.js:44-100`), and Railway is not Traefik. Worth it only for custom domains (deferred) |
 | **DD-M03** Path-based `/p/<slug>` pages stay and redirect to the club's address when `VEREINO_CLUB_DOMAIN` is set | Printed links and QR codes keep working | Remove `/p/<slug>` | Breaks printed material; protected route |
 | **DD-M04** One sweep schedule per job type, registered once per instance (system scope, `tenantId` null), reading a new job-state table `foundation_club_jobs` (one row per club and job type with `next_due_at`); the sweep enqueues one per-club job with the club's `tenantId`/`organizationId` on the existing `<module>-<name>` queue, with BullMQ `jobId` = `<job_key>:<organization_id>:<next_due_at>` so a re-enqueue of the same due run is a no-op | Schedule rows become constant (19 instead of 19 × N); the sweep reads one index (`job_key, next_due_at`) and visits only due clubs; per-club handlers keep their scope contract (payload `tenantId`/`organizationId`); the only worker change is the optional return value of DD-M06 | A per-club schedule with jitter | Still 19 × N rows and 1.3 million runs a day; does not fix the time-zone drift |
 | **DD-M05** Time-of-day jobs keep each club's local time: `next_due_at` is the next local `HH:MM` in the club's `timezone` plus a stable offset of 0–20 minutes from a hash of the organization id; interval jobs get a stable offset within their interval | Spreads 1,000 clubs' 06:00 charge generation over 20 minutes and the 15-minute jobs over 15 minutes; a time-zone change recomputes `next_due_at` in one place for every job (fixes the drift of `facilities` and `people`) | A random delay per run | Not reproducible in tests; a club's jobs would wander |
 | **DD-M06** "Has work" is decided by the module, not the sweep: a per-club worker **may** return `{ nextDueAt }` (for example the earliest rental end), stored as `next_due_at` but never later than the job type's maximum interval (safety net: 24 h for interval jobs, the next local run for daily jobs); a worker that returns nothing gets its declared interval. A module may also wake a club early with `foundationClubJobs.wake(scope, jobKey, at)` from a command. `next_due_at` is never null, so a forgotten `wake` delays a club by at most the maximum interval | A club without rentals is not visited every 15 minutes; no cross-module query in the sweep | The sweep queries each module's tables across tenants | Cross-module and cross-tenant reads in one place; violates module boundaries |
-| **DD-M07** The sweeps are new system-scope operations (`organizationId: null`), listed exhaustively: **(a)** the job sweep's claim statement on `foundation_club_jobs` — it reads **and writes** (sets `lease_until`) and returns only `(tenant_id, organization_id, job_key, next_due_at)`; **(b)** the e-mail dispatch sweep that replaces the per-club `foundation:dispatch-sweep`, which selects only `(id, tenant_id, organization_id)` of due or stalled rows of the dispatch table, never recipients or content. After either, every further query narrows to that club. Both need the owner's approval as exceptions like D-024/D-027, recorded in `AGENTS.md` (Q-M05) | Sweeping without a club in context is the point; the statements return ids and keys only, no personal data | Iterate tenants through `directory` and probe each | 1,000 probes per pass per job type; still system scope |
+| **DD-M07** The sweeps are new system-scope operations (`organizationId: null`), listed exhaustively: **(a)** the job sweep's claim statement on `foundation_club_jobs` — it reads **and writes** (sets `lease_until`) and returns only `(tenant_id, organization_id, job_key, next_due_at)`; **(b)** the e-mail dispatch sweep that replaces the per-club `foundation:dispatch-sweep`, which selects only `(id, tenant_id, organization_id)` of due or stalled rows of the dispatch table, never recipients or content. After either, every further query narrows to that club. Both approved by the owner on 2026-11-23 (Q-M05) as exceptions next to D-024/D-027, returning ids and scope only; phase 1 records them in `AGENTS.md` with the code that runs them | Sweeping without a club in context is the point; the statements return ids and keys only, no personal data | Iterate tenants through `directory` and probe each | 1,000 probes per pass per job type; still system scope |
 | **DD-M08** `club_core create-club` creates the tenant and organization through the platform's `setupInitialTenant` path (the same one `mercato auth setup` uses), then runs every module's `seedDefaults`, `people bootstrap-admin` and the job-state rows; idempotent by slug | Reuses the platform path that creates the tenant's encryption key and runs `onTenantCreated`; one command instead of five | A Vereino-only insert of tenant and organization rows | Would skip the encryption key and platform hooks |
-| **DD-M09** Offboarding: `club_core export-club` writes one archive (one JSON file per module via optional contributors `club_core.clubExport.<module>`, plus attachment files); `club_core delete-club` after the notice period deletes the explicit target list of *Deletion targets* below. Crypto-shredding (destroying the tenant's key so encrypted columns in old backups become unreadable) is possible **only with a key store such as Vault**: production uses `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, whose `DerivedKmsService` re-derives every tenant key from the master secret and the tenant id, and the platform KMS has no key deletion (`shared/lib/encryption/kms.js`). Without a key store, backups keep a deleted club until they expire (Q-M07) | The contributor pattern is the one of the person data export spec (`people.dataExport.<module>`); an explicit target list instead of "every row with the tenant id" because sessions, password resets, user roles, the search index, Redis/BullMQ keys and attachment storage are not all keyed by `tenant_id` | Soft delete only | Data stays forever; a processor must delete on termination (GDPR art. 28(3)(g)) |
+| **DD-M09** Offboarding: `club_core export-club` writes one archive (one JSON file per module via optional contributors `club_core.clubExport.<module>`, plus attachment files); `club_core delete-club` after the notice period deletes the explicit target list of *Deletion targets* below. Crypto-shredding (destroying the tenant's key so encrypted columns in old backups become unreadable) is possible **only with a key store such as Vault**: production uses `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, whose `DerivedKmsService` re-derives every tenant key from the master secret and the tenant id, and the platform KMS has no key deletion (`shared/lib/encryption/kms.js`). Without a key store, backups keep a deleted club until they expire. Owner's decision Q-M07 (2026-11-23): derived per-tenant keys for now; a key store (Vault or a managed KMS) is a **pre-condition before a second club's real data** | The contributor pattern is the one of the person data export spec (`people.dataExport.<module>`); an explicit target list instead of "every row with the tenant id" because sessions, password resets, user roles, the search index, Redis/BullMQ keys and attachment storage are not all keyed by `tenant_id` | Soft delete only | Data stays forever; a processor must delete on termination (GDPR art. 28(3)(g)) |
 | **DD-M10** Per-club limits: authenticated rate limits keyed by `tenantId` + route; public routes keyed by IP + club; one running import per club and a row cap per import; e-mail fairness by a per-club token bucket inside the worker's global 8/s (round-robin across clubs with queued mail) | One club's burst cannot fill the shared bucket; uses the platform limiter (`@open-mercato/shared/lib/ratelimit`) with `RATE_LIMIT_STRATEGY=redis` so replicas share counters | A separate queue per club | 1,000 queues; the worker cannot fairly poll them |
 | **DD-M11** Deploy: the role-ACL sync runs only when the instance's role-feature defaults changed: a wrapper hashes the merged `defaultRoleFeatures` of every module **plus the installed `@open-mercato/core` version** (a platform upgrade may change `ensureDefaultRoleAcls` itself) and compares it with the hash stored after the last successful sync; `--force` always syncs | Most releases change no ACL; the sync over 1,000 tenants (estimated 30,000–60,000 queries) then costs nothing | Always sync; sync only the tenants touched | Deploy time grows with clubs; per-tenant tracking adds state for no gain |
 | **DD-M12** Beyond the targets: identical cells (same image, same pipeline, own database, own club domain); a club lives in one cell | D-034 | Shard one database by tenant | Operationally heavier than another identical cell at this size |
@@ -333,7 +333,7 @@ due or stalled rows, returning ids and scope only (DD-M07 (b)); each found row i
   and is the release condition for the second real club. The hostname never widens scope (see *Users*). The sweep's
   system-scope read returns only ids and keys (DD-M07).
 - **Sensitive data:** per-tenant encryption keys. With a key store, deletion destroys the key (DD-M09) and encrypted
-  columns in backups become unreadable; with today's derived keys it cannot (Q-M07). Either way plaintext columns in
+  columns in backups become unreadable; with today's derived keys it cannot. Q-M07 (2026-11-23) keeps derived keys for now and makes a key store a pre-condition before a second club's real data. Either way plaintext columns in
   backups expire only with backup retention (`docs/ops/backups.md`), which the processing agreement must state. The export archive contains the club's personal data: written to a private path,
   logged in the audit log, never e-mailed as an attachment.
 - **Abuse and failure modes:** slug enumeration through subdomains is equal to today's public `/p/<slug>` pages;
@@ -359,13 +359,13 @@ due or stalled rows, returning ids and scope only (DD-M07 (b)); each found row i
 
 ## Implementation Phases
 
-Each phase is one story of epic E22, depends on the owner's answers to Q-M01 and Q-M02, and is Ask First (see the
-list below). E22-S02 (#628, isolation guard) and E22-S08 (#634, release process) are separate stories outside these
+Each phase is one story of epic E22, builds on the owner's decisions of 2026-11-23 (Q-M01…Q-M08), and stays Ask First
+for its migrations and destructive steps (see the list below). E22-S02 (#628, isolation guard) and E22-S08 (#634, release process) are separate stories outside these
 phases.
 
 ### Phase 1 — One sweep job per job type (E22-S03, #629)
 
-- **Depends on:** Q-M01 answered; Q-M05 approved.
+- **Depends on:** Q-M01 (tenant per club) and Q-M05 (sweep statements approved), both decided 2026-11-23.
 - **Outcome:** the scheduler holds 19 rows whatever the number of clubs; every job keeps running per club in its time
   zone.
 - **Why this order / value delivered:** removes the largest scaling limit and the time-zone drift before a second club
@@ -393,10 +393,13 @@ phases.
 - **Tests:** TEST-M01, TEST-M10
 - **Validation:** `yarn verify`; `yarn test:integration:vereino --filter TEST-M01`
 - **Exit gate:** a second (synthetic) club created on staging with one command; the isolation guard (#628) green.
+- **Pre-condition before a second club's real data (Q-M07, 2026-11-23):** a key store (Vault or a managed KMS) holds
+  the tenants' data-encryption keys in production. A synthetic club on staging does not need it; onboarding a second
+  real club does, together with the isolation guard (#628).
 
 ### Phase 3 — The club from the request hostname (E22-S05, #631)
 
-- **Depends on:** Phase 2; Q-M02 answered; the domain with a wildcard record (owner action, D12).
+- **Depends on:** Phase 2; Q-M02 (subdomains, decided 2026-11-23); the domain with a wildcard record (owner action, D12).
 - **Outcome:** each club at its own address; e-mails link there and carry the club's name.
 - **Deliverables:** `clubFromHost` helper used by `home-route.ts`, `sign-in-club.ts`, public pages and routes; neutral
   landing page; `/p/<slug>` redirect; `foundation` club base URL helper used by `email-render.ts`, `composer.ts`,
@@ -412,11 +415,12 @@ phases.
 
 ### Phase 4 — Per-club export, deletion and a restore drill (E22-S06, #632)
 
-- **Depends on:** Phase 2; Q-M06 and Q-M07 answered.
+- **Depends on:** Phase 2; Q-M06 (30 days' notice, slug reserved 90 days) and Q-M07 (key store before a second club's
+  real data), decided 2026-11-23.
 - **Outcome:** a club can leave with its data and be deleted completely.
 - **Deliverables:** `offboard-club`, `export-club`, `delete-club`; contributors `club_core.clubExport.<module>` and
   `club_core.clubDelete.<module>` in every module; the platform-table and non-SQL deletion steps of *Deletion
-  targets*; key destruction only if Q-M07 brings a key store; offboarding banner and
+  targets*; key destruction through the key store once it exists (Q-M07); offboarding banner and
   export route; a restore drill of one club from a backup into a scratch database, documented in
   `docs/ops/backups.md`.
 - **Requirements closed:** REQ-M06
@@ -440,11 +444,11 @@ phases.
 
 | Item | Phase | Kind |
 |---|---|---|
-| Q-M01 tenant per club (amends DD-02) | all | architecture |
+| Q-M01 tenant per club (amends DD-02) — design approved 2026-11-23 | all | architecture |
 | `foundation_club_jobs` table | 1 | migration |
-| System-scope sweep statements (DD-M07 (a) job claim, (b) dispatch sweep; exceptions like D-024/D-027, recorded in `AGENTS.md`) | 1 | security rule |
+| System-scope sweep statements (DD-M07 (a) job claim, (b) dispatch sweep; exceptions like D-024/D-027, recorded in `AGENTS.md`) — approved 2026-11-23 (Q-M05) | 1 | security rule |
 | Overrides of platform login/reset and notification base URL (or upstream changes) | 3 | platform contract |
-| Hard deletion from platform-owned tables; a key store (Vault or managed KMS) if Q-M07 chooses it | 4 | platform contract, infrastructure |
+| Hard deletion from platform-owned tables; a key store (Vault or managed KMS), required by Q-M07 before a second club's real data | 4 | platform contract, infrastructure |
 | Removal of per-club schedules (`retire-club-schedules`) on staging and production | 1 | data change on a deployed environment |
 | Pre-deploy ACL-sync wrapper | 2 | deploy contract |
 | `VEREINO_CLUB_DOMAIN`, deprecation of `VEREINO_HOME_CLUB_SLUG`, `/p/<slug>` redirect | 3 | config and route contract |
@@ -452,7 +456,7 @@ phases.
 | `club_core_club_settings` offboarding columns; the export route and feature use | 4 | migration, route |
 | Hard deletion of a club and destruction of its key | 4 | destructive operation |
 | `RATE_LIMIT_STRATEGY=redis` in production | 5 | infrastructure |
-| Enabling `customer_accounts` (only if Q-M02 picks custom domains now) | 3 | new module + migrations |
+| Enabling `customer_accounts` (not needed: Q-M02 chose subdomains; only for custom domains later) | 3 | new module + migrations |
 
 ## Requirement Traceability
 
@@ -500,7 +504,7 @@ phases.
 | Time-zone and DST errors | job at the wrong hour or twice | due-time function with 100 % unit coverage over DST dates; TEST-M05 | low |
 | Deleting a club misses a table or store | data kept after termination | explicit *Deletion targets*; contributors per module; TEST-M07 catalog check for `tenant_id` tables plus each user-keyed and non-SQL target | a new platform store not on the list |
 | Backups keep a deleted club's data | retention beyond termination | key destruction only with a key store (Q-M07); backup retention stated in the DPA | until backups expire |
-| No key store in production (derived keys) | no crypto-shredding; one master secret protects every club | Q-M07; Vault or a managed KMS before phase 4 if chosen | accepted if Q-M07 says so |
+| No key store in production (derived keys) | no crypto-shredding; one master secret protects every club | Q-M07 (2026-11-23): derived keys accepted until a second club's real data; a key store is a pre-condition for it | until the key store lands |
 | Wildcard domain setup on Railway | phase 3 blocked until DNS is ready | Railway supports wildcard custom domains (wildcard CNAME plus a delegated `_acme-challenge` record); owner action D12 | phase 3 delay |
 | Platform e-mails and reset origin check use one base URL | links in platform-sent mail point at the wrong host; reset refused on club hosts | upstream change or override (Ask First), TEST-M04 | until the platform change lands |
 | Two accounts for a person in two clubs | inconvenience for that person | D-014 later | accepted |
@@ -536,22 +540,22 @@ phases.
 | UI contracts identify references, canonical components, and theme/state coverage | pass | three small surfaces |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | *Implementation Phases* |
 
-Verdict: `Blocked — Q-M01, Q-M02, Q-M05, Q-M06 and Q-M07 need the owner's decision; every phase is Ask First.`
+Verdict: `Ready for implementation — the owner answered Q-M01…Q-M08 on 2026-11-23; each phase stays Ask First for its migrations and destructive steps.`
 
 ## Open Questions
 
-The owner's choices. Each carries a recommendation; none is decided by this PR.
+All answered by the owner on 2026-11-23 (PR #644). Q-M03, Q-M04 and Q-M08 take the recommendation; the owner may change them later.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-M01 | Is a club **one tenant with one organization** (recommended, DD-M01) or **one organization inside one shared tenant**? | Władek Kuć | yes — all phases | pending. Recommended: tenant per club. Organization per club means one tenant-wide role per role key (`vereino_member` shared by every club), a fail-open organization filter on roles (`organizationsJson` null = every club), one encryption key for all clubs, and the scheduler's 100-schedule cap at the 6th club; its only gain, one account across clubs, is D-014 and out of scope. Deploy cost of the ACL sync with 1,000 tenants is handled by DD-M11 |
-| Q-M02 | Which address scheme: **subdomain** `<slug>.<club domain>` (recommended), **path** `<domain>/<slug>` only (today's `/p/<slug>`), or **custom domains** now (`customer_accounts:domain_mapping`)? | Władek Kuć | yes — phase 3 | pending. Recommended: subdomains now, custom domains later; needs a domain with a wildcard DNS record (owner action, D12 on hold) |
-| Q-M03 | Sender: the club's name as display name on one verified Vereino address ("UKS Orlik via Vereino" `<no-reply@…>`, recommended), or each club's own sending domain? | Władek Kuć | no — phase 3 default applies | pending. Own sending domains need per-club DNS verification at the provider |
-| Q-M04 | Per-club limit defaults: 600 authenticated requests per minute per club, 1 running import of at most 5,000 rows, 2 e-mails per second per club inside the shared 8/s? | Władek Kuć | no — phase 5 tunes them | pending |
-| Q-M05 | Approve the two system-scope sweep statements of DD-M07 — (a) the job claim on `foundation_club_jobs`, which reads and sets a lease, and (b) the dispatch sweep over due e-mail rows, both returning ids and scope only — as recorded exceptions next to D-024/D-027? | Władek Kuć | yes — phase 1 | pending |
-| Q-M06 | Notice period before deletion: 30 days (recommended), and slug reserved 90 days after deletion? | Władek Kuć | yes — phase 4 | pending; the processing agreement (DPA signer open) may set it |
-| Q-M07 | Key store: keep derived per-tenant keys from `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (no crypto-shredding; deleted clubs stay in backups until they expire), or add Vault or a managed KMS before phase 4 (recommended before real data of a second club)? | Władek Kuć | yes — phase 4 | pending; also an infrastructure cost |
-| Q-M08 | Keep this one umbrella spec, or split phase 1 (sweep) and phase 4 (offboarding) into their own specs? | Władek Kuć | no | pending. Default: one umbrella spec, because #627 asks for one spec whose phasing feeds E22-S03…S07; a phase may be split out when it is picked up |
+| Q-M01 | Is a club **one tenant with one organization** (recommended, DD-M01) or **one organization inside one shared tenant**? | Władek Kuć | yes — all phases | decided 2026-11-23: **one tenant per club** (DD-M01; DD-02 of the club management spec amended accordingly) |
+| Q-M02 | Which address scheme: **subdomain** `<slug>.<club domain>` (recommended), **path** `<domain>/<slug>` only (today's `/p/<slug>`), or **custom domains** now (`customer_accounts:domain_mapping`)? | Władek Kuć | yes — phase 3 | decided 2026-11-23: **subdomains now** (`<public_slug>.<club domain>`), custom domains later; `/p/<slug>` keeps working (DD-M02) |
+| Q-M03 | Sender: the club's name as display name on one verified Vereino address ("UKS Orlik via Vereino" `<no-reply@…>`, recommended), or each club's own sending domain? | Władek Kuć | no — phase 3 default applies | decided 2026-11-23: recommendation applies — the club's display name on one Vereino sender; the owner may change it later |
+| Q-M04 | Per-club limit defaults: 600 authenticated requests per minute per club, 1 running import of at most 5,000 rows, 2 e-mails per second per club inside the shared 8/s? | Władek Kuć | no — phase 5 tunes them | decided 2026-11-23: recommendation applies — 600 req/min, 1 import ≤ 5,000 rows, 2 e-mails/s; phase 5 tunes them |
+| Q-M05 | Approve the two system-scope sweep statements of DD-M07 — (a) the job claim on `foundation_club_jobs`, which reads and sets a lease, and (b) the dispatch sweep over due e-mail rows, both returning ids and scope only — as recorded exceptions next to D-024/D-027? | Władek Kuć | yes — phase 1 | decided 2026-11-23: **approved** — both statements of DD-M07 as exceptions next to D-024/D-027, returning ids and scope only; recorded in `AGENTS.md` by phase 1 |
+| Q-M06 | Notice period before deletion: 30 days (recommended), and slug reserved 90 days after deletion? | Władek Kuć | yes — phase 4 | decided 2026-11-23: **30 days** notice before deletion; a deleted club's slug stays reserved **90 days** (BR-M4) |
+| Q-M07 | Key store: keep derived per-tenant keys from `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (no crypto-shredding; deleted clubs stay in backups until they expire), or add Vault or a managed KMS before phase 4 (recommended before real data of a second club)? | Władek Kuć | yes — phase 4 | decided 2026-11-23: **derived per-tenant keys for now**; a key store (Vault or managed KMS) is a **pre-condition before a second club's real data** (phase 2 pre-condition, DD-M09) |
+| Q-M08 | Keep this one umbrella spec, or split phase 1 (sweep) and phase 4 (offboarding) into their own specs? | Władek Kuć | no | decided 2026-11-23: recommendation applies — one umbrella spec; a phase may be split out when it is picked up |
 
 ## Changelog
 
