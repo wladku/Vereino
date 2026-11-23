@@ -88,7 +88,14 @@ export type ClubProfile = {
   contexts: string[]
   /** The member's resolved interface locale (DD-34). */
   locale: string
-  club: { shortName: string | null; defaultLocale: string; timezone: string; logoUrl: string | null }
+  club: {
+    shortName: string | null
+    defaultLocale: string
+    timezone: string
+    logoUrl: string | null
+    /** The club's colour and the text colour on it (#486); null uses the default. */
+    accent: { color: string; foreground: '#000000' | '#ffffff' } | null
+  }
   /** Whether the person holds `payments.view_own` and is an adult (payments R10): the Payments tab (#258). */
   paymentsVisible: boolean
   /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
