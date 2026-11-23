@@ -24,6 +24,7 @@ import { getSecurityEmailBaseUrl } from '@open-mercato/shared/lib/url'
 import { accountState, type AccountState } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
 import { emailSender } from './email-sender'
+import { renderLocalized } from './localized'
 
 const logger = createLogger('foundation').child({ component: 'accounts' })
 
@@ -225,45 +226,58 @@ export type AccountInvitationResult = {
  * Invites the first administrator of a club the operator created (many clubs spec J-M01 step 3; #630): the platform's
  * own invitation — a one-time link to set the password, valid 48 hours (`INVITE_TOKEN_TTL_MS`), stored only as its
  * hash, the same row the platform's "Resend invite" writes — sent in the club's name. The link is tied to the user
- * row, not looked up by e-mail, so it reaches this user even when the address has an account in another club. No
- * password is ever set or shown by the operator. A user outside `scope` answers `scope_denied`.
+ * row, not looked up by e-mail, so it reaches this user even when the address has an account in another club; earlier
+ * unused links of the user stop working. Rendered in `locale` (the club's language). No password is ever set or shown
+ * by the operator. A user outside `scope` answers `scope_denied`.
  */
 export async function sendAccountInvitation(
   container: AwilixContainer,
   scope: AccountScope,
   userId: string,
   clubName: string,
+  locale: string | null,
 ): Promise<AccountInvitationResult> {
-  const user = await scopedUser(container, scope, userId)
-  if (!user) return foundationErrors.throw('scope_denied')
   const em = container.resolve<EntityManager>('em').fork()
+  const user = await findOneWithDecryption(
+    em,
+    User,
+    { id: userId, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
+    {},
+    scope,
+  )
+  if (!user) return foundationErrors.throw('scope_denied')
   const rawToken = generateAuthToken()
   const expiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS)
+  // As the platform's "Resend invite": every earlier unused link stops working, so only the newest one sets the password.
+  await em.nativeUpdate(PasswordReset, { user: user.id, usedAt: null }, { usedAt: new Date() })
   await em
     .persist(em.create(PasswordReset, { user, token: hashAuthToken(rawToken), expiresAt, createdAt: new Date() }))
     .flush()
   const inviteUrl = withTenantHintUrl(`${getSecurityEmailBaseUrl()}/reset/${rawToken}`, user.tenantId)
-  const { translate } = await resolveTranslations()
   const params = { club: clubName }
-  const copy = {
-    preview: translate('foundation.account.clubInvitation.preview', 'Set up your account', params),
-    title: translate('foundation.account.clubInvitation.title', 'You are the administrator of {club}', params),
-    body: translate(
-      'foundation.account.clubInvitation.body',
-      'An account was created for you as the administrator of {club}. Click the link below to set your password. This link will expire in 48 hours.',
-      params,
-    ),
-    cta: translate('foundation.account.clubInvitation.cta', 'Set up your password', params),
-    hint: translate(
-      'foundation.account.clubInvitation.hint',
-      'If you did not expect this invitation, you can safely ignore this e-mail.',
-      params,
-    ),
-  }
+  // The CLI has no request, so the club's language is passed explicitly (P-16).
+  const { subject, copy } = await renderLocalized(locale, (translate) => ({
+    subject: translate('foundation.account.clubInvitation.subject', 'Your invitation to {club}', params),
+    copy: {
+      preview: translate('foundation.account.clubInvitation.preview', 'Set up your account', params),
+      title: translate('foundation.account.clubInvitation.title', 'You are the administrator of {club}', params),
+      body: translate(
+        'foundation.account.clubInvitation.body',
+        'An account was created for you as the administrator of {club}. Click the link below to set your password. This link will expire in 48 hours.',
+        params,
+      ),
+      cta: translate('foundation.account.clubInvitation.cta', 'Set up your password', params),
+      hint: translate(
+        'foundation.account.clubInvitation.hint',
+        'If you did not expect this invitation, you can safely ignore this e-mail.',
+        params,
+      ),
+    },
+  }))
   try {
     await emailSender(container).send({
       to: user.email,
-      subject: translate('foundation.account.clubInvitation.subject', 'Your invitation to {club}', params),
+      subject,
       // Called, not `createElement`-ed, as the platform does: the e-mail capture of test mode reads the expanded tree.
       react: InviteUserEmail({ inviteUrl, copy }),
       tenantId: scope.tenantId,

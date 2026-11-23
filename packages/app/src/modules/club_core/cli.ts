@@ -98,8 +98,12 @@ const createClubCommand: ModuleCli = {
     }
     process.stdout.write(`${JSON.stringify(outcome)}\n`)
     // The platform CLI exits 1 only on a thrown error (`process.exitCode` is not passed on).
-    if (outcome.status === 'refused')
+    if (outcome.status === 'refused') {
       throw new Error(`[internal] create-club refused, nothing was written: ${outcome.reason}`)
+    }
+    if (outcome.status === 'incomplete') {
+      throw new Error(`[internal] create-club: the club stopped halfway; finish it with --tenant and --org`)
+    }
   },
 }
 

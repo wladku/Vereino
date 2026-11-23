@@ -44,6 +44,7 @@ It writes nothing and prints one JSON line:
 |---|---|---|
 | `dry-run`, `problems: []` | The slug is free and the e-mail has no account | Step 2 |
 | `dry-run`, `problems: ["admin_email_taken"]` | The e-mail already has an account | Ask the club for another address |
+| `dry-run`, `problems: ["organization_slug_taken"]` | An organization on the instance already uses the slug | Agree another slug |
 | `exists` | A club already holds the slug | Stop: agree another slug, or the club exists already (its ids are printed) |
 | `invalid` (exit 1) | An option is missing or malformed (`problems` names it, e.g. `slug` `reserved`) | Fix the option |
 
@@ -58,7 +59,7 @@ The same command without `--dry-run`. In one run it:
    features, the dictionaries such as the PZPN age categories, and the club's scheduled jobs (role expiry, import
    purge, life cycle, occurrences, reminders, charges, rentals, e-mail dispatch, …);
 4. makes the administrator the club's first `club_admin` (`people.persons.bootstrap_admin`);
-5. e-mails the administrator an invitation in the club's name: a one-time link to set the password, valid 48 hours.
+5. e-mails the administrator an invitation in the club's name and language (`--locale`): a one-time link to set the password, valid 48 hours.
    No password is ever typed on the command line or shown to the operator;
 6. emits `club_core.club.created`.
 
@@ -70,7 +71,8 @@ the e-mail) into the club's onboarding issue.
 |---|---|---|
 | `created`, no `invitation.warning` | Done | Step 3 |
 | `created`, `invitation.warning: "invite_email_failed"` | The club exists; the e-mail did not leave | Check the mail provider (`monitoring.md`), then run the finish command of *A run that stopped halfway* |
-| `exists` (exit 0) | A club already holds the slug; **nothing was changed** | Running the command twice is safe; check the printed ids are the club you meant |
+| `exists` (exit 0) | A finished club already holds the slug; **nothing was changed** | Running the command twice is safe; check the printed ids are the club you meant |
+| `incomplete`, `step: "unknown"` (exit 1) | A club holds the slug but its first run stopped before it had an administrator | Finish it: *A run that stopped halfway* below |
 | `refused`, `admin_email_taken` / `organization_slug_taken` (exit 1) | Nothing was written | Another e-mail; another slug |
 | `incomplete` (exit 1) | The tenant was created but the named `step` failed; `tenantId` and `organizationId` are printed | Finish it: *A run that stopped halfway* below |
 
@@ -125,8 +127,9 @@ Send the administrator, in Polish and English as they prefer:
 
 ## A run that stopped halfway
 
-`status: "incomplete"` (exit 1) names the `step` that failed (`settings`, `module defaults`, `club administrator`,
-`invitation` or `event`) and prints the club's `tenantId` and `organizationId`; the earlier steps are done. Read the
+`status: "incomplete"` (exit 1) names the `step` that failed (`tenant` — the platform setup after the tenant and
+organization were created —, `settings`, `module defaults`, `club administrator`, `invitation`, `event`, or `unknown`
+for a re-run that found a half-created club) and prints the club's `tenantId` and `organizationId`; the earlier steps are done. Read the
 error on stderr and fix its cause (database, mail provider). Then run the **same command with the printed ids**:
 
 ```bash
@@ -138,16 +141,18 @@ yarn mercato club_core create-club \
 ```
 
 It finds the organization and the administrator inside that tenant, runs every step after the tenant again — each is
-idempotent — and prints `status: "completed"`. The invitation goes out again only while the administrator has no
-password. It refuses (exit 1, nothing written) with `organization_not_found`, `admin_not_found` (the e-mail is not a
+idempotent — and prints `status: "completed"`. On a club that already has its administrator it seeds nothing and
+emits nothing again: it only sends the invitation anew. The invitation goes out only while the administrator has no
+password, and a new one makes every earlier link stop working. After a failed `tenant` step the administrator's user
+may be missing (`admin_not_found`): ask the maintainers' lead before creating it by hand. It refuses (exit 1, nothing written) with `organization_not_found`, `admin_not_found` (the e-mail is not a
 user of that organization) or `public_slug_taken` (another club holds the slug). `--dry-run` checks the same without
 writing.
 
 Never run `create-club` again **without** the ids for a half-created club: the administrator's e-mail already has an
 account, so it is refused, and a run with another e-mail would create a second tenant.
 
-The administrator lost the invitation or it expired (48 hours): run the finish command above; while the
-administrator has no password it sends a new 48-hour link, and it changes nothing else.
+The administrator lost the invitation or it expired (48 hours): run the finish command above. While the
+administrator has no password it sends a new 48-hour link and the old one stops working; nothing else changes.
 
 ## Related
 

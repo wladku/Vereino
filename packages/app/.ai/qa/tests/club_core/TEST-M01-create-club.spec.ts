@@ -21,7 +21,7 @@ type Created = {
   organizationId: string
   address: string | null
   adminUserId: string
-  adminPersonId: string
+  adminPersonId: string | null
   roles: string[]
   schedules: string[]
   invitation: { expiresAt: string; warning?: string }
@@ -212,7 +212,7 @@ test('TEST-M01 create-club creates a working club per tenant, once', async ({ re
     expect(finish.output).toMatchObject({
       status: 'completed',
       tenantId: clubA.tenantId,
-      adminPersonId: clubA.adminPersonId,
+      adminPersonId: null,
       invitation: null,
     })
     expect((finish.output as unknown as Created).roles).toEqual(clubA.roles)
@@ -220,6 +220,35 @@ test('TEST-M01 create-club creates a working club per tenant, once', async ({ re
     const wrongClub = createClubCli([...clubArgs(slugB, emailA, `M01 A ${suffix}`), ...scopeA])
     expect(wrongClub.exitCode).toBe(1)
     expect(wrongClub.output).toEqual({ status: 'refused', reason: 'public_slug_taken' })
+
+    // A club that stopped halfway (here: club B before its administrator got the club role) is not "existing": a plain
+    // re-run answers `incomplete` with its ids (exit 1); the finish runs the remaining steps and sends a new invitation,
+    // which makes the earlier link stop working.
+    await withClient((client) =>
+      client.query(
+        `delete from user_roles where role_id in (select id from roles where tenant_id = $1 and name = 'vereino_club_admin')`,
+        [clubB.tenantId],
+      ),
+    )
+    const halfway = createClubCli(clubArgs(slugB, emailB, `M01 B ${suffix}`))
+    expect(halfway.exitCode).toBe(1)
+    expect(halfway.output).toMatchObject({
+      status: 'incomplete',
+      tenantId: clubB.tenantId,
+      organizationId: clubB.organizationId,
+    })
+    const finishB = createClubCli([
+      ...clubArgs(slugB, emailB, `M01 B ${suffix}`),
+      '--tenant',
+      clubB.tenantId,
+      '--org',
+      clubB.organizationId,
+    ])
+    expect(finishB.exitCode, JSON.stringify(finishB.output)).toBe(0)
+    expect(finishB.output).toMatchObject({ status: 'completed', adminPersonId: clubB.adminPersonId })
+    expect((finishB.output as unknown as Created).invitation?.warning).toBeUndefined()
+    expect(await pendingInvitations(clubB.adminUserId)).toHaveLength(1)
+    expect(createClubCli(clubArgs(slugB, emailB, `M01 B ${suffix}`)).output).toMatchObject({ status: 'exists' })
 
     // The club's jobs run: one run of the daily role sync, as the scheduler runs it.
     const sync = mercato(['people', 'sync-role-expiry', '--tenant', clubA.tenantId, '--org', clubA.organizationId]) as {

@@ -12,7 +12,7 @@
 // remaining idempotent steps for that organization only.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { Role, User } from '@open-mercato/core/modules/auth/data/entities'
+import { Role, User, UserRole } from '@open-mercato/core/modules/auth/data/entities'
 import { Organization } from '@open-mercato/core/modules/directory/data/entities'
 import { emailHashLookupValues } from '@open-mercato/core/modules/auth/lib/emailHash'
 import {
@@ -23,6 +23,7 @@ import {
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { getCliModules } from '@open-mercato/shared/modules/registry'
+import { roleCatalogue } from '@vereino/core'
 import { jobCommandContext, sendAccountInvitation, type AccountInvitationResult } from '@/modules/foundation'
 import { lookupClubByPublicSlug } from '../data/queries'
 import { eventsConfig } from '../events'
@@ -39,7 +40,8 @@ export type CreatedClub = {
   organizationId: string
   address: string | null
   adminUserId: string
-  adminPersonId: string
+  /** Null for `completed` on a finished club (only the invitation was sent again). */
+  adminPersonId: string | null
   roles: string[]
   schedules: string[]
   /** Null when the administrator already has a password (a finished club). */
@@ -49,6 +51,7 @@ export type CreatedClub = {
 export type CreateClubOutcome =
   | ({ status: 'created' | 'completed' } & CreatedClub)
   | { status: 'exists'; slug: string; tenantId: string; organizationId: string; address: string | null }
+  | { status: 'incomplete'; step: 'unknown'; slug: string; tenantId: string; organizationId: string }
   | { status: 'dry-run'; slug: string; address: string | null; problems: CreateClubRefusal['reason'][] }
 
 /** Why the command stops before writing anything. */
@@ -84,6 +87,45 @@ async function adminEmailTaken(container: AwilixContainer, email: string): Promi
     { tenantId: null, organizationId: null },
   )
   return user !== null
+}
+
+/** True when another organization already holds `slug` (the platform's own check in `setupInitialTenant`). */
+async function organizationSlugTaken(container: AwilixContainer, slug: string): Promise<boolean> {
+  const organization = await findOneWithDecryption(
+    emOf(container),
+    Organization,
+    { slug },
+    {},
+    { tenantId: null, organizationId: null },
+  )
+  return organization !== null
+}
+
+/** The organization `setupInitialTenant` created for `slug` before it failed, or null. */
+async function organizationBySlug(container: AwilixContainer, slug: string): Promise<ClubScope | null> {
+  const organization = await findOneWithDecryption(
+    emOf(container),
+    Organization,
+    { slug, deletedAt: null },
+    { populate: ['tenant'] },
+    { tenantId: null, organizationId: null },
+  )
+  return organization ? { tenantId: organization.tenant.id, organizationId: organization.id } : null
+}
+
+/**
+ * True once the club has its administrator: a user of the tenant holds the `vereino_club_admin` role, which only the
+ * last steps (module defaults, then `people.persons.bootstrap_admin`) give. A club without one stopped halfway.
+ */
+async function hasClubAdministrator(container: AwilixContainer, scope: ClubScope): Promise<boolean> {
+  const em = emOf(container)
+  const role = await em.findOne(Role, {
+    tenantId: scope.tenantId,
+    name: roleCatalogue.club_admin.authRole,
+    deletedAt: null,
+  })
+  if (!role) return false
+  return (await em.count(UserRole, { role, deletedAt: null })) > 0
 }
 
 /** Runs one step of a created club; a failure names the club and the step (`CreateClubIncompleteError`). */
@@ -153,7 +195,9 @@ async function finishClub(
   })
   const invitation = admin.hasPassword
     ? null
-    : await step(scope, 'invitation', () => sendAccountInvitation(container, scope, admin.id, options.name))
+    : await step(scope, 'invitation', () =>
+        sendAccountInvitation(container, scope, admin.id, options.name, options.locale),
+      )
   await step(scope, 'event', () =>
     eventsConfig.emit('club_core.club.created', { id: scope.organizationId, ...scope }, { persistent: true }),
   )
@@ -163,6 +207,31 @@ async function finishClub(
     address,
     adminUserId: admin.id,
     adminPersonId: boot.personId,
+    ...(await clubInventory(container, scope)),
+    invitation,
+  }
+}
+
+/** `--tenant/--org` on a finished club: the invitation again while the administrator has no password, nothing else. */
+async function reinviteClub(
+  container: AwilixContainer,
+  options: CreateClubOptions,
+  scope: ClubScope,
+  admin: { id: string; hasPassword: boolean },
+  address: string | null,
+) {
+  const invitation = admin.hasPassword
+    ? null
+    : await step(scope, 'invitation', () =>
+        sendAccountInvitation(container, scope, admin.id, options.name, options.locale),
+      )
+  return {
+    slug: options.slug,
+    ...scope,
+    address,
+    adminUserId: admin.id,
+    // `people` owns the person record; a finished club already reported it when it was created.
+    adminPersonId: null,
     ...(await clubInventory(container, scope)),
     invitation,
   }
@@ -206,6 +275,11 @@ export async function createClub(
   const existing = await lookupClubByPublicSlug(emOf(container), options.slug)
   const resume = options.resume
   if (existing && !resume) {
+    const scope = { tenantId: existing.tenantId, organizationId: existing.organizationId }
+    // A club whose first run stopped after its slug was stored is not "existing": it is finished with `--tenant/--org`.
+    if (!(await hasClubAdministrator(container, scope))) {
+      return { status: 'incomplete', step: 'unknown', slug: options.slug, ...scope }
+    }
     return {
       status: 'exists',
       slug: options.slug,
@@ -221,11 +295,16 @@ export async function createClub(
     const admin = await resumeTarget(container, options, resume)
     if ('status' in admin) return admin
     if (options.dryRun) return { status: 'dry-run', slug: options.slug, address, problems: [] }
+    if (await hasClubAdministrator(container, resume)) {
+      // A finished club: nothing is seeded or emitted again; only a lost or expired invitation is sent anew.
+      return { status: 'completed', ...(await reinviteClub(container, options, resume, admin, address)) }
+    }
     return { status: 'completed', ...(await finishClub(container, options, resume, admin, address)) }
   }
   if (options.dryRun) {
     const problems: CreateClubRefusal['reason'][] = []
     if (await adminEmailTaken(container, options.adminEmail)) problems.push('admin_email_taken')
+    if (await organizationSlugTaken(container, options.slug)) problems.push('organization_slug_taken')
     return { status: 'dry-run', slug: options.slug, address, problems }
   }
 
@@ -257,6 +336,10 @@ export async function createClub(
       return { status: 'refused', reason: 'admin_email_taken' }
     }
     if (error instanceof OrgSlugExistsError) return { status: 'refused', reason: 'organization_slug_taken' }
+    // The platform creates the tenant and organization first and the users, ACLs and hooks after, outside that
+    // transaction: name what exists so the operator can finish it.
+    const orphan = error instanceof CreateClubIncompleteError ? null : await organizationBySlug(container, options.slug)
+    if (orphan) throw new CreateClubIncompleteError(orphan, 'tenant', error)
     throw error
   }
   return {

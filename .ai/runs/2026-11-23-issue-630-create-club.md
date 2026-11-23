@@ -22,6 +22,13 @@
    by hand (the settings command needs a `club_admin`).
 6. Gate fixes: deprecated `emitEvent` → `eventsConfig.emit`; `[internal]` prefix for operator-only errors.
 
+7. Independent review (subagent, read-only) found six issues, all fixed in a second commit: earlier invitation links
+   stayed valid (now invalidated, as the platform's resend does); the invitation ignored `--locale` (now
+   `renderLocalized`); a half-created club re-ran as `exists` (now `incomplete`, exit 1, via a check for a user with
+   `vereino_club_admin` in the tenant); `--tenant/--org` on a finished club re-seeded ACLs and re-emitted the event
+   (now only re-invites); a failure inside `setupInitialTenant` printed no ids (now `incomplete`, step `tenant`, found
+   by the organization slug — the same lookup the platform makes); the dry run missed a taken organization slug.
+
 ## Decisions
 
 - **Phase 2 before phase 1.** `create-club` runs every module's `seedDefaults`, which today register the per-club
@@ -52,7 +59,8 @@ lib/club-onboarding.ts,lib/error-codes.ts,lib/__tests__/*,services/club-onboardi
 - `npx jest …/club-onboarding.test.ts --coverage` → 11 passed, 100 % lines/branches/functions.
 - `yarn test:integration:vereino --filter TEST-M01-create-club` → first run failed (`Expected: 1, Received: 0` on the
   reserved-slug exit code); after the fix 1 passed (three runs, last after the gate fixes). `--filter TEST-M01` alone
-  also matches the older `foundation/messaging/TEST-M01-audience` (passed too).
+  also matches the older `foundation/messaging/TEST-M01-audience` (passed too). After the review fixes TEST-M01 also
+  covers a half-created club (`incomplete`, then finish with a new invitation that replaces the old link): passed.
 - `yarn verify` → all 21 steps pass (full run after the fixes).
 - `yarn guard` → no blocking findings.
 
