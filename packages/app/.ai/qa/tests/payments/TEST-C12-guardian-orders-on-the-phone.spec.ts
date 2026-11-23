@@ -36,6 +36,9 @@ import { uiText } from '../_fixtures/ui-text'
 //   and M-17 say "ready for pickup from the coach"; after the coach's handover M-17 says "Picked up — {time} · handed
 //   over by Wojtek Malinowski" and M-16 marks Jaś "picked up".
 // - M-19 names Halina Nowak above the form; an expired link answers 410 and shows "This link has expired".
+// Each locale pass sets the club's default locale with the cookie and asserts `<html lang>` after every navigation:
+// the member shell rewrites a cookie that disagrees with the member's resolved locale, and the `uiText()` patterns
+// match either catalog (lesson `panel-language-follows-club-default-locale`, #641).
 test.describe.configure({ timeout: 420_000 })
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
@@ -49,6 +52,8 @@ type FormBody = {
     handedOverBy: { firstName: string; lastName: string } | null
   }[]
 }
+
+type Locale = 'en' | 'pl'
 
 async function scanSchemes(page: Page, testInfo: Parameters<typeof scanBlockingViolations>[1], name: string) {
   const violations: Record<string, unknown> = {}
@@ -203,12 +208,23 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     page.setDefaultTimeout(30_000)
     await page.setViewportSize({ width: 375, height: 812 })
     await signInBrowser(page, request, club, kasiaUserId, kasiaEmail)
+    // Kasia's language is "club default", so the club setting decides; the cookie follows it for the guest pages.
+    let current: Locale = 'en'
+    const useLocale = async (locale: Locale) => {
+      expect((await updateClubSettings(request, admin, { defaultLocale: locale })).status).toBe(200)
+      await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
+      current = locale
+    }
+    const visit = async (path: string) => {
+      await page.goto(path)
+      await expect(page.locator('html'), path).toHaveAttribute('lang', current)
+    }
     const violations: Record<string, unknown> = {}
 
     // While the campaign takes orders: the Today tile, M-16 and M-17, in both locales.
     for (const locale of ['en', 'pl'] as const) {
-      await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
-      await page.goto('/club')
+      await useLocale(locale)
+      await visit('/club')
       const tile = page.getByTestId('club-tile-order')
       await expect(tile, locale).toHaveCount(1)
       await expect(tile, locale).toContainText('Strój akademii')
@@ -222,7 +238,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(tile.getByTestId('club-tile-order-link')).toHaveAttribute('href', `/club/orders/${campaignId}`)
       await expectNoPageOverflow(page)
 
-      await page.goto('/club/orders')
+      await visit('/club/orders')
       await expect(page.getByTestId('club-order-stage'), locale).toHaveAttribute('data-stage', 'open')
       await expect(page.getByTestId('club-order-stage'), locale).toHaveText(
         uiText('payments.orders.stage.open', { exact: true }),
@@ -236,7 +252,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(jasRow.getByTestId('club-order-child-picked-up')).toHaveCount(0)
       await expectNoPageOverflow(page)
 
-      await page.goto(`/club/orders/${campaignId}?child=${jas}`)
+      await visit(`/club/orders/${campaignId}?child=${jas}`)
       await expect(page.getByTestId('order-stage'), locale).toHaveAttribute('data-stage', 'open')
       await expect(page.getByTestId('order-deadlines'), locale).toHaveText(uiText('payments.orders.club.deadlines'))
       const jasChip = page.locator('[data-testid="order-child-chip"][data-child="Jaś"]')
@@ -259,7 +275,8 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(pay).toHaveAttribute('href', `/club/payments?pay=${chargeId}`)
       await expectNoPageOverflow(page)
     }
-    await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }])
+    await useLocale('en')
+    await visit(`/club/orders/${campaignId}?child=${jas}`)
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/orders/[campaignId] (open)'))
 
     // The chip leads to Ada's page, keeping the chip state in the URL.
@@ -272,7 +289,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     await expect(page.getByTestId('order-form')).toBeVisible()
 
     // "Pay online" opens M-08 with the kit charge only ticked.
-    await page.goto(`/club/orders/${campaignId}?child=${jas}`)
+    await visit(`/club/orders/${campaignId}?child=${jas}`)
     await page.getByTestId('order-pay-online').click()
     await expect(page).toHaveURL(new RegExp(`/club/payments\\?pay=${chargeId}$`))
     const charge = (id: string) =>
@@ -290,10 +307,10 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       lock = String(moved.body?.updatedAt)
     }
     await move('close')
-    await page.goto('/club')
+    await visit('/club')
     await expect(page.getByTestId('club-tile-payments')).toBeVisible()
     await expect(page.getByTestId('club-tile-order')).toHaveCount(0)
-    await page.goto('/club/orders')
+    await visit('/club/orders')
     await expect(page.getByTestId('club-order-stage')).toHaveAttribute('data-stage', 'closed')
     await expect(page.getByTestId('club-order-deadline')).toHaveText(uiText('payments.orders.club.closedOn'))
 
@@ -305,7 +322,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     await expect(page.getByTestId('club-order-deadline')).toHaveText(
       uiText('payments.orders.club.readyForPickup', { exact: true }),
     )
-    await page.goto(`/club/orders/${campaignId}?child=${jas}`)
+    await visit(`/club/orders/${campaignId}?child=${jas}`)
     await expect(page.getByTestId('order-ready')).toContainText(uiText('payments.orders.club.readyForPickup'))
     await expect(page.getByTestId('order-picked-up')).toHaveCount(0)
 
@@ -315,8 +332,8 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     })
     expect(handed.status, JSON.stringify(handed.body)).toBe(200)
     for (const locale of ['en', 'pl'] as const) {
-      await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
-      await page.goto(`/club/orders/${campaignId}?child=${jas}`)
+      await useLocale(locale)
+      await visit(`/club/orders/${campaignId}?child=${jas}`)
       const picked = page.getByTestId('order-picked-up')
       await expect(picked, locale).toContainText(uiText('payments.orders.club.summary.pickedUp'))
       await expect(picked, locale).toContainText(
@@ -325,23 +342,24 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(picked).toContainText(/\d{1,2}:\d{2}/)
       await expect(page.getByTestId('order-ready')).toHaveCount(0)
       await expectNoPageOverflow(page)
-      await page.goto('/club/orders')
+      await visit('/club/orders')
       const jasRow = page.locator('[data-testid="club-order-child"][data-child="Jaś"]')
       await expect(jasRow.getByTestId('club-order-child-picked-up'), locale).toHaveText(
         uiText('payments.orders.club.state.picked_up', { exact: true }),
       )
       await expect(jasRow.getByTestId('club-order-child-payment')).toHaveAttribute('data-state', 'to_pay')
     }
-    await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }])
+    await useLocale('en')
+    await visit('/club/orders')
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/orders (delivered)'))
-    await page.goto(`/club/orders/${campaignId}?child=${jas}`)
+    await visit(`/club/orders/${campaignId}?child=${jas}`)
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/orders/[campaignId] (picked up)'))
 
     // M-19: the link names its guardian; Halina's link is still valid while the campaign is delivered.
     await signOutBrowser(page)
     for (const locale of ['en', 'pl'] as const) {
-      await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
-      await page.goto(linkPath)
+      await useLocale(locale)
+      await visit(linkPath)
       const notice = page.getByTestId('order-link-guardian')
       await expect(notice, locale).toContainText(
         uiText('payments.orders.link.personalLink', { params: { name: 'Halina Nowak' } }),
@@ -350,7 +368,8 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(page.getByTestId('order-picked-up'), locale).toContainText('Wojtek Malinowski')
       await expectNoPageOverflow(page)
     }
-    await page.context().addCookies([{ name: 'locale', value: 'en', url: BASE_URL }])
+    await useLocale('en')
+    await visit(linkPath)
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/o/[token]'))
 
     // An expired link answers 410 and the page says so.
@@ -362,7 +381,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     )
     const expired = await publicCall('GET', linkApi)
     expect(expired.status, expired.text).toBe(410)
-    await page.goto(linkPath)
+    await visit(linkPath)
     await expect(page.getByText(uiText('payments.orders.link.expired.title', { exact: true }))).toBeVisible()
     await expect(page.getByTestId('order-link-guardian')).toHaveCount(0)
 
