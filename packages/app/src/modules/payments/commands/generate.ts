@@ -21,7 +21,13 @@ import { Charge, ChargeGeneration } from '../data/entities'
 import { automaticGenerationSince, tryLockGeneration } from '../data/queries'
 import { chargeGenerateSchema, chargeGenerationUndoSchema } from '../data/validators'
 import { planCharges } from '../lib/charge-plan'
-import { generationDue, periodInGenerationRange, periodOfDate, type GenerationDecision } from '../lib/payments-rules'
+import {
+  automaticGenerationRecorded,
+  generationDue,
+  periodInGenerationRange,
+  periodOfDate,
+  type GenerationDecision,
+} from '../lib/payments-rules'
 import { clubClock, type PaymentsScope } from '../services/directory'
 import { loadGenerationInputs } from '../services/generation'
 import { storedPaymentsSettings } from '../services/read'
@@ -137,16 +143,26 @@ async function undoGeneration(em: EntityManager, generation: ChargeGeneration): 
 /**
  * Plans and writes one generation of `period` — the run row and its charges — with the caller's transactional `em`,
  * under the club's advisory lock the caller already holds. A plan with a fee over the per-session limit writes nothing
- * and returns those fees. Shared by the manual `payments.charges.generate` and the daily `payments.charges.generate_due`.
+ * and returns those fees. Shared by the manual `payments.charges.generate` and the daily `payments.charges.generate_due`;
+ * the daily one passes `automatic`, and its plan with nothing to create or skip writes nothing either (#666).
  */
 async function writeGeneration(
   ctx: CommandRuntimeContext,
   em: EntityManager,
-  input: { id: string; scope: { tenantId: string; organizationId: string }; period: string; clock: GenerationClock },
+  input: {
+    id: string
+    scope: { tenantId: string; organizationId: string }
+    period: string
+    clock: GenerationClock
+    automatic?: boolean
+  },
 ): Promise<{ generation: ChargeGeneration | null; charges: Charge[]; overLimitFees: string[] }> {
   const { id, scope, period, clock } = input
   const plan = planCharges(await loadGenerationInputs(ctx.container, em, scope, period, clock))
   if (plan.overLimitFees.length > 0) return { generation: null, charges: [], overLimitFees: plan.overLimitFees }
+  if (input.automatic && !automaticGenerationRecorded({ created: plan.charges.length, skipped: plan.skipped })) {
+    return { generation: null, charges: [], overLimitFees: [] }
+  }
   const generation = em.create(ChargeGeneration, {
     id,
     ...scope,
@@ -320,9 +336,13 @@ registerCommand(undoGenerationCommand)
 
 const logger = createLogger('payments').child({ component: 'generate-due' })
 
-/** Why the daily run generated nothing beyond the pure rule: the lock is held, or a fee is over its limit. */
+/**
+ * Why the daily run generated nothing beyond the pure rule: the lock is held, a fee is over its limit, or the plan has
+ * nothing to create or skip (no fee schedules or rosters yet; nothing is recorded and the next run looks again, #666).
+ */
 export type GenerateDueOutcome =
-  GenerationDecision | { due: false; period: string; reason: 'in_progress' | 'amount_over_limit' }
+  | GenerationDecision
+  | { due: false; period: string; reason: 'in_progress' | 'amount_over_limit' | 'nothing_to_generate' }
 
 export type GenerateDueResult = {
   job: PaymentsJobScope
@@ -347,7 +367,8 @@ async function migrationAppliedOn(ctx: CommandRuntimeContext, scope: PaymentsSco
  * (`generationDue`: switch on, migration B's month passed, on or after the generation day, no generation of the month
  * yet — an undone one counts). It writes the same generation as the manual command, under the same advisory lock: a
  * held lock (a manual run in progress) or a month generated meanwhile generates nothing, and the next daily run looks
- * again. Not undoable from the audit log (there is no user to own the undo); the administrator undoes the run from
+ * again; so does a plan with nothing to create or skip, which records no generation (#666). Not undoable from the
+ * audit log (there is no user to own the undo); the administrator undoes the run from
  * the generation list (`payments.charge_generations.undo`, #403).
  */
 const generateDueCommand: CommandHandler<Record<string, unknown>, GenerateDueResult> = {
@@ -375,7 +396,11 @@ const generateDueCommand: CommandHandler<Record<string, unknown>, GenerateDueRes
     const id = randomUUID()
     type Written =
       | { generation: ChargeGeneration; chargeIds: string[] }
-      | { generation: null; reason: 'in_progress' | 'generated' | 'amount_over_limit'; overLimitFees?: string[] }
+      | {
+          generation: null
+          reason: 'in_progress' | 'generated' | 'amount_over_limit' | 'nothing_to_generate'
+          overLimitFees?: string[]
+        }
     const written = await inWriteTransaction(ctx, 'payments.charges.generate_due', async (em): Promise<Written> => {
       if (!(await tryLockGeneration(em, scope.organizationId))) return { generation: null, reason: 'in_progress' }
       // Re-read under the lock: a manual run may have generated the month since the decision.
@@ -385,8 +410,11 @@ const generateDueCommand: CommandHandler<Record<string, unknown>, GenerateDueRes
         scope,
         period: decision.period,
         clock,
+        automatic: true,
       })
-      if (!generation) return { generation: null, reason: 'amount_over_limit', overLimitFees }
+      if (!generation && overLimitFees.length > 0)
+        return { generation: null, reason: 'amount_over_limit', overLimitFees }
+      if (!generation) return { generation: null, reason: 'nothing_to_generate' }
       return { generation, chargeIds: charges.map((charge) => charge.id) }
     })
     if (!written.generation) {

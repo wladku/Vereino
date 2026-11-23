@@ -17,6 +17,7 @@ const COMMANDS: string[][] = [
   ['activities', 'contact-access-log'],
   ['activities', 'check-append-only'],
   ['club_core', 'check-bookable-place'],
+  ['foundation', 'sync-role-acls-if-changed', '--bogus'],
   ['facilities', 'rental-lifecycle'],
   ['facilities', 'expire-requests'],
   ['facilities', 'maintenance-reminders'],
