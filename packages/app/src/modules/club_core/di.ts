@@ -7,6 +7,8 @@ import { createClubCoreDirectory } from './services/directory'
 import { createClubCorePlacesService } from './services/places'
 import { createClubCorePublicSite } from './services/public-site'
 import { createClubCoreSettingsService } from './services/settings'
+import { registerClubDataContributor } from '@/modules/foundation'
+import { CLUB_CORE_CLUB_TABLES } from './lib/club-tables'
 
 /** DI token of the club settings service (foundation spec DD-F16): `get({ tenantId, organizationId })`. */
 export const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings' as const
@@ -43,6 +45,7 @@ export const CLUB_CORE_CONTRACTS = 'clubCoreContracts' as const
 export { PUBLIC_BLOCK_PROVIDER_TOKENS } from './services/public-blocks'
 
 export function register(container: AppContainer) {
+  registerClubDataContributor(container, 'club_core', CLUB_CORE_CLUB_TABLES)
   container.register({
     // `.proxy()` resolves `em` by property name, which survives bundler renaming under CLASSIC injection.
     [CLUB_CORE_SETTINGS_SERVICE]: asFunction((cradle: { em: EntityManager }) =>

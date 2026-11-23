@@ -10,6 +10,8 @@ import { GROUPS_MEMBERSHIP_IMPORTER, membershipImporter } from './services/membe
 import { GROUPS_PERSON_FILTER, personFilter } from './services/person-filter'
 import { GROUPS_PUBLIC_CATALOG, createPublicCatalog } from './services/public-catalog'
 import { GROUPS_SECTION_USAGE, sectionUsage } from './services/section-usage'
+import { registerClubDataContributor } from '@/modules/foundation'
+import { GROUPS_CLUB_TABLES } from './lib/club-tables'
 
 /**
  * `groups.directory` (#31): `findGroups(scope, ids, em?)`, `rosterOn(scope, groupId, date, em?)`,
@@ -52,6 +54,7 @@ export const GROUPS_DIRECTORY = 'groups.directory' as const
  * `club_core` reads with `hasRegistration` (`club_core/services/public-blocks.ts`).
  */
 export function register(container: AppContainer) {
+  registerClubDataContributor(container, 'groups', GROUPS_CLUB_TABLES)
   container.register({
     [GROUPS_MEMBERSHIP_CONTRIBUTION]: asValue(membershipContribution),
     [GROUPS_MEMBERSHIP_IMPORTER]: asValue(membershipImporter),

@@ -1,8 +1,9 @@
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
-import { registerEmailTemplate } from '@/modules/foundation'
+import { registerEmailTemplate, registerClubDataContributor } from '@/modules/foundation'
 import { announcementTemplate, replyTemplate, sessionCancelledTemplate, sessionMovedTemplate } from './emails/templates'
 import notificationTypes from './notifications'
+import { COMMUNICATION_CLUB_TABLES } from './lib/club-tables'
 
 /**
  * The e-mail templates of `communication` (foundation III P-31): `communication.announcement`, `communication.reply`
@@ -15,6 +16,7 @@ import notificationTypes from './notifications'
  * registry is a map keyed by the type id, so repeating the registration is harmless.
  */
 export function register(container: AppContainer) {
+  registerClubDataContributor(container, 'communication', COMMUNICATION_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, announcementTemplate)
   registerEmailTemplate(container, replyTemplate)
