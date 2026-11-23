@@ -91,7 +91,7 @@ Dependency versions follow the pin rules P1–P6 of the engineering standards: t
 | Package | Version | Workspaces | Rule and reason | Moves when |
 |---|---|---|---|---|
 | `@open-mercato/*` (every package) | 0.9.0 | `app` (dependencies), `ui` (dev and peer: `shared`, `ui`) | P1: the platform is pinned exactly and every package has the same version. | Only in an upgrade run on `chore/upgrade-open-mercato-<version>` that follows the matching `om-auto-upgrade` skill. Renovate never touches it. |
-| `next`, `eslint-config-next` | 16.3.6 | `app` | P2: pinned exactly by the platform scaffold; the platform is built and tested against this release. | With a P1 upgrade. |
+| `next`, `eslint-config-next` | 16.4.6 | `app` | P2: pinned exactly; the platform scaffold pins 16.3.6, raised under P6 to 16.4.6 (#454, owner approval 2026-11-22) for two critical RCE and two high advisories fixed only after 16.4.0. | With a P1 upgrade, or under P6 for an advisory. |
 | `react`, `react-dom` | 19.2.8 | `app`; `ui` (dev and peer) | P2: scaffold pin; `@vereino/ui` declares the same version as a peer so only one React is installed. | With a P1 upgrade. |
 | `@mikro-orm/core`, `@mikro-orm/decorators`, `@mikro-orm/postgresql` | 7.2.5 | `app`; `db` (dev and peer) | P2: platform-coupled ORM; entity metadata and migrations must match the platform's copy. `@mikro-orm/migrations` keeps `^7.1.14` and resolves to the same release through `yarn.lock`. | With a P1 upgrade. |
 | `pg` | 8.23.0 | `app` | P2: scaffold pin of the PostgreSQL driver used by MikroORM. | With a P1 upgrade. |
