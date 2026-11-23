@@ -1,6 +1,6 @@
 # Run: issue #301 — E12-S11 charges generated, overdue payers reminded, checkouts reconciled and campaigns closed on a schedule
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 301`, label `cezar`): build phase 11 of `.ai/specs/2026-11-14-vereino-parity-payments.md` (REQ-C13; DD-C08, DD-C09; TEST-C14, TEST-C16 due rules; AC-C13).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 301`, label `cezar`): build phase 11 of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (REQ-C13; DD-C08, DD-C09; TEST-C14, TEST-C16 due rules; AC-C13).
 - **Spec / issue / branch:** spec `In progress`, Ready for implementation since the owner's approval of 2026-11-16 on #254 (Q-C20: migration B and Contracts 4 and 5 approved; Q-C06 confirmed, Q-C07 confirmed with the first-automatic-month amendment); issue #301; branch `feat/issue-301-charges-reminders-scheduled`; worktree `.ai/cezar/worktrees/08215b38-…`.
 
 ## Steps

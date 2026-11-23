@@ -1,7 +1,7 @@
 # Run: issue #302 — the administrator sees the online payment connection and chooses the offered methods (E12-S12)
 
 - **Trigger:** cezar `om-auto-fix-issue 302` (label `cezar` added).
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-payments.md` phase 12 (REQ-C14, TEST-C15, AC-C14, DD-C11, V-C01) / #302 / `feat/issue-302-admin-online-payment-methods`
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` phase 12 (REQ-C14, TEST-C15, AC-C14, DD-C11, V-C01) / #302 / `feat/issue-302-admin-online-payment-methods`
 - **Date:** 2026-11-18
 
 ## Goal
@@ -42,7 +42,7 @@ On B-20 "Coaches and payments" show whether Stripe is connected and in which mod
 - `packages/app/src/modules/payments/components/PaymentsSettingsForm.tsx`
 - `packages/app/src/modules/payments/i18n/en.json`, `i18n/pl.json`
 - `packages/app/.ai/qa/tests/_fixtures/payments.ts`, `payments/TEST-C15-online-payment-methods.spec.ts`, `payments/TEST-C15-online-payment-tab-ui.spec.ts`
-- `.ai/specs/2026-11-14-vereino-parity-payments.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-payments/2026-11-18-issue-302-phase-12.md`
+- `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-payments/2026-11-18-issue-302-phase-12.md`
 - `.ai/runs/2026-11-18-issue-302-online-payment-methods.md`
 - `.ai/lessons/cezar-host-integration-tests-docker-group-no-browser.md`
 
