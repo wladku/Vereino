@@ -13,7 +13,7 @@ import {
 describe('the claim in the queue payload', () => {
   it('round-trips through JSON to the same instants', () => {
     const claim = { dueAt: new Date('2026-06-10T04:07:00.123Z'), leaseUntil: new Date('2026-06-10T04:12:00.456Z') }
-    const payload = JSON.parse(JSON.stringify({ [CLUB_JOB_CLAIM_KEY]: serializeClubJobClaim(claim) }))
+    const payload: unknown = JSON.parse(JSON.stringify({ [CLUB_JOB_CLAIM_KEY]: serializeClubJobClaim(claim) }))
     expect(parseClubJobClaim(payload)).toEqual(claim)
   })
 
@@ -32,10 +32,10 @@ describe('the claim in the queue payload', () => {
 })
 
 describe('clubJobErrorCode', () => {
-  it("keeps a short identifier code and never the message", () => {
-    expect(clubJobErrorCode(Object.assign(new Error('Jan Kowalski has no e-mail'), { code: 'payments.no_payer' }))).toBe(
-      'payments.no_payer',
-    )
+  it('keeps a short identifier code and never the message', () => {
+    expect(
+      clubJobErrorCode(Object.assign(new Error('Jan Kowalski has no e-mail'), { code: 'payments.no_payer' })),
+    ).toBe('payments.no_payer')
     expect(clubJobErrorCode(new Error('Jan Kowalski'))).toBe('failed')
     expect(clubJobErrorCode({ code: 'has spaces in it' })).toBe('failed')
     expect(clubJobErrorCode({ code: 42 })).toBe('failed')
@@ -50,9 +50,10 @@ describe('sweepClubJobs', () => {
     const enqueued: string[] = []
     const outcome = await sweepClubJobs(
       {
-        claim: async () => batches.shift() ?? [],
-        enqueue: async (row) => {
+        claim: () => Promise.resolve(batches.shift() ?? []),
+        enqueue: (row) => {
           enqueued.push(row)
+          return Promise.resolve()
         },
         onEnqueueError: () => {
           throw new Error('unexpected')
@@ -68,10 +69,8 @@ describe('sweepClubJobs', () => {
     const reported: string[] = []
     const outcome = await sweepClubJobs(
       {
-        claim: async () => ['a', 'b'],
-        enqueue: async (row) => {
-          if (row === 'a') throw new Error('queue down')
-        },
+        claim: () => Promise.resolve(['a', 'b']),
+        enqueue: (row) => (row === 'a' ? Promise.reject(new Error('queue down')) : Promise.resolve()),
         onEnqueueError: (row) => reported.push(row),
       },
       { batchSize: 2, maxPasses: 2 },
@@ -87,20 +86,21 @@ describe('runClaimedClubJob', () => {
     return {
       calls,
       deps: {
-        start: async () => {
+        start: () => {
           calls.push('start')
-          return options.start
+          return Promise.resolve(options.start)
         },
-        run: async () => {
+        run: () => {
           calls.push('run')
-          if (options.fails) throw new Error('boom')
-          return { nextDueAt: null }
+          return options.fails ? Promise.reject(new Error('boom')) : Promise.resolve({ nextDueAt: null })
         },
-        finish: async () => {
+        finish: () => {
           calls.push('finish')
+          return Promise.resolve()
         },
-        fail: async () => {
+        fail: () => {
           calls.push('fail')
+          return Promise.resolve()
         },
       },
     }

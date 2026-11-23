@@ -80,7 +80,10 @@ const CLUB_CORE_SETTINGS = 'clubCoreSettings'
 // One registry per process: a bundler may load this file more than once (route chunks, workers, the CLI).
 const REGISTRY_KEY = Symbol.for('vereino.foundation.clubJobDeclarations')
 const registryHost = globalThis as typeof globalThis & { [REGISTRY_KEY]?: Map<string, ClubJobDeclaration> }
-const declarations: Map<string, ClubJobDeclaration> = (registryHost[REGISTRY_KEY] ??= new Map())
+const declarations: Map<string, ClubJobDeclaration> = (registryHost[REGISTRY_KEY] ??= new Map<
+  string,
+  ClubJobDeclaration
+>())
 
 /** Declares a module's per-club jobs (from its `di.ts`; idempotent, the last declaration of a key wins). */
 export function declareClubJobs(jobs: readonly ClubJobDeclaration[]): void {
@@ -308,12 +311,13 @@ export async function sweepClubJobType(
           [CLUB_JOB_CLAIM_KEY]: serializeClubJobClaim({ dueAt: row.nextDueAt, leaseUntil }),
         })
       },
-      onEnqueueError: (row, error) =>
+      onEnqueueError: (row, error) => {
         logger.warn('Club job enqueue failed; retried after the lease', {
           jobKey: key,
           organizationId: row.organizationId,
           err: error,
-        }),
+        })
+      },
     },
     { batchSize: SWEEP_BATCH_SIZE, maxPasses: MAX_SWEEP_PASSES },
   )
@@ -336,8 +340,15 @@ export async function sweepClubJobType(
 
 // --- The run ---
 
-/** What a wrapped worker may return: an earlier (or later, capped) next due time (DD-M06). */
-export type ClubJobRunResult = { nextDueAt?: Date | null } | void
+/** What a wrapped worker may return (anything else counts as nothing): its own next due time, capped (DD-M06). */
+export type ClubJobRunResult = { nextDueAt?: Date | null }
+
+/** The `nextDueAt` a handler returned, or null. */
+function requestedNextDue(result: unknown): Date | null {
+  if (!result || typeof result !== 'object') return null
+  const { nextDueAt } = result as ClubJobRunResult
+  return nextDueAt instanceof Date ? nextDueAt : null
+}
 
 const scopeSchema = z.object({ tenantId: z.uuid(), organizationId: z.uuid() })
 
@@ -349,7 +360,7 @@ const scopeSchema = z.object({ tenantId: z.uuid(), organizationId: z.uuid() })
  */
 export function clubJobWorker(
   key: string,
-  handle: (job: QueuedJob<Record<string, unknown>>) => Promise<ClubJobRunResult>,
+  handle: (job: QueuedJob<Record<string, unknown>>) => Promise<unknown>,
 ): (job: QueuedJob<Record<string, unknown>>) => Promise<void> {
   return async function clubJobHandler(job) {
     const claim = parseClubJobClaim(job.payload)
@@ -368,7 +379,7 @@ export async function runClubJobClaim(
   scope: ClubJobScope,
   key: string,
   claim: { dueAt: Date; leaseUntil: Date },
-  run: () => Promise<ClubJobRunResult>,
+  run: () => Promise<unknown>,
 ): Promise<ClaimedRunOutcome> {
   const declaration = clubJobDeclaration(key)
   if (!declaration) {
@@ -378,13 +389,14 @@ export async function runClubJobClaim(
   const em = forkEm(container)
   const startedAt = new Date()
   const runLeaseUntil = new Date(startedAt.getTime() + runLeaseMs(declaration))
-  const outcome = await runClaimedClubJob<ClubJobRunResult>({
+  const outcome = await runClaimedClubJob<unknown>({
     start: () => startClubJobRun(em, scope, key, claim, runLeaseUntil, startedAt),
     run,
     finish: async (result) => {
       const now = new Date()
-      const clock = await clockOf(container, scope, now)
-      const requested = result && typeof result === 'object' ? result.nextDueAt : null
+      // The next run comes after the one that was due, even when this process's clock lags the sweep's.
+      const clock = await clockOf(container, scope, new Date(Math.max(now.getTime(), claim.dueAt.getTime())))
+      const requested = requestedNextDue(result)
       await finishClubJobRun(
         em,
         scope,
@@ -488,7 +500,9 @@ export async function restoreClubSchedules(container: AwilixContainer, key: stri
     const registered = await registerModuleSchedule(container, {
       module,
       name,
-      schedule: declaration ? perClubScheduleSpec(declaration.schedule, timeZone) : { interval: DISPATCH_SWEEP_INTERVAL },
+      schedule: declaration
+        ? perClubScheduleSpec(declaration.schedule, timeZone)
+        : { interval: DISPATCH_SWEEP_INTERVAL },
       scope,
       description: declaration?.description ?? 'Resume queued message deliveries that are due or whose worker stopped.',
     })

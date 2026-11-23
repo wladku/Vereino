@@ -191,13 +191,7 @@ export class Delivery extends ScopedEntityBase {
 @Index({ name: 'foundation_club_jobs_key_due_idx', properties: ['jobKey', 'nextDueAt'] })
 export class ClubJob {
   [OptionalProps]?:
-    | 'nextDueAt'
-    | 'leaseUntil'
-    | 'lastStartedAt'
-    | 'lastFinishedAt'
-    | 'lastError'
-    | 'createdAt'
-    | 'updatedAt'
+    'nextDueAt' | 'leaseUntil' | 'lastStartedAt' | 'lastFinishedAt' | 'lastError' | 'createdAt' | 'updatedAt'
 
   @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
   id!: string

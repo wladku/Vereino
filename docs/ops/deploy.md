@@ -162,7 +162,8 @@ step after the deploy.
 7. [ ] Deploy the tag to production: app, wait until healthy, then the worker from the same commit.
 8. [ ] `node scripts/smoke.mjs <production-url>` passes; no new error fingerprint in the logs for 15 minutes.
 9. [ ] The release notes are walked in the production demo club.
-10. [ ] The per-club setup commands the release notes name are run for every club, every `schedules` entry `true`.
+10. [ ] The per-club setup commands the release notes name are run for every club, every `schedules` entry `true`;
+    `yarn mercato foundation club-jobs status` shows no `failing` club.
 11. [ ] New club-setting switches are on in the demo club only; the plan for chosen clubs is in the release issue.
 12. [ ] Next morning: the 06:00 and 09:00 jobs ran for every club (worker logs, `monitoring.md` checks).
 
@@ -210,21 +211,55 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
    `VEREINO_SMOKE_PASSWORD` (a user without club data; never a real person's account) and is skipped without them.
 2. Run the per-club setup steps below when the release notes name one.
 
-### Per-club schedules
+### Per-club jobs: one sweep per job type
 
-A module's `setup.ts` `seedDefaults` registers the scheduled jobs of a club when the club is set up. A club that
-existed before the release that added a schedule, or that was created without `seedDefaults` (for example through the
-API), has no such schedule until the module's idempotent club setup runs for it. Run it once per club after the
-release; a second run registers nothing twice.
+Every club runs the same scheduled jobs in its own time zone. Since #629 (many-clubs spec phase 1, DD-M04) they run
+on **one sweep schedule per job type**, whatever the number of clubs: the sweep wakes every 5 minutes, finds the
+clubs whose run is due in `foundation_club_jobs` and enqueues one job per club on the module's own queue. A daily job
+runs at its local time plus a stable offset of 0–20 minutes per club (the clubs do not all start at once); an interval
+job keeps a stable slot inside its interval. A club's time-zone change moves its daily jobs at once. A failed run of
+one club is logged (`"Club job run failed; retried later"`), stored as an error code and retried after 15 minutes;
+the other clubs are not affected.
 
-| Module | Command | Registers | Since |
-|---|---|---|---|
-| `activities` | `yarn mercato activities set-up-club --tenant <id> --org <id>` | occurrence generation, guardian confirmation expiry, declaration reminders, unassigned-session warnings, dead declaration-link purge (daily) | #192, #525 |
-| `payments` | `yarn mercato payments set-up-club --tenant <id> --org <id>` | charge generation (06:00), overdue reminders (09:00), checkout reconciliation and order-campaign closing (every 15 minutes), dead order-link purge (daily), invariant check (03:00) | #301, #405, #525, #531 |
-| `facilities` | `yarn mercato facilities set-up-club --tenant <id> --org <id>` | rental lifecycle and request expiry (every 15 minutes), maintenance reminders (06:00), dead rental-link purge (daily) | #122, #125, #128, #221, #525 |
+| Module | Job type | When (club's local time) |
+|---|---|---|
+| `foundation` | `foundation:dispatch-sweep` | every 2 minutes, one system-wide sweep over the clubs with queued e-mail (not per club) |
+| `people` | `people:life-cycle`, `people:sync-role-expiry`, `people:purge-import-rows` | 01:30, 02:00, 04:00 |
+| `activities` | `activities:generate-occurrences`, `activities:send-declaration-reminders` | 03:00, 18:00 |
+| `activities` | `activities:expire-guardian-confirmations`, `activities:warn-unassigned-sessions`, `activities:purge-declaration-links` | every 15 minutes, 15 minutes, daily |
+| `facilities` | `facilities:maintenance-reminders` | 06:00 |
+| `facilities` | `facilities:rental-lifecycle`, `facilities:expire-requests`, `facilities:purge-rental-links` | every 15 minutes, 15 minutes, daily |
+| `payments` | `payments:verify-invariants`, `payments:generate-charges`, `payments:overdue-reminders` | 03:00, 06:00, 09:00 |
+| `payments` | `payments:reconcile-checkouts`, `payments:close-order-campaigns`, `payments:purge-order-links` | every 15 minutes, 15 minutes, daily |
 
-The commands print what they registered; every entry under `schedules` must be `true`. A later change of the club's time zone
-re-registers the time-zoned schedules on its own (`activities:reregister-schedule`, `payments:reregister-schedules`).
+A club's setup (`seedDefaults`, or the idempotent `yarn mercato <module> set-up-club --tenant <id> --org <id>` of
+`activities`, `payments` and `facilities`, and `people bootstrap-admin`) creates its job state; it prints a
+`schedules` entry per job, which must be `true`. `people:life-cycle` is set up for an existing club only by
+`yarn mercato people life-cycle --register-schedule` after the confirmed dry run.
+
+**Moving an instance onto the sweeps (once, after the release with #629; Ask First on staging and production).**
+Until then each job type runs per club on its old schedules. Per job type, or for all of them:
+
+```bash
+yarn mercato foundation retire-club-schedules --dry-run            # counts only
+yarn mercato foundation retire-club-schedules --job payments:generate-charges
+yarn mercato foundation retire-club-schedules                       # every job type
+yarn mercato foundation club-jobs status                            # sweep: true, perClubSchedules: 0, failing: 0
+```
+
+The command creates the job state of every club that has the old schedule, registers the job type's sweep and then
+removes the per-club schedules; it is idempotent. Afterwards `scheduled_jobs` holds 19 system-scope rows and none per
+club, and a club set up later gets no per-club schedule. Rollback per job type (it re-registers the per-club schedule
+for every club with job state and removes the sweep):
+
+```bash
+yarn mercato foundation restore-club-schedules --job payments:generate-charges
+```
+
+**Operator tools.** `yarn mercato foundation club-jobs status [--job <key>]` prints per job type whether its sweep
+runs, the per-club schedules left and the clubs, due, leased and failing counts. `yarn mercato foundation club-jobs
+sweep [--job <key>]` runs one sweep now. One club's job still runs by hand without the sweep, as before, for example
+`yarn mercato payments run-job --job generate-charges --tenant <id> --org <id>`.
 
 ## Rollback
 

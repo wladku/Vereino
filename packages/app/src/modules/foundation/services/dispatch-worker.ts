@@ -329,5 +329,7 @@ export async function sweepAllDispatches(
       })
     }
   }
+  // The same message as a club's sweep: the log digest reads it as the worker's liveness (`docs/ops/monitoring.md`).
+  logger.info('Dispatch sweep finished', { scope: 'system', ...total })
   return total
 }

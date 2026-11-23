@@ -43,12 +43,12 @@ describe('parseClubJobKey and clubJobQueue', () => {
 
 describe('assertClubJobDeclaration', () => {
   it('accepts daily and interval declarations with or without a timeout', () => {
-    expect(() =>
-      assertClubJobDeclaration({ key: 'a:b', schedule: { dailyAt: '06:00' }, description: 'x' }),
-    ).not.toThrow()
-    expect(() =>
-      assertClubJobDeclaration({ key: 'a:b', schedule: { everyMinutes: 15 }, description: 'x', timeoutMinutes: 5 }),
-    ).not.toThrow()
+    expect(() => {
+      assertClubJobDeclaration({ key: 'a:b', schedule: { dailyAt: '06:00' }, description: 'x' })
+    }).not.toThrow()
+    expect(() => {
+      assertClubJobDeclaration({ key: 'a:b', schedule: { everyMinutes: 15 }, description: 'x', timeoutMinutes: 5 })
+    }).not.toThrow()
   })
 
   it('rejects a bad key, time, interval or timeout', () => {
@@ -61,7 +61,9 @@ describe('assertClubJobDeclaration', () => {
       { key: 'a:b', schedule: { everyMinutes: 15 }, timeoutMinutes: 2.5 },
     ]
     for (const declaration of cases) {
-      expect(() => assertClubJobDeclaration({ description: 'x', ...declaration })).toThrow(RangeError)
+      expect(() => {
+        assertClubJobDeclaration({ description: 'x', ...declaration })
+      }).toThrow(RangeError)
     }
   })
 })

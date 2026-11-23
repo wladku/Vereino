@@ -5,13 +5,7 @@
 // the spring gap moves forward by the gap, a repeated autumn time takes its first occurrence (`zonedInstant`). An
 // interval job gets a stable offset within its interval. Pure: the caller passes the instant (S3.5).
 import { createHash } from 'node:crypto'
-import {
-  addCalendarDays,
-  calendarDateInZone,
-  isLocalTime,
-  zonedInstant,
-  type ModuleScheduleSpec,
-} from '@vereino/core'
+import { addCalendarDays, calendarDateInZone, isLocalTime, zonedInstant, type ModuleScheduleSpec } from '@vereino/core'
 
 const MINUTE_MS = 60_000
 const DAY_MINUTES = 24 * 60
@@ -57,7 +51,8 @@ const JOB_KEY = /^([a-z][a-z0-9_]*):([a-z][a-z0-9]*(?:-[a-z0-9]+)*)$/
 export function parseClubJobKey(key: string): { module: string; name: string } {
   const match = JOB_KEY.exec(key)
   if (!match) throw new RangeError(`[internal] invalid club job key ${JSON.stringify(key)}`)
-  return { module: String(match[1]), name: String(match[2]) }
+  const [, module = '', name = ''] = match
+  return { module, name }
 }
 
 /** Throws a `RangeError` unless the declaration has a valid key, schedule and timeout. */
@@ -135,9 +130,9 @@ export function perClubScheduleSpec(schedule: ClubJobSchedule, timeZone: string)
     return { cron: `${String(minutes)} ${String(hours)} * * *`, timezone: timeZone }
   }
   const minutes = schedule.everyMinutes
-  if (minutes % DAY_MINUTES === 0) return { interval: `${minutes / DAY_MINUTES}d` }
-  if (minutes % 60 === 0) return { interval: `${minutes / 60}h` }
-  return { interval: `${minutes}m` }
+  if (minutes % DAY_MINUTES === 0) return { interval: `${String(minutes / DAY_MINUTES)}d` }
+  if (minutes % 60 === 0) return { interval: `${String(minutes / 60)}h` }
+  return { interval: `${String(minutes)}m` }
 }
 
 /** The queue a job type's worker consumes, `<module>-<name>`. */
