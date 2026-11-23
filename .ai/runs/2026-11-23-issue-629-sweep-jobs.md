@@ -56,7 +56,18 @@ spec and its changelog file, this log.
 
 - `npx jest … foundation/lib` with coverage: `club-job-due.ts`, `club-job-run.ts` 100 % lines/branches/functions.
 - `yarn generate`: ok. `yarn typecheck`, `yarn workspace @vereino/app typecheck:qa`: ok.
-- Integration and gate results: below.
+- First local run of the retire test failed: `Expected: 0 Received: 17` (no run finished in 180 s; the worker log showed
+  34 × "Club job run skipped: its claim no longer holds"). Cause: the test set `next_due_at` with SQL `now() - interval`
+  (microseconds), the claim travels as JS dates (milliseconds), and the start compared with `=`. Fix: compare with
+  `date_trunc('milliseconds', …)` (f046a4b2); lesson `platform-queue-has-no-job-id-fence-with-claim`.
+- A build of the same run failed on `club-job-due.ts` template-literal types after a lint fix; fixed (a263a314).
+- The spec's ids TEST-M05/M06 already name `communication` tests, and `--filter` matches paths, so the files are
+  `foundation/ISSUE-629-club-job-sweep.spec.ts` (TEST-M05) and `ISSUE-629-retire-club-schedules.spec.ts` (TEST-M06).
+- Final local integration runs (`yarn test:integration:vereino --filter <id>`, one per run): ISSUE-629-retire-club-schedules
+  passed (35.1 s), ISSUE-629-club-job-sweep passed (24.0 s); older schedule tests TEST-C14, ISSUE-221, ISSUE-192,
+  ISSUE-525, TEST-A20 passed.
+- `yarn verify`: all 21 steps passed. `yarn guard`: no blocking findings (warning: `AGENTS.md` changed — the DD-M07
+  exception record the spec asks for).
 
 ## Open problems / next steps
 
