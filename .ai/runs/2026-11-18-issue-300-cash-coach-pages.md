@@ -1,6 +1,6 @@
 # Run: issue #300 — E12-S10 the cash and coach pages name the receiver, list today's receipts, state the club's coach mode and show when a kit was handed over
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 300`, label `cezar`): build phase 10 of `.ai/specs/2026-11-14-vereino-parity-payments.md` (REQ-C12; TEST-C13; AC-C12; J-C02 steps 1–2).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 300`, label `cezar`): build phase 10 of `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (REQ-C12; TEST-C13; AC-C12; J-C02 steps 1–2).
 - **Spec / issue / branch:** spec `In progress`, Ready for implementation since the owner's approval of 2026-11-16 on #254 (the issue's "spec is Draft" open question is resolved by that approval); issue #300; branch `feat/issue-300-cash-coach-pages-receiver`.
 
 ## Steps

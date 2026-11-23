@@ -1,7 +1,7 @@
 # Run: issue #405 — harden the payments scheduled jobs
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 405`, label `cezar`): four follow-ups from the review of #398 (E12-S11, #301) — re-register the schedules on a time zone change, quieter sweep audit, robust migration-name lookup, setup of existing clubs on the deployment checklist.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-payments.md` (phase 11 follow-up; spec changelog file `2026-11-19-issue-405-scheduled-jobs-hardening.md`); issue #405; branch `fix/issue-405-harden-payment-scheduled-jobs`; cezar worktree `03784dbd-…`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (phase 11 follow-up; spec changelog file `2026-11-19-issue-405-scheduled-jobs-hardening.md`); issue #405; branch `fix/issue-405-harden-payment-scheduled-jobs`; cezar worktree `03784dbd-…`.
 
 ## Steps
 

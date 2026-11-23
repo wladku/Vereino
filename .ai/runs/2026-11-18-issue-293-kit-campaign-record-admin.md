@@ -2,7 +2,7 @@
 
 - **Trigger:** Cezar queued `om-auto-fix-issue 293` (label `cezar`, 2026-11-18T20:01Z); unattended run.
 - **Issue:** [#293](https://github.com/wladku/Vereino/issues/293) — E12-S03, epic #254, depends on #292 (closed).
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-payments.md`, phase 3 (REQ-C05; REQ-C02 for the B-32 mount; TEST-C06, TEST-C04 for B-32; DD-C04). Ready for implementation since the owner's approval on #254 (2026-11-16).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`, phase 3 (REQ-C05; REQ-C02 for the B-32 mount; TEST-C06, TEST-C04 for B-32; DD-C04). Ready for implementation since the owner's approval on #254 (2026-11-16).
 - **Branch:** `feat/issue-293-kit-campaign-record-admin` (Cezar worktree).
 
 ## Steps
@@ -38,7 +38,7 @@
 - `packages/app/src/modules/payments/components/AcceptCashButton.tsx`, `components/orders/OrderCampaignPage.tsx`, `components/orders/OrderCampaignForm.tsx`, `components/orders/orders-client.ts`
 - `packages/app/src/modules/payments/i18n/en.json`, `i18n/pl.json`
 - `packages/app/.ai/qa/tests/payments/TEST-C06-kit-campaign-record.spec.ts`, `E07-S08-order-campaign-admin.spec.ts`
-- `.ai/specs/2026-11-14-vereino-parity-payments.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-payments/2026-11-18-issue-293-phase-3.md`, `.ai/lessons/cezar-host-integration-runs-without-browser.md`, this log
+- `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-payments/2026-11-18-issue-293-phase-3.md`, `.ai/lessons/cezar-host-integration-runs-without-browser.md`, this log
 
 ## Commands and results
 

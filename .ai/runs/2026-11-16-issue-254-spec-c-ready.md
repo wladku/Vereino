@@ -1,7 +1,7 @@
 # Run: epic #254 — spec C to Ready for implementation
 
 - **Goal and trigger:** unattended cezar run (task 5e0a82d8) of `om-auto-create-pr`: record the owner's decisions of 2026-11-16 in spec C, fix the pre-implementation audit gaps (c1)–(c8) including the cross-spec dependencies, set the status to Ready. Docs only.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-payments.md`. **Issue:** epic #254 ([audit](https://github.com/wladku/Vereino/issues/254#issuecomment-6899501375), 2026-11-15; [owner decisions](https://github.com/wladku/Vereino/issues/254#issuecomment-6910005798), 2026-11-16). **Branch:** `docs/issue-254-spec-c-ready`.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`. **Issue:** epic #254 ([audit](https://github.com/wladku/Vereino/issues/254#issuecomment-6899501375), 2026-11-15; [owner decisions](https://github.com/wladku/Vereino/issues/254#issuecomment-6910005798), 2026-11-16). **Branch:** `docs/issue-254-spec-c-ready`.
 
 ## Steps
 

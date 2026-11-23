@@ -1,10 +1,14 @@
 // Helpers of the bulk import integration tests (#28, club spec TEST-051; REQ-036, DD-38): the families sheet as CSV and
 // as an XLSX built in the test with JSZip (no binary fixture is committed), the import API, the purge job through
 // its module CLI and raw reads of the staged rows and the stored file.
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { expect, type APIRequestContext } from '@playwright/test'
 import JSZip from 'jszip'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
-import { OPTIMISTIC_LOCK_HEADER, call, mercato, type Club } from './club'
+import { APP_ROOT, OPTIMISTIC_LOCK_HEADER, call, mercato, type Club } from './club'
 
 // Synthetic numbers with valid check digits (engineering standards S5.9: no real PESEL in test data).
 export const PESEL_EXISTING_CHILD = '15250612347'
@@ -149,6 +153,13 @@ export type ImportView = {
   fileAvailable: boolean
   pendingDecisions: number
   canCreateMemberships: boolean
+  commitProgress?: {
+    jobId: string
+    status: string
+    processedCount: number
+    totalCount: number | null
+    progressPercent: number
+  } | null
   updatedAt: string
   code?: string
 }
@@ -314,6 +325,70 @@ export function byRowNo(rows: readonly ImportRowView[]): Map<number, ImportRowVi
 
 export function classifications(rows: readonly ImportRowView[]): [number, string, string | null][] {
   return rows.map((row) => [row.rowNo, row.classification, row.errorCode])
+}
+
+/** The commit progress jobs of an import as stored (#585), oldest first. */
+export async function rawCommitJobs(importId: string) {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{
+      id: string
+      status: string
+      processed_count: number
+      total_count: number | null
+      progress_percent: number
+      error_message: string | null
+      result_summary: Record<string, unknown> | null
+      meta: Record<string, unknown> | null
+    }>(
+      `select id, status, processed_count, total_count, progress_percent, error_message, result_summary, meta
+         from progress_jobs where job_type = 'people.imports.commit' and meta->>'importId' = $1 order by created_at`,
+      [importId],
+    )
+    return rows
+  })
+}
+
+const PROGRESS_SERVICE_PROBE = path.join(
+  APP_ROOT,
+  '.ai',
+  'qa',
+  'tests',
+  '_fixtures',
+  'progress-service-probe',
+  'probe.mjs',
+)
+
+export type ProgressProbeResult = { status: number; code: string | null; calls: Record<string, number> }
+
+/**
+ * Commits the import as `token` in a probe process whose `progressService` is stopped (every call throws) or breaks
+ * once the commit's job has started (foundation spec TEST-F08, #585). The probe gets its own private queue directory.
+ */
+export function runProgressServiceProbe(input: {
+  token: string
+  importId: string
+  lockToken: string
+  mode: 'stopped' | 'breaks'
+}): ProgressProbeResult {
+  const queueDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-probe-queue-'))
+  try {
+    const run = spawnSync(process.execPath, [PROGRESS_SERVICE_PROBE, JSON.stringify(input)], {
+      cwd: APP_ROOT,
+      env: { ...process.env, QUEUE_BASE_DIR: queueDir },
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      timeout: 300_000,
+    })
+    const last = run.stdout.trimEnd().split(/\r?\n/).pop() ?? ''
+    if (run.status !== 0 || !last.startsWith('{')) {
+      throw new Error(
+        `[internal] the progress service probe exited ${String(run.status)}: ${run.stderr}\n${run.stdout.slice(-4000)}`,
+      )
+    }
+    return JSON.parse(last) as ProgressProbeResult
+  } finally {
+    fs.rmSync(queueDir, { recursive: true, force: true })
+  }
 }
 
 export type { Club }
