@@ -50,9 +50,10 @@ const render = (props) =>
 test('renders the brand, the body above the bar and the bar with the current tab marked', () => {
   const html = render({})
   assert.match(html, /^<div class="bg-background text-foreground min-h-svh"><header class="bg-card border-b">/)
+  // The header bar in the club's colour (#486); without one the tokens keep the theme's primary pair.
   assert.match(
     html,
-    /<p class="flex items-center gap-2 text-sm font-semibold" data-testid="club-name"><span>KS Avocado<\/span><\/p>/,
+    /<header class="bg-card border-b"><div class="bg-club-accent text-club-accent-foreground" data-testid="club-header-bar"><p class="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2 text-sm font-semibold" data-testid="club-name"><span>KS Avocado<\/span><\/p><\/div>/,
   )
   assert.doesNotMatch(html, /club-switchers/)
   assert.match(html, /<main class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6 pb-28"><p>body<\/p><\/main>/)
@@ -124,12 +125,23 @@ test('renders the header switchers with a visible label tied to each select', ()
       },
     ],
   })
-  assert.match(html, /<div class="flex flex-wrap gap-3" data-testid="club-switchers">/)
+  assert.match(
+    html,
+    /<\/div><div class="mx-auto flex max-w-3xl flex-wrap gap-3 px-4 py-2" data-testid="club-switchers">/,
+  )
   assert.match(
     html,
     /data-testid="club-switcher-context"><label for="club-switcher-context" class="text-muted-foreground text-xs font-medium">Acting as<\/label>/,
   )
   assert.match(html, /<button type="button" role="combobox"[^>]*id="club-switcher-context"/)
+})
+
+test("sets the club's colour and its text colour on the frame (#486)", () => {
+  const html = render({ brand: { name: 'KS Avocado', accent: { color: '#0b2a5b', foreground: '#ffffff' } } })
+  assert.match(
+    html,
+    /^<div class="bg-background text-foreground min-h-svh" style="--club-accent:#0b2a5b;--club-accent-foreground:#ffffff">/,
+  )
 })
 
 test('renders the logo as a decorative 32 px image when the brand has one', () => {

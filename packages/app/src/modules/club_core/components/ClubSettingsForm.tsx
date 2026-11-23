@@ -6,7 +6,9 @@
 // `coach_may_cancel`, whether a coach may cancel a session; since #111 the club's bank account for the payers' transfer
 // instructions. Since #309 (people life-cycle spec B-02, REQ-L10, DD-L11) the group "Consent texts" holds one textarea
 // per consent key (at most 1000 characters; empty restores the built-in text, shown as the placeholder) with the date it
-// was last changed; a consent given before a change stays valid and reads "given to an earlier wording".
+// was last changed; a consent given before a change stays valid and reads "given to an earlier wording". Since #486 the
+// group "Club" holds the club's colour (a hex colour; empty uses the default), painting the member header bar, the public
+// hero and the fallback logo.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -43,6 +45,7 @@ const LOCALES = ['pl', 'en'] as const
 type SettingsResponse = ClubSettingsValues & {
   clubName: string | null
   bankAccount: string | null
+  accentColor: string | null
   logoAttachmentId: string | null
   logoUrl: string | null
   consentTexts?: ConsentTexts
@@ -92,6 +95,7 @@ function toFormValues(settings: SettingsResponse): FormValues {
     coachMayCancel: settings.coachMayCancel,
     orderSalesDocument: settings.orderSalesDocument,
     bankAccount: settings.bankAccount ? formatBankAccount(settings.bankAccount) : '',
+    accentColor: settings.accentColor ?? '',
     updatedAt: settings.updatedAt,
   }
   for (const type of ACTIVITY_TYPES) values[kindField(type)] = settings.declarationKinds[type]
@@ -119,6 +123,7 @@ function toPayload(values: Record<string, unknown>) {
     coachMayCancel: values.coachMayCancel === true,
     orderSalesDocument: values.orderSalesDocument,
     bankAccount: textOrNull(values.bankAccount),
+    accentColor: textOrNull(values.accentColor),
     // An empty text restores the built-in one; an unchanged text keeps its "last changed" date (DD-L11).
     consentTexts: Object.fromEntries(
       CONSENT_TEXT_KEYS.map((key) => {
@@ -153,6 +158,14 @@ export function ClubSettingsForm() {
         required: true,
       },
       { id: 'shortName', label: t('club_core.settings.fields.shortName'), type: 'text', maxLength: 100 },
+      {
+        id: 'accentColor',
+        label: t('club_core.settings.fields.accentColor'),
+        type: 'text',
+        maxLength: 7,
+        placeholder: '#1b8f3a',
+        description: t('club_core.settings.fields.accentColor.description'),
+      },
       {
         id: 'defaultLocale',
         label: t('club_core.settings.fields.defaultLocale'),
@@ -271,7 +284,7 @@ export function ClubSettingsForm() {
         id: 'club',
         title: t('club_core.settings.groups.club'),
         column: 1,
-        fields: ['clubName', 'shortName', 'defaultLocale', 'timezone', 'currency', 'ownAccountMinAge'],
+        fields: ['clubName', 'shortName', 'accentColor', 'defaultLocale', 'timezone', 'currency', 'ownAccountMinAge'],
       },
       {
         id: 'declarations',
