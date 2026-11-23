@@ -211,8 +211,17 @@ test('TEST-489 staff are offered only the actions they may take, and every refus
     for (const locale of LOCALES) {
       await phone(page, request, attendantToken, locale)
       await page.goto('/club/places/maintenance')
+      // The refusal names the current panel path, built from the menu's own labels (#667).
+      const maintainersPath = [
+        'facilities.nav.group',
+        'facilities.records.title',
+        'facilities.records.tabs.maintenance',
+        'facilities.maintenance.tabs.maintainers',
+      ]
+        .map((key) => uiTextIn(locale, key))
+        .join(' › ')
       await expect(page.getByTestId('club-maintenance-denied')).toContainText(
-        uiTextIn(locale, 'facilities.places.maintenance.forbidden'),
+        uiTextIn(locale, 'facilities.places.maintenance.forbidden').replace('{path}', maintainersPath),
       )
       await expectNoBareDenied(page)
       await evidence(page, `maintenance-attendant-${locale}`)
