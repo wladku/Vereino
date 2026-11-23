@@ -4,10 +4,10 @@ import { createClub, uniqueSuffix } from '../_fixtures/club'
 import { publicPitch } from '../_fixtures/public-places'
 import { publish } from '../_fixtures/publication'
 
-// ISSUE-488 (E20-S09, epic #479): a long club name never covers the public header's links. From 640 px (`sm`) the name
-// takes the room the links leave and truncates, its full text in `title`; the links keep their own width. Below 640 px
+// ISSUE-488 (E20-S09, epic #479): a long club name never covers the public header's links. From 768 px (`md`) the name
+// takes the room the links leave and truncates, its full text in `title`; the links keep their own width. Below 768 px
 // the links sit on a second row. Checked by bounding boxes and a hit test on every link (is the link itself what a click at
-// its centre reaches?) at 1440, 768, 640, 480, 375 and 320 px, in both locales, light and dark; a short name keeps the
+// its centre reaches?) at 1440, 1024, 768, 640, 480, 375 and 320 px, in both locales, light and dark; a short name keeps the
 // layout it had (negative case). Header screenshots go to the test's output folder as browser evidence for the PR.
 test.describe.configure({ timeout: 300_000 })
 
@@ -21,7 +21,7 @@ type Box = { left: number; right: number; top: number; bottom: number }
 type Geometry = {
   row: Box
   club: Box
-  name: { title: string | null; text: string; clipped: boolean }
+  name: { title: string | null; text: string; clipped: boolean; width: number }
   nav: Box & { scrolls: boolean }
   end: Box
   links: Array<{ id: string; box: Box; hit: boolean }>
@@ -33,7 +33,7 @@ async function setGuestLocale(page: Page, locale: 'en' | 'pl'): Promise<void> {
 
 /**
  * The header's boxes, read in the page. With `scroll`, each link is first scrolled into view inside the nav (the
- * second row below 640 px scrolls sideways), so `hit` says whether the link can be reached at all.
+ * second row below 768 px scrolls sideways), so `hit` says whether the link can be reached at all.
  */
 async function geometry(page: Page, scroll: boolean): Promise<Geometry> {
   return page.getByTestId('public-header').evaluate(
@@ -64,6 +64,7 @@ async function geometry(page: Page, scroll: boolean): Promise<Geometry> {
           title: name.getAttribute('title'),
           text: name.textContent,
           clipped: name.scrollWidth > name.clientWidth,
+          width: name.getBoundingClientRect().width,
         },
         nav: { ...box(nav), scrolls: nav.scrollWidth > nav.clientWidth },
         end: box(byId('public-header-end')),
@@ -113,7 +114,7 @@ test('ISSUE-488 a long club name never covers the public header links', async ({
       await setGuestLocale(page, locale)
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
-        for (const width of [1440, 768, 640, 480, 375, 320]) {
+        for (const width of [1440, 1024, 768, 640, 480, 375, 320]) {
           await open(width)
           const label = `${locale} ${colorScheme} ${String(width)} px`
           const header = page.getByTestId('public-header')
@@ -123,16 +124,18 @@ test('ISSUE-488 a long club name never covers the public header links', async ({
           await expect(header.getByTestId('public-header-club-name')).toHaveAttribute('title', LONG_NAME)
           for (const id of NAV_IDS) await expect(header.getByTestId(`public-nav-${id}`)).toBeVisible()
 
-          if (width >= 640) {
-            // One row from 640 px (the acceptance widths 1440 and 768 among them): every link visible without scrolling,
+          if (width >= 768) {
+            // One row from 768 px (the acceptance widths 1440 and 768): every link visible without scrolling,
             // the name cut instead.
             const found = await geometry(page, false)
             expectReachable(found, label)
             expect(found.nav.scrolls, `${label}: the nav scrolls`).toBe(false)
             expect(found.name.clipped, `${label}: the name is not truncated`).toBe(true)
+            // Headroom, not a squeeze: the name keeps a readable width, so wider fonts (CI) still fit one row.
+            expect(found.name.width, `${label}: room left for the name`).toBeGreaterThanOrEqual(100)
             expect(found.club.top, `${label}: one row`).toBeCloseTo(found.nav.top, -1)
           } else {
-            // Below 640 px the links take a second row that scrolls sideways.
+            // Below 768 px the links take a second row that scrolls sideways.
             const found = await geometry(page, true)
             expectReachable(found, label)
             expect(found.nav.top, `${label}: second row`).toBeGreaterThanOrEqual(found.club.bottom)
@@ -163,7 +166,7 @@ test('ISSUE-488 a long club name never covers the public header links', async ({
     await publish(request, club.adminToken, slug, BLOCKS, { shortName: SHORT_NAME })
     for (const locale of ['en', 'pl'] as const) {
       await setGuestLocale(page, locale)
-      for (const width of [1440, 768, 640]) {
+      for (const width of [1440, 1024, 768]) {
         await open(width)
         const label = `short ${locale} ${String(width)} px`
         const found = await geometry(page, false)
