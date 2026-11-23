@@ -1,0 +1,559 @@
+{
+  "$comment": "Cross-club isolation probes of the facilities routes (#628). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/facilities/calendar": {
+      "GET": [
+        { "probe": "read", "query": { "from": "$A:facilityCalendarFrom", "to": "$A:facilityCalendarTo" } },
+        {
+          "probe": "read",
+          "query": { "placeId": "$A:place", "from": "$A:facilityCalendarFrom", "to": "$A:facilityCalendarTo" }
+        },
+        {
+          "probe": "read",
+          "query": { "placeId": "$B:place", "from": "$A:facilityCalendarFrom", "to": "$A:facilityCalendarTo" }
+        }
+      ]
+    },
+    "/api/facilities/closures": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "placeId": "$B:place" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "placeId": "$B:place",
+          "startsAt": "$A:facilityCalendarFrom",
+          "endsAt": "$A:facilityCalendarTo",
+          "reason": "snow"
+        }
+      },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:closure", "note": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:closureUpdatedAt" },
+          "body": { "id": "$A:closure", "placeId": "$B:place" }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:closure" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/facilities/entry-bans": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "placeId": "$B:place" } },
+        { "probe": "read", "query": { "subjectId": "$B:institution" } }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$B:place",
+            "subjectType": "institution",
+            "subjectId": "$A:institution",
+            "startsOn": "$A:nextWeek",
+            "reason": "Probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$A:place",
+            "subjectType": "institution",
+            "subjectId": "$B:institution",
+            "startsOn": "$A:nextWeek",
+            "reason": "Probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$A:place",
+            "subjectType": "person",
+            "subjectId": "$B:plainPerson",
+            "startsOn": "$A:nextWeek",
+            "reason": "Probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$A:place",
+            "subjectType": "person",
+            "subjectId": "$A:plainPerson",
+            "startsOn": "$A:nextWeek",
+            "reason": "Probe",
+            "incidentId": "$B:incident"
+          }
+        }
+      ]
+    },
+    "/api/facilities/entry-bans/[id]/revoke": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:entryBan" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/facilities/incidents": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "placeId": "$B:place" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "placeId": "$B:place",
+          "occurredAt": "$A:facilityCalendarFrom",
+          "kind": "damage",
+          "description": "Probe of another club's place."
+        }
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "id": "$B:incident", "actionTaken": ["warning_given"] }
+      }
+    },
+    "/api/facilities/incidents/[id]/photos": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:incident" },
+        "body": { "$multipart": { "file": { "$file": "png" } } }
+      }
+    },
+    "/api/facilities/incidents/[id]/photos/[photoId]": {
+      "GET": [
+        { "probe": "foreign-id", "params": { "id": "$B:incident", "photoId": "$B:incidentPhoto" } },
+        { "probe": "foreign-id", "params": { "id": "$A:incident", "photoId": "$B:incidentPhoto" } }
+      ]
+    },
+    "/api/facilities/internal-bookings": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$B:place",
+            "startsAt": "$A:facilityCalendarFrom",
+            "endsAt": "$A:rentalMoveTo",
+            "sectionId": "$A:section",
+            "purpose": "Probe"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$A:place",
+            "startsAt": "$A:facilityCalendarFrom",
+            "endsAt": "$A:rentalMoveTo",
+            "sectionId": "$B:section",
+            "purpose": "Probe"
+          }
+        }
+      ]
+    },
+    "/api/facilities/internal-bookings/[id]": {
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:internalBooking" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/facilities/internal-bookings/options": {
+      "GET": { "probe": "read" }
+    },
+    "/api/facilities/logs": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "placeId": "$B:place" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": { "placeId": "$B:place", "logDate": "$A:today" }
+      },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:facilityLog", "remarks": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:facilityLogUpdatedAt" },
+          "body": {
+            "id": "$A:facilityLog",
+            "groupsPresent": [{ "rentalId": "$B:rental", "headcount": 10, "adultSupervisorPresent": true }]
+          }
+        }
+      ]
+    },
+    "/api/facilities/maintenance-tasks": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "placeId": "$B:place" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "placeId": "$B:place",
+          "kind": "line_marking",
+          "scheduleType": "one_off",
+          "startsAt": "$A:facilityCalendarFrom",
+          "endsAt": "$A:rentalMoveTo"
+        }
+      },
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:maintenanceTask", "notes": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:maintenanceTaskUpdatedAt" },
+          "body": { "id": "$A:maintenanceTask", "placeId": "$B:place" }
+        }
+      ]
+    },
+    "/api/facilities/maintenance-tasks/[id]/complete": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:maintenanceTask" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/facilities/options/places": {
+      "GET": { "probe": "read" }
+    },
+    "/api/facilities/place-maintainers": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "placeId": "$B:place" } },
+        { "probe": "read", "query": { "personId": "$B:plainPerson" } }
+      ],
+      "POST": [
+        { "probe": "foreign-ref", "body": { "placeId": "$B:place", "personId": "$A:coachPerson" } },
+        { "probe": "foreign-ref", "body": { "placeId": "$A:place", "personId": "$B:coachPerson" } }
+      ],
+      "DELETE": { "probe": "foreign-id", "query": { "id": "$B:placeMaintainer" } }
+    },
+    "/api/facilities/public/[clubSlug]/places": {
+      "GET": { "probe": "read", "roles": ["anonymous"], "params": { "clubSlug": "$A:clubSlug" } }
+    },
+    "/api/facilities/public/[clubSlug]/places/[placeSlug]/requests": {
+      "POST": {
+        "probe": "public",
+        "params": { "clubSlug": "$A:clubSlug", "placeSlug": "$B:pitchSlug" },
+        "body": {
+          "startsAt": "$A:rentalMoveTo",
+          "units": 1,
+          "renterDisplayName": "Akademia Gości",
+          "renterCategory": "external_commercial",
+          "contactName": "Gabriela Gość",
+          "contactPhone": "600 100 200",
+          "contactEmail": "probe-628@example.test",
+          "purpose": "Probe",
+          "regulationsAccepted": true,
+          "locale": "en",
+          "website": ""
+        }
+      }
+    },
+    "/api/facilities/public/[clubSlug]/places/[placeSlug]/schedule": {
+      "GET": [
+        {
+          "probe": "read",
+          "roles": ["anonymous"],
+          "params": { "clubSlug": "$A:clubSlug", "placeSlug": "$A:pitchSlug" }
+        },
+        { "probe": "public", "params": { "clubSlug": "$A:clubSlug", "placeSlug": "$B:pitchSlug" } }
+      ]
+    },
+    "/api/facilities/public/rentals/cancel": {
+      "POST": {
+        "probe": "public",
+        "body": { "token": "$B:rental", "confirm": true },
+        "expect": [410],
+        "why": "The cancellation link is a capability (D-024/D-026): a token that is no live link, here club B's rental id, answers 410 token_link_expired exactly like any unknown token."
+      }
+    },
+    "/api/facilities/public/rentals/cancel/preview": {
+      "POST": {
+        "probe": "public",
+        "body": { "token": "$B:rental" },
+        "expect": [410],
+        "why": "The cancellation link is a capability (D-024/D-026): a token that is no live link, here club B's rental id, answers 410 token_link_expired exactly like any unknown token."
+      }
+    },
+    "/api/facilities/public/requests/verify": {
+      "POST": {
+        "probe": "public",
+        "body": { "token": "$B:rentalRequest" },
+        "expect": [410],
+        "why": "The confirmation link is a capability (D-024/D-026): a token that is no live link, here club B's request id, answers 410 token_link_expired exactly like any unknown token."
+      }
+    },
+    "/api/facilities/rental-rates": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "placeId": "$B:place" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "placeId": "$B:place",
+          "renterCategory": "municipal_club",
+          "pricePer90": 15000,
+          "validFrom": "$A:today"
+        }
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "id": "$B:rentalRate", "pricePer90": 1000 }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:rentalRate" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/facilities/rentals": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "placeId": "$B:place" } },
+        { "probe": "read", "query": { "id": "$B:rental" } },
+        { "probe": "read", "query": { "ids": "$B:rental" } }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$B:place",
+            "renterType": "unregistered",
+            "renterDisplayName": "Gość Próbny",
+            "renterCategory": "external_commercial",
+            "startsAt": "$A:rentalMoveTo",
+            "units": 1,
+            "requestedVia": "phone",
+            "regulationsAccepted": true
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$A:place",
+            "renterType": "institution",
+            "renterId": "$B:institution",
+            "renterCategory": "external_commercial",
+            "startsAt": "$A:rentalMoveTo",
+            "units": 1,
+            "requestedVia": "phone",
+            "regulationsAccepted": true
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$A:place",
+            "renterType": "person",
+            "renterId": "$B:plainPerson",
+            "renterCategory": "external_commercial",
+            "startsAt": "$A:rentalMoveTo",
+            "units": 1,
+            "requestedVia": "phone",
+            "regulationsAccepted": true
+          }
+        }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "id": "$B:rental", "notes": "Probe" }
+        },
+        {
+          "probe": "foreign-ref",
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:rentalUpdatedAt" },
+          "body": { "id": "$A:rental", "renterType": "institution", "renterId": "$B:institution" }
+        }
+      ]
+    },
+    "/api/facilities/rentals/[id]/approve": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:rentalRequest" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "createInstitution": { "name": "Akademia Gości", "type": "club" } }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:rentalRequest" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:rentalRequestUpdatedAt" },
+          "body": { "renterType": "institution", "renterId": "$B:institution" }
+        }
+      ]
+    },
+    "/api/facilities/rentals/[id]/cancel": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:rental" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe" }
+      }
+    },
+    "/api/facilities/rentals/[id]/confirm": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:rental" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/facilities/rentals/[id]/move": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:rental" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "startsAt": "$A:rentalMoveTo" }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:rental" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:rentalUpdatedAt" },
+          "body": { "startsAt": "$A:rentalMoveTo", "placeId": "$B:place" }
+        }
+      ]
+    },
+    "/api/facilities/rentals/[id]/no-show": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:rental" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": {}
+      }
+    },
+    "/api/facilities/rentals/[id]/reject": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:rentalRequest" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe of another club" }
+      }
+    },
+    "/api/facilities/rentals/quote": {
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "placeId": "$B:place",
+            "renterCategory": "external_commercial",
+            "startsAt": "$A:rentalMoveTo",
+            "units": 1
+          }
+        },
+        {
+          "probe": "read",
+          "body": {
+            "placeId": "$A:place",
+            "renterType": "institution",
+            "renterId": "$B:institution",
+            "renterCategory": "external_commercial",
+            "startsAt": "$A:rentalMoveTo",
+            "units": 1
+          },
+          "roles": ["admin"],
+          "why": "A renter of another club only feeds the entry-ban check of the quote: the answer must carry no club B data and no issue that tells club B's renter is banned."
+        },
+        {
+          "probe": "read",
+          "body": {
+            "placeId": "$A:place",
+            "renterCategory": "external_commercial",
+            "startsAt": "$A:rentalMoveTo",
+            "units": 1,
+            "ignoreRentalId": "$B:rental"
+          },
+          "roles": ["admin"],
+          "why": "The rental left out of the conflict check: another club's id must change nothing and show nothing."
+        }
+      ]
+    },
+    "/api/facilities/rentals/requests": {
+      "GET": { "probe": "read" }
+    },
+    "/api/facilities/renters": {
+      "GET": [
+        { "probe": "read", "query": { "search": "Gość" } },
+        { "probe": "read", "query": { "search": "KS Sąsiedzi" } },
+        { "probe": "read", "query": { "search": "Gość", "placeId": "$B:place" } }
+      ]
+    },
+    "/api/facilities/reports/owner": {
+      "GET": [
+        { "probe": "read", "query": { "placeId": "$A:place", "from": "$A:today", "to": "$A:reportTo" } },
+        {
+          "probe": "read",
+          "query": { "placeId": "$A:place", "from": "$A:today", "to": "$A:reportTo", "format": "csv" }
+        },
+        { "probe": "read", "query": { "placeId": "$B:place", "from": "$A:today", "to": "$A:reportTo" } },
+        {
+          "probe": "read",
+          "query": { "placeId": "$B:place", "from": "$A:today", "to": "$A:reportTo", "format": "csv" }
+        }
+      ]
+    },
+    "/api/facilities/reports/rented-hours": {
+      "GET": [
+        { "probe": "read", "query": { "from": "$A:today", "to": "$A:reportTo" } },
+        { "probe": "read", "query": { "from": "$A:today", "to": "$A:reportTo", "format": "csv" } },
+        { "probe": "read", "query": { "placeId": "$B:place", "from": "$A:today", "to": "$A:reportTo" } },
+        {
+          "probe": "read",
+          "query": { "placeId": "$B:place", "from": "$A:today", "to": "$A:reportTo", "format": "csv" }
+        }
+      ]
+    },
+    "/api/facilities/today": {
+      "GET": [
+        { "probe": "read" },
+        { "probe": "read", "query": { "placeId": "$A:place" } },
+        { "probe": "read", "query": { "placeId": "$B:place" } }
+      ]
+    },
+    "/api/facilities/zone-rules": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "placeId": "$B:place" } }],
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "placeId": "$B:place",
+          "weekdays": [6],
+          "timeFrom": "08:00",
+          "timeTo": "09:00",
+          "zone": "closed",
+          "priority": 2,
+          "validFrom": "$A:today"
+        }
+      },
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "id": "$B:zoneRule", "priority": 3 }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": { "id": "$B:zoneRule" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+      }
+    },
+    "/api/facilities/zone-rules/bulk": {
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "placeIds": ["$B:place"],
+          "mode": "append",
+          "validFrom": "$A:nextWeek",
+          "windows": [{ "weekday": 6, "from": "08:00", "to": "09:00" }]
+        }
+      }
+    }
+  }
+}
