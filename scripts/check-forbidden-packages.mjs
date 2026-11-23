@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Forbidden-package guard (ADR-023, ENG-Q-10, #466). `@open-mercato/enterprise` is commercially licensed: the
-// scaffold listed it as a production dependency of `packages/app`, and Vereino (an MIT project) removed it once
+// scaffold listed it as a production dependency of `packages/app`, and Vereino (MIT then, AGPL-3.0-only since D-035) removed it once
 // the platform spike (#448) showed that no installed package imports it. This check keeps it out: it fails when a
 // workspace manifest lists a forbidden package, when `yarn.lock` resolves it (also as a transitive dependency), or
 // when a source file imports it or registers a module from it (`from: '<package>'` in `src/modules.ts`).

@@ -6,7 +6,7 @@
 // row's group shows what becomes of it (#65): before the commit whether the name resolves to one group, after it the
 // membership created, already existing or waiting with its reason; a committed import with waiting rows offers
 // "Create memberships", which re-runs the commit for those rows only. Every write sends the record's lock token; a
-// conflict is surfaced with the shared banner.
+// conflict is surfaced with the shared banner. While the commit runs, its progress job shows under the actions (#585).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery } from '@tanstack/react-query'
@@ -19,6 +19,7 @@ import { apiCall, apiCallOrThrow, withScopedApiRequestHeaders } from '@open-merc
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Alert, AlertDescription } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
+import { Progress } from '@open-mercato/ui/primitives/progress'
 import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primitives/segmented-control'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
@@ -95,12 +96,29 @@ function decisionLabel(t: Translate, row: ImportRowRow): string {
   return t(`people.imports.decisions.${row.decision}`)
 }
 
+/** The commit's progress (#585): the rows written so far of the job, announced politely to screen readers. */
+function CommitProgress({ t, progress }: { t: Translate; progress: ImportRow['commitProgress'] }) {
+  const running = progress && progress.status !== 'failed' && progress.totalCount ? progress : null
+  const text = running
+    ? t('people.imports.record.committingRows', { processed: running.processedCount, total: running.totalCount ?? 0 })
+    : t('people.imports.record.committing')
+  return (
+    <div className="flex w-full flex-col gap-1 sm:w-64" data-testid="people-import-commit-progress">
+      <Progress value={running?.progressPercent ?? 0} max={100} aria-label={text} />
+      <p className="text-muted-foreground text-sm" aria-live="polite">
+        {text}
+      </p>
+    </div>
+  )
+}
+
 export function ImportRecord({ id }: { id: string }) {
   const t = useT()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [filter, setFilter] = React.useState<Filter>('all')
   const [page, setPage] = React.useState(1)
   const [busy, setBusy] = React.useState(false)
+  const [committing, setCommitting] = React.useState(false)
   const [matching, setMatching] = React.useState<ImportRowRow | null>(null)
 
   const recordQuery = useQuery({
@@ -114,6 +132,16 @@ export function ImportRecord({ id }: { id: string }) {
       }
       if (!call.ok || !call.result) throw new Error(t('people.imports.errors.loadOne'))
       return { status: 'ok', record: call.result }
+    },
+  })
+  // While the commit runs, its progress job (#585) is read from the import every 750 ms.
+  const progressQuery = useQuery({
+    queryKey: ['people-import-progress', id],
+    enabled: committing,
+    refetchInterval: committing ? 750 : false,
+    queryFn: async (): Promise<ImportRow['commitProgress']> => {
+      const call = await apiCall<ImportRow>(`/api/people/imports/${encodeURIComponent(id)}`)
+      return call.ok ? (call.result?.commitProgress ?? null) : null
     },
   })
   const rowsQuery = useQuery({
@@ -339,6 +367,7 @@ export function ImportRecord({ id }: { id: string }) {
     })
     if (!confirmed) return
     setBusy(true)
+    if (action === 'commit') setCommitting(true)
     try {
       await withScopedApiRequestHeaders(buildOptimisticLockHeader(current.updatedAt), () =>
         apiCallOrThrow(
@@ -355,6 +384,7 @@ export function ImportRecord({ id }: { id: string }) {
       }
     } finally {
       setBusy(false)
+      setCommitting(false)
       await refresh()
     }
   }
@@ -401,6 +431,7 @@ export function ImportRecord({ id }: { id: string }) {
                 {t('people.imports.actions.cancel')}
               </Button>
             </div>
+            {committing ? <CommitProgress t={t} progress={progressQuery.data ?? null} /> : null}
             {current.pendingDecisions > 0 ? (
               <p className="text-muted-foreground text-sm" data-testid="people-import-pending">
                 {t('people.imports.record.pending', { count: current.pendingDecisions })}
