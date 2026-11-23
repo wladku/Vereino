@@ -1,7 +1,7 @@
 ---
 title: "Read fetched source PDFs with pdfjs-dist in a temp directory, not WebFetch"
 modules: ["platform"]
-areas: ["research"]
+areas: ["spec-pr"]
 topics: ["pdf", "spec-research", "web-fetch"]
 ---
 
