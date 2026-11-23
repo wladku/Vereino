@@ -1,0 +1,1 @@
+| 2026-11-23 | #582: ENG-TEST-17 Lighthouse baseline recorded in the E1 run log from `main` perf run 45131377056 (`/login`, mobile, median of 3: performance 82, accessibility 100, best practices 96, SEO 100); ENG-AC-14 ticked with the citation |

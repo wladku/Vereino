@@ -1,0 +1,20 @@
+/*
+ * Vereino's own semantic tokens (docs/ux-concept/tokens.md, conflict C4 closed by D-033): the tokens Vereino adds on top
+ * of the platform's globals.css live here, so an Open Mercato upgrade of globals.css never touches them.
+ *
+ * Club accent (R06.2; E20-S07 #486): the club's own colour paints the member header bar, the public hero and the
+ * fallback logo. The default is the theme's primary pair; the member frames and the public pages set both variables on
+ * their root element from the club settings (`clubAccentStyle` in @vereino/ui), the foreground being black or white,
+ * whichever contrasts more (≥ 4.58:1 for any colour, `accentForeground` in @vereino/core). The same pair is used in
+ * light and dark, so the text on it reads in both. Never a status colour or the primary action.
+ */
+@theme inline {
+  --color-club-accent: var(--club-accent);
+  --color-club-accent-foreground: var(--club-accent-foreground);
+}
+
+:root,
+.dark {
+  --club-accent: var(--primary);
+  --club-accent-foreground: var(--primary-foreground);
+}

@@ -82,19 +82,19 @@ Versions are those installed in `packages/app/node_modules` on 2026-10-21.
 | Runtime | Node.js; Docker `node:24-alpine` | ≥ 24 (root `preinstall` guard, `engines`) | P3; Docker base pinned by digest in E4 |
 | Package manager | Yarn workspaces, `nodeLinker: node-modules`, `nmHoistingLimits: workspaces` | 4.17.1 (`packageManager` with hash) | exact via `packageManager`; Corepack |
 | Platform | `@open-mercato/*` | 0.9.0 (every package identical) | P1 |
-| Web framework | Next.js App Router | 16.3.6 (exact in app) | P2 |
+| Web framework | Next.js App Router | 16.4.6 (exact in app; P6, #454) | P2 |
 | UI runtime | React, React DOM | 19.2.8 (exact in app) | P2 |
 | Language | TypeScript (strict) | 6.0.3 | P3 |
 | ORM | MikroORM, legacy decorators | 7.2.5 resolved from `^7.1.14` | P2 |
 | Database | PostgreSQL | 17 (`pgvector/pgvector:pg17-trixie` locally) | production image chosen in E3/E4 (S15.7) |
 | Cache and queue | Redis | 7 (`redis:7-alpine` locally) | P3 |
 | DI | Awilix (platform container, `InjectionMode.CLASSIC`) | 13.0.5 | P2 |
-| Validation | Zod | 4.4.3 (root `resolutions`) | P2 + P4 |
+| Validation | Zod | 4.6.7 (root `resolutions`; P6, #454) | P2 + P4 |
 | Styling | Tailwind CSS + shadcn/ui through `@open-mercato/ui` | 4.3.3 | P3 |
 | Dates and time zones | `date-fns`, `date-fns-tz` | 4.4.0 (exact), `^3.2.0` | P2 for `date-fns`, P3 for `date-fns-tz` |
 | Unit tests | Jest + ts-jest (`scripts/jest-mikroorm-transformer.cjs`) | 30.5.2 / ts-jest 29.4.15 | P3 |
 | Integration / E2E | Playwright through `yarn test:integration:vereino` (Testcontainers) | 1.64.1 resolved from `^1.58.2` | P3 |
-| Lint | ESLint 9 flat config + `eslint-config-next` | 9.39.5 / 16.3.6 | P3 / P2 |
+| Lint | ESLint 9 flat config + `eslint-config-next` | 9.39.5 / 16.4.6 | P3 / P2 |
 | Hosting | Railway, Dockerfile builder, health check `/api/healthz` | — | ADR-012 |
 | Payments | Stripe through `@open-mercato/gateway-stripe` | 0.9.0 | P1 |
 | E-mail | Resend through `@open-mercato/channel-resend` (subject to club spec V-4) | 0.9.0 | P1 |
@@ -734,7 +734,7 @@ Source doc: .ai/specs/2026-10-21-engineering-standards-and-patterns.md
 ### Phase E1 progress
 
 - [x] (a) local tooling and gate: `scripts/verify.mjs` (13 steps), `eslint.vereino.mjs`, `.prettierrc.json`, `.editorconfig`, `.nvmrc`, `packages/app/{vereino-modules.json,eslint.config.mjs,jest.config.cjs}`, `packages/app/scripts/{vereino-paths,vereino-format,vereino-ephemeral,check-vereino-contracts}.mjs`, i18n `--strict` local patch, shared-package lint/test/tsconfig, `packages/app/.ai/qa/tests/{tsconfig.json,_fixtures/*,platform/ENG-TEST-05,ENG-TEST-16}`, `packages/app/.ai/qa/agent-browser/login-smoke.mjs`; ENG-TEST-03, ENG-TEST-04, ENG-TEST-24 (66 tooling tests, 100 % lines/branches/functions; a partial run below 100 % fails), ENG-TEST-05 and ENG-TEST-16 (ENG-TEST-16 8/8 green with `--repeat-each=8 --retries=0` after the reduced-motion fix), agent-browser sign-in reached `/backend` — `yarn verify` passed (13/13, 121 s) and `yarn test:integration:vereino --filter ENG-TEST` passed
-- [ ] (b) CI workflow and settings checklist: `.github/workflows/ci.yml` (gate, integration, browser-smoke, perf, pr-title, dependency-review), `.github/CODEOWNERS`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/ops/github-settings.md` — written and committed; remaining: first CI run, ENG-TEST-02 (needs push, a pull request and the product owner's settings), ENG-TEST-17 baseline, ENG-TEST-23 in CI — gap (#568): the first CI run happened and ENG-TEST-23 runs in CI as the required `browser-smoke` check; left ENG-TEST-02 #576 and the ENG-TEST-17 baseline #582
+- [ ] (b) CI workflow and settings checklist: `.github/workflows/ci.yml` (gate, integration, browser-smoke, perf, pr-title, dependency-review), `.github/CODEOWNERS`, `.github/PULL_REQUEST_TEMPLATE.md`, `docs/ops/github-settings.md` — written and committed; remaining: first CI run, ENG-TEST-02 (needs push, a pull request and the product owner's settings), ENG-TEST-17 baseline, ENG-TEST-23 in CI — gap (#568): the first CI run happened and ENG-TEST-23 runs in CI as the required `browser-smoke` check; left ENG-TEST-02 #576 and the ENG-TEST-17 baseline #582 — the ENG-TEST-17 baseline is recorded (#582); left ENG-TEST-02 #576
 - [x] (c) `AGENTS.md` (gate, Git workflow with sign-off, standards pointer, 100 % unit-coverage MUST, agent-browser and Vereino runner), `.ai/agentic.config.json` (`yarn verify`), club spec amendment A (validation lines, paged lists, error-code registry, runner) — ENG-TEST-22 review: no other gate line, list shape or `--grep` left in the club spec
 
 ## Requirement Traceability
@@ -801,9 +801,9 @@ Every requirement maps to one phase, at least one test and one acceptance criter
 - [ ] **ENG-AC-11** — The compliance pack is approved and dated by the product owner before the first real person is entered (ENG-TEST-14). — gap: #461
 - [ ] **ENG-AC-12** — Renovate opens grouped pull requests that exclude P1/P2 packages, the licence check fails on a disallowed licence, and release-please produces a tag with a changelog entry (ENG-TEST-18, ENG-TEST-21). — gap: #581 (licence check proven by `check-licenses.test.mjs`)
 - [x] **ENG-AC-13** — Private vulnerability reporting, secret scanning with push protection and Dependabot alerts are enabled, and the S17.1 documents are present (ENG-TEST-20).
-- [ ] **ENG-AC-14** — Accessibility and performance reports are produced in CI with recorded baselines (ENG-TEST-16, ENG-TEST-17). — gap: #582 (ENG-TEST-16 green in CI)
+- [x] **ENG-AC-14** — Accessibility and performance reports are produced in CI with recorded baselines (ENG-TEST-16, ENG-TEST-17). — ENG-TEST-16 green in CI (zero critical/serious violations); ENG-TEST-17 baseline recorded in `.ai/runs/2026-10-21-e1-gate-and-ci.md` → *ENG-TEST-17 Lighthouse baseline* from `main` run [45131377056](https://github.com/wladku/Vereino/actions/runs/45131377056): `/login`, mobile, median of 3 — performance 82, accessibility 100, best practices 96, SEO 100; LCP 4.66 s, TBT 114 ms, CLS 0 (#582)
 - [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — N/A: this spec lists no backend surface. — ticked as N/A (#568)
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — For this spec: the tooling, repository and operations paths are covered by ENG-TEST-01 … ENG-TEST-22. — open until the ENG-TEST items of #460, #461, #463, #557, #575, #576, #578, #580, #581, #582 land
+- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — For this spec: the tooling, repository and operations paths are covered by ENG-TEST-01 … ENG-TEST-22. — open until the ENG-TEST items of #460, #461, #463, #557, #575, #576, #578, #580, #581 land
 
 ## Final Compliance Report
 

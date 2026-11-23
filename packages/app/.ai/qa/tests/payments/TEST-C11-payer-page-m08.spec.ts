@@ -13,6 +13,7 @@ import {
 } from '../_fixtures/club'
 import { create as createStructure, signInBrowser } from '../_fixtures/club-structure'
 import { addMembership, createGroup } from '../_fixtures/groups'
+import { updateClubSettings } from '../_fixtures/members'
 import { uniqueAddress } from '../_fixtures/messaging'
 import { postCampaign } from '../_fixtures/orders'
 import { createGuardianship } from '../_fixtures/people'
@@ -35,7 +36,7 @@ import {
 import { uiText } from '../_fixtures/ui-text'
 
 // TEST-C11 (payments parity spec phase 8, REQ-C10, DD-C06, DD-C07, AC-C10; issue #298 E12-S08), at 375 px in both
-// colour schemes. Kasia is the primary payer of Ola and Jaś (Żaki, a sibling discount); Basia is Jaś's second guardian
+// colour schemes and both locales (#595: M-08 and the Today tile run their assertions in English and in Polish). Kasia is the primary payer of Ola and Jaś (Żaki, a sibling discount); Basia is Jaś's second guardian
 // and not his payer. Last month Ola's fee is partly paid in cash and Jaś's is paid.
 // - M-08 for Kasia: every payable charge is ticked on entry, the partially paid one too, and the button shows the total
 //   of what remains; the discount names its rule; the fee line reads "0 zł — paid by the club", then the fee amount in
@@ -49,6 +50,8 @@ import { uiText } from '../_fixtures/ui-text'
 // - Basia: M-08 and the Today tile read "Jaś: paid by Kasia"; the API response holds no charge and no amount of Jaś.
 test.describe.configure({ timeout: 420_000 })
 
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
+const LOCALES = ['en', 'pl'] as const
 const RULE = 'Rodzeństwo 30%'
 const FEE_CLUB = uiText('payments.club.quote.feeClub', { exact: true, params: { amount: '0 zł' } })
 const ORDER_FOR_CHILD = uiText('payments.club.campaign.orderForChild')
@@ -91,6 +94,14 @@ test('TEST-C11 M-08 ticks everything, pays what remains, names the rule and who 
   const club = await createClub(request, 'test-c11')
   try {
     const admin = club.adminToken
+    // A member page in `locale`: the club's default locale (the members here have no preferred one, so the shell
+    // resolves to it, DD-34) and the cookie agree; `<html lang>` proves the switch, since `uiText()` matches either.
+    const openIn = async (target: Page, locale: (typeof LOCALES)[number], path: string) => {
+      expect((await updateClubSettings(request, admin, { defaultLocale: locale })).status).toBe(200)
+      await target.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
+      await target.goto(path)
+      await expect(target.locator('html')).toHaveAttribute('lang', locale)
+    }
     const since = calendarDate(-62)
     const academy = await createStructure(request, admin, 'sections', { name: 'Akademia piłkarska' })
     const zaki = await createGroup(request, admin, { sectionId: academy, name: 'Żaki', kind: 'team' })
@@ -224,27 +235,30 @@ test('TEST-C11 M-08 ticks everything, pays what remains, names the rule and who 
       for (const charge of toPay) await expect(checkbox(page, charge.id)).toBeChecked()
       await expect(page.getByTestId('club-payments-quote-total')).toHaveText(zloty(remainingTotal))
     }
-    await page.goto('/club/payments')
-    await pageReady()
-    await expect(page.getByTestId('club-payments-pay')).toHaveText(
-      uiText('payments.club.pay', { exact: true, params: { total: zloty(remainingTotal) } }),
-    )
-    await expect(page.getByTestId('club-payments-quote-fee')).toHaveText(FEE_CLUB)
-    await expect(page.getByTestId('club-payments-summary')).toHaveAttribute('aria-live', 'polite')
-    await expect(page.locator(`[data-charge-id="${discounted.id}"]`).getByTestId('club-charge-discount')).toContainText(
-      RULE,
-    )
-    await expect(page.getByTestId('club-payments-campaign')).toContainText(ORDER_FOR_CHILD)
-    await expect(page.getByTestId('club-other-payer')).toHaveCount(0)
-    for (const colorScheme of ['light', 'dark'] as const) {
-      await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
-      await page.reload()
+    // M-08 in both locales and both colour schemes.
+    for (const locale of LOCALES) {
+      await openIn(page, locale, '/club/payments')
       await pageReady()
-      const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
-      if (found.length > 0) violations[`/club/payments (${colorScheme})`] = found
+      await expect(page.getByTestId('club-payments-pay'), locale).toHaveText(
+        uiText('payments.club.pay', { exact: true, params: { total: zloty(remainingTotal) } }),
+      )
+      await expect(page.getByTestId('club-payments-quote-fee'), locale).toHaveText(FEE_CLUB)
+      await expect(page.getByTestId('club-payments-summary')).toHaveAttribute('aria-live', 'polite')
+      await expect(
+        page.locator(`[data-charge-id="${discounted.id}"]`).getByTestId('club-charge-discount'),
+      ).toContainText(RULE)
+      await expect(page.getByTestId('club-payments-campaign'), locale).toContainText(ORDER_FOR_CHILD)
+      await expect(page.getByTestId('club-other-payer')).toHaveCount(0)
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme, reducedMotion: 'reduce' })
+        await page.reload()
+        await pageReady()
+        const found = await scanBlockingViolations(page, testInfo, { platformBaseline: true })
+        if (found.length > 0) violations[`/club/payments (${locale}, ${colorScheme})`] = found
+      }
+      await expectNoPageOverflow(page)
+      await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
     }
-    await expectNoPageOverflow(page)
-    await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
 
     // Unticking updates the summary and the button.
     await checkbox(page, jasNow.id).uncheck()
@@ -317,14 +331,17 @@ test('TEST-C11 M-08 ticks everything, pays what remains, names the rule and who 
       payerFirstName: 'Kasia',
       otherPayers: [{ wardFirstName: 'Jaś', payerFirstName: 'Kasia' }],
     })
-    await page.goto('/club/payments')
-    await expect(page.getByTestId('club-other-payer')).toHaveText(JAS_PAID_BY_KASIA)
-    await expect(page.getByTestId('club-charge')).toHaveCount(0)
-    await expect(page.getByTestId('club-payments-empty')).toHaveCount(0)
-    await expect(page.getByTestId('club-payments-pay')).toHaveCount(0)
-    await page.goto('/club')
-    await expect(page.getByTestId('club-tile-payments-state')).toHaveAttribute('data-state', 'other_pays')
-    await expect(page.getByTestId('club-tile-payments-state')).toHaveText(TILE_PAID_BY_KASIA)
+    for (const locale of LOCALES) {
+      await openIn(page, locale, '/club/payments')
+      await expect(page.getByTestId('club-other-payer'), locale).toHaveText(JAS_PAID_BY_KASIA)
+      await expect(page.getByTestId('club-charge')).toHaveCount(0)
+      await expect(page.getByTestId('club-payments-empty')).toHaveCount(0)
+      await expect(page.getByTestId('club-payments-pay')).toHaveCount(0)
+      await expectNoPageOverflow(page)
+      await openIn(page, locale, '/club')
+      await expect(page.getByTestId('club-tile-payments-state')).toHaveAttribute('data-state', 'other_pays')
+      await expect(page.getByTestId('club-tile-payments-state'), locale).toHaveText(TILE_PAID_BY_KASIA)
+    }
 
     // A checkout of a partially paid charge and an open one: the sum of the remainders, no overpayment at capture.
     await setFeeMode(request, admin, { onlineFeeMode: 'club_pays' })

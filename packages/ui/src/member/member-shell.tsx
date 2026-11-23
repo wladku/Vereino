@@ -9,8 +9,10 @@
 import * as React from 'react'
 import { CalendarDays, House, LogOut, MapPin, Menu, MessageSquare, Wallet } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
+import type { ClubAccent } from '@vereino/core'
 import { reloadOnBackForwardRestore } from '#src/member/member-context'
 import { SIGN_OUT_ACTION, type MemberNav, type MemberTabIcon } from '#src/member/member-nav'
+import { clubAccentStyle } from '#src/theme/club-accent-style'
 
 export type MemberLinkProps = {
   href: string
@@ -29,7 +31,8 @@ export type MemberSwitcher = {
 }
 
 export type MemberShellProps = {
-  brand: { name: string; logoUrl?: string | null }
+  /** The club's name, logo and colour (#486; null or absent: the theme's primary pair). */
+  brand: { name: string; logoUrl?: string | null; accent?: ClubAccent | null }
   /** `null` until the profile is loaded: a user linked to no person sees no navigation. */
   nav: MemberNav | null
   navLabel: string
@@ -167,10 +170,13 @@ export function MemberShell({
 }: MemberShellProps) {
   React.useEffect(reloadOnBackForwardRestore, [])
   return (
-    <div className="bg-background text-foreground min-h-svh">
+    <div className="bg-background text-foreground min-h-svh" style={clubAccentStyle(brand.accent)}>
       <header className="bg-card border-b">
-        <div className="mx-auto flex max-w-3xl flex-col gap-2 px-4 py-2">
-          <p className="flex items-center gap-2 text-sm font-semibold" data-testid="club-name">
+        <div className="bg-club-accent text-club-accent-foreground" data-testid="club-header-bar">
+          <p
+            className="mx-auto flex max-w-3xl items-center gap-2 px-4 py-2 text-sm font-semibold"
+            data-testid="club-name"
+          >
             {brand.logoUrl ? (
               <img
                 src={brand.logoUrl}
@@ -183,14 +189,14 @@ export function MemberShell({
             ) : null}
             <span>{brand.name}</span>
           </p>
-          {switchers.length > 0 ? (
-            <div className="flex flex-wrap gap-3" data-testid="club-switchers">
-              {switchers.map((switcher) => (
-                <Switcher key={switcher.id} switcher={switcher} />
-              ))}
-            </div>
-          ) : null}
         </div>
+        {switchers.length > 0 ? (
+          <div className="mx-auto flex max-w-3xl flex-wrap gap-3 px-4 py-2" data-testid="club-switchers">
+            {switchers.map((switcher) => (
+              <Switcher key={switcher.id} switcher={switcher} />
+            ))}
+          </div>
+        ) : null}
       </header>
       {banner}
       <main className={nav ? MAIN_WITH_BAR_CLASS : MAIN_CLASS}>{children}</main>

@@ -92,7 +92,7 @@ Who has it: every role. The administrator cannot find where to enter the club's 
 - B-33 "Cash to settle" and its menu item: issue #118. Its place and its count are reserved in *Menu structure*.
 - Changing a route path, a feature id or an i18n **key**. Only catalog values, page metadata and navigation change.
 - Changing the mockup. The application's texts change, not the mockup's (D-031 §2).
-- A separate treasurer navigation: the role stays held back (D-030, #245).
+- A separate treasurer navigation: the treasurer role (released by D-037, built in #432 after this spec was written) uses the Finance group of *Menu structure*, filtered by its features; this spec adds nothing for it.
 - A notes field on contracts (B-07): it needs a column, and no decision asks for it.
 - User-arranged sidebars beyond what the platform already offers; a native app (N02, N12).
 
@@ -420,9 +420,10 @@ Closest installed references: `groups/components/GroupsNav.tsx` and `payments/co
 | Ludzie / People (`people.nav.group`) | 1 | Osoby / People | `/backend/people/persons` | `people.view` | — (Import: header button → `/backend/people/imports`) | — |
 | Zajęcia / Classes (`groups.nav.group`) | 1 | Grupy / Groups | `/backend/groups/groups` | `groups.view` | Grupy · Drużyny zewnętrzne · Sezony (existing `GroupsNav`) | — |
 | | 2 | Aktywności / Activities | `/backend/activities/activities` | `activities.view` | — | — |
-| | 3 | Terminy / Sessions | `/backend/activities/occurrences` | `activities.view` | — (perspectives of B-15) | sessions needing a coach |
-| | 4 | Raport jednostek / Coach units report | `/backend/activities/reports/coach-units` | `activities.reports.view` | — | — |
-| | 5 | Polityki deklaracji / Declaration policies | `/backend/activities/policies` | `activities.view` | — | — |
+| | 3 | Imprezy klubowe / Club events | `/backend/activities/club-events` | `activities.view` | — (views Upcoming · Past · Cancelled of B-T1, club events spec) | — |
+| | 4 | Terminy / Sessions | `/backend/activities/occurrences` | `activities.view` | — (perspectives of B-15) | sessions needing a coach |
+| | 5 | Raport jednostek / Coach units report | `/backend/activities/reports/coach-units` | `activities.reports.view` | — | — |
+| | 6 | Polityki deklaracji / Declaration policies | `/backend/activities/policies` | `activities.view` | — | — |
 | Komunikacja / Communication (`communication.nav.group`) | 1 | Wątki i sprawy / Threads and cases | `/backend/communication/threads` | `communication.post` | Wszystkie (same) · Sprawy (`/backend/communication/cases`, `communication.cases.manage`) | — |
 | Finanse / Finance (`payments.nav.group`) | 1 | Cenniki i zniżki / Fees and discounts | `/backend/payments/fees` | `payments.manage` | existing `PaymentsNav` | — |
 | | 2 | Należności / Charges | `/backend/payments/charges` | `payments.view` | — | — |
@@ -436,7 +437,7 @@ Closest installed references: `groups/components/GroupsNav.tsx` and `payments/co
 | | 5 | Dziennik i incydenty / Log and incidents | `/backend/facilities/logs` | `facilities.log.write` | Dziennik (same) · Incydenty (`/incidents`, `facilities.log.write`) · Zakazy wstępu (`/bans`, `facilities.incidents.manage`) · Konserwacja (`/maintenance`, `facilities.maintenance.manage`) | — |
 | | 6 | Raport dla gminy / Municipality report | `/backend/facilities/reports/owner` | `facilities.reports.view` | Raport dla gminy (same) · Wynajmowane godziny (`/reports/rented-hours`) | — |
 
-Platform groups (media, integrations and the rest) follow the six, as the platform orders them. Specs R and C add no menu item; a new page of theirs is a tab or a record page under one of these items.
+Platform groups (media, integrations and the rest) follow the six, as the platform orders them. The club events spec (`2026-11-18-vereino-club-events-with-parts.md`) adds one item, Club events (B-T1), third in Classes (`pageOrder` 25). Specs R and C add no menu item; a new page of theirs is a tab or a record page under one of these items.
 
 **Member bottom bar and More.** One table in `member-nav.ts`; an entry is shown when the person holds its feature.
 
@@ -456,7 +457,7 @@ Platform groups (media, integrations and the rest) follow the six, as the platfo
 | More | Zamówienia (np. stroje) / Orders (e.g. kit) | `/club/orders` | `payments.orders.place` |
 | More | Płatności moich grup / My groups' payments | `/club/coach/payments` | `payments.groups.view` |
 | More | Przyjmij gotówkę / Accept cash | `/club/cash` | `payments.cash.record` |
-| More | Panel administracyjny / Admin panel | `/backend` | grant `club_admin`, `coordinator` or `facility_operator` |
+| More | Panel administracyjny / Admin panel | `/backend` | grant `club_admin`, `coordinator`, `facility_operator` or `treasurer` |
 | More | Wyloguj / Sign out | `POST /api/auth/logout` | always |
 
 More lists its entries in the order of this table. Spec A's coordinator pages (section sessions by view on the member calendar and sessions pages) are reached from Today and the calendar in the staff context; spec A adds no tab and one More entry, Groups. Spec C adds none: Orders, My groups' payments and Accept cash are the entries above. A later entry of any spec is one row in this table.
@@ -466,8 +467,8 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 | Person | Lands on |
 |---|---|
 | Account linked to no person | `/backend` with the notice (unchanged) |
-| Holds `facilities.log.write`; no ward, no participant membership; no `coach`, `coordinator` or `club_admin` grant | `/club/facility` |
-| Holds the `club_admin` grant; no ward, no participant membership, no `coach` grant | `/backend` |
+| Holds `facilities.log.write`; no ward, no participant membership; no `coach`, `coordinator`, `club_admin` or `treasurer` grant | `/club/facility` |
+| Holds the `club_admin` or the `treasurer` grant; no ward, no participant membership, no `coach` grant | `/backend` |
 | Everyone else with `people.self` — guardian, participant, coach, coordinator, an administrator who is also a parent or a coach | `/club` |
 
 **Entry points to pages that had none:**
@@ -483,7 +484,7 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 | `/club/facility` | landing; More → Today at the facility |
 | `/club/orders` | More → Orders; the M-08 card and the Today tile of spec C |
 | `/club/coach/payments` | More → My groups' payments; the existing Today tile |
-| `/club/cash` | More → Accept cash (today the administrator only, D-030) |
+| `/club/cash` | More → Accept cash (the administrator and the treasurer, D-037) |
 | `/club/groups` (spec A, REQ-A11) | More → Groups |
 | `/club/places/maintenance` (facilities parity spec, REQ-R15) | the "Konserwacja" link on `/club/places` for a maintenance planner (reached through More → Facilities and booking); the maintenance reminder's link |
 | `/club/facility/rentals/[id]` (facilities parity spec, REQ-R14) | the Rentals tab of `/club/facility` |
@@ -512,6 +513,7 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 | Coordinator | `/club` in the staff context (daily work, spec A); panel: Club → People → Classes → Communication → Facility | panel: widgets 1, 2, 8 | sign-in → `/club` → session needing a coach → assign (spec A, 3 taps); More → Admin panel → dashboard |
 | Facility attendant | `/club/facility`; More; panel: Facility | panel: widget 8 | sign-in → `/club/facility` → "Open facility" (2 taps) |
 | Administrator | panel: Club → People → Classes → Communication → Finance → Facility; `/club` through "Interfejs członkowski" | widgets 1–9 | sign-in → dashboard → widget → queue (3 clicks) |
+| Treasurer (D-037, #432) | panel: Finance only | widgets 3–6 | sign-in → dashboard → Finance → Cash to settle → "Accept handover" (3 clicks) |
 | Guest | `/p/[clubSlug]`: Club · Sections · Facilities · Events (optional) · Sign in | — | club page → Facilities → place (2 clicks) |
 
 | Surface / widget | Empty state guidance and action | Responsive behavior | Keyboard / focus behavior |
@@ -868,7 +870,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 
 ## Acceptance Criteria
 
-- [ ] **AC-N01** — The administrator's sidebar shows, after Dashboard, the groups Klub, Ludzie, Zajęcia, Komunikacja, Finanse and Obiekt in that order with the items of *Menu structure*, in pl and en. Klub lists Sekcje, Miejsca, Instytucje i umowy, Ustawienia and Publikacja. A coordinator sees Sekcje only in Klub and no Finanse. `yarn verify` fails when a settings page shares a parent path with a regular page. — gap: #602 (groups, order, Klub items, coordinator's Klub proven by #513, `TEST-N01-club-sidebar-group`; `settings-prefixes:check` in `yarn verify`)
+- [x] **AC-N01** — The administrator's sidebar shows, after Dashboard, the groups Klub, Ludzie, Zajęcia, Komunikacja, Finanse and Obiekt in that order with the items of *Menu structure*, in pl and en. Klub lists Sekcje, Miejsca, Instytucje i umowy, Ustawienia and Publikacja. A coordinator sees Sekcje only in Klub and no Finanse. `yarn verify` fails when a settings page shares a parent path with a regular page. — evidence: #513, #602; `TEST-N01-club-sidebar-group` (groups, order and labels in pl and en, Dashboard first, Klub items, the coordinator's Klub and no Finanse), `settings-prefixes:check` in `yarn verify`
 - [x] **AC-N02** — B-07, B-18, B-26, B-27 and B-28 each open from one menu item and show their tabs; every tab has its own URL; a tab without its feature is absent. The facility group has six items. — evidence: #318; `TEST-N03-pages-with-tabs`
 - [x] **AC-N03** — Terminy, Wyciągi bankowe, Zbiórki zamówień and Zgłoszenia show the number of waiting records in the person's scope and nothing at zero. The Wyciągi bankowe and Zbiórki zamówień counts close only after spec C's REQ-C09 (#260 records it). — evidence: #413; `TEST-N04-dashboard-menu-counts`, `packages/ui/src/__tests__/nav-badge-counts.test.mjs`
 - [x] **AC-N04** — The panel's top bar shows "Interfejs członkowski" when `GET /api/people/me` resolves a person for the signed-in user, and not to an administrator linked to no person. The dashboard greets by first name with the date. Administrator, coordinator and attendant each see exactly the widgets of the role table. — evidence: #413, #416; `TEST-N04-dashboard-menu-counts`

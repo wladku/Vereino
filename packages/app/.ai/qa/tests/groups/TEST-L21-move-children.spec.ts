@@ -1,6 +1,6 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
-import { safeDay } from '../_fixtures/activities'
+import { addDays, safeDay } from '../_fixtures/activities'
 import { declare, familyFor, weeklySeries } from '../_fixtures/attendance'
 import { birthDateTurning, calendarDate, call, createClub, createPerson } from '../_fixtures/club'
 import {
@@ -74,9 +74,11 @@ test('TEST-L21 several children move to another group in one previewed step that
     const family = await familyFor(request, club)
     const admin = club.adminToken
     const coordinator = family.academyCoordinator.token
+    // Calendar-day offsets from today (as the attendance fixture does): `calendarDate(-30)` subtracts 30 × 24 h, which
+    // lands one day off when the span crosses a DST change late in the evening.
     const today = calendarDate()
-    const yesterday = calendarDate(-1)
-    const since = calendarDate(-30)
+    const yesterday = addDays(today, -1)
+    const since = addDays(today, -30)
     const period = periodFromNow(0)
     // Skrzaty takes 14–16-year-olds: Hania (14) and Kuba (16) fit, Staś (12) does not.
     const skrzaty = await createGroup(request, admin, {
@@ -107,13 +109,13 @@ test('TEST-L21 several children move to another group in one previewed step that
       groupId: skrzaty,
       personId: zosia,
       role: 'participant',
-      validFrom: calendarDate(-7),
+      validFrom: addDays(today, -7),
     })
     await addMembership(request, admin, {
       groupId: family.zaki,
       personId: tymek,
       role: 'participant',
-      validFrom: calendarDate(40),
+      validFrom: addDays(today, 40),
     })
 
     const zakiFee = await createFee(request, admin, {
@@ -277,7 +279,7 @@ test('TEST-L21 several children move to another group in one previewed step that
 
     // --- A membership changed after the preview: 409 `move_preview_stale`, nothing moved ---
     const olaRow = membershipOf(ola)
-    const changed = await endMembership(request, admin, olaRow.id, olaRow.updatedAt, calendarDate(200))
+    const changed = await endMembership(request, admin, olaRow.id, olaRow.updatedAt, addDays(today, 200))
     expect(changed.status, JSON.stringify(changed.body)).toBe(200)
     const stale = await moveMany(request, coordinator, { ...request0, previewToken: preview.body?.previewToken })
     expect(stale.status, JSON.stringify(stale.body)).toBe(409)
@@ -304,7 +306,7 @@ test('TEST-L21 several children move to another group in one previewed step that
       expect(old?.validTo, `Żaki of ${personId}`).toBe(yesterday)
       const next = skrzatyAfter.find((row) => row.personId === personId && row.validFrom === today)
       expect(next, `Skrzaty of ${personId}`).toMatchObject({ role: 'participant' })
-      expect(next?.validTo ?? null).toBe(personId === ola ? calendarDate(200) : null)
+      expect(next?.validTo ?? null).toBe(personId === ola ? addDays(today, 200) : null)
     }
     expect(zakiAfter.find((row) => row.personId === zosia)?.validTo ?? null).toBeNull()
     // B-10 Groups tab (`GET /api/groups/memberships?personId=`): both groups with their dates.
@@ -344,7 +346,7 @@ test('TEST-L21 several children move to another group in one previewed step that
     const zakiUndone = (await roster(request, admin, family.zaki)).items
     for (const personId of movers) {
       const old = zakiUndone.find((row) => row.personId === personId && row.role === 'participant')
-      expect(old?.validTo ?? null, `Żaki of ${personId} after undo`).toBe(personId === ola ? calendarDate(200) : null)
+      expect(old?.validTo ?? null, `Żaki of ${personId} after undo`).toBe(personId === ola ? addDays(today, 200) : null)
     }
     const skrzatyUndone = (await roster(request, admin, skrzaty)).items
     expect(skrzatyUndone.filter((row) => row.validFrom === today)).toHaveLength(0)
