@@ -4,7 +4,8 @@
   autonomously without questions.
 - **Issue**: #681. **Branch**: `feat/issue-681-club-core-offboarding-hardening`. **Base**: the code lives on #677
   (#632, per-club export, deletion, restore), which was open in the merge queue when the run started. The fix was
-  written on top of #677's head (`ac660e8c`) and rebased onto `main` after #677 merged.
+  written on top of #677's head (`ac660e8c`). #677 stayed held by the merge train for the owner's manual QA (MT-D02),
+  so the PR #686 was opened stacked on #677's branch, with `blocked`.
 - **Spec**: `.ai/specs/2026-11-22-vereino-many-clubs-one-instance.md` phase 4 (changelog file
   `2026-11-23-issue-681-offboarding-hardening.md`).
 
@@ -59,4 +60,7 @@
 
 ## Open problems / next steps
 
-- After #677 merges: rebase onto `main`, rerun the unit test, TEST-M07 and `yarn verify`, then open the PR.
+- PR #686 is stacked on #677. After #677 is squash-merged, rebase it onto `main` (`git rebase --onto origin/main ac660e8c`),
+  retarget it to `main`, rerun TEST-M07 and `yarn verify`, and remove `blocked`.
+- `yarn verify`: all 18 steps pass. The first run failed at `lint` on an unnecessary type assertion in `exportRows`; after
+  the fix, `--from lint` passed every remaining step. `yarn guard`: no blocking findings.
