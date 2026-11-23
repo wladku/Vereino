@@ -62,6 +62,7 @@
     "format": "yarn workspace @vereino/app format",
     "format:check": "yarn workspace @vereino/app format:check",
     "contracts:check": "yarn workspace @vereino/app contracts:check",
+    "route-isolation:check": "yarn workspace @vereino/app route-isolation:check",
     "settings-prefixes:check": "yarn workspace @vereino/app settings-prefixes:check",
     "glossary:check": "yarn workspace @vereino/app glossary:check",
     "qa-texts:check": "yarn workspace @vereino/app qa-texts:check",
