@@ -109,7 +109,9 @@ async function training(
   return session
 }
 
-// quarantine: #653 (the "Assign substitute" menu item click times out in CI, line ~259)
+// Fails in CI runs that share no PR: the "Assign substitute" menu item (line ~265) detaches from the DOM while it
+// is clicked (the row menu re-renders), so the click times out. Un-fixme once the cause is fixed.
+// quarantine: #653
 test.fixme('E06-S13 a coach reports an absence, the coordinator assigns a free substitute, the substitution is kept; unsettled sessions are listed', async ({
   page,
   request,
