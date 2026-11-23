@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 import { assignRole, birthDateTurning, createClub, createStaff } from '../_fixtures/club'
 import { create, signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
-import { uiText } from '../_fixtures/ui-text'
+import { uiText, uiTextIn } from '../_fixtures/ui-text'
 
 // TEST-N01, Club group part (navigation spec REQ-N01, DD-N01; issue #246): the test reads the sidebar itself, not
 // URLs. The administrator's main sidebar lists the Club group — Sections, Places, Institutions and contracts (Contracts
@@ -77,6 +77,14 @@ test('TEST-N01 the Club group is in the main sidebar for the administrator and t
     expect(await links.evaluateAll((anchors) => anchors.map((anchor) => anchor.getAttribute('href')))).toEqual([
       '/backend/club/sections',
     ])
+    // … and no Finance group (AC-N01, #602): no group is named Finanse / Finance and no item leads to a payments page.
+    const sidebar = page.getByTestId('sidebar')
+    await expect(
+      sidebar
+        .locator('[data-sidebar-group="true"]')
+        .filter({ has: page.getByRole('button', { name: uiText('payments.nav.group', { exact: true }) }) }),
+    ).toHaveCount(0)
+    await expect(sidebar.locator('a[href^="/backend/payments"]')).toHaveCount(0)
   } finally {
     await club.cleanup()
   }
@@ -85,7 +93,9 @@ test('TEST-N01 the Club group is in the main sidebar for the administrator and t
 // TEST-N01, groups and items part (navigation spec REQ-N01 and its glossary, D-031 §1–2; issue #494): the
 // administrator's sidebar starts with the mockup's six groups in the mockup's order — Klub, Ludzie, Zajęcia (one group
 // for groups, activities and sessions, no "Harmonogram"), Komunikacja, Finanse, Obiekt — and each item carries the
-// mockup's short menu label ("Ustawienia", not the page title "Ustawienia klubu"). Fails on `146858ee`.
+// mockup's short menu label ("Ustawienia", not the page title "Ustawienia klubu"). Fails on `146858ee`. AC-N01 (#602):
+// the order and the labels hold in pl and in en, each label being the exact text of that locale's catalog, and the
+// platform's Dashboard item (the sidebar's home link to `/backend`) comes first, before the six groups.
 const GROUPS: { key: string; items: [string, string][] }[] = [
   {
     key: 'club_core.nav.group',
@@ -133,7 +143,12 @@ const GROUPS: { key: string; items: [string, string][] }[] = [
   },
 ]
 
-test('TEST-N01 the sidebar has the mockup groups in the mockup order, with the menu labels', async ({
+async function setLocale(page: Page, locale: 'en' | 'pl') {
+  const response = await page.request.post('/api/auth/locale', { data: { locale } })
+  expect(response.ok()).toBe(true)
+}
+
+test('TEST-N01 the sidebar has Dashboard first, then the mockup groups in the mockup order, with the menu labels, in pl and en', async ({
   page,
   request,
 }) => {
@@ -142,34 +157,51 @@ test('TEST-N01 the sidebar has the mockup groups in the mockup order, with the m
     page.setDefaultTimeout(30_000)
     await page.setViewportSize({ width: 1280, height: 900 })
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
-    await page.goto('/backend')
-    await expect(page.getByTestId('backend-chrome-ready')).toHaveAttribute('data-ready', 'true')
-    const groups = page.getByTestId('sidebar').locator('[data-sidebar-group="true"]')
-    // Every group's name (the first span of its toggle) and its items: href and the label span (the one without a class).
-    const sidebar = await groups.evaluateAll((elements) =>
-      elements.map((group) => ({
-        name: group.querySelector('button > span')?.textContent?.trim() ?? '',
-        items: Array.from(group.querySelectorAll('a[href]')).map((anchor) => ({
+    for (const locale of ['pl', 'en'] as const) {
+      await setLocale(page, locale)
+      await page.goto('/backend')
+      await expect(page.getByTestId('backend-chrome-ready')).toHaveAttribute('data-ready', 'true')
+      await expect(page.locator('html')).toHaveAttribute('lang', locale)
+      const nav = page.getByTestId('sidebar')
+      // Dashboard first: the first link of the sidebar column is the platform's Dashboard item, and the next one is the
+      // first item of the first group (Klub → Sekcje), so nothing stands between Dashboard and the six groups.
+      const column = await nav.evaluate((element) =>
+        Array.from(element.closest('aside')?.querySelectorAll('a[href]') ?? []).map((anchor) => ({
           href: anchor.getAttribute('href'),
-          label:
-            Array.from(anchor.children)
-              .find((child) => child.tagName === 'SPAN' && !child.getAttribute('class'))
-              ?.textContent?.trim() ?? '',
+          label: anchor.getAttribute('aria-label'),
         })),
-      })),
-    )
-    expect(sidebar.length).toBeGreaterThanOrEqual(GROUPS.length)
-    GROUPS.forEach((expected, index) => {
-      const actual = sidebar[index]
-      expect(actual.name, expected.key).toMatch(uiText(expected.key, { exact: true }))
-      expect(
-        actual.items.map((item) => item.href),
-        expected.key,
-      ).toEqual(expected.items.map(([href]) => href))
-      expected.items.forEach(([href, labelKey], itemIndex) => {
-        expect(actual.items[itemIndex].label, href).toMatch(uiText(labelKey, { exact: true }))
+      )
+      // Its accessible name is the brand followed by the catalog text ("Vereino – Przejdź do pulpitu").
+      expect(column[0]?.href, `${locale}: Dashboard first`).toBe('/backend')
+      expect(column[0]?.label, `${locale}: Dashboard first`).toContain(uiTextIn(locale, 'appShell.goToDashboard'))
+      expect(column[1]?.href, `${locale}: the first group follows Dashboard`).toBe(GROUPS[0].items[0][0])
+      const groups = nav.locator('[data-sidebar-group="true"]')
+      // Every group's name (the first span of its toggle) and its items: href and the label span (the one without a class).
+      const sidebar = await groups.evaluateAll((elements) =>
+        elements.map((group) => ({
+          name: group.querySelector('button > span')?.textContent?.trim() ?? '',
+          items: Array.from(group.querySelectorAll('a[href]')).map((anchor) => ({
+            href: anchor.getAttribute('href'),
+            label:
+              Array.from(anchor.children)
+                .find((child) => child.tagName === 'SPAN' && !child.getAttribute('class'))
+                ?.textContent?.trim() ?? '',
+          })),
+        })),
+      )
+      expect(sidebar.length).toBeGreaterThanOrEqual(GROUPS.length)
+      GROUPS.forEach((expected, index) => {
+        const actual = sidebar[index]
+        expect(actual.name, `${locale}: ${expected.key}`).toBe(uiTextIn(locale, expected.key))
+        expect(
+          actual.items.map((item) => item.href),
+          `${locale}: ${expected.key}`,
+        ).toEqual(expected.items.map(([href]) => href))
+        expected.items.forEach(([href, labelKey], itemIndex) => {
+          expect(actual.items[itemIndex].label, `${locale}: ${href}`).toBe(uiTextIn(locale, labelKey))
+        })
       })
-    })
+    }
   } finally {
     await club.cleanup()
   }
