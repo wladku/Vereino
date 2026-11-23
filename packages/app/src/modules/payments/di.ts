@@ -2,7 +2,7 @@ import { asFunction, asValue } from 'awilix'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import { registerGatewayAdapter, registerWebhookHandler } from '@open-mercato/shared/modules/payment_gateways/types'
-import { createTokenLinkService, registerEmailTemplate } from '@/modules/foundation'
+import { createTokenLinkService, declareClubJobs, registerEmailTemplate } from '@/modules/foundation'
 import { OrderLink } from './data/entities'
 import {
   cashReceivedTemplate,
@@ -19,6 +19,7 @@ import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { PAYMENTS_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
 import { TEST_GATEWAY_PROVIDER, readTestGatewaySessionId, testGatewayAdapter } from './services/test-gateway'
+import { PAYMENTS_CLUB_JOBS } from './lib/club-jobs'
 
 /**
  * The online checkout's gateway provider (DD-42): the club's Stripe account, or — only in the ephemeral integration
@@ -57,6 +58,8 @@ const orderLinks = createTokenLinkService(OrderLink, {
 const chargeService = createChargeService()
 
 export function register(container: AppContainer) {
+  // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
+  declareClubJobs(PAYMENTS_CLUB_JOBS)
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, cashReceivedTemplate)
   registerEmailTemplate(container, orderReminderTemplate)

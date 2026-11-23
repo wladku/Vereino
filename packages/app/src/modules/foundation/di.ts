@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/core'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { foundationErrors } from './api/errors'
 import { createAccount } from './services/accounts'
+import { declareClubJobs, initClub, removeClub, wake } from './services/club-jobs'
 import { registerAppendOnlyGuard } from './services/append-only-guard'
 import { auditedRead } from './services/audited-read'
 import { resolveAudience } from './services/audience'
@@ -40,6 +41,12 @@ export const FOUNDATION_ROLES = 'foundationRoles' as const
 export const FOUNDATION_ACCOUNTS = 'foundationAccounts' as const
 export const FOUNDATION_ENCRYPTED_FIELDS = 'foundationEncryptedFields' as const
 export const FOUNDATION_SCHEDULES = 'foundationSchedules' as const
+/**
+ * Many-clubs spec DD-M04, DD-M06 (#629): `declare(jobs)` (a module's per-club jobs, also `declareClubJobs` from
+ * `@/modules/foundation`), `wake(container, scope, jobKey, at)`, `initClub(container, scope, keys?)`,
+ * `removeClub(container, scope)`.
+ */
+export const FOUNDATION_CLUB_JOBS = 'foundationClubJobs' as const
 export const FOUNDATION_LOCALIZED = 'foundationLocalized' as const
 export const FOUNDATION_ERRORS = 'foundationErrors' as const
 export const FOUNDATION_SCHEDULING = 'foundationScheduling' as const
@@ -77,6 +84,7 @@ export function register(container: AppContainer) {
     [FOUNDATION_ACCOUNTS]: asValue({ createAccount }),
     [FOUNDATION_ENCRYPTED_FIELDS]: asValue({ encryptedField }),
     [FOUNDATION_SCHEDULES]: asValue({ registerModuleSchedule }),
+    [FOUNDATION_CLUB_JOBS]: asValue({ declare: declareClubJobs, wake, initClub, removeClub }),
     [FOUNDATION_LOCALIZED]: asValue({ renderLocalized, localeForPerson, assertSupportedLocale }),
     [FOUNDATION_ERRORS]: asValue(foundationErrors),
     [FOUNDATION_SCHEDULING]: asValue({ parseRecurrence, assertTransition, advanceWhere }),
