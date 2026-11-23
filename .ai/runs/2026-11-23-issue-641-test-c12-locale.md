@@ -6,7 +6,7 @@
 ## Steps
 
 1. Claimed #641 (assignee, `in-progress`, `🤖` claim comment naming this run).
-2. `TEST-C12-guardian-orders-on-the-phone.spec.ts`: a `useLocale(locale)` helper sets the club's `defaultLocale` (`updateClubSettings`, admin token — Kasia's browser sign-in does not end it) and the `locale` cookie; a `visit(path)` helper navigates and asserts `<html lang>` equals the active locale. All three locale loops (Today/M-16/M-17 open, M-16/M-17 picked up, M-19 guest link) and every other navigation go through them; each `en` reset before an axe scan re-visits the page so the scan runs on an English render.
+2. `TEST-C12-guardian-orders-on-the-phone.spec.ts`: a `switchLocale(locale)` helper sets the club's `defaultLocale` (`updateClubSettings`, admin token — Kasia's browser sign-in does not end it) and the `locale` cookie; a `visit(path)` helper navigates and asserts `<html lang>` equals the active locale. All three locale loops (Today/M-16/M-17 open, M-16/M-17 picked up, M-19 guest link) and every other navigation go through them; each `en` reset before an axe scan re-visits the page so the scan runs on an English render.
 3. Lesson `panel-language-follows-club-default-locale` extended: a locale loop asserts `<html lang>` after each navigation. (Lesson `member-pages-locale-follows-the-member-not-the-cookie` named by the issue lands with #640, not yet on `main`, so the test comment points at the existing lesson.)
 
 ## Decisions
@@ -24,7 +24,13 @@
 
 - `npx tsc --noEmit -p .ai/qa/tests/tsconfig.json` (in `packages/app`) — clean; `npx prettier --check` on the spec — clean.
 - `yarn test:integration:vereino --filter TEST-C12` — `1 passed (56.3s)` (the test itself 24.0s), including the `lang="pl"` checks on `/club`, `/club/orders`, `/club/orders/[id]` and `/club/o/[token]`.
-- `yarn verify` — see the PR.
+- `yarn verify` (first run) — failed at `lint`:
+  ```
+  226:13  error  React Hook "useLocale" may be executed more than once. Possibly because it is called in a loop.  react-hooks/rules-of-hooks
+  ```
+  The helper was named like a hook; renamed to `switchLocale`.
+- `yarn verify --from lint` — all 17 steps passed (generate, typecheck, typecheck:packages, typecheck:qa passed in the first run; `tsc -p .ai/qa/tests/tsconfig.json` clean again after the rename).
+- `yarn test:integration:vereino --filter TEST-C12` after the rename — `1 passed (55.5s)`.
 
 ## Open problems / next steps
 

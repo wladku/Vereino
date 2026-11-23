@@ -210,7 +210,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     await signInBrowser(page, request, club, kasiaUserId, kasiaEmail)
     // Kasia's language is "club default", so the club setting decides; the cookie follows it for the guest pages.
     let current: Locale = 'en'
-    const useLocale = async (locale: Locale) => {
+    const switchLocale = async (locale: Locale) => {
       expect((await updateClubSettings(request, admin, { defaultLocale: locale })).status).toBe(200)
       await page.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
       current = locale
@@ -223,7 +223,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
 
     // While the campaign takes orders: the Today tile, M-16 and M-17, in both locales.
     for (const locale of ['en', 'pl'] as const) {
-      await useLocale(locale)
+      await switchLocale(locale)
       await visit('/club')
       const tile = page.getByTestId('club-tile-order')
       await expect(tile, locale).toHaveCount(1)
@@ -275,7 +275,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(pay).toHaveAttribute('href', `/club/payments?pay=${chargeId}`)
       await expectNoPageOverflow(page)
     }
-    await useLocale('en')
+    await switchLocale('en')
     await visit(`/club/orders/${campaignId}?child=${jas}`)
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/orders/[campaignId] (open)'))
 
@@ -332,7 +332,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     })
     expect(handed.status, JSON.stringify(handed.body)).toBe(200)
     for (const locale of ['en', 'pl'] as const) {
-      await useLocale(locale)
+      await switchLocale(locale)
       await visit(`/club/orders/${campaignId}?child=${jas}`)
       const picked = page.getByTestId('order-picked-up')
       await expect(picked, locale).toContainText(uiText('payments.orders.club.summary.pickedUp'))
@@ -349,7 +349,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       )
       await expect(jasRow.getByTestId('club-order-child-payment')).toHaveAttribute('data-state', 'to_pay')
     }
-    await useLocale('en')
+    await switchLocale('en')
     await visit('/club/orders')
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/orders (delivered)'))
     await visit(`/club/orders/${campaignId}?child=${jas}`)
@@ -358,7 +358,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     // M-19: the link names its guardian; Halina's link is still valid while the campaign is delivered.
     await signOutBrowser(page)
     for (const locale of ['en', 'pl'] as const) {
-      await useLocale(locale)
+      await switchLocale(locale)
       await visit(linkPath)
       const notice = page.getByTestId('order-link-guardian')
       await expect(notice, locale).toContainText(
@@ -368,7 +368,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       await expect(page.getByTestId('order-picked-up'), locale).toContainText('Wojtek Malinowski')
       await expectNoPageOverflow(page)
     }
-    await useLocale('en')
+    await switchLocale('en')
     await visit(linkPath)
     Object.assign(violations, await scanSchemes(page, testInfo, '/club/o/[token]'))
 
