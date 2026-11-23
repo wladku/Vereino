@@ -880,5 +880,8 @@
   "people.dataExport.flash.done": "The export was downloaded and recorded in the log. Fields to check for other people's data before sending: {count}.",
   "people.dataExport.errors.notFound": "This person was not found in the club.",
   "people.dataExport.errors.denied": "Only the club administrator can export a person's data.",
-  "people.dataExport.errors.failed": "The data could not be exported. Nothing was downloaded. Try again."
+  "people.dataExport.errors.failed": "The data could not be exported. Nothing was downloaded. Try again.",
+  "people.errors.import_progress_unavailable": "The import could not report its progress, so nothing was committed. Try again in a moment.",
+  "people.imports.record.committing": "Committing the import…",
+  "people.imports.record.committingRows": "Committing the import: {processed} of {total} rows"
 }

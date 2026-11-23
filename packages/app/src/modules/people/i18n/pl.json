@@ -880,5 +880,8 @@
   "people.dataExport.flash.done": "Eksport został pobrany i zapisany w rejestrze. Pola do sprawdzenia pod kątem danych innych osób przed wysłaniem: {count}.",
   "people.dataExport.errors.notFound": "Nie znaleziono tej osoby w klubie.",
   "people.dataExport.errors.denied": "Tylko administrator klubu może eksportować dane osoby.",
-  "people.dataExport.errors.failed": "Nie udało się wyeksportować danych. Nic nie zostało pobrane. Spróbuj ponownie."
+  "people.dataExport.errors.failed": "Nie udało się wyeksportować danych. Nic nie zostało pobrane. Spróbuj ponownie.",
+  "people.errors.import_progress_unavailable": "Import nie mógł raportować postępu, więc niczego nie zatwierdzono. Spróbuj ponownie za chwilę.",
+  "people.imports.record.committing": "Zatwierdzanie importu…",
+  "people.imports.record.committingRows": "Zatwierdzanie importu: {processed} z {total} wierszy"
 }

@@ -2,6 +2,7 @@
   "name": "@vereino/ui",
   "version": "0.1.0",
   "private": true,
+  "license": "AGPL-3.0-only",
   "description": "Reusable Vereino UI components: shadcn/ui-based admin components and Tailwind-styled member/public components.",
   "type": "module",
   "main": "./src/index.ts",
