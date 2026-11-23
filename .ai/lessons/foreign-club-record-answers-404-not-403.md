@@ -24,6 +24,10 @@ foreign ids get the same 404/422. A new route or method gets its probes in
 `packages/app/.ai/qa/tests/_fixtures/isolation/inventory/<module>.json` (records in `seed-<module>.ts`);
 `route-isolation:check` in `yarn verify` fails without them, and `ISSUE-628-cross-club-isolation` runs them.
 Exemptions need a reason and are only for requests that name no record.
+A branch that adds routes and was opened before #628 landed fails `route-isolation:check` as soon as it merges
+`main` (#610): add the probes in the merge fix, not later. The probe engine follows redirects, so a route that
+redirects to an external provider (OAuth `start`, `link`) is exempt; records that only an OAuth round trip creates
+are seeded through the in-process fake of the module's own tests (`seed-foundation.ts` uses the Google fake).
 
 **Applies to**: `packages/app/src/modules/foundation/services/authorize-scoped.ts`, every module command with a
 `loadTarget`, create/update commands with id references, `packages/app/.ai/qa/tests/_fixtures/isolation/`.
