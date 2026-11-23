@@ -1,0 +1,1 @@
+| 2026-11-22 | #598: AC-L05 browser evidence — TEST-L06 now opens the Leaving tab while the coach still holds the cash: the blocker names the coach and the amount (PLN 150.00), "Confirm leaving" is disabled, and the "Open Cash to settle" link points to `/backend/payments/cash-custody` and opens B-33 with the coach's cash. Test only; no behaviour change |
