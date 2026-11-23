@@ -190,8 +190,8 @@ async function registerSweepSchedule(service: SchedulerServiceLike, key: string)
 
 /**
  * A club's job of one declared type, at club setup: creates the club's job-state row (once) and — while the job type
- * has no sweep schedule yet — registers the per-club schedule of the old setup, as before. Returns false when that
- * registration failed (logged by `registerModuleSchedule`).
+ * has no sweep schedule yet — registers the per-club schedule of the old setup, as before. Never throws: returns
+ * false when a step failed (logged), so a club's setup goes on.
  */
 export async function setUpClubJob(
   container: AwilixContainer,
@@ -199,18 +199,24 @@ export async function setUpClubJob(
   key: string,
   now: Date = new Date(),
 ): Promise<boolean> {
-  const declaration = requireDeclaration(key)
-  const clock = await clockOf(container, scope, now)
-  await insertClubJob(forkEm(container), scope, key, nextClubJobDue(declaration.schedule, clock))
-  if (await sweepEnabled(container, key)) return true
-  const { module, name } = parseClubJobKey(key)
-  return registerModuleSchedule(container, {
-    module,
-    name,
-    schedule: perClubScheduleSpec(declaration.schedule, clock.timeZone),
-    scope,
-    description: declaration.description,
-  })
+  try {
+    const declaration = requireDeclaration(key)
+    const clock = await clockOf(container, scope, now)
+    await insertClubJob(forkEm(container), scope, key, nextClubJobDue(declaration.schedule, clock))
+    if (await sweepEnabled(container, key)) return true
+    const { module, name } = parseClubJobKey(key)
+    return await registerModuleSchedule(container, {
+      module,
+      name,
+      schedule: perClubScheduleSpec(declaration.schedule, clock.timeZone),
+      scope,
+      description: declaration.description,
+    })
+  } catch (error: unknown) {
+    // Like `registerModuleSchedule`: a club's setup goes on; the caller reports `false` (`schedules` entry).
+    logger.warn('Club job setup failed', { jobKey: key, organizationId: scope.organizationId, err: error })
+    return false
+  }
 }
 
 /** `initClub`: every declared job type (or the listed ones) for a club; returns the registration result per key. */

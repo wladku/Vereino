@@ -51,8 +51,7 @@ const JOB_KEY = /^([a-z][a-z0-9_]*):([a-z][a-z0-9]*(?:-[a-z0-9]+)*)$/
 export function parseClubJobKey(key: string): { module: string; name: string } {
   const match = JOB_KEY.exec(key)
   if (!match) throw new RangeError(`[internal] invalid club job key ${JSON.stringify(key)}`)
-  const [, module = '', name = ''] = match
-  return { module, name }
+  return { module: match[1], name: match[2] }
 }
 
 /** Throws a `RangeError` unless the declaration has a valid key, schedule and timeout. */
@@ -130,9 +129,9 @@ export function perClubScheduleSpec(schedule: ClubJobSchedule, timeZone: string)
     return { cron: `${String(minutes)} ${String(hours)} * * *`, timezone: timeZone }
   }
   const minutes = schedule.everyMinutes
-  if (minutes % DAY_MINUTES === 0) return { interval: `${String(minutes / DAY_MINUTES)}d` }
-  if (minutes % 60 === 0) return { interval: `${String(minutes / 60)}h` }
-  return { interval: `${String(minutes)}m` }
+  if (minutes % DAY_MINUTES === 0) return { interval: `${String(minutes / DAY_MINUTES)}d` as `${number}d` }
+  if (minutes % 60 === 0) return { interval: `${String(minutes / 60)}h` as `${number}h` }
+  return { interval: `${String(minutes)}m` as `${number}m` }
 }
 
 /** The queue a job type's worker consumes, `<module>-<name>`. */
