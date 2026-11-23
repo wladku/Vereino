@@ -1,11 +1,11 @@
 # Training outlines, a shared outline library and the medical certificate expiry date
 
 **Date**: 2026-11-23
-**Status**: Draft (issue #672, epic E24 #671, decision D-037 in PR #670; the owner's choices are left as Open Questions Q-O01…Q-O10; every migration, the new module and the library scope are Ask First items)
+**Status**: Draft (issue #672, epic E24 #671, decision D-038 in PR #670; the owner's choices are left as Open Questions Q-O01…Q-O10; every migration, the new module and the library scope are Ask First items)
 
 > Use om-spec-writing for the process. This spec is design-only: nothing is built in its PR.
 
-Sources: D-037 (training outlines, the shared library and the medical expiry date; PR #670), D-029 (phone first for every
+Sources: D-038 (training outlines, the shared library and the medical expiry date; PR #670), D-029 (phone first for every
 role but the administrator), D-034 and the many-clubs spec `2026-11-22-vereino-many-clubs-one-instance.md` (one tenant
 per club on one shared instance), D-024/D-026 (the only approved system-scope lookups), D-035 (core under AGPL; this is
 core, not Enterprise), the person data export spec `2026-11-21-vereino-person-data-export.md` (#527) and the compliance
@@ -17,7 +17,7 @@ chapter 11.2 and the sample outlines 12.6–16.1; *Badania lekarskie* (PZPN, Mar
 
 ## TLDR
 
-Three things that coaches of two PZPN-certified academies asked for (D-037), built in four phases:
+Three things that coaches of two PZPN-certified academies asked for (D-038), built in four phases:
 
 1. **Medical certificate expiry** — one encrypted "valid until" date per person in `people`, a three-colour status
    (expired or missing / under a month / valid, as in PZPN's system) on the roster, the attendance list and a match's
@@ -47,9 +47,9 @@ Three things that coaches of two PZPN-certified academies asked for (D-037), bui
   added one by one; attendance is ticked per player and locks 72 hours after the event ends). The club keeps the same
   schedule and attendance in Vereino.
 - **Scale.** A coach who has 10 outlines needs about 100 per season. Other coaches on the same instance already wrote
-  them (D-037 §4–5).
+  them (D-038 §4–5).
 
-Evidence: two clubs holding a PZPN star (D-037); PZPN documents listed in *Sources*.
+Evidence: two clubs holding a PZPN star (D-038); PZPN documents listed in *Sources*.
 
 ## Overview and Success Measures
 
@@ -65,10 +65,10 @@ Evidence: two clubs holding a PZPN star (D-037); PZPN documents listed in *Sourc
 
 - **REQ-O01** — A person has one optional "medical certificate valid until" date. Who may enter it is Q-O01 (default:
   the club administrator, a coordinator of one of the person's sections, a guardian of the person, or the adult person
-  themself). No scan, result or diagnosis is stored (D-037 §1).
+  themself). No scan, result or diagnosis is stored (D-038 §1).
 - **REQ-O02** — Coaches (for their own groups) and coordinators (for their sections) see a medical status per player on
   the roster, the attendance list and the squad of a match: **expired or missing** (red), **under a month left**
-  (orange), **valid** (green), with the date. Thresholds match PZPN's system (D-037 research).
+  (orange), **valid** (green), with the date. Thresholds match PZPN's system (D-038 research).
 - **REQ-O03** — The guardian, or the adult participant, receives an in-app notification and an e-mail one month before
   the date and on the date, through the existing notification and dispatch channels and a daily job (E22 sweep when it
   exists).
@@ -86,12 +86,12 @@ Evidence: two clubs holding a PZPN star (D-037); PZPN documents listed in *Sourc
 - **REQ-O09** — An outline prints to a PDF in the PZPN layout, from the phone, named so it can be uploaded to the
   event in PZPN's system.
 - **REQ-O10** — A coordinator, or a coach for an own group, downloads for a team and a period a **schedule file** and an
-  **attendance file** in the shape PZPN's system asks for. No integration with PZPN's system (D-037 §3).
+  **attendance file** in the shape PZPN's system asks for. No integration with PZPN's system (D-038 §3).
 - **REQ-O11** — A shared outline library with three visibility levels: the club, clubs on Vereino, the public. A club
-  setting sets the widest level its coaches may use; a new club starts at "clubs on Vereino" (D-037 §4).
+  setting sets the widest level its coaches may use; a new club starts at "clubs on Vereino" (D-038 §4).
 - **REQ-O12** — A coach copies a library outline into the club; the copy keeps the original author's credit. A coach
   rates an outline 1–5 once, after closing a session that used it. The library ranks by average rating and by the
-  number of coaches who used it, and is searchable by age category, topic and part (D-037 §5).
+  number of coaches who used it, and is searchable by age category, topic and part (D-038 §5).
 - **REQ-O13** — Public outlines have a public page reachable without signing in.
 - **REQ-O14** — The author's name appears in the library only with the author's consent; otherwise the entry shows the
   club's name only.
@@ -102,7 +102,7 @@ Evidence: two clubs holding a PZPN star (D-037); PZPN documents listed in *Sourc
 ## Non-goals
 
 - A drawing editor or animated exercise diagrams (images are uploads only).
-- Monthly training plans (mesocycles) and their link to outlines (D-037: later).
+- Monthly training plans (mesocycles) and their link to outlines (D-038: later).
 - Any interface to PZPN's system: no upload, no scraping, no credentials. Exports are files the coach uploads or copies.
 - Scouting, assessments, individual statistics; medical results, scans or diagnoses; the parent's statement
   ("oświadczenie rodzica") that PZPN also tracks.
@@ -115,7 +115,7 @@ Evidence: two clubs holding a PZPN star (D-037); PZPN documents listed in *Sourc
 
 | Decision | Rationale | Alternative considered | Why rejected / deferred |
 |---|---|---|---|
-| **DD-O01** The medical date is a column `medical_valid_until` on `people_persons`, encrypted with the person's other personal fields. Consent is a new kind `medical` in the existing `CONSENT_KINDS` / `StoredConsents`: on `Person.consents` for an adult, on `Guardianship.consents` for a minor (as `regulations`, `image`, `trips` today) — no consent column | the date belongs to the person; the club's tenant key protects it; reuse of `encryptedField` and the consent model, so the consent needs no migration | a separate `people_medical_certificates` table with history | history is not asked for and doubles Art. 9 data; one date is the least data (D-037 §1) |
+| **DD-O01** The medical date is a column `medical_valid_until` on `people_persons`, encrypted with the person's other personal fields. Consent is a new kind `medical` in the existing `CONSENT_KINDS` / `StoredConsents`: on `Person.consents` for an adult, on `Guardianship.consents` for a minor (as `regulations`, `image`, `trips` today) — no consent column | the date belongs to the person; the club's tenant key protects it; reuse of `encryptedField` and the consent model, so the consent needs no migration | a separate `people_medical_certificates` table with history | history is not asked for and doubles Art. 9 data; one date is the least data (D-038 §1) |
 | **DD-O02** The status is computed, never stored: red when the date is missing or before today, orange when within 30 days (inclusive), green otherwise, in the club's time zone | thresholds are PZPN's ("mniej niż miesiąc"); a computed status cannot go stale | a stored status updated by a job | a stale colour on match day is worse than a computation |
 | **DD-O03** Coaches and coordinators read the status through a `people` service (`people.medicalStatus`, optional DI) that returns `{ personId, status, validUntil }` for ids already in the caller's scope | `groups` and `activities` pages show it without an ORM relation; the service enforces scope | adding the column to roster queries in other modules | a cross-module ORM read is forbidden (AGENTS.md *Never*) |
 | **DD-O04** Reminders run as a `people` job `medical-reminders` daily at 07:00 club time; idempotent by the key `medical:{personId}:{validUntil}:{kind}` on the dispatch; it moves to the E22 sweep (`foundationClubJobs.declare`) when E22-S03 (#629) lands | the dispatch already dedupes by key; a changed date restarts the reminders | adding the reminders to `life-cycle` | one job per purpose keeps failures and retries separate |
@@ -343,7 +343,7 @@ and uses; reports unique per `(entry_id, rater_key)` (public reports use a hashe
 
 ### `club_core_club_settings` (changed)
 
-`outline_library_max_visibility` text default `clubs` (existing clubs get `clubs` per D-037).
+`outline_library_max_visibility` text default `clubs` (existing clubs get `clubs` per D-038).
 
 ## API, Command, and Error Contracts
 
@@ -404,7 +404,7 @@ Polish always (they are PZPN's values). The exact column order is checked agains
 
 ## Security, Privacy, and Compliance
 
-- **Legal basis (Art. 9).** No law obliges the club to keep the date (D-037 research). Default (Q-O06): explicit consent,
+- **Legal basis (Art. 9).** No law obliges the club to keep the date (D-038 research). Default (Q-O06): explicit consent,
   Art. 9(2)(a) with Art. 6(1)(a), given by the adult participant or a guardian of a minor, withdrawable at any time.
   Without consent no date is stored and the status is "missing". ⚠ To be confirmed by the lawyer with the D-035 items.
 - **Minimisation.** One date; no scan, result, doctor or diagnosis; the coach sees status and date only for own groups.
@@ -539,7 +539,7 @@ Polish always (they are PZPN's values). The exact column order is checked agains
   disappears because the injection has no provider.
 - Phase 4 rollback: unset the library configuration → library routes 404 `library_not_configured`; entries stay in the
   library tenant until an operator deletes them.
-- Existing clubs get `outline_library_max_visibility = clubs` (D-037); the release note tells administrators where to
+- Existing clubs get `outline_library_max_visibility = clubs` (D-038); the release note tells administrators where to
   change it.
 
 ## Risks and Tradeoffs
@@ -602,7 +602,7 @@ Each question has a recommended default that the design above already assumes; t
 |---|---|---|---|---|
 | Q-O01 | Who enters the medical date: (a) administrator + coordinator + guardian + adult self (recommended), (b) administrator and coordinator only, (c) guardian and adult self only? | Władek Kuć | phase 1 | open — default (a) |
 | Q-O02 | Does a coach choose the visibility per outline within the club's level (recommended: yes, new outlines start at "club"), or does every published outline take the club's level? | Władek Kuć | phase 4 | open — default per outline |
-| Q-O03 | The licence and terms for shared outlines: CC BY-SA 4.0 (D-037 proposal) or CC BY 4.0; who signs the terms text (with the D-035 lawyer items)? | Władek Kuć | phase 4 | open — default CC BY-SA 4.0, ⚠ lawyer |
+| Q-O03 | The licence and terms for shared outlines: CC BY-SA 4.0 (D-038 proposal) or CC BY 4.0; who signs the terms text (with the D-035 lawyer items)? | Władek Kuć | phase 4 | open — default CC BY-SA 4.0, ⚠ lawyer |
 | Q-O04 | Moderation: automatic hiding after reports from 3 clubs plus an operator CLI (recommended), pre-moderation of public outlines, or no hiding until an operator acts? | Władek Kuć | phase 4 | open — default automatic hiding |
 | Q-O05 | Does a red medical status block confirming a player for a match, or only warn (recommended: warn; the duty is the player's, and the club may hold a paper certificate)? | Władek Kuć | phase 1 | open — default warn |
 | Q-O06 | Legal basis for the date: explicit consent Art. 9(2)(a) (recommended) or another basis named by the lawyer? | Władek Kuć | phase 1 | open — ⚠ lawyer |

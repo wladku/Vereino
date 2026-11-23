@@ -1,1 +1,1 @@
-| 2026-11-23 | E24-S01 (#672): the Non-goals line on coaching tools narrowed to match N01 as narrowed by D-037; training outlines, the outline library and the medical expiry date move to the E24 spec |
+| 2026-11-23 | E24-S01 (#672): the Non-goals line on coaching tools narrowed to match N01 as narrowed by D-038; training outlines, the outline library and the medical expiry date move to the E24 spec |

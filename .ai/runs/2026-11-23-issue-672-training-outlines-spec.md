@@ -1,7 +1,7 @@
 # Run: spec for training outlines, the outline library and the medical expiry date (#672)
 
 - **Goal and trigger:** cezar task e42b393d (`om-auto-fix-issue 672`, label `cezar`). The issue asks for a design-only spec PR through `om-auto-write-spec`, with the owner's choices left as Open Questions.
-- **Issue / epic / branch:** #672 (E24-S01), epic #671, decision D-037 (recorded in PR #670, not yet on `main`); branch `docs/issue-672-training-outlines-library-medical-expiry`.
+- **Issue / epic / branch:** #672 (E24-S01), epic #671, decision D-038 (recorded in PR #670, not yet on `main`); branch `docs/issue-672-training-outlines-library-medical-expiry`.
 - **Started / finished:** 2026-11-23.
 
 ## Steps
@@ -24,7 +24,7 @@
    - the attendance mapping corrected to `declared = no`;
    - compliance-report and measure fixes;
    - a versioned rater secret, plus `auditedRead` for coach reads.
-7. Club management spec: the Non-goals line on coaching tools and the product-reference line narrowed to match N01 as narrowed by D-037. Added changelog files for both specs.
+7. Club management spec: the Non-goals line on coaching tools and the product-reference line narrowed to match N01 as narrowed by D-038. Added changelog files for both specs.
 
 ## Decisions
 
@@ -49,5 +49,5 @@ See the PR for the gate output (`yarn verify`, `yarn guard`). No integration tes
 ## Open problems / next steps
 
 - The owner answers Q-O01…Q-O10, approves the Ask First items, and checks V-O1/V-O2 with a certified club.
-- PR #670 (the D-037 record) should merge first; this spec links to it.
+- PR #670 (the D-038 record) should merge first; this spec links to it.
 - The build stories follow the four phases (E24-S02…S05).
