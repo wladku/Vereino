@@ -1,6 +1,6 @@
 # Contributing to Vereino
 
-Thank you for helping. Vereino is an MIT-licensed club management application built on [Open Mercato](https://www.openmercato.com/). This guide says how to set up the repository, how a change travels from an idea to `main`, and which dependencies and platform files need special care.
+Thank you for helping. Vereino is a club management application licensed under AGPL-3.0-only (earlier releases MIT, see `NOTICE`), built on [Open Mercato](https://www.openmercato.com/). This guide says how to set up the repository, how a change travels from an idea to `main`, and which dependencies and platform files need special care.
 
 The engineering reference is [`.ai/specs/2026-10-21-engineering-standards-and-patterns.md`](.ai/specs/2026-10-21-engineering-standards-and-patterns.md) (standards S1–S19). The binding rules for every contributor — people and coding agents alike — are in [`AGENTS.md`](AGENTS.md); the delivery process is in [`SDLC.md`](SDLC.md). This page summarises them; when they disagree, those files win.
 
@@ -38,7 +38,7 @@ Every commit message has the form `type(scope): subject` in English, imperative,
 - **Scopes:** a Vereino module id (`club_core`, `people`, `groups`, `activities`, `communication`, `payments`, `facilities`, …), a package (`core`, `db`, `ui`), or `spec`, `ai`, `ci`, `deps`, `ops`, `compliance`, `i18n`, `monorepo`.
 - **Breaking change** to a contract surface: `type(scope)!: subject` and a `BREAKING CHANGE:` footer.
 
-Every commit is signed off under the [Developer Certificate of Origin](https://developercertificate.org/): commit with `git commit -s`, which adds `Signed-off-by: Your Name <you@example.com>`. The sign-off states that you wrote the change, or have the right to submit it, under the project's MIT licence. The `DCO` check blocks a pull request with an unsigned commit; to fix one, `git commit --amend -s` (last commit) or `git rebase --signoff main` on your own branch, then push.
+Every commit is signed off under the [Developer Certificate of Origin](https://developercertificate.org/): commit with `git commit -s`, which adds `Signed-off-by: Your Name <you@example.com>`. The sign-off states that you wrote the change, or have the right to submit it, under the project's licence, AGPL-3.0-only. Before the first outside contribution is merged, contributors will also sign a contributor licence agreement (CLA, D-035, #648), so the owner can offer the code under a commercial licence as well. The `DCO` check blocks a pull request with an unsigned commit; to fix one, `git commit --amend -s` (last commit) or `git rebase --signoff main` on your own branch, then push.
 
 ### The gate
 
@@ -121,7 +121,8 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/eslint.config.mjs` | Vereino-path rules, package boundaries, re-enabled React rules | S3.10, ADR-018 |
 | `packages/app/jest.config.cjs` | 100 % coverage thresholds for the `lib/` folders of the listed Vereino modules; `react` mapped to the app's single copy so `@vereino/ui` components render in tests | S13.6 |
 | `packages/app/scripts/dev-runtime-supervisor.mjs` | Exposes `appendDiagnosticLine`, which `scripts/dev.mjs` calls while a banner recovery action runs; without it `yarn dev` exits with a `TypeError` | S3.1; lesson `dev-runtime-recovery-action-crash` |
-| `packages/app/next.config.ts` | `transpilePackages` for `@vereino/*`; `Referrer-Policy: no-referrer` (and `Cache-Control: no-store`) on the token pages and APIs: declaration links, booking request confirmation, rental cancellation | Monorepo; #192, #125, #286 |
+| `packages/app/next.config.ts` | `transpilePackages` for `@vereino/*`; `Referrer-Policy: no-referrer` (and `Cache-Control: no-store`) on the token pages and APIs: declaration links, booking request confirmation, rental cancellation; S8.4 headers: `Strict-Transport-Security` (production only), `Permissions-Policy`, production CSP without `'unsafe-eval'`, and `Cache-Control: private, no-store` on `/api/*` requests carrying the `auth_token` or `session_token` cookie, an `Authorization` header or `x-api-key` | Monorepo; #192, #125, #286; S8.4, #463 |
+| `packages/app/src/instrumentation-client.ts` | Added: `z.config({ jitless: true })` in the browser, so zod's eval probe raises no violation under the CSP without `'unsafe-eval'` | S8.4, #463; lesson `csp-without-unsafe-eval-needs-zod-jitless` |
 | `packages/app/src/modules.ts` | Registers the Vereino modules (`{ id, from: '@app' }`); the scaffold's `OM_ENABLE_ENTERPRISE_MODULES*` blocks removed with the enterprise package | `AGENTS.md`; #466 |
 | `packages/app/src/modules/agent_examples/` | Deleted: the scaffold example imported `@open-mercato/enterprise` (the only import, spike #448) | ENG-Q-10, #466 |
 | `packages/app/.env.example` | The `OM_ENABLE_ENTERPRISE_MODULES*` switches replaced by a note that the package is not installed | #466 |
@@ -145,8 +146,9 @@ Everything in `packages/app` outside the Vereino modules (`packages/app/src/modu
 | `packages/app/.ds-check-ignore` | Bounded baseline of scaffold styling that `ds:check` accepts in platform-owned files, each entry with a reason | `ds:check` |
 | `packages/app/.env.example` | E-mail delivery settings of the `foundation` dispatch (`OM_TEST_MODE`, `OM_DISABLE_EMAIL_DELIVERY`); `VEREINO_HOME_CLUB_SLUG`; `DEMO_MODE` default off | #71, #485 |
 | `Dockerfile`, `.dockerignore`, `docker-compose*.yml`, `docker/scripts/dev-entrypoint.sh`, `scripts/railway-start.sh`, `scripts/railway-worker.sh`, `.railwayignore` | Paths moved to the `packages/app` workspace; image installs only `@vereino/app` and copies the shared packages; `DEMO_MODE` defaults to off in `docker-compose.fullapp*.yml` and the production image (`Dockerfile`) | Monorepo; #485 |
+| `.gitignore` (root) | The scaffold file, kept at the root by the monorepo move: app paths under `packages/app/`; agent skills in `.agents/skills/` and `skills-lock.json` committed (only the local links to `.ai/skills/<id>` overrides and `.agents/skills-quarantine/` ignored); the app workspace's integration-test output; local-only mockup files; the Storybook build of `packages/ui` | Monorepo; E1 (ENG-AC-03, #577) |
 
-Files Vereino added inside platform-owned folders (for example `packages/app/src/components/BackendGreeting.tsx`, `ClubTimeZone.tsx`, `SidebarNavBadges.tsx`, `PlatformFlashTranslator.tsx`, `use-staff-person.ts`, `packages/app/src/lib/platform-flash.ts` and `packages/app/src/__tests__/`) are Vereino code, not patches; an upgrade keeps them as they are.
+Files Vereino added inside platform-owned folders (for example `packages/app/src/components/BackendGreeting.tsx`, `ClubTimeZone.tsx`, `SidebarNavBadges.tsx`, `PlatformFlashTranslator.tsx`, `use-staff-person.ts`, `packages/app/src/lib/platform-flash.ts` and `packages/app/src/__tests__/`) are Vereino code, not patches; an upgrade keeps them as they are. The same holds for root files the scaffold generated and Vereino rewrote as a whole — the root `package.json` (the monorepo root), `yarn.lock`, `AGENTS.md` and `.ai/agentic.config.json`: they are not taken from the scaffold in an upgrade, so they need no row (audit of the E1 diff: `.ai/runs/2026-11-22-issue-577-audit-e1-diff-patches.md`).
 
 ## Questions
 

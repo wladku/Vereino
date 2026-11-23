@@ -7,7 +7,7 @@ export const metadata: ModuleInfo = {
   description:
     'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, the audience, dispatch and e-mail template primitives, and the token-link service.',
   author: 'Vereino',
-  license: 'MIT',
+  license: 'AGPL-3.0-only',
 }
 
 // Public entry (foundation spec REQ-F16): other Vereino modules import these helpers from `@/modules/foundation`,
@@ -27,7 +27,9 @@ export {
   closeAccount,
   createAccount,
   resendInvitation,
+  sendAccountInvitation,
   updateAccount,
+  type AccountInvitationResult,
   type AccountView,
   type CreateAccountInput,
   type CreateAccountResult,

@@ -3,7 +3,7 @@
 **Open-source management for small multi-section sports clubs — football academy first — built on [Open Mercato](https://www.openmercato.com/).**
 
 > Status: **specification / pre-implementation** — see [`.ai/specs/`](.ai/specs/README.md) and the discovery in [`.ai/specs/research/`](.ai/specs/research/README.md).
-> License: [MIT](LICENSE) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security policy](SECURITY.md).
+> License: [AGPL-3.0-only](LICENSE) (earlier commits MIT — [NOTICE](NOTICE)) · [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security policy](SECURITY.md).
 
 ---
 
@@ -140,6 +140,6 @@ Contributions are welcome. Start with these documents:
 - [`CONTRIBUTING.md`](CONTRIBUTING.md) — local setup, the `yarn verify` gate, Conventional Commits with sign-off (DCO), one pull request per change through the merge train, the spec-first rule, pinned dependencies and local patches to platform files;
 - [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) — Contributor Covenant 3.0 and how to report a violation;
 - [`SECURITY.md`](SECURITY.md) — report a vulnerability privately, never in a public issue;
-- [`LICENSE`](LICENSE) — MIT.
+- [`LICENSE`](LICENSE) — AGPL-3.0-only; [`NOTICE`](NOTICE) — copyright, the MIT licence of earlier releases, and Vereino Enterprise (D-035).
 
 Bugs and feature ideas go through the issue templates on GitHub (*Issues → New issue*).

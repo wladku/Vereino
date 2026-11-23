@@ -1,0 +1,1 @@
+| 2026-11-22 | #599: AC-L06 evidenced — TEST-L24 asserts "Former member" on the attendance list, the coach units report and CSV, the thread and thread list and the charges list after an anonymisation; the units report drops the trailing space after an anonymised coach's name; AC-L06 ticked |

@@ -1,0 +1,1 @@
+| 2026-11-22 | #592: AC-004 ticked — `TEST-030-groups-of-both-kinds` runs a training of the team and of the class group through absence, substitute and attendance check-off with equal results; #592 dropped from the generic coverage criterion |
