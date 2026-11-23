@@ -7,7 +7,7 @@ export const metadata: ModuleInfo = {
   description:
     'Municipal facility administration (facilities spec, phase 5): zones, closures, rental rates and bulk booking availability (#121); rentals, bookings, the public calendar, the log and maintenance follow.',
   author: 'Vereino',
-  license: 'MIT',
+  license: 'AGPL-3.0-only',
   // Facilities spec *Architecture*: sessions of `activities`, places and settings of `club_core`, `people` for the
   // record scope; all are reached only through DI and ids. `payments` stays optional (DD-19).
   requires: ['activities', 'club_core', 'people'],

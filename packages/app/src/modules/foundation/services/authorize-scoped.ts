@@ -253,7 +253,8 @@ function lockTokenOf(explicit: string | Date | null | undefined, request: Reques
 
 /**
  * Parses the input, derives the trusted scope, refuses an account with no linked person of this club before any
- * lookup (403 `scope_unlinked`, session scope only, #76), loads and row-locks the target, checks it against the
+ * lookup (403 `scope_unlinked`, session scope only, #76), loads and row-locks the target (404 when it is missing or
+ * belongs to another club, #628), checks it against the
  * allowed grants (403 `scope_denied`, or `scope_unlinked` for an unlinked account of a command that allows
  * `self_user`), requires the lock token (400 `lock_token_required`), asserts it on the locked row (409
  * `optimistic_lock_conflict`) and returns the acting role. `em` is the command's transactional EntityManager.
@@ -289,6 +290,13 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
 
   const target = spec.resolveTarget(parsed, entity, { tenantId, organizationId })
   if (target.tenantId !== tenantId || target.organizationId !== organizationId) {
+    // A loaded record of another club answers exactly like a record that does not exist (#628, D-034): a 403 here
+    // would tell the caller that the id exists in some other club. A create's target comes from the input, so a
+    // foreign scope there is a refusal, not a lookup.
+    if (entity) {
+      const { translate } = await resolveTranslations()
+      throw notFound(translate('foundation.errors.not_found', 'Not found'))
+    }
     return foundationErrors.throw('scope_denied')
   }
   const denial = sessionSource ? scopeDenialCode(scope) : 'scope_denied'

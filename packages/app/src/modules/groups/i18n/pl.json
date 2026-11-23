@@ -382,6 +382,7 @@
   "groups.memberships.moveMany.help": "Członkostwo każdego dziecka kończy się dzień przed wybranym dniem, a w drugiej grupie zaczyna się członkostwo uczestnika. Trenerów i asystentów przenosi się pojedynczo przez „Przenieś…”.",
   "groups.memberships.moveMany.children": "Dzieci do przeniesienia: {count} z {total}",
   "groups.memberships.moveMany.fits.range": "Pasuje do {group} ({from}–{to} lat)",
+  "groups.memberships.moveMany.fits.birthYears": "Pasuje do {group} (rocznik {years})",
   "groups.memberships.moveMany.fits.from": "Pasuje do {group} (od {from} lat)",
   "groups.memberships.moveMany.fits.to": "Pasuje do {group} (do {to} lat)",
   "groups.memberships.moveMany.fitsTag": "Pasuje",
