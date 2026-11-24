@@ -48,8 +48,12 @@ export type AudienceProvider = {
   members(spec: AudienceSpec, ctx: AudienceProviderContext): Promise<AudienceMember[]>
 }
 
-/** The club facts an e-mail needs: its name (`EmailLayout`), its default language and today's date in its zone. */
-export type ClubFacts = { name: string; defaultLocale: string; today: CalendarDate }
+/**
+ * The club facts an e-mail needs: its name (`EmailLayout`, the sender's display name), its default language, today's
+ * date in its zone and its public slug, which places its links at the club's address (many clubs spec phase 3, #631;
+ * optional, so a resolver without it keeps links on `APP_URL`).
+ */
+export type ClubFacts = { name: string; defaultLocale: string; today: CalendarDate; publicSlug?: string | null }
 
 /**
  * Contract of `vereino.contactResolver` (registered by `people`): contacts with the address decrypted in memory only

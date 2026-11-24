@@ -19,6 +19,9 @@ import { SidebarNavBadges } from '@/components/SidebarNavBadges'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { ClubTimeZone } from '@/components/ClubTimeZone'
 import { PlatformA11yRepairs } from '@/components/PlatformA11yRepairs'
+import { redirect } from 'next/navigation'
+import { requestHost } from '@/modules/club_core/lib/club-host'
+import { requestClub, sessionRedirectForHost } from '@/modules/club_core/services/request-club'
 
 type ClubChromeSettings = {
   get(scope: { tenantId: string; organizationId: string }): Promise<{
@@ -95,6 +98,13 @@ export default async function BackendLayout({
   if (!path) {
     const slug = resolvedParams.slug ?? []
     path = '/backend' + (Array.isArray(slug) && slug.length > 0 ? `/${slug.join('/')}` : '')
+  }
+
+  // Many clubs spec phase 3 (#631): on a club's address only that club's sessions stay; another club's session goes to
+  // its own club's address (fail closed). Without `VEREINO_CLUB_DOMAIN` this reads nothing.
+  if (auth && requestHost(headerStore.get('host'), process.env).kind === 'club') {
+    const elsewhere = await sessionRedirectForHost(await requestClub(), auth, path)
+    if (elsewhere) redirect(elsewhere)
   }
 
   // This layout mounts its own `I18nProvider` inside the root layout's, so it has
