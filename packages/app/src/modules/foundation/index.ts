@@ -38,6 +38,13 @@ export {
 } from './services/accounts'
 export { isUnlinkedScope, scopeDenialCode, type ScopeDenialCode } from './lib/scope-denial'
 export {
+  clubDataContributor,
+  clubDeleteContributorToken,
+  clubExportContributorToken,
+  type ClubDataContributor,
+} from './lib/club-data'
+export { registerClubDataContributor } from './services/club-data'
+export {
   assertInScope,
   authorizeScoped,
   jobCommandContext,

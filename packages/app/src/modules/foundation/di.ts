@@ -19,6 +19,8 @@ import { desiredRoles, rolesForAssignments, seedRoles, syncAuthRoles } from './s
 import { SCOPE_PROVIDER_TOKEN, scopeContract } from './services/scope-contract'
 import { createTokenLinkService } from './services/token-link'
 import { advanceWhere, assertTransition } from './services/transitions'
+import { registerClubDataContributor } from './services/club-data'
+import { FOUNDATION_CLUB_TABLES } from './lib/club-tables'
 
 /**
  * DI token of the record-scope provider. The foundation does not register it: the `people` module registers its
@@ -70,6 +72,7 @@ function containerEm(container: AppContainer): EntityManager | null {
 }
 
 export function register(container: AppContainer) {
+  registerClubDataContributor(container, 'foundation', FOUNDATION_CLUB_TABLES)
   container.register({
     [FOUNDATION_SCOPE_CONTRACT]: asValue(scopeContract),
     [FOUNDATION_AUTHORIZATION]: asValue({ authorizeScoped, assertInScope, jobCommandContext }),

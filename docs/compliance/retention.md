@@ -37,6 +37,20 @@ set but no code enforces yet; each gap has an issue.
 | R18 | **Stripe-side payment data** | Stripe's own retention | Stripe is an independent controller ([`processors.md`](processors.md) P-3) | **Stripe** — not under the club's control |
 | R19 | **Queue and cache** (Redis) | transient; jobs are re-derived from PostgreSQL (S15.8) | — | **Redis/BullMQ** job removal; holds ids, not personal data |
 
+## A club that leaves the instance
+
+When a club ends its agreement, every period above ends for the instance at once (many clubs spec phase 4, REQ-M06;
+`docs/ops/clubs.md` → *A club leaves*; #632). The host is the club's processor, so at the end of the service it
+returns the data and deletes it (art. 28(3)(g) GDPR):
+
+| Step | What happens | Enforced by |
+|---|---|---|
+| Notice | The deletion date is set 30 days after the club's notice (owner's decision Q-M06); a shorter period is refused | `club_core offboard-club` |
+| Return | During the notice the club receives one archive with all its data, decrypted, including the **accounting records of R1**, which the club itself keeps for the legal period from then on (*ustawa o rachunkowości* art. 74 binds the club, not the host) | `club_core export-club`; the audit log records the export |
+| Deletion | After the date every row of the club in every table (Vereino and platform), the sessions and tokens of its users, its attachment files, schedules and cache entries are deleted in one run. **No accounting row is kept on the instance**: the retention of R1 and R2 is the club's duty once it holds the archive | `club_core delete-club`; it refuses before the date and while any table with a `tenant_id` is not covered |
+| What stays | One audit entry of the deletion (tables and row counts, no personal data) and the slug's tombstone (the slug, the time zone and the notice dates; contact data cleared) | the tombstone is removed by `delete-club` 90 days after the deletion (BR-M4) |
+| Backups | The club's rows stay in the backup copies until they expire (R17, at most about 13 months); the encryption key is derived from the master secret and cannot be destroyed until a key store holds the keys (Q-M07) | the backup cron service |
+
 ## Open items
 
 | Id | What | Owner |
