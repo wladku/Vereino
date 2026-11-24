@@ -16,6 +16,7 @@ Check on `main` that the batch train is ready to be switched on with `MERGE_TRAI
 2. Readiness check (read-only): `scripts/merge-train.mjs`, `merge-train-plan.mjs`, `merge-train-guard.mjs`, `merge-train-trailers.mjs`, `.github/workflows/merge-train.yml`, the phase 2 rehearsal log `.ai/runs/2026-11-21-issue-451-batch-train-phase-2.md`, the live ruleset 26707580 (`gh api repos/wladku/Vereino/rulesets/26707580`), variables and secrets lists.
 3. Fixed the one gap found (below) with unit tests; proved it with dry runs on the live queue.
 4. Docs: `SDLC.md` "Validation gate" (both modes, ruleset per mode, token scopes, "Never act for the train"), `AGENTS.md` Never (agents' forbidden actions, which Cezar reads), `docs/ops/github-settings.md` (ruleset per mode, token with Commit statuses, section 6a variables), `BACKWARD_COMPATIBILITY.md` §7 (train surfaces), `merge-train.yml` header comment, spec phase 3 order, changelog file, lesson update, new `docs/ops/batch-train-switch-on.md` (Polish, as the issue asks).
+5. CI follow-up (second run, PR #699): `integration (shard 2/6)` of run 45374383583 failed only in `TEST-M03` (`club_core/TEST-M03-club-address.spec.ts`), `"beforeAll" hook timeout of 20000ms exceeded`, also on retry. Not caused by this PR (tooling and docs only): the same test failed the same way on `main` (run 45367384970, `c0997ad6`) and is tracked by #701. Cause, posted on #701: the file's `test.describe.configure({ timeout: 600_000 })` does not reach the `beforeAll` hook, which keeps the config's 20 s while `startClubDomainApp()` starts a second `next start` (it waits up to 180 s) and creates two clubs. No test change here (out of scope; #701 owns the fix).
 
 ## Readiness check
 
@@ -67,6 +68,7 @@ batch plan (size 4, nothing is built in this run): none
 - `yarn verify`: `[verify] all 22 step(s) passed` (run twice; the second after a last edit to `rulesetChecks`, which keeps a blank `MERGE_TRAIN_REQUIRED_CHECKS` such as `' , '` reading the ruleset as before).
 - `yarn guard`: no blocking findings; warnings only for `.github/workflows/merge-train.yml` and `AGENTS.md` (agent rule files changed).
 - No integration test added or edited (repository tooling only), so no `yarn test:integration:vereino` run applies.
+- CI run 45374383583, `integration (shard 2/6)`: 60 passed, 1 failed (`TEST-M03`, `beforeAll` hook timeout 20 s, retry too), 1 did not run (`TEST-M02`, same file). Unrelated to this PR, see step 5.
 
 ## Open problems
 
