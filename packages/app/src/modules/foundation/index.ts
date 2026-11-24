@@ -79,6 +79,15 @@ export {
 } from './services/occupancy'
 export { parseRecurrence, type ParseRecurrenceInput } from './services/recurrence'
 export { registerModuleSchedule, type ModuleScheduleRegistration } from './services/register-module-schedule'
+export {
+  clubJobWorker,
+  declareClubJobs,
+  initClub,
+  setUpClubJob,
+  wake as wakeClubJob,
+  type ClubJobRunResult,
+} from './services/club-jobs'
+export type { ClubJobDeclaration, ClubJobSchedule } from './lib/club-job-due'
 export { commandContextForRequest, errorResponse } from './services/route-context'
 export {
   loadPublicRoute,

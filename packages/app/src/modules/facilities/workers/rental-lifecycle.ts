@@ -10,7 +10,7 @@ import type { QueuedJob, WorkerMeta } from '@open-mercato/queue'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { createLogger } from '@open-mercato/shared/lib/logger'
-import { jobCommandContext } from '@/modules/foundation'
+import { clubJobWorker, jobCommandContext } from '@/modules/foundation'
 
 const logger = createLogger('facilities').child({ component: 'rental-lifecycle-worker' })
 
@@ -22,7 +22,7 @@ export const metadata: WorkerMeta = {
 
 const payloadSchema = z.object({ tenantId: z.uuid(), organizationId: z.uuid() })
 
-export default async function handle(job: QueuedJob<Record<string, unknown>>): Promise<void> {
+async function handle(job: QueuedJob<Record<string, unknown>>): Promise<void> {
   const parsed = payloadSchema.safeParse(job.payload)
   if (!parsed.success) {
     logger.warn('facilities:rental-lifecycle received a payload without a valid scope; skipped')
@@ -35,3 +35,6 @@ export default async function handle(job: QueuedJob<Record<string, unknown>>): P
     ctx: jobCommandContext(container, parsed.data),
   })
 }
+
+/** Run by the club job sweep with its claim, or by a per-club schedule of the old setup (#629). */
+export default clubJobWorker('facilities:rental-lifecycle', handle)

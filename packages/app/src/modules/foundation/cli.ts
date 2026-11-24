@@ -1,7 +1,18 @@
 // Operator and deploy commands of `foundation` (`yarn mercato foundation <command>`).
+//
+// Operator commands of the club job sweep (many-clubs spec *API, Command, and Error Contracts*, *Rollout*; #629).
+// Shell only; each prints one JSON line.
+// - `foundation club-jobs status [--job <key>]`: per job type, whether its sweep runs, the per-club schedules left,
+//   and the clubs, due, leased and failing counts of its job state.
+// - `foundation club-jobs sweep [--job <key>] [--now <ISO instant>]`: one sweep of a job type (every declared type
+//   without `--job`) now — what its schedule does every 5 minutes; `--now` moves the clock (the integration tests).
+// - `foundation retire-club-schedules [--job <key>] [--dry-run]`: moves a job type (every type without `--job`) from
+//   its per-club schedules onto its sweep; idempotent.
+// - `foundation restore-club-schedules [--job <key>]`: the rollback of a job type (every type without `--job`).
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
+import { parseArgs } from 'node:util'
 import type { ModuleCli } from '@open-mercato/shared/modules/registry'
 import { getCliModules } from '@open-mercato/shared/modules/registry'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
@@ -13,6 +24,110 @@ import {
   storedRoleAclHash,
 } from './lib/role-acl-defaults'
 import { readInstanceModuleConfigValue } from './data/queries'
+import {
+  clubJobDeclarations,
+  clubJobsStatus,
+  restoreClubSchedules,
+  retirableJobKeys,
+  retireClubSchedules,
+  sweepClubJobType,
+} from './services/club-jobs'
+
+function readOptions(argv: string[]) {
+  const { values, positionals } = parseArgs({
+    args: argv,
+    options: { job: { type: 'string' }, now: { type: 'string' }, 'dry-run': { type: 'boolean' } },
+    strict: false,
+    allowPositionals: true,
+  })
+  const now = typeof values.now === 'string' ? new Date(values.now) : undefined
+  return {
+    positionals,
+    job: typeof values.job === 'string' ? values.job : undefined,
+    now,
+    badNow: now !== undefined && Number.isNaN(now.getTime()),
+    dryRun: values['dry-run'] === true,
+  }
+}
+
+const USAGE = {
+  'club-jobs': 'Usage: mercato foundation club-jobs <status [--job <key>] | sweep [--job <key>] [--now <ISO instant>]>',
+  'retire-club-schedules':
+    'Usage: mercato foundation retire-club-schedules [--job <key>] [--dry-run] [--now <ISO instant>]',
+  'restore-club-schedules': 'Usage: mercato foundation restore-club-schedules [--job <key>]',
+} as const
+
+/**
+ * A usage error: prints the message and throws, because the `mercato` runner exits 1 only on a thrown error and drops
+ * `process.exitCode` (#642, lesson `module-cli-exit-code-needs-a-thrown-error`).
+ */
+function fail(command: keyof typeof USAGE, message: string): never {
+  process.stderr.write(`${message}\n${USAGE[command]}\n`)
+  throw new Error('[internal] foundation club job command: invalid options')
+}
+
+/**
+ * The job types a command runs for: `--job` alone, or `all` without it; fails when `--job` names no job type the
+ * command accepts.
+ */
+function jobsToRun(command: keyof typeof USAGE, job: string | undefined, all: string[]): string[] {
+  if (job === undefined) return all
+  if (all.includes(job)) return [job]
+  return fail(command, `Unknown job ${job}; known: ${all.join(', ')}`)
+}
+
+const clubJobs: ModuleCli = {
+  command: 'club-jobs',
+  async run(argv) {
+    const { positionals, job, now, badNow } = readOptions(argv)
+    const action = positionals[0]
+    if (badNow) fail('club-jobs', '--now must be an ISO instant')
+    // Created before the job check: the declarations come from the modules' DI registrars.
+    const container = await createRequestContainer()
+    if (action === 'status') {
+      jobsToRun('club-jobs', job, retirableJobKeys())
+      process.stdout.write(`${JSON.stringify({ jobs: await clubJobsStatus(container, { job, now }) })}\n`)
+      return
+    }
+    if (action === 'sweep') {
+      const keys = jobsToRun(
+        'club-jobs',
+        job,
+        clubJobDeclarations().map((declaration) => declaration.key),
+      )
+      const sweeps = []
+      for (const key of keys) sweeps.push(await sweepClubJobType(container, key, now))
+      process.stdout.write(`${JSON.stringify({ sweeps })}\n`)
+      return
+    }
+    fail('club-jobs', action === undefined ? 'Missing action' : `Unknown action ${action}`)
+  },
+}
+
+const retire: ModuleCli = {
+  command: 'retire-club-schedules',
+  async run(argv) {
+    const { job, dryRun, now, badNow } = readOptions(argv)
+    if (badNow) fail('retire-club-schedules', '--now must be an ISO instant')
+    const container = await createRequestContainer()
+    const keys = jobsToRun('retire-club-schedules', job, retirableJobKeys())
+    const results = []
+    for (const key of keys) results.push(await retireClubSchedules(container, key, { dryRun, now }))
+    process.stdout.write(`${JSON.stringify({ dryRun, jobs: results })}\n`)
+  },
+}
+
+const restore: ModuleCli = {
+  command: 'restore-club-schedules',
+  async run(argv) {
+    const { job } = readOptions(argv)
+    const container = await createRequestContainer()
+    const keys = jobsToRun('restore-club-schedules', job, retirableJobKeys())
+    const results = []
+    for (const key of keys) results.push(await restoreClubSchedules(container, key))
+    process.stdout.write(`${JSON.stringify({ jobs: results })}\n`)
+  },
+}
 
 /** Instance-scoped module config entry holding `{ hash, coreVersion, syncedAt }` of the last successful sync. */
 const ROLE_ACL_HASH_CONFIG = { moduleId: 'foundation', name: 'role_acl_defaults_hash' } as const
@@ -81,6 +196,6 @@ const syncRoleAclsIfChanged: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleAclsIfChanged]
+const commands: ModuleCli[] = [syncRoleAclsIfChanged, clubJobs, retire, restore]
 
 export default commands
