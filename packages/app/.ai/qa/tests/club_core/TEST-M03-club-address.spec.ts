@@ -45,7 +45,10 @@ async function signInOnForm(page: Page, email: string, password: string) {
 /** Undone in reverse order after the tests, also when `beforeAll` stopped half-way. */
 const cleanups: Array<() => Promise<void>> = []
 
+// `describe.configure({ timeout })` raises the tests' timeout only; hooks keep the config's 20 s. Starting the second
+// `next start` alone may take up to 180 s, so both hooks set their own timeout (#701).
 test.beforeAll(async ({ request }) => {
+  test.setTimeout(300_000)
   app = await startClubDomainApp()
   cleanups.push(() => app.stop())
   clubA = await publishedClub(request, 'm03a')
@@ -55,6 +58,7 @@ test.beforeAll(async ({ request }) => {
 })
 
 test.afterAll(async () => {
+  test.setTimeout(120_000)
   for (const cleanup of cleanups.reverse()) await cleanup()
 })
 
