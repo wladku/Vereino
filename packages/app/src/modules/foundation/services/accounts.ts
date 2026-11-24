@@ -4,8 +4,9 @@
 // the login e-mail of such an account for the person record's "Account" tab (#84).
 // People life-cycle spec phase L1 (REQ-L01, REQ-L02, DD-L02; #303): `accountView` reads the account state from the
 // platform user, never storing it; `resendInvitation` is the V-L01 fallback approved on 2026-11-16 — the platform's
-// `authService.requestPasswordReset` and its reset e-mail, a 60-minute link; `updateAccount` and `closeAccount` run
-// the platform commands `auth.users.update` (`email`, `isConfirmed`) and `auth.users.delete`.
+// `authService.requestPasswordReset` and its reset e-mail, a 60-minute link, rendered in the person's locale (AC-F11,
+// #584); `updateAccount` and `closeAccount` run the platform commands `auth.users.update` (`email`, `isConfirmed`)
+// and `auth.users.delete`.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { PasswordReset, User } from '@open-mercato/core/modules/auth/data/entities'
@@ -18,7 +19,6 @@ import type { AuthService } from '@open-mercato/core/modules/auth/services/authS
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getSecurityEmailBaseUrl } from '@open-mercato/shared/lib/url'
 import { accountState, type AccountState } from '@vereino/core'
@@ -58,7 +58,9 @@ function isDuplicateEmailError(error: unknown): boolean {
 /**
  * Creates the user in the organization of `ctx` (the session's selected organization) and sends the
  * invitation. The platform renders the invitation in the locale of the current request (`resolveTranslations`);
- * the command has no locale input. A duplicate e-mail becomes 409 `email_taken`.
+ * the command has no locale input, an accepted deviation from AC-F11 (owner decision on #584, 2026-11-24): the first
+ * invitation follows the sender's locale, the resend (`resendInvitation`) the person's. A duplicate e-mail becomes 409
+ * `email_taken`.
  */
 export async function createAccount(
   input: CreateAccountInput,
@@ -167,11 +169,14 @@ export type ResendInvitationResult = {
  * club's invitation and names the 60 minutes. Earlier unused links stay valid until they expire. The caller checks the
  * account state first; a user outside `scope` answers `scope_denied`. The platform looks the user up by e-mail across
  * tenants, so a link created for another user with the same address is never sent and the result is a warning.
+ * Rendered in `locale` — the caller passes `localeForPerson(person, clubDefault)` (AC-F11, #584), not the locale of
+ * the administrator's request.
  */
 export async function resendInvitation(
   ctx: CommandRuntimeContext,
   scope: AccountScope,
   userId: string,
+  locale: string | null,
 ): Promise<ResendInvitationResult> {
   const user = await scopedUser(ctx.container, scope, userId)
   if (!user) return foundationErrors.throw('scope_denied')
@@ -184,24 +189,26 @@ export async function resendInvitation(
     return { sentAt, warning: 'invite_email_failed' }
   }
   const resetUrl = withTenantHintUrl(`${base}/reset/${reset.token}`, user.tenantId)
-  const { translate } = await resolveTranslations()
-  const copy = {
-    preview: translate('foundation.account.invitation.preview', 'Set up your account'),
-    title: translate('foundation.account.invitation.title', 'Your invitation, sent again'),
-    body: translate(
-      'foundation.account.invitation.body',
-      'Your club sent your invitation again. Click the link below to set your password. This link will expire in 60 minutes.',
-    ),
-    cta: translate('foundation.account.invitation.cta', 'Set up your password'),
-    hint: translate(
-      'foundation.account.invitation.hint',
-      'If you did not expect this invitation, you can safely ignore this e-mail.',
-    ),
-  }
+  const { subject, copy } = await renderLocalized(locale, (translate) => ({
+    subject: translate('foundation.account.invitation.subject', 'Your invitation, sent again'),
+    copy: {
+      preview: translate('foundation.account.invitation.preview', 'Set up your account'),
+      title: translate('foundation.account.invitation.title', 'Your invitation, sent again'),
+      body: translate(
+        'foundation.account.invitation.body',
+        'Your club sent your invitation again. Click the link below to set your password. This link will expire in 60 minutes.',
+      ),
+      cta: translate('foundation.account.invitation.cta', 'Set up your password'),
+      hint: translate(
+        'foundation.account.invitation.hint',
+        'If you did not expect this invitation, you can safely ignore this e-mail.',
+      ),
+    },
+  }))
   try {
     await emailSender(ctx.container).send({
       to: user.email,
-      subject: translate('foundation.account.invitation.subject', 'Your invitation, sent again'),
+      subject,
       // Called, not `createElement`-ed, as the platform reset route does: the e-mail capture of test mode and the
       // link extraction read the expanded tree.
       react: ResetPasswordEmail({ resetUrl, copy }),
