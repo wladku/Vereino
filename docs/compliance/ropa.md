@@ -58,7 +58,7 @@ before entering it; without such a reason the field stays empty (open item O-1).
 | Categories of processing | hosting, storage, backup, monitoring, e-mail delivery and maintenance of the Vereino instance — all activities A1–A14 |
 | Sub-processors and transfers | [`processors.md`](processors.md) |
 | Security measures | §3 |
-| End of the service | the club receives its whole data set as one archive (`club_core export-club`), then every row, file and schedule of the club is deleted after a 30-day notice (`club_core delete-club`); backups expire on their own schedule — [`retention.md`](retention.md) → *A club that leaves the instance*, [`clubs.md`](../ops/clubs.md) |
+| End of the service | the club receives its whole data set as one archive (`club_core export-club`, or the administrator's own export from the `/backend` banner during the notice), then every row, file and schedule of the club is deleted after a 30-day notice (`club_core delete-club`); backups expire on their own schedule — [`retention.md`](retention.md) → *A club that leaves the instance*, [`clubs.md`](../ops/clubs.md) |
 
 ## 3. Security measures (art. 32(1), art. 30(1)(g))
 

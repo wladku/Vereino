@@ -1,9 +1,11 @@
 // A club leaving the shared instance (many clubs spec phase 4, REQ-M06, J-M03; #632): the job commands behind the
-// operator commands `club_core offboard-club`, `export-club`, `delete-club` and `restore-club`. Each runs with a
-// `system_job` grant for the club the operator named (`jobCommandContext`, BR-M1), so only the operator's shell reaches
-// them, and each leaves one audit entry in the club's tenant: the notice, the export (file name, checksum, row counts),
-// the deletion (row counts per table; written after the rows are gone, it is the club's one entry that stays) and the
-// restore. No entry holds personal data. None is undoable.
+// operator commands `club_core offboard-club`, `export-club`, `delete-club` and `restore-club`, and (#676) the club
+// administrator's request for an export of their own club, `club_core.clubs.export_request`. The operator's commands
+// run with a `system_job` grant for the club the operator named (`jobCommandContext`, BR-M1), so only the operator's
+// shell and the export job reach them; the request needs the club administrator's grant. Each leaves one audit entry in
+// the club's tenant: the notice, the request (its job id), the export (file name, checksum, row counts), the deletion
+// (row counts per table; written after the rows are gone, it is the club's one entry that stays) and the restore. No
+// entry holds personal data. None is undoable.
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import path from 'node:path'
@@ -21,6 +23,8 @@ import {
   offboardingDates,
   offboardingState,
 } from '../lib/club-offboarding'
+import { CLUB_EXPORT_JOB_TYPE, isActiveExport } from '../lib/club-export'
+import { findClubExportJobs, progressServiceOf } from '../services/club-export'
 import {
   ClubNotDueError,
   deleteClub,
@@ -189,6 +193,63 @@ const exportClubCommand: CommandHandler<Record<string, unknown>, ExportClubResul
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
+// club_core.clubs.export_request
+
+const exportRequestSchema = z.object({}).strict()
+
+export type RequestClubExportResult = ClubLogBase & { jobId: string }
+
+/**
+ * The club administrator asks for the export of their own club (E22-S06b, #676): allowed only while a notice is
+ * recorded (409 `export_unavailable`) and while no other export of the club is pending or running (409
+ * `export_running`). The settings row is locked for the check, so two requests at once start one export. Creates the
+ * export's progress job, which the route then enqueues; the job runs `club_core.clubs.export` (`services/club-export.ts`).
+ */
+const requestClubExportCommand: CommandHandler<Record<string, unknown>, RequestClubExportResult> = {
+  id: 'club_core.clubs.export_request',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    return inWriteTransaction(ctx, 'club_core.clubs.export_request', async (em) => {
+      const authorized = await authorizeScoped(
+        {
+          input: exportRequestSchema,
+          resourceKind: CLUB_SETTINGS_RESOURCE_KIND,
+          allowedKinds: ['club_admin'],
+          resolveTarget: (_parsed, _entity, scope) => ({ id: scope.organizationId, ...scope }),
+          lock: 'none',
+        },
+        rawInput,
+        ctx,
+        em,
+      )
+      const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+      const row = await em.findOne(
+        ClubSettings,
+        { ...scope, deletedAt: null },
+        { lockMode: LockMode.PESSIMISTIC_WRITE, fields: ['id', 'offboardingDeleteAfter'] },
+      )
+      if (!row || offboardingState(row.offboardingDeleteAfter, new Date()).state === 'active') {
+        return clubCoreErrors.throw('export_unavailable')
+      }
+      if ((await findClubExportJobs(em, scope)).some(isActiveExport)) return clubCoreErrors.throw('export_running')
+      const job = await progressServiceOf(ctx.container).createJob(
+        { jobType: CLUB_EXPORT_JOB_TYPE, name: 'Club data export', cancellable: false },
+        { ...scope, userId: ctx.auth?.sub ?? null },
+      )
+      return { settingsId: row.id, ...scope, jobId: job.id, actingRole: authorized.actingRole }
+    })
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('club_core.audit.clubs.export_request', 'Request the club data export'),
+      ...logScope(result),
+      context: { actingRole: result.actingRole, jobId: result.jobId },
+    }
+  },
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
 // club_core.clubs.delete
 
 const deleteSchema = settingsIdSchema.extend({ slug: z.string().min(1) }).strict()
@@ -315,5 +376,6 @@ const restoreClubCommand: CommandHandler<Record<string, unknown>, RestoreClubRes
 
 registerCommand(offboardClubCommand)
 registerCommand(exportClubCommand)
+registerCommand(requestClubExportCommand)
 registerCommand(deleteClubCommand)
 registerCommand(restoreClubCommand)

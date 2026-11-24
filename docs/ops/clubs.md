@@ -189,6 +189,16 @@ line with a `status`, and a refusal exits 1 before anything is written.
    now on (`docs/compliance/retention.md` R1). Sign-in tokens, API keys, provider credentials and search indexes are
    not exported, and the users' password hashes and the one-time link tokens of queued e-mails are cleared in it. `missingFiles` lists attachments whose file storage no longer had; tell the club. Delete your copy
    of the archive once the club confirmed it has it.
+
+   The club's administrator can also take the export themselves (#676): during the notice every backend page shows
+   them a banner with the deletion date and an **Export club data** button. It queues the same export as a background
+   job (`POST /api/club_core/offboarding/export`, one at a time), stores the archive in the private attachments
+   partition (`club-exports/org_<organization id>/<job id>.zip` under `ATTACHMENTS_STORAGE_ROOT`, or the bucket of the
+   S3 driver) and offers **Download the export** when it is ready. A newer export replaces the older archive, and
+   `delete-club` deletes the stored archives with the club. Both the request and the export are in the audit log;
+   only a user with `club_core.manage` (the club administrator) sees the banner or reaches the routes. A failed
+   export shows "The last export failed" on the banner; the job's error code is in the progress jobs
+   (`progress_jobs.error_message`, never a message or a path).
 3. **Delete the club** after the notice period:
 
    ```bash
