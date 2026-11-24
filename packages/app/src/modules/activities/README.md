@@ -191,6 +191,13 @@ E10-S08 (groups and activities parity spec phase 8, REQ-A10, TEST-A16, AC-A12; J
 - `/backend/activities/reports/coach-units` (B-16) and `/club/coach/units` (More → My units for a coach context, no amounts).
 - `activities_activities.is_away` (activity form "Away trip") also feeds the `away_trip` declaration policy, which until now always resolved as not away.
 
+## PZPN exports (E24-S04, #684)
+
+- `GET /api/activities/reports/pzpn-schedule` and `pzpn-attendance` `?groupId&from&to[&format=csv]` (`services/pzpn-export.ts`, columns and values in `lib/pzpn-export.ts`; training outlines spec REQ-O10, DD-O06, DD-O09): a team's sessions whose start falls in `from`…`to` (club zone, ≤ 366 days) as PZPN's "Harmonogram" and "Lista obecności". UTF-8 CSV with a BOM, headers in the user's language, the locale's separator; event types and statuses always Polish. The attendance lists every session that was not cancelled × the group's participants on its day and anyone with an attendance row.
+- Reach: `activities.reports.view` — the administrator any team, a coordinator their sections' teams; `activities.reports.view_own` — a coach the groups they coach. Any other team answers 404 `report_group_not_found`, like an unknown one; no feature → 403.
+- The name column takes the outline topic from the optional DI service `trainingOutlineTopics` (`topicsFor(scope, occurrenceIds)`), which `training` registers (E24-S03); until then the activity name.
+- `/club/reports/pzpn` (M-O9): team, period (the current month), "Schedule (CSV)" and "Attendance (CSV)"; linked from the club group page with the team preselected.
+
 ## Group usage and the group's activities (#266)
 
 `activities.groupUsage` (groups and activities parity spec REQ-A02; `services/group-usage.ts`) is the optional contract `groups` declares (`groups/services/group-usage.ts`) and reads with `hasRegistration`: `matchActivityCount` counts the group's live activities of type `match` or `sparring`, active or not, in the caller's transaction, so a team with matches does not become a class group. The activities list reads `?groupId=` (the group's "Activities" link) as its initial group filter, and while a group filter is set "New activity" opens `/backend/activities/activities/create?groupId=<id>`, which preselects the group.

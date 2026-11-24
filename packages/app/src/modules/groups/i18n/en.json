@@ -509,5 +509,6 @@
   "groups.ageCategories.birthYearsInYear": "Birth years {years} in {year}.",
   "groups.ageCategories.proposal": "Ages {from}–{to} are proposed from the category {category}; change them if needed and save.",
   "groups.ageCategories.proposalOpen": "Ages from {from} are proposed from the category {category}; change them if needed and save.",
-  "groups.club.nav.clubEvents": "Club events"
+  "groups.club.nav.clubEvents": "Club events",
+  "groups.club.pzpnExport": "PZPN exports"
 }
