@@ -51,7 +51,7 @@ Route first; never probe unmatched context.
 
 - Never add or remove the `guard-approved` label and never bypass or work around `yarn guard` (no renamed markers, no moved tests, no edits to the guard to let a change through). Run `yarn guard` before pushing; a blocking finding means stop, explain it in the PR and ask the owner (SDLC.md "Validation gate").
 - Never leak tenants, trust payload scope, or treat missing scope as unrestricted.
-- Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges one PR at a time (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch.
+- Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges PRs, one at a time or in batches (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch. Never act for the train: never set the commit statuses `merge-train/verified` or `merge-train/verdict`, never push to or delete `merge-train/**` or `merge-train-build`, never add or remove `merge-train-batched`, never close a `merge-train-paused` issue.
 - Never edit `node_modules`/`.mercato/generated/**`/generated facts/shipped migrations.
 - Never use cross-module ORM relations; use IDs/snapshots/events/enrichers/extensions/optional DI.
 - Never import a command file (`commands/*.ts` that calls `registerCommand`) from anything a module's `di.ts` loads: the CLI registers it twice and every `yarn mercato <module>` call fails; take shared helpers from `lib/` or `data/` (`yarn verify` step `di-commands:check`, lesson `di-reaches-no-command-file`).

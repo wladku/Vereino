@@ -68,6 +68,16 @@
         "why": "Removes the logo of the caller's own club (the target is always the caller's organization); the request names no record."
       }
     },
+    "/api/club_core/offboarding": {
+      "GET": { "probe": "read" }
+    },
+    "/api/club_core/offboarding/export": {
+      "GET": { "probe": "read" },
+      "POST": {
+        "probe": "exempt",
+        "why": "Starts an export of the caller's own club (the scope is always the caller's organization); the body is empty and names no record, so it cannot address club B. Club A has no notice, so it answers 409 export_unavailable; the GET probes read the state and the archive back."
+      }
+    },
     "/api/club_core/options/places": {
       "GET": { "probe": "read" }
     },
