@@ -1,6 +1,7 @@
 // Creating a club on a shared instance (many clubs spec phase 2, REQ-M05, DD-M08; #630): the reserved labels a club's
 // public slug may not take (it becomes the club's subdomain, `<slug>.<club domain>`, DD-M02), the options of the
 // operator command `club_core create-club`, and the club address it prints. Pure: the environment is passed in.
+import { clubOrigin } from '@vereino/core'
 import { isPublicSlug } from './publication'
 import { isTimeZone } from './settings'
 
@@ -138,19 +139,15 @@ export function parseCreateClubOptions(raw: CreateClubRawOptions): CreateClubOpt
   }
 }
 
-/** The environment variable naming the club domain of phase 3 (DD-M02); unset on a one-club instance. */
-export const CLUB_DOMAIN_ENV = 'VEREINO_CLUB_DOMAIN'
-
 /**
  * The address a club is reached at (spec glossary *Club address*): `https://<slug>.<club domain>` when
- * `VEREINO_CLUB_DOMAIN` is set (phase 3), else the club's public page `<APP_URL>/p/<slug>`; null when neither is
- * configured. A trailing slash or a scheme in the configured values is tolerated.
+ * `VEREINO_CLUB_DOMAIN` is set (phase 3; `clubOrigin` of `@vereino/core`), else the club's public page
+ * `<APP_URL>/p/<slug>`; null when neither is configured. A trailing slash or a scheme in the configured values is
+ * tolerated.
  */
 export function clubAddress(slug: string, env: Readonly<Record<string, string | undefined>>): string | null {
-  const domain = env[CLUB_DOMAIN_ENV]?.trim()
-    .replace(/^https?:\/\//, '')
-    .replace(/\/+$/, '')
-  if (domain) return `https://${slug}.${domain}`
+  const origin = clubOrigin(slug, env)
+  if (origin) return origin
   const appUrl = env.APP_URL?.trim().replace(/\/+$/, '')
   if (appUrl) return `${appUrl}/p/${slug}`
   return null

@@ -124,7 +124,7 @@ Merges API build, `push` trigger on `merge-train/**`, merge guard and pause issu
 
 ### Phase 3 — switch on (owner actions, approval required)
 
-Token scopes (Commit statuses, Issues write); ruleset: drop `strict`, add `merge-train/verified`; then `MERGE_TRAIN_BATCH_SIZE=4`; first live batch of two supervised. `SDLC.md` "Validation gate", `docs/ops/github-settings.md`, `BACKWARD_COMPATIBILITY.md` and Cezar's forbidden actions updated in the same PR as the size change. Exit: BT-AC-01 … BT-AC-03.
+The train never judges `merge-train/verified` as a check (it is its own status, absent on every head it judges) and, while the ruleset requires it, sets it before every merge in one-PR mode too (#698); this code lands first. Then, in this order (`docs/ops/batch-train-switch-on.md`): token scopes (Commit statuses, Issues write); ruleset: add `merge-train/verified` (any source), then drop `strict`; then `MERGE_TRAIN_BATCH_SIZE=2` for the first live batch, supervised, then `4`. Adding the status before dropping `strict` leaves no window for a manual merge of a stale PR. `SDLC.md` "Validation gate", `docs/ops/github-settings.md`, `BACKWARD_COMPATIBILITY.md` and the agents' forbidden actions (`AGENTS.md`) are updated in the PR that precedes the owner's settings changes (#698). Exit: BT-AC-01 … BT-AC-03.
 
 ## Requirement Traceability
 
