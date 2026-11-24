@@ -54,6 +54,7 @@ import {
   type ClaimedRunOutcome,
 } from '../lib/club-job-run'
 import { registerModuleSchedule, stableScheduleUuid, type SchedulerServiceLike } from './register-module-schedule'
+import { verifyScheduledJobScope } from './scheduled-job-scope'
 
 const logger = createLogger('foundation').child({ component: 'club-jobs' })
 
@@ -362,20 +363,26 @@ const scopeSchema = z.object({ tenantId: z.uuid(), organizationId: z.uuid() })
  * Wraps a per-club worker's handler. A job the sweep enqueued carries its claim: the run starts only while the claim
  * holds (a duplicate or stale copy is skipped), and at its end the club's next due time is stored — or, when the
  * handler throws, the error code and a retry time, without failing the queue job, so one club's failure stays its
- * own. A job without a claim (a per-club schedule of the old setup, an operator's run) runs the handler as before.
+ * own. The handler is given only a trusted scope (AC-G05, #591): a claimed job's scope is proven by the claim itself,
+ * since the run starts only on the club's job-state row of this key under the lease the sweep set; a job without a
+ * claim (a per-club schedule of the old setup) passes `verifyScheduledJobScope`, so a payload with no live per-club
+ * registration of the job behind it is refused and skipped.
  */
 export function clubJobWorker(
   key: string,
-  handle: (job: QueuedJob<Record<string, unknown>>) => Promise<unknown>,
+  handle: (scope: ClubJobScope, job: QueuedJob<Record<string, unknown>>) => Promise<unknown>,
 ): (job: QueuedJob<Record<string, unknown>>) => Promise<void> {
   return async function clubJobHandler(job) {
+    const container = await createRequestContainer()
     const claim = parseClubJobClaim(job.payload)
     const scope = scopeSchema.safeParse(job.payload)
-    if (!claim || !scope.success) {
-      await handle(job)
+    if (claim && scope.success) {
+      await runClubJobClaim(container, scope.data, key, claim, () => handle(scope.data, job))
       return
     }
-    await runClubJobClaim(await createRequestContainer(), scope.data, key, claim, () => handle(job))
+    const verified = await verifyScheduledJobScope(container, job.payload, parseClubJobKey(key))
+    if (!verified.ok) return
+    await handle(verified.scope, job)
   }
 }
 
