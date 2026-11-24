@@ -14,9 +14,16 @@ import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacS
 import { authorizeScoped, foundationErrors, trustedScopeOf } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { Person, PersonImport, PersonImportRow, RoleAssignment } from '../data/entities'
-import { bootstrapAdminSchema, importPurgeJobSchema, lifeCycleJobSchema, syncRolesJobSchema } from '../data/validators'
+import {
+  bootstrapAdminSchema,
+  importPurgeJobSchema,
+  lifeCycleJobSchema,
+  retentionSweepJobSchema,
+  syncRolesJobSchema,
+} from '../data/validators'
 import { LIFE_CYCLE_STEPS } from '../lib/life-cycle-rules'
 import { runLifeCycle, type LifeCycleCounts } from '../services/life-cycle'
+import { runRetentionSweep, type RetentionSweepRun } from '../services/retention-sweep'
 import { MEMBERSHIP_WAITING_STATUSES, importPurgeCutoff } from '../lib/import-rules'
 import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
 import { clubToday } from '../services/club-clock'
@@ -474,7 +481,69 @@ const lifeCycleJobCommand: CommandHandler<Record<string, unknown>, LifeCycleJobR
   },
 }
 
+export type RetentionSweepJobResult = OrganizationTarget & RetentionSweepRun & { today: string; dryRun: boolean }
+
+/**
+ * `people.persons.retention_sweep` — the daily `people:retention-sweep` job (club spec REQ-041, amendment B; #471):
+ * anonymises the former participants and guardians who left `former_participant_retention_months` ago or earlier and
+ * have no role, guardianship, other module's record, open charge or cash held past the cutoff, each through
+ * `people.persons.anonymize` with the reason `retention_sweep` (`services/retention-sweep.ts`). Idempotent: an
+ * anonymised person is not a candidate again. `dryRun` counts and changes nothing but its own audit entry. Not
+ * undoable (an anonymisation never is); the audit entry and the log carry counts only.
+ */
+const retentionSweepJobCommand: CommandHandler<Record<string, unknown>, RetentionSweepJobResult> = {
+  id: 'people.persons.retention_sweep',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const { target, parsed } = await authorizeJob(
+      ctx,
+      'people.persons.retention_sweep.authorize',
+      retentionSweepJobSchema,
+      rawInput,
+    )
+    const scope = { tenantId: target.tenantId, organizationId: target.organizationId }
+    const today = typeof parsed.today === 'string' ? parsed.today : await clubToday(ctx.container, scope)
+    const dryRun = parsed.dryRun === true
+    const run = await runRetentionSweep(ctx, scope, {
+      today,
+      dryRun,
+      onFailure: (error) => {
+        logger.warn('Anonymising one former person failed; the next run retries it', { ...scope, err: error })
+        getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.retention_sweep.failed' })
+      },
+    })
+    logger.info('Retention sweep finished', {
+      ...scope,
+      today,
+      dryRun,
+      months: run.months,
+      cutoff: run.cutoff,
+      ...run.counts,
+    })
+    return { ...target, today, dryRun, ...run }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.jobs.retention_sweep', 'Anonymise former participants'),
+      resourceKind: 'people.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: {
+        actingRole: result.actingRole,
+        today: result.today,
+        dryRun: result.dryRun,
+        months: result.months,
+        cutoff: result.cutoff,
+        ...result.counts,
+      },
+    }
+  },
+}
+
 registerCommand(syncRolesJobCommand)
 registerCommand(bootstrapAdminCommand)
 registerCommand(purgeImportsJobCommand)
 registerCommand(lifeCycleJobCommand)
+registerCommand(retentionSweepJobCommand)

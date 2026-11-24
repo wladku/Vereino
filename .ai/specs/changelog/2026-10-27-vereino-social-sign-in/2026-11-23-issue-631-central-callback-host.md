@@ -1,0 +1,1 @@
+| 2026-11-23 | DD-S07 added (#631, many clubs spec phase 3; owner's approval of 2026-11-23): one central callback host on `APP_URL` for every provider, the club's address recorded in the state marker, and a single-use hand-off that sets the session on the club's own host. Design only; the feature is not built yet |

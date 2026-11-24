@@ -21,6 +21,8 @@ export const errorCodes = [
     status: 422,
     messageKey: 'club_core.errors.account_age_threshold_out_of_range',
   },
+  // The former participants' retention period (REQ-041; #471): 1–120 months.
+  { code: 'retention_months_out_of_range', status: 422, messageKey: 'club_core.errors.retention_months_out_of_range' },
   { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
   { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
   { code: 'accent_color_invalid', status: 422, messageKey: 'club_core.errors.accent_color_invalid' },

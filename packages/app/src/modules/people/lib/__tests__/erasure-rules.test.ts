@@ -189,6 +189,11 @@ describe('peopleErasurePart', () => {
     expect(part.kept[1]).toMatchObject({ category: 'name_under_retention_hold', retention: 'R2' })
     expect(part.kept[1].basis).toContain('6(1)(c)')
   })
+
+  it('keeps no request for an anonymisation by the retention sweep (#471)', () => {
+    const part = peopleErasurePart({ guardianships: 0, departureRequests: 0, importRows: 0 }, null, false)
+    expect(part).toEqual({ touched: [{ table: 'people_persons', rows: 1 }], kept: [] })
+  })
 })
 
 describe('erasureAudit', () => {
