@@ -77,3 +77,11 @@ See the PR diff: `packages/app/src/modules/foundation/**` (entity, migration, li
 - Merged `origin/main` (`1802c6e1`, 3 commits, no conflicts) and pushed, so CI reruns on the current base.
 - Local runs after the merge (`sg docker -c "yarn test:integration:vereino --filter <ID>"`): TEST-S01 `1 passed (52.7s)`, TEST-S02 `1 passed (44.1s)`, TEST-S04 `1 passed (42.9s)`, ISSUE-628-cross-club-isolation `1 passed (2.2m)`.
 - `gate` stays red on `yarn guard` (new dependency `arctic`) until the owner adds `guard-approved`; not worked around.
+
+## Conflict round (2026-11-24, Cezar task on PR #610)
+
+- Trigger: label `merge-train-conflict`, `mergeStateStatus` DIRTY after #631 and others merged into `main`.
+- Worked on a detached HEAD at `origin/feat/issue-566-social-sign-in-google`; merged `origin/main` (`71438ab3`) in a signed-off merge commit and pushed `HEAD:feat/issue-566-social-sign-in-google` (fast-forward, no force).
+- Conflicts: `BACKWARD_COMPATIBILITY.md` §8 (kept main's `VEREINO_CLUB_DOMAIN` entries and this PR's social sign-in entry), `foundation/i18n/{en,pl}.json` (kept main's `foundation.email.senderName` and the identity keys).
+- Semantic checks: the production CSP `form-action 'self'` (#463) does not touch the sign-in buttons (links, not forms). #631 left DD-S07 (central callback host for club addresses) as design only; with `VEREINO_CLUB_DOMAIN` set, Google sign-in from a club address fails closed. Out of this PR's scope; follow-up #700.
+- `yarn verify` → `all 20 step(s) passed`. Integration: TEST-S01 `1 passed (56.1s)`, TEST-S02 `1 passed (49.1s)`, TEST-S04 `1 passed (48.2s)`, ISSUE-628 `1 passed (2.0m)`, TEST-M03 `3 passed (58.5s)`.
