@@ -1,9 +1,10 @@
 import { asValue } from 'awilix'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
-import { registerEmailTemplate } from '@/modules/foundation'
+import { registerEmailTemplate, registerClubDataContributor } from '@/modules/foundation'
 import { announcementTemplate, replyTemplate, sessionCancelledTemplate, sessionMovedTemplate } from './emails/templates'
 import notificationTypes from './notifications'
+import { COMMUNICATION_CLUB_TABLES } from './lib/club-tables'
 import { COMMUNICATION_DATA_EXPORT_CONTRIBUTOR, dataExportContribution } from './services/data-export-contribution'
 
 /**
@@ -21,6 +22,7 @@ import { COMMUNICATION_DATA_EXPORT_CONTRIBUTOR, dataExportContribution } from '.
  * own messages. Stateless and read only: it works in the caller's EntityManager.
  */
 export function register(container: AppContainer) {
+  registerClubDataContributor(container, 'communication', COMMUNICATION_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, announcementTemplate)
   registerEmailTemplate(container, replyTemplate)
