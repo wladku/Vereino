@@ -77,6 +77,7 @@ export function storedSettingsOf(row: ClubSettings): Record<ClubSettingKey, unkn
     showCalledUpChildren: row.showCalledUpChildren,
     coachMayCancel: row.coachMayCancel,
     orderSalesDocument: row.orderSalesDocument,
+    formerParticipantRetentionMonths: row.formerParticipantRetentionMonths,
   }
 }
 
