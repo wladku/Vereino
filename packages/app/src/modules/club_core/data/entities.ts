@@ -1,5 +1,5 @@
 import { OptionalProps } from '@mikro-orm/core'
-import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
+import { Check, Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import type { OpeningHours } from '@vereino/core'
 import {
   ScopedEntityBase,
@@ -19,6 +19,10 @@ decorateScopedEntityBase({ PrimaryKey, Property })
  * DD-35) — its unique index backs that one lookup.
  */
 @Entity({ tableName: 'club_core_club_settings' })
+@Check({
+  name: 'club_core_club_settings_retention_months_check',
+  expression: 'former_participant_retention_months between 1 and 120',
+})
 @Unique({ name: 'club_core_club_settings_organization_unique', properties: ['organizationId'] })
 @Index({ name: 'club_core_club_settings_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({
@@ -52,6 +56,9 @@ export class ClubSettings extends ScopedEntityBase {
     | 'accentColor'
     | 'publication'
     | 'consentTexts'
+    | 'offboardingNoticeAt'
+    | 'offboardingDeleteAfter'
+    | 'formerParticipantRetentionMonths'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
   ownAccountMinAge: number = 16
@@ -112,6 +119,13 @@ export class ClubSettings extends ScopedEntityBase {
   @Property({ name: 'order_sales_document', type: 'text', default: 'none' })
   orderSalesDocument: string = 'none'
 
+  /**
+   * Months without membership, role, guardianship or open charge after which the daily `people:retention-sweep`
+   * anonymises a former participant (club spec REQ-041, amendment B; 1–120, default 12; #471).
+   */
+  @Property({ name: 'former_participant_retention_months', type: 'int', default: 12 })
+  formerParticipantRetentionMonths: number = 12
+
   /** Globally unique slug of the public pages `/p/{publicSlug}` (DD-23); null until the club chooses one. */
   @Property({ name: 'public_slug', type: 'text', nullable: true })
   publicSlug?: string | null
@@ -156,6 +170,20 @@ export class ClubSettings extends ScopedEntityBase {
    */
   @Property({ name: 'consent_texts', type: 'json', defaultRaw: `'{}'::jsonb` })
   consentTexts: Record<string, unknown> = {}
+
+  /**
+   * When the club gave notice to leave the instance (many clubs spec phase 4, REQ-M06, J-M03; #632): set by the
+   * operator command `club_core offboard-club`; null while the club stays.
+   */
+  @Property({ name: 'offboarding_notice_at', type: Date, nullable: true })
+  offboardingNoticeAt?: Date | null
+
+  /**
+   * The first moment `club_core delete-club` may delete the club: the notice plus the notice period (30 days, Q-M06).
+   * After the deletion the row stays as the slug's tombstone (`deleted_at` set, BR-M4) until the slug is released.
+   */
+  @Property({ name: 'offboarding_delete_after', type: Date, nullable: true })
+  offboardingDeleteAfter?: Date | null
 
   /** `{ enabled, blocks }` (glossary *Publication*); everything off by default, read through `lib/publication.ts`. */
   @Property({

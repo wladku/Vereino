@@ -18,8 +18,10 @@ which the gate does not run; the typecheck and unit tests stay green.
 
 **Rule**: When a module registers a new schedule in its club setup, grep `packages/app/.ai/qa/tests` for
 `'<module>', 'set-up-club'` and for `<module>:` job-name lists, update every exact assertion (and its "N schedules"
-wording), and run those tests locally in the same PR. Prefer an interval (`'1d'`) for a job whose time of day does not
-matter: a cron in the club zone must also be re-registered on a time-zone change (`reregister-schedule(s)` subscribers).
+wording), and run those tests locally in the same PR. Since #629 a per-club job is declared in the module's
+`lib/club-jobs.ts` (`dailyAt` local `HH:MM` or `everyMinutes`), set up through the foundation's `setUpClubJob` and
+wrapped in `clubJobWorker`; the foundation moves daily jobs on a time-zone change, so no module subscriber is needed.
+A new job type also adds a sweep schedule: update the counts in `foundation/ISSUE-629-retire-club-schedules.spec.ts` (`SWEEP_SCHEDULES`, `CLUB_JOBS`).
 
 **Applies to**: `packages/app/src/modules/*/services/club-setup.ts`, `*/cli.ts` `set-up-club`, the integration tests
 under `packages/app/.ai/qa/tests/{activities,payments,facilities,people}`.

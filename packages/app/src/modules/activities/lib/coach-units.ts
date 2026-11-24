@@ -217,7 +217,7 @@ export function csvSeparatorFor(locale: string): CsvSeparator {
 }
 
 /** One CSV field, quoted when it holds the separator, a quote or a line break; a formula prefix is neutralized. */
-function csvField(value: string, separator: CsvSeparator): string {
+export function csvField(value: string, separator: CsvSeparator): string {
   const safe = /^[=+\-@\t\r]/.test(value) ? `'${value}` : value
   return safe.includes(separator) || /["\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe
 }

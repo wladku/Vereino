@@ -9,12 +9,12 @@ import { calendarDateInZone } from '../lib/people-rules'
 const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings'
 
 /**
- * The club settings `people` reads: the account age threshold, the default locale, the time zone and the club's short
- * name (club content, shown in the club's language on `/club`).
+ * The club settings `people` reads: the account age threshold, the default locale, the time zone, the club's short
+ * name (club content, shown in the club's language on `/club`) and the former participants' retention period (#471).
  */
 export type PeopleClubSettings = Pick<
   ClubSettingsSnapshot['values'],
-  'ownAccountMinAge' | 'defaultLocale' | 'timezone' | 'shortName'
+  'ownAccountMinAge' | 'defaultLocale' | 'timezone' | 'shortName' | 'formerParticipantRetentionMonths'
 >
 
 /** The default club zone and age threshold when `club_core` is not enabled (club spec DD-37 defaults). */
@@ -23,6 +23,7 @@ const FALLBACK_SETTINGS: PeopleClubSettings = {
   defaultLocale: 'pl',
   timezone: 'Europe/Warsaw',
   shortName: null,
+  formerParticipantRetentionMonths: 12,
 }
 
 export type ClubScope = { tenantId: string; organizationId: string }
@@ -32,6 +33,13 @@ export async function clubSettings(container: AwilixContainer, scope: ClubScope)
   if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return FALLBACK_SETTINGS
   const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
   return (await service.get(scope)).values
+}
+
+/** The club's public slug, which names its address (many clubs spec phase 3, #631), or null. */
+export async function clubPublicSlug(container: AwilixContainer, scope: ClubScope): Promise<string | null> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return (await service.get(scope)).publicSettings.publicSlug
 }
 
 /** The club logo for the member header (#29): the authenticated image URL, or null (the header shows the name). */

@@ -368,6 +368,14 @@ export const coachUnitsQuerySchema = z.object({
     .transform((value) => value === '1' || value === 'true'),
 })
 
+/** `GET /api/activities/reports/pzpn-schedule` and `pzpn-attendance` (REQ-O10, #684): a team and a period of ≤ 1 year. */
+export const pzpnExportQuerySchema = z.object({
+  groupId: z.uuid(),
+  from: z.string().trim().max(10).describe('First day, `YYYY-MM-DD`'),
+  to: z.string().trim().max(10).describe('Last day, `YYYY-MM-DD`; at most 366 days after `from`, both included'),
+  format: z.enum(['csv']).optional().describe('The only format: a UTF-8 CSV file with a BOM'),
+})
+
 /**
  * `GET /api/activities/calendar/{id}`: a participant, a guardian (optionally one ward), the coach (E06-S15 #97) or the
  * section coordinator (E10-S08 #273).

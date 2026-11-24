@@ -606,6 +606,18 @@
         { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section" } },
         { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section", "format": "csv" } }
       ]
+    },
+    "/api/activities/reports/pzpn-schedule": {
+      "GET": [
+        { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
+        { "probe": "foreign-ref", "query": { "groupId": "$B:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } }
+      ]
+    },
+    "/api/activities/reports/pzpn-attendance": {
+      "GET": [
+        { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
+        { "probe": "foreign-ref", "query": { "groupId": "$B:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } }
+      ]
     }
   }
 }
