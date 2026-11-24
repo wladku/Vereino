@@ -3,80 +3,38 @@
 // daily `activities:send-declaration-reminders` schedule at 18:00 in the club's time zone (club spec *Events, Jobs*
 // rows; REQ-017), the 15-minute `activities:warn-unassigned-sessions` schedule (parity spec REQ-A14, #272), the daily
 // `activities:purge-declaration-links` schedule (engineering standards S9.5, #525), plus the default declaration
-// policies (#32). Idempotent (an upsert on the stable id, a
-// find-or-create of the policies); used by `setup.ts` `seedDefaults` and re-run when the club's time zone changes.
+// policies (#32). The jobs are declared in `lib/club-jobs.ts`; `setUpClubJob` gives the club its job state and,
+// until the operator moved a job type onto its sweep, its per-club schedule (many-clubs spec DD-M04, #629).
+// Idempotent (an upsert on the stable id, a find-or-create of the policies); used by `setup.ts` `seedDefaults` and
+// re-run when the club's time zone changes.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import { registerModuleSchedule } from '@/modules/foundation'
+import { setUpClubJob } from '@/modules/foundation'
 import { AttendancePolicy } from '../data/entities'
-import { DECLARATION_REMINDERS_CRON } from '../lib/declaration-links'
 import { DEFAULT_POLICIES, policyKey } from '../lib/policy'
-import { clubTimeZone, type ActivitiesScope } from './directory'
-
-/** Daily at 03:00 in the club's time zone. */
-export const GENERATE_OCCURRENCES_CRON = '0 3 * * *'
+import type { ActivitiesScope } from './directory'
 
 export async function registerGenerateSchedule(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
-  return registerModuleSchedule(container, {
-    module: 'activities',
-    name: 'generate-occurrences',
-    schedule: { cron: GENERATE_OCCURRENCES_CRON, timezone: await clubTimeZone(container, scope) },
-    scope,
-    description: 'Extend every active series to the 16-week horizon.',
-  })
+  return setUpClubJob(container, scope, 'activities:generate-occurrences')
 }
-
-/** Every 15 minutes (club spec *Events, Jobs* row `activities:expire-guardian-confirmations`; foundation II P-12). */
-export const EXPIRE_CONFIRMATIONS_INTERVAL = '15m' as const
 
 export async function registerExpireSchedule(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
-  return registerModuleSchedule(container, {
-    module: 'activities',
-    name: 'expire-guardian-confirmations',
-    schedule: { interval: EXPIRE_CONFIRMATIONS_INTERVAL },
-    scope,
-    description: 'Apply the policy default to guardian confirmations past their time limit.',
-  })
+  return setUpClubJob(container, scope, 'activities:expire-guardian-confirmations')
 }
 
-/** Daily at 18:00 in the club's time zone: the personal links for tomorrow's undeclared sessions (REQ-017). */
 export async function registerRemindersSchedule(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
-  return registerModuleSchedule(container, {
-    module: 'activities',
-    name: 'send-declaration-reminders',
-    schedule: { cron: DECLARATION_REMINDERS_CRON, timezone: await clubTimeZone(container, scope) },
-    scope,
-    description: 'E-mail a personal declaration link for the undeclared sessions of the next day.',
-  })
+  return setUpClubJob(container, scope, 'activities:send-declaration-reminders')
 }
-
-/** Every 15 minutes: the warning two hours before a session without a coach (parity spec REQ-A14, Q-A19). */
-export const WARN_UNASSIGNED_INTERVAL = '15m' as const
 
 export async function registerWarnUnassignedSchedule(
   container: AwilixContainer,
   scope: ActivitiesScope,
 ): Promise<boolean> {
-  return registerModuleSchedule(container, {
-    module: 'activities',
-    name: 'warn-unassigned-sessions',
-    schedule: { interval: WARN_UNASSIGNED_INTERVAL },
-    scope,
-    description: 'Warn the coordinators and the group leaders two hours before a session without a coach.',
-  })
+  return setUpClubJob(container, scope, 'activities:warn-unassigned-sessions')
 }
 
-/** Once a day: the declaration links dead for 30 days are deleted (engineering standards S9.5; #525). */
-export const PURGE_DECLARATION_LINKS_INTERVAL = '1d' as const
-
 export async function registerPurgeLinksSchedule(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
-  return registerModuleSchedule(container, {
-    module: 'activities',
-    name: 'purge-declaration-links',
-    schedule: { interval: PURGE_DECLARATION_LINKS_INTERVAL },
-    scope,
-    description: 'Delete the declaration links that expired 30 days ago.',
-  })
+  return setUpClubJob(container, scope, 'activities:purge-declaration-links')
 }
 
 /**

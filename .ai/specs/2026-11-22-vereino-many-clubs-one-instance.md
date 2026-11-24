@@ -1,7 +1,7 @@
 # Many clubs on one instance
 
 **Date**: 2026-11-22
-**Status**: Ready for implementation (design approved by the owner on 2026-11-23, PR #644: answers to Q-M01…Q-M08; issue #627, epic E22 #626, decision D-034. Every phase stays Ask First for its migrations and destructive steps unless an approval is recorded on its story, listed in *Ask First items*.)
+**Status**: In progress (design approved by the owner on 2026-11-23, PR #644: answers to Q-M01…Q-M08; issue #627, epic E22 #626, decision D-034. Every phase stays Ask First for its migrations and destructive steps unless an approval is recorded on its story, listed in *Ask First items*.)
 
 ## TLDR
 
@@ -149,7 +149,7 @@ Business rules:
 | Actor | Allowed outcomes | Scope rule | Required feature IDs |
 |---|---|---|---|
 | Maintainer (operator) | Create, export, delete a club; read the sweep status | CLI on the instance (shell access); no HTTP route | none (shell access is the gate) |
-| Club administrator | Request the export of their own club; see the notice period | own tenant + organization | `club_core.settings.manage` (existing) |
+| Club administrator | Request the export of their own club; see the notice period | own tenant + organization | `club_core.manage` (existing; the club administrator's grant for the request, #676) |
 | Guest | Open a club's public pages at its address | the club resolved from the hostname | none |
 | Member, guardian, staff | Sign in at the club's address; links in e-mails lead there | the user's own tenant; a session from another club's host is refused | existing features |
 
@@ -253,7 +253,7 @@ Small UI reach; most of this spec is CLI and jobs.
 |---|---|---|---|---|---|---|
 | `/` on the bare club domain | Neutral landing: product name, "Find your club" hint, sign-in for maintainers | static + i18n | current `app/page.tsx` | frontend layout, Tailwind | n/a (static) | REQ-M02 |
 | `/` on a club address | Same as today's home route with `VEREINO_HOME_CLUB_SLUG`, for that club | `homeRedirect` | `club_core/lib/home-route.ts` | unchanged | unchanged | REQ-M02 |
-| `/backend` banner during the notice period | Shows the deletion date and an "Export club data" action for the administrator | `GET /api/club_core/offboarding` | existing club settings page notices | `Alert` from `@open-mercato/ui` | loading, error, none (no banner) | REQ-M06 |
+| `/backend` banner during the notice period (spot `backend:layout:top`, #676) | Shows the deletion date and an "Export club data" action for the administrator; follows the running export and offers the download of the finished archive | `GET /api/club_core/offboarding`, `POST`/`GET /api/club_core/offboarding/export` | the people first-administrator banner | `Alert` from `@open-mercato/ui` | loading and none render nothing; error shows a retry; export pending/running, ready, failed | REQ-M06 |
 
 Localization: new keys in `club_core/i18n/en.json` and `pl.json`. The landing page is checked at 375 px in both
 locales and light and dark mode.
@@ -304,12 +304,14 @@ All migrations are Ask First.
 | CLI | `foundation club-jobs status [--job <key>]` | shell | — | per job type: clubs, due now, leased, last error counts | — | REQ-M04 |
 | CLI | `foundation retire-club-schedules [--dry-run]` | shell | — | unregisters the 19 deterministic per-club schedule ids for every club; prints counts | idempotent | REQ-M04 |
 | CLI | `club_core offboard-club` / `export-club` / `delete-club` | shell | `--slug`, `--notice-days`, `--out`, `--confirm <slug>` | archive path + checksum; per-module deleted counts; event `club_core.club.deleted` (ids only) | delete before notice end → exit 1; unknown slug → exit 1 | REQ-M06 |
-| `GET` | `/api/club_core/offboarding` | auth + `club_core.settings.manage` | — | `{ noticeAt, deleteAfter, exportAvailable }` | 401/403 | REQ-M06 |
-| `GET` | `/api/club_core/offboarding/export` | auth + `club_core.settings.manage` | — | the archive of the caller's club (queued; progress job) | 403; 409 while one export runs | REQ-M06 |
+| `GET` | `/api/club_core/offboarding` | auth + `club_core.manage` | — | `{ noticeAt, deleteAfter, exportAvailable, export }` (`export`: the newest export job, `{ jobId, status, requestedAt, finishedAt, bytes }` or null) | 401/403 | REQ-M06 |
+| `POST` | `/api/club_core/offboarding/export` | auth + `club_core.manage`, club administrator's grant | `{}` | 202 `{ jobId, status: 'pending' }`: a platform progress job (`club_core.clubs.export`), run by the worker `club_core:club-export` with the same `exportClub` service into the private attachments partition; audited (`club_core.clubs.export_request`) | 409 `export_unavailable` without a notice; 409 `export_running` while one export is pending or running (the settings row is locked for the check) | REQ-M06 |
+| `GET` | `/api/club_core/offboarding/export` | auth + `club_core.manage` | — | the newest finished archive of the caller's club, `application/zip`, `Cache-Control: no-store` | 403; 404 `export_not_found`; 409 `export_running` | REQ-M06 |
 | DI | `foundationClubJobs` | server | `declare(jobs)`, `wake(scope, jobKey, at)`, `initClub(scope)`, `removeClub(scope)` | — | `wake` never moves `next_due_at` later | REQ-M04 |
 
 Error codes go in `club_core/lib/error-codes.ts` (`club_core.slug_reserved`, `club_core.offboarding_not_due`,
-`club_core.export_running`) and `foundation/lib/error-codes.ts`.
+`club_core.export_running`, `club_core.export_unavailable`, `club_core.export_not_found`) and
+`foundation/lib/error-codes.ts`.
 
 ## Events, Jobs, Notifications, and Cross-Module Flows
 
@@ -356,6 +358,7 @@ due or stalled rows, returning ids and scope only (DD-M07 (b)); each found row i
 | TEST-M08 | integration | two clubs; low per-club limits | club A sends 200 e-mails and starts two imports | club B's e-mail goes out within the bucket's round; A's second import gets 409 | REQ-M07 |
 | TEST-M09 | capacity (not in `yarn verify`) | seed script: 1,000 clubs, 150k participants, 300k accounts | load script against the production build | the targets of *Overview* hold; the report is attached to the PR | REQ-M08 |
 | TEST-M10 | unit + integration | role defaults unchanged / changed | run the pre-deploy wrapper twice | the second run skips the sync; a change runs it | REQ-M09 |
+| TEST-M11 | integration (API + browser) | one club with a slug, its administrator and a treasurer | `offboard-club`, then the administrator's export from the API and the `/backend` banner | no notice: nulls, 409 `export_unavailable`; with a notice: one export at a time (409 `export_running`), the downloaded archive is the club's; the treasurer gets 403 on all three calls; the banner shows the date in both locales at 375 px and downloads the archive; withdrawn notice: no banner | REQ-M06 |
 
 ## Implementation Phases
 
@@ -424,8 +427,8 @@ phases.
   export route; a restore drill of one club from a backup into a scratch database, documented in
   `docs/ops/backups.md`.
 - **Requirements closed:** REQ-M06
-- **Tests:** TEST-M07
-- **Validation:** `yarn verify`; `yarn test:integration:vereino --filter TEST-M07`
+- **Tests:** TEST-M07; TEST-M11 (the administrator's banner and export, #676)
+- **Validation:** `yarn verify`; `yarn test:integration:vereino --filter TEST-M07` and `TEST-M11`
 - **Exit gate:** a synthetic club exported, deleted and shown absent from every table on staging; the drill recorded.
 
 ### Phase 5 — Limits and the capacity test (E22-S07, #633)

@@ -93,13 +93,27 @@ export function mergeOutcome(status, attempt, retries = MERGE_RETRY_DELAYS_MS.le
  * The required checks the train judges: `override` (`MERGE_TRAIN_REQUIRED_CHECKS`, comma-separated; for a repository
  * whose plan has no rulesets, such as the rehearsal repository) when set, else the ruleset's. The batch train refuses
  * to merge when the list is empty.
+ *
+ * `merge-train/verified` never counts: it is the train's own commit status, set only immediately before a merge, so no
+ * PR or batch head carries it while the train judges it. Once the ruleset requires it (spec phase 3, BT-D03), judging
+ * it as a check would leave every head pending and the train would never merge (#698).
  */
 export function requiredChecks(fromRules, override) {
   const names = String(override ?? '')
     .split(',')
     .map((name) => name.trim())
     .filter(Boolean)
-  return names.length ? [...new Set(names)] : fromRules
+  const checks = names.length ? [...new Set(names)] : fromRules
+  return checks.filter((name) => name !== VERIFIED_STATUS)
+}
+
+/**
+ * Whether the ruleset requires `merge-train/verified` (`fromRules`, the ruleset's required check names). The one-PR
+ * train then sets that status on the up-to-date green head it merges, as the batch train does, so a merge by the train
+ * passes the ruleset in either mode and switching the batch size or rolling it back never blocks the queue (#698).
+ */
+export function stampsVerified(fromRules) {
+  return fromRules.includes(VERIFIED_STATUS)
 }
 
 /** Minutes between the batch head's commit time and `now` (both ISO strings or dates). */

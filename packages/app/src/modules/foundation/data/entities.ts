@@ -217,3 +217,55 @@ export class IdentityLink extends ScopedEntityBase {
   @Property({ name: 'last_signed_in_at', type: Date, nullable: true })
   lastSignedInAt?: Date | null
 }
+
+/**
+ * `foundation_club_jobs` (many-clubs spec *Data Models*, DD-M04; #629): one row per club and job type — when the job
+ * is next due, the enqueue or run lease, and the last run's times and error code. A job row, not a user record: no
+ * soft delete and no optimistic locking. The sweep's claim statement is the one system-scope read of it (DD-M07 (a)).
+ */
+@Entity({ tableName: 'foundation_club_jobs' })
+@Index({
+  name: 'foundation_club_jobs_scope_key_unique',
+  expression:
+    'create unique index "foundation_club_jobs_scope_key_unique" on "foundation_club_jobs" ("tenant_id", "organization_id", "job_key")',
+})
+@Index({ name: 'foundation_club_jobs_key_due_idx', properties: ['jobKey', 'nextDueAt'] })
+export class ClubJob {
+  [OptionalProps]?:
+    'nextDueAt' | 'leaseUntil' | 'lastStartedAt' | 'lastFinishedAt' | 'lastError' | 'createdAt' | 'updatedAt'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  /** The job type, `<module>:<name>` of a declared per-club worker. */
+  @Property({ name: 'job_key', type: 'text' })
+  jobKey!: string
+
+  @Property({ name: 'next_due_at', type: Date, nullable: true })
+  nextDueAt?: Date | null
+
+  @Property({ name: 'lease_until', type: Date, nullable: true })
+  leaseUntil?: Date | null
+
+  @Property({ name: 'last_started_at', type: Date, nullable: true })
+  lastStartedAt?: Date | null
+
+  @Property({ name: 'last_finished_at', type: Date, nullable: true })
+  lastFinishedAt?: Date | null
+
+  /** An error code only, never a message with personal data. */
+  @Property({ name: 'last_error', type: 'text', nullable: true })
+  lastError?: string | null
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'updated_at', type: Date, onUpdate: () => new Date() })
+  updatedAt: Date = new Date()
+}
