@@ -1151,5 +1151,6 @@
   "activities.reports.pzpn.attendance.columns.birthDate": "Data urodzenia",
   "activities.reports.pzpn.attendance.columns.status": "Status",
   "activities.errors.report_period_invalid": "Wybierz okres nie dłuższy niż rok, który kończy się nie wcześniej niż zaczyna.",
-  "activities.errors.report_group_not_found": "Nie znaleziono drużyny."
+  "activities.errors.report_group_not_found": "Nie znaleziono drużyny.",
+  "activities.club.pzpn.chooseTeam": "Wybierz drużynę"
 }

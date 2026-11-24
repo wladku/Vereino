@@ -71,6 +71,15 @@ Build phase 3 of the training outlines spec: two report routes, the page `/club/
 - `yarn guard` — no blocking findings.
 - Lesson added: `.ai/lessons/moved-session-keeps-occurrence-date.md`.
 
+- PR #696 opened after the owner's instruction to proceed autonomously (#687 still in its merge queue; no shared files).
+- Independent review (subagent): nothing blocking. Fixed: a `?groupId=` not in the team list now selects no team
+  instead of the first one (TEST-O08 covers it); the feature check (403) now runs before the period check (400); a
+  comment for deleted persons; the DI token `trainingOutlineTopics` and its signature are named in the spec changelog
+  entry. Left as is: the team list reads 100 groups (the club group page uses the same page size); a failed `<a download>`
+  saves the error body (same as the coach units CSV); the group page link shows for `groups.view` (every role with it
+  also holds a reports feature in the role seeds).
+- After the fixes: TEST-O08 1 passed (44.0s); `yarn verify` all 22 steps passed.
+
 ## Open problems
 
 - V-O1 (exit gate): check the export columns with a certified club's administrator.

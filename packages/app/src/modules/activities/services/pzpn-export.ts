@@ -65,13 +65,13 @@ async function authorizedBase(
   scope: ActivitiesScope,
   query: PzpnExportQuery,
 ): Promise<ExportBase> {
-  if (!isPzpnPeriod(query.from, query.to)) return activitiesErrors.throw('report_period_invalid')
   const userId = ctx.auth?.sub
   if (!userId) return foundationErrors.throw('scope_denied')
   const rbac = ctx.container.resolve<RbacService>('rbacService')
   const canView = await rbac.userHasAllFeatures(userId, [REPORTS_VIEW_FEATURE], scope)
   const canViewOwn = canView || (await rbac.userHasAllFeatures(userId, [REPORTS_VIEW_OWN_FEATURE], scope))
   if (!canViewOwn) return foundationErrors.throw('scope_denied')
+  if (!isPzpnPeriod(query.from, query.to)) return activitiesErrors.throw('report_period_invalid')
   const em = ctx.container.resolve<EntityManager>('em').fork()
   const group = (await findGroups(ctx.container, scope, [query.groupId], em)).get(query.groupId)
   if (!group) return activitiesErrors.throw('report_group_not_found')
@@ -200,6 +200,7 @@ export async function readPzpnAttendance(
     const start = wallTimeInZone(session.startAt, timeZone).slice(0, 5)
     for (const personId of personIds) {
       const person = persons.get(personId)
+      // A person deleted since (the directory returns live persons only) leaves no row in the file.
       if (!person) continue
       const row = rowsBySession.get(session.id)?.get(personId)
       entries.push({

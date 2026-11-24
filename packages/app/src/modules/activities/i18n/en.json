@@ -1151,5 +1151,6 @@
   "activities.reports.pzpn.attendance.columns.birthDate": "Birth date",
   "activities.reports.pzpn.attendance.columns.status": "Status",
   "activities.errors.report_period_invalid": "Choose a period of at most a year that ends on or after its first day.",
-  "activities.errors.report_group_not_found": "Team not found."
+  "activities.errors.report_group_not_found": "Team not found.",
+  "activities.club.pzpn.chooseTeam": "Choose a team"
 }

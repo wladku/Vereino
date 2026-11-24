@@ -294,6 +294,12 @@ test('TEST-O08 PZPN schedule and attendance CSVs: columns, Polish values, locale
     )
     const [download] = await Promise.all([page.waitForEvent('download'), scheduleLink.click()])
     expect(download.suggestedFilename()).toMatch(new RegExp(`^pzpn-schedule-${month}-01-${month}-\\d{2}\\.csv$`))
+    // A team that is not in the list (here an unknown id) selects none: no other team's file is offered.
+    await page.goto(`/club/reports/pzpn?groupId=${randomUUID()}`)
+    await expect(page.getByTestId('club-pzpn-team')).toHaveValue('')
+    await expect(page.getByTestId('club-pzpn-schedule')).toBeDisabled()
+    await page.getByTestId('club-pzpn-team').selectOption(family.zaki)
+    await expect(page.getByTestId('club-pzpn-schedule')).toHaveAttribute('href', new RegExp(`groupId=${family.zaki}`))
     // An inverted period disables both downloads and says why.
     await page.getByTestId('club-pzpn-from').fill(addDays(today, 40))
     await expect(page.getByTestId('club-pzpn-period-invalid')).toBeVisible()

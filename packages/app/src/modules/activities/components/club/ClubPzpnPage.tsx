@@ -3,7 +3,7 @@
 // (the current month by default) and two downloads, "Schedule (CSV)" and "Attendance (CSV)", from
 // `GET /api/activities/reports/pzpn-schedule` and `pzpn-attendance`. The teams are the caller's active groups as
 // `GET /api/groups/groups` scopes them (a coach the groups they coach, a coordinator their sections, the administrator
-// the club); `?groupId=` preselects one (the link on the club group page). A period the routes would refuse (end before
+// the club); `?groupId=` preselects one (the link on the club group page), and one not in the list selects none. A period the routes would refuse (end before
 // start, longer than a year) disables the downloads and says why. States: loading, error with retry, no teams.
 import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
@@ -54,8 +54,10 @@ function PzpnExports({ t }: { t: Translate }) {
   const [groupId, setGroupId] = React.useState<string>(searchParams?.get('groupId') ?? '')
   const teams = useTeams()
   const items = teams.data
-  const selected = items?.find((team) => team.id === groupId) ?? items?.[0]
+  // A `?groupId=` outside the list (an inactive team, another club's id) selects nothing, never a different team.
+  const selected = groupId ? items?.find((team) => team.id === groupId) : items?.[0]
   const periodValid = isPzpnPeriod(from, to)
+  const ready = periodValid && selected !== undefined
 
   let body: React.ReactNode
   if (!items && teams.isFetching) {
@@ -71,7 +73,7 @@ function PzpnExports({ t }: { t: Translate }) {
         }
       />
     )
-  } else if (!selected) {
+  } else if (items.length === 0) {
     body = (
       <p className="text-muted-foreground" data-testid="club-pzpn-empty">
         {t('activities.club.pzpn.empty')}
@@ -79,7 +81,7 @@ function PzpnExports({ t }: { t: Translate }) {
     )
   } else {
     const download = (kind: PzpnExportKind, label: string) =>
-      periodValid ? (
+      ready && selected ? (
         <Button asChild className="min-h-11" variant={kind === 'schedule' ? 'default' : 'outline'}>
           <a href={exportUrl(kind, selected.id, from, to)} download data-testid={`club-pzpn-${kind}`}>
             {label}
@@ -103,12 +105,18 @@ function PzpnExports({ t }: { t: Translate }) {
           <select
             id={`${id}-team`}
             className="border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base focus-visible:ring-2 focus-visible:outline-none"
-            value={selected.id}
+            value={selected?.id ?? ''}
             onChange={(event) => {
               setGroupId(event.target.value)
             }}
+            aria-invalid={!selected}
             data-testid="club-pzpn-team"
           >
+            {selected ? null : (
+              <option value="" disabled>
+                {t('activities.club.pzpn.chooseTeam')}
+              </option>
+            )}
             {items.map((team) => (
               <option key={team.id} value={team.id}>
                 {team.sectionName ? `${team.name} — ${team.sectionName}` : team.name}
