@@ -47,6 +47,8 @@
 - `yarn test:integration:vereino --filter TEST-F10` — 1 passed (resend reaches each person in their own locale).
 - `yarn test:integration:vereino --filter TEST-F04` — 1 passed (resend through the Vereino route, club admin token).
 - `yarn test:integration:vereino --filter TEST-L01` — 1 passed (resend limits and update-account resend unchanged).
+- `yarn verify` — all 22 steps passed.
+- `yarn guard` — no blocking findings.
 
 ## Open problems / next steps
 
