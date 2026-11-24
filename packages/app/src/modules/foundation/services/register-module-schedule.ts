@@ -16,23 +16,26 @@ import {
 
 const logger = createLogger('foundation')
 
-/** The subset of the installed `SchedulerService.register` input a module schedule uses. */
-type SchedulerServiceLike = {
+/** The subset of the installed `SchedulerService` the module schedules and the club-job sweeps use. */
+export type SchedulerServiceLike = {
   register(registration: {
     id: string
     name: string
-    scopeType: 'organization'
-    organizationId: string
-    tenantId: string
+    scopeType: 'organization' | 'system'
+    organizationId?: string
+    tenantId?: string
     scheduleType: 'cron' | 'interval'
     scheduleValue: string
     timezone: string
     targetType: 'queue'
     targetQueue: string
+    targetPayload?: Record<string, unknown>
     sourceType: 'module'
     sourceModule: string
     description?: string
   }): Promise<void>
+  unregister(scheduleId: string): Promise<void>
+  exists(scheduleId: string): Promise<boolean>
 }
 
 export type ModuleScheduleRegistration = {

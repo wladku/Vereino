@@ -38,6 +38,7 @@ describe('club settings', () => {
       showCalledUpChildren: 'none',
       coachMayCancel: true,
       orderSalesDocument: 'none',
+      formerParticipantRetentionMonths: 12,
     })
     expect(clubSettingsSchema.parse(CLUB_SETTINGS_DEFAULTS)).toEqual(CLUB_SETTINGS_DEFAULTS)
   })
@@ -179,6 +180,23 @@ describe('club settings', () => {
     expect(clubSettingsRuleProblem({ ownAccountMinAge: 19 })).toEqual({
       code: 'account_age_threshold_out_of_range',
       field: 'ownAccountMinAge',
+    })
+  })
+
+  it('keeps the former participants retention period within 1–120 months (REQ-041, #471)', () => {
+    expect(clubSettingsRuleProblem({ formerParticipantRetentionMonths: 1 })).toBeNull()
+    expect(clubSettingsRuleProblem({ formerParticipantRetentionMonths: 120 })).toBeNull()
+    for (const months of [0, 121]) {
+      expect(clubSettingsRuleProblem({ formerParticipantRetentionMonths: months })).toEqual({
+        code: 'retention_months_out_of_range',
+        field: 'formerParticipantRetentionMonths',
+      })
+    }
+    expect(clubSettingsPatchSchema.safeParse({ formerParticipantRetentionMonths: 24 }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ formerParticipantRetentionMonths: 0 }).success).toBe(false)
+    expect(resolveClubSettings({ formerParticipantRetentionMonths: 500 })).toMatchObject({
+      values: { formerParticipantRetentionMonths: 12 },
+      invalidKeys: ['formerParticipantRetentionMonths'],
     })
   })
 

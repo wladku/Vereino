@@ -1,8 +1,6 @@
 import type { ModuleSetupConfig } from '@open-mercato/shared/modules/setup'
 import { setUpClubFacilities } from './services/club-setup'
 
-export { EXPIRE_REQUESTS_INTERVAL, MAINTENANCE_REMINDERS_CRON, RENTAL_LIFECYCLE_INTERVAL } from './services/club-setup'
-
 /**
  * `facilities` registers its 15-minute rental lifecycle (#122) and request expiry (#125) and the daily maintenance
  * reminders (#128) per organization (idempotent, upserts on the stable ids; `facilities set-up-club` re-runs it for a

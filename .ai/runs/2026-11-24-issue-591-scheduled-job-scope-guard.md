@@ -40,3 +40,12 @@
 ## Open problems / next steps
 
 - None. Header comments of the workers still say "re-validates them" (accurate; left as written).
+
+## Merge of `main` (2026-11-24, PR #692 `merge-train-conflict`)
+
+Trigger: om-auto-fix-pr on #692 after `main` took #663 (#629, one sweep job per job type instead of schedules per club), which wrapped every per-club worker in `clubJobWorker` and gave `foundation:dispatch-sweep` a system-scope path. All 19 workers and `foundation/index.ts` conflicted.
+
+Decisions:
+- The guard moved into `clubJobWorker` (`foundation/services/club-jobs.ts`), which now hands the handler `(scope, job)` with a trusted scope only. A claimed job (the sweep's `_clubJobClaim`) is proven by the claim: `startClubJobRun` starts the run only on the club's `foundation_club_jobs` row of that key under the exact lease the sweep set, so a forged claim is skipped. A job without a claim (a per-club schedule of the old setup) goes through `verifyScheduledJobScope`. Without this, the guard would have refused every sweep-run job once an operator retires the per-club schedules (they are deleted, so no registration is left).
+- `foundation:dispatch-sweep` keeps `main`'s system path (null scope → `sweepAllDispatches`, which trusts no club scope and narrows to each club itself); its per-club path keeps `verifyScheduledJobScope`.
+- `people:retention-sweep` (new on `main`, #471) is the 20th scheduled worker and takes the same `clubJobWorker` shape.

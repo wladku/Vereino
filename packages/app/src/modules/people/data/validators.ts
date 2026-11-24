@@ -341,6 +341,17 @@ export const personAnonymizeSchema = z
   .object({ id: z.uuid(), requestId: z.uuid(), confirmLastName: z.string().max(200) })
   .strict()
 
+/**
+ * `people.persons.anonymize` by the retention sweep (club spec REQ-041; #471): job scope only (`system_job`), so no
+ * HTTP route can send it; the command checks the retention rule instead of a request and a typed name.
+ */
+export const personRetentionAnonymizeSchema = z.object({ id: z.uuid(), reason: z.literal('retention_sweep') }).strict()
+
+/** The sweep's job input (`people:retention-sweep`, CLI `people retention-sweep`). */
+export const retentionSweepJobSchema = z
+  .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })
+  .strict()
+
 /** `people.persons.delete` (`DELETE /api/people/persons/{id}`, REQ-L05; #308). */
 export const personDeleteSchema = z.object({ id: z.uuid() }).strict()
 
