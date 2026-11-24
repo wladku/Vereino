@@ -557,6 +557,14 @@
     "/api/activities/occurrences/[id]/guardian-contacts": {
       "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } }
     },
+    "/api/activities/occurrences/[id]/reopen": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:occurrence" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe reason" }
+      }
+    },
     "/api/activities/occurrences/[id]/restore": {
       "POST": {
         "probe": "foreign-id",
@@ -597,6 +605,18 @@
         { "probe": "read", "query": { "month": "$A:period", "format": "csv" } },
         { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section" } },
         { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section", "format": "csv" } }
+      ]
+    },
+    "/api/activities/reports/pzpn-schedule": {
+      "GET": [
+        { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
+        { "probe": "foreign-ref", "query": { "groupId": "$B:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } }
+      ]
+    },
+    "/api/activities/reports/pzpn-attendance": {
+      "GET": [
+        { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
+        { "probe": "foreign-ref", "query": { "groupId": "$B:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } }
       ]
     }
   }

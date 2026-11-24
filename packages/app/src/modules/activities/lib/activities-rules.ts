@@ -60,8 +60,9 @@ export const OCCURRENCE_STATUSES = ['planned', 'done', 'cancelled'] as const
 export type OccurrenceStatus = (typeof OCCURRENCE_STATUSES)[number]
 
 /**
- * The session transition table (foundation II *Data Models*): `planned → done | cancelled`; the administrator reopens
- * a `cancelled` or `done` session with a reason (`reopen`, a later story). No state is terminal.
+ * The session transition table (foundation II *Data Models*): `planned → done | cancelled`; the administrator puts a
+ * `cancelled` session back with a reason (`activities.occurrences.restore`, #268) and reopens a `done` one with a reason
+ * (`activities.occurrences.reopen`, #588). No state is terminal.
  */
 export const sessionTransitions = defineTransitions({
   states: OCCURRENCE_STATUSES,

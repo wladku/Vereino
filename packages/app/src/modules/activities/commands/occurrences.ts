@@ -10,7 +10,8 @@
 //   sends the in-app notice (`subscribers/notify-occurrence-cancelled.ts`). Where the club setting `coach_may_cancel`
 //   is off (#199), a coach cancels only through a coordinator or administrator grant they also hold; otherwise 403
 //   `coach_cancel_disabled`;
-// - restoring a cancelled session that has not ended (`cancelled → planned`) — by the club administrator only (#268).
+// - restoring a cancelled session that has not ended (`cancelled → planned`) — by the club administrator only (#268);
+// - reopening a done session (`done → planned`) with a reason — by the club administrator only (AC-G02, #588).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { z } from 'zod'
@@ -20,7 +21,12 @@ import { assertTransition, authorizeScoped, type TargetLock } from '@/modules/fo
 import { activitiesErrors } from '../api/errors'
 import { Activity, Occurrence } from '../data/entities'
 import { lockSchedule } from '../data/queries'
-import { occurrenceCancelSchema, occurrenceRestoreSchema, occurrenceUpdateSchema } from '../data/validators'
+import {
+  occurrenceCancelSchema,
+  occurrenceReopenSchema,
+  occurrenceRestoreSchema,
+  occurrenceUpdateSchema,
+} from '../data/validators'
 import { permittedCancelRole, sessionTransitions, type OccurrenceStatus } from '../lib/activities-rules'
 import { attendanceSettings, coachMayCancel } from '../services/directory'
 import { nextConfirmByMinutes } from '../lib/confirm-by'
@@ -669,6 +675,85 @@ const restoreOccurrenceCommand: CommandHandler<
   },
 }
 
+/** Only the club administrator reopens a done session (foundation II AC-G02; owner decision on #588). */
+const REOPEN_KINDS: readonly GrantKind[] = ['club_admin']
+
+/**
+ * `activities.occurrences.reopen` (foundation II AC-G02, #588): a done session becomes `planned` again with the
+ * administrator's reason (3–500 characters, kept in the audit log), so its attendance can be checked off and the session
+ * closed again. The attendance and the score recorded on it stay as they are. Unlike a restore, a session that has ended
+ * may be reopened (a done session usually has); its place tree and coach must still be free (409 with the list), because
+ * a planned session occupies them again. Another status answers 409 `occurrence_not_done`. Nothing is announced to the
+ * members: the session took place either way, so `activities.occurrence.updated` carries no `change`.
+ */
+const reopenOccurrenceCommand: CommandHandler<Record<string, unknown>, OccurrenceCommandResult & { reason: string }> = {
+  id: 'activities.occurrences.reopen',
+  isUndoable: true,
+  atomicReplay: true,
+  async execute(rawInput, ctx) {
+    const result = await inWriteTransaction(ctx, 'activities.occurrences.reopen', async (em) => {
+      const authorized = await authorizeScoped(
+        occurrenceSpec(ctx, occurrenceReopenSchema, REOPEN_KINDS),
+        rawInput,
+        ctx,
+        em,
+      )
+      const row = authorized.entity as Occurrence
+      if (row.status !== 'done') return activitiesErrors.throw('occurrence_not_done', { status: row.status })
+      await assertTransition(sessionTransitions, row.status, 'planned')
+      const before = occurrenceSnapshot(row)
+      row.status = 'planned'
+      row.updatedAt = new Date()
+      await assertSessionFits(ctx, em, row)
+      return {
+        entity: row,
+        actingRole: authorized.actingRole,
+        before,
+        reason: authorized.parsed.reason,
+        actorPersonId: selfPersonId(authorized.scope),
+      }
+    })
+    const row = result.entity
+    await emitSessionUpdated(row, null, {
+      userId: ctx.auth?.sub ?? null,
+      personId: result.actorPersonId,
+      actingRole: result.actingRole,
+    })
+    return { entity: row, actingRole: result.actingRole, before: result.before, reason: result.reason }
+  },
+  buildLog: ({ result }) =>
+    activitiesLog({
+      result,
+      resourceKind: OCCURRENCE_RESOURCE_KIND,
+      labelKey: 'activities.audit.occurrences.reopen',
+      fallback: 'Reopen a session',
+      after: occurrenceSnapshot(result.entity),
+      parent: { resourceKind: 'activities.activity', resourceId: result.entity.activityId },
+      context: { reason: result.reason },
+    }),
+  async authorizeReplay({ ctx, logEntry }) {
+    await authorizeOccurrenceReplay(ctx, logEntry.resourceId, REOPEN_KINDS)
+  },
+  async undo({ ctx, logEntry }) {
+    const before = logEntry.snapshotBefore as OccurrenceSnapshot | null | undefined
+    if (!before?.id) throw new Error('[internal] missing session snapshot for undo')
+    const row = await authorizeOccurrenceReplay(ctx, before.id, REOPEN_KINDS)
+    // The undo closes the session again, only while it is still open: a session cancelled or closed meanwhile stays so.
+    if (row.status !== 'planned') await activitiesErrors.throw('occurrence_not_planned', { status: row.status })
+    const em = ctx.transactionalEm as EntityManager
+    // Only the status goes back: a move, a coach change or a check-off made since the reopen stays.
+    row.status = before.status
+    row.updatedAt = new Date()
+    await em.flush()
+    await emitAfterCommit(
+      'activities.occurrence.updated',
+      { tenantId: row.tenantId, organizationId: row.organizationId },
+      { id: row.id, activityId: row.activityId },
+    )
+  },
+}
+
 registerCommand(updateOccurrenceCommand)
 registerCommand(cancelOccurrenceCommand)
 registerCommand(restoreOccurrenceCommand)
+registerCommand(reopenOccurrenceCommand)

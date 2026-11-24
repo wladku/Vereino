@@ -253,8 +253,9 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
       current: occurrence.updatedAt,
       expected: after.occurrenceUpdatedAt,
     })
-    // A closed (or cancelled) session stays so: reopening is an administrator command with a reason (club spec
-    // *Data Models* → `Occurrence`), so the undo of a closing save is refused.
+    // A closed (or cancelled) session stays so: reopening is an administrator command with a reason
+    // (`activities.occurrences.reopen`, #588; club spec *Data Models* → `Occurrence`), so the undo of a closing save is
+    // refused.
     if (occurrence.status !== 'planned') {
       await activitiesErrors.throw('occurrence_not_planned', { status: occurrence.status })
     }

@@ -88,6 +88,12 @@ export {
   type ClubJobRunResult,
 } from './services/club-jobs'
 export type { ClubJobDeclaration, ClubJobSchedule } from './lib/club-job-due'
+export {
+  verifyScheduledJobScope,
+  type ScheduledJobRef,
+  type ScheduledJobScopeRefusal,
+  type ScheduledJobScopeResult,
+} from './services/scheduled-job-scope'
 export { commandContextForRequest, errorResponse } from './services/route-context'
 export {
   loadPublicRoute,

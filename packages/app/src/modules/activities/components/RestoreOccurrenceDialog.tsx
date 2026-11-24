@@ -3,6 +3,8 @@
 // #268): the club administrator gives a reason of 3–500 characters and the session is planned again. The request sends
 // the session's lock token; a stale token surfaces the conflict; a session that is no longer cancelled or has ended
 // meanwhile closes the dialog and refreshes the record; a place or coach taken meanwhile shows the conflict list.
+// The same dialog reopens a done session (`action="reopen"`, foundation II AC-G02, #588): the administrator's reason,
+// the session's lock token, and a session that is no longer done closes the dialog.
 import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -21,20 +23,49 @@ import { DialogContent } from '@/components/ui/dialog'
 
 export type RestorableOccurrence = { id: string; updatedAt: string | null }
 
-const CLOSING_CODES = new Set(['occurrence_not_cancelled', 'occurrence_already_ended'])
+export type ReasonedOccurrenceAction = 'restore' | 'reopen'
+
+/** The texts, the endpoint and the codes that close the dialog, per action (literal keys for the catalog checks). */
+const ACTIONS = {
+  restore: {
+    path: 'restore',
+    closingCodes: new Set(['occurrence_not_cancelled', 'occurrence_already_ended']),
+    title: 'activities.occurrences.restore.title',
+    help: 'activities.occurrences.restore.help',
+    reason: 'activities.occurrences.restore.reason',
+    reasonRequired: 'activities.occurrences.restore.reasonRequired',
+    confirm: 'activities.occurrences.restore.confirm',
+    error: 'activities.occurrences.errors.restore',
+    done: 'activities.occurrences.flash.restored',
+  },
+  reopen: {
+    path: 'reopen',
+    closingCodes: new Set(['occurrence_not_done']),
+    title: 'activities.occurrences.reopen.title',
+    help: 'activities.occurrences.reopen.help',
+    reason: 'activities.occurrences.reopen.reason',
+    reasonRequired: 'activities.occurrences.reopen.reasonRequired',
+    confirm: 'activities.occurrences.reopen.confirm',
+    error: 'activities.occurrences.errors.reopen',
+    done: 'activities.occurrences.flash.reopened',
+  },
+} as const
 
 export function RestoreOccurrenceDialog({
+  action = 'restore',
   occurrence,
   open,
   onOpenChange,
   onDone,
 }: {
+  action?: ReasonedOccurrenceAction
   occurrence: RestorableOccurrence
   open: boolean
   onOpenChange: (open: boolean) => void
   onDone: () => Promise<void>
 }) {
   const t = useT()
+  const texts = ACTIONS[action]
   const reasonId = React.useId()
   const problemId = React.useId()
   const [reason, setReason] = React.useState('')
@@ -44,10 +75,10 @@ export function RestoreOccurrenceDialog({
   const [conflicts, setConflicts] = React.useState<ScheduleConflict[] | null>(null)
 
   const submit = async () => {
-    // The restore reason follows the cancellation's rule: at least 3 characters once trimmed.
+    // The reason follows the cancellation's rule: at least 3 characters once trimmed.
     if (!isCancelReasonValid(reason)) {
       setReasonInvalid(true)
-      setProblem(t('activities.occurrences.restore.reasonRequired'))
+      setProblem(t(texts.reasonRequired))
       return
     }
     setPending(true)
@@ -57,16 +88,16 @@ export function RestoreOccurrenceDialog({
     try {
       await withScopedApiRequestHeaders(buildOptimisticLockHeader(occurrence.updatedAt), () =>
         apiCallOrThrow(
-          `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}/restore`,
+          `/api/activities/occurrences/${encodeURIComponent(occurrence.id)}/${texts.path}`,
           {
             method: 'POST',
             headers: { 'content-type': 'application/json' },
             body: JSON.stringify({ reason: reason.trim() }),
           },
-          { errorMessage: t('activities.occurrences.errors.restore') },
+          { errorMessage: t(texts.error) },
         ),
       )
-      flash(t('activities.occurrences.flash.restored'), 'success')
+      flash(t(texts.done), 'success')
       setReason('')
       onOpenChange(false)
       await onDone()
@@ -77,12 +108,12 @@ export function RestoreOccurrenceDialog({
         setProblem(errorMessage(error, t('activities.conflicts.title')))
       } else if (surfaceRecordConflict(error, t, { onRefresh: () => void onDone() })) {
         onOpenChange(false)
-      } else if (CLOSING_CODES.has(errorCodeOf(error) ?? '')) {
-        flash(errorMessage(error, t('activities.occurrences.errors.restore')), 'error')
+      } else if (texts.closingCodes.has(errorCodeOf(error) ?? '')) {
+        flash(errorMessage(error, t(texts.error)), 'error')
         onOpenChange(false)
         await onDone()
       } else {
-        setProblem(errorMessage(error, t('activities.occurrences.errors.restore')))
+        setProblem(errorMessage(error, t(texts.error)))
       }
     } finally {
       setPending(false)
@@ -93,7 +124,7 @@ export function RestoreOccurrenceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         closeAriaLabel={t('activities.common.close')}
-        data-testid="occurrence-restore-dialog"
+        data-testid={`occurrence-${action}-dialog`}
         onKeyDown={(event) => {
           if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
             event.preventDefault()
@@ -102,15 +133,15 @@ export function RestoreOccurrenceDialog({
         }}
       >
         <DialogHeader>
-          <DialogTitle>{t('activities.occurrences.restore.title')}</DialogTitle>
-          <DialogDescription>{t('activities.occurrences.restore.help')}</DialogDescription>
+          <DialogTitle>{t(texts.title)}</DialogTitle>
+          <DialogDescription>{t(texts.help)}</DialogDescription>
         </DialogHeader>
         {conflicts ? <ConflictList conflicts={conflicts} /> : null}
         <div className="flex flex-col gap-2">
-          <Label htmlFor={reasonId}>{t('activities.occurrences.restore.reason')}</Label>
+          <Label htmlFor={reasonId}>{t(texts.reason)}</Label>
           <Textarea
             id={reasonId}
-            data-testid="occurrence-restore-reason"
+            data-testid={`occurrence-${action}-reason`}
             required
             aria-required
             aria-invalid={reasonInvalid ? true : undefined}
@@ -132,7 +163,7 @@ export function RestoreOccurrenceDialog({
               id={problemId}
               className="text-destructive text-sm"
               role="alert"
-              data-testid="occurrence-restore-problem"
+              data-testid={`occurrence-${action}-problem`}
             >
               {problem}
             </p>
@@ -151,13 +182,13 @@ export function RestoreOccurrenceDialog({
           </Button>
           <Button
             type="button"
-            data-testid="occurrence-restore-confirm"
+            data-testid={`occurrence-${action}-confirm`}
             disabled={pending}
             onClick={() => {
               void submit()
             }}
           >
-            {t('activities.occurrences.restore.confirm')}
+            {t(texts.confirm)}
           </Button>
         </DialogFooter>
       </DialogContent>

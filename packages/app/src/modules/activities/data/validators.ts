@@ -196,6 +196,9 @@ export const occurrenceRestoreSchema = z
   })
   .strict()
 
+/** Reopening a done session (foundation II AC-G02, #588): the administrator's reason, 3–500 characters once trimmed. */
+export const occurrenceReopenSchema = occurrenceRestoreSchema
+
 /** `POST /api/activities/occurrences/{id}/absence` (E06-S13 #95): the assigned coach's optional reason. */
 export const occurrenceAbsenceSchema = z
   .object({
@@ -363,6 +366,14 @@ export const coachUnitsQuerySchema = z.object({
     .enum(['1', 'true', '0', 'false'])
     .optional()
     .transform((value) => value === '1' || value === 'true'),
+})
+
+/** `GET /api/activities/reports/pzpn-schedule` and `pzpn-attendance` (REQ-O10, #684): a team and a period of ≤ 1 year. */
+export const pzpnExportQuerySchema = z.object({
+  groupId: z.uuid(),
+  from: z.string().trim().max(10).describe('First day, `YYYY-MM-DD`'),
+  to: z.string().trim().max(10).describe('Last day, `YYYY-MM-DD`; at most 366 days after `from`, both included'),
+  format: z.enum(['csv']).optional().describe('The only format: a UTF-8 CSV file with a BOM'),
 })
 
 /**
