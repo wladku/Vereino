@@ -13,4 +13,6 @@ topics: ["playwright", "sessionless", "public-pages", "rate-limits", "status-bad
 
 **Rule**: Make every sessionless check with a fresh `await playwright.request.newContext({ baseURL })` and dispose of it. Declare and document rate limits, and record in the run log that the 429 is not integration-tested. Wrap a `StatusBadge` in an element that carries the test id.
 
-**Applies to**: tests under `packages/app/.ai/qa/tests/` for public routes (`/p/*`, `GET /api/*/public/*`).
+**Recurrence**: #527 (2026-11-22): TEST-X02 asserted 401 for an anonymous call through `request` after `signInAs`, and got 403, because the request was really made as the last signed-in user. The same fresh context fixed it.
+
+**Applies to**: tests under `packages/app/.ai/qa/tests/` for public routes (`/p/*`, `GET /api/*/public/*`) and every "unauthenticated → 401" assertion on an authenticated route.
