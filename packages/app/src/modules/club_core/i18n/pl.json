@@ -794,5 +794,10 @@
   "club_core.privacy.kids.item3": "Widzą je tylko osoby, które ich potrzebują: Twoi trenerzy i osoby, które prowadzą klub. Twoje imię i nazwisko nigdy nie pojawia się na publicznych stronach klubu.",
   "club_core.privacy.kids.item4": "Przechowujemy je, dopóki jesteś w klubie. Rok po odejściu usuwamy to, czego już nie potrzebujemy. Zostawiamy tylko to, co klub musi przechowywać w swoich rozliczeniach.",
   "club_core.privacy.kids.item5": "Możesz zapytać, co o Tobie wiemy, i poprosić, żebyśmy coś poprawili albo usunęli. Pomoże Ci w tym rodzic, trener albo zarząd klubu.",
-  "club_core.privacy.kids.item6": "Jeśli uważasz, że robimy z Twoimi informacjami coś złego, Ty albo Twój rodzic możecie złożyć skargę do Urzędu Ochrony Danych Osobowych (UODO)."
+  "club_core.privacy.kids.item6": "Jeśli uważasz, że robimy z Twoimi informacjami coś złego, Ty albo Twój rodzic możecie złożyć skargę do Urzędu Ochrony Danych Osobowych (UODO).",
+  "club_core.landing.title": "Vereino",
+  "club_core.landing.findClub": "Znajdź swój klub",
+  "club_core.landing.exampleSlug": "twoj-klub",
+  "club_core.landing.hint": "Każdy klub ma własny adres, na przykład {example}. Otwórz link od swojego klubu albo ten z jego wiadomości e-mail.",
+  "club_core.landing.signIn": "Zaloguj się, aby zarządzać usługą"
 }
