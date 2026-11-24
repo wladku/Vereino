@@ -107,3 +107,7 @@ The merge train holds every `risk-high` PR with `needs-qa` until the owner tests
 ## Rollback
 
 Phase 1: revert its PR (the hold comment returns to today's text). Phase 2: remove the `qa-request` kind or set its transport to `outbox`.
+
+## Changelog
+
+Each change is its own file in `.ai/specs/changelog/2026-11-24-qa-request-email/`.

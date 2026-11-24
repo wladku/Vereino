@@ -1,0 +1,1 @@
+| 2026-11-24 | Initial draft (PR #697): split out of the Cezar stall prevention spec (ST-Q2); the owner keeps the `qa` confirmation, every PR held for QA carries a Polish `qa-instruction` block, and the owner gets one e-mail per held head with that block, the preview command and the link |

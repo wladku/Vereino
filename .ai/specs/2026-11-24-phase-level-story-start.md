@@ -74,3 +74,7 @@ Remove the picker rule and the label; the Ready-only rule returns.
 
 - A phase can be built against a spec that later changes; mitigated by recording the spec commit and removing `phase-ready` on change.
 - The owner's decisions become the only gate for Draft-spec work; the session records them before labelling.
+
+## Changelog
+
+Each change is its own file in `.ai/specs/changelog/2026-11-24-phase-level-story-start/`.

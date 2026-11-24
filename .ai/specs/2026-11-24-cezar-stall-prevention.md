@@ -127,3 +127,7 @@ Phase 1: disable the scheduled task. Phase 2: set `transport` back to `outbox`. 
 ## Resolved questions
 
 ST-Q1 phone push; ST-Q1a ntfy; ST-Q3 warn below 5; ST-Q4 keep stacking and retarget — owner, 2026-11-24. On review (2026-11-24): numbers-only content, episode dedupe and night priority; the retarget moved from the picker prompt into the train and limited to merged bases. ST-Q2 (QA) and ST-Q5 (phase-level start) belong to the two split-out specs; on ST-Q2 the owner finally kept his `qa` confirmation and asked for a QA e-mail with a concrete test instruction (2026-11-24).
+
+## Changelog
+
+Each change is its own file in `.ai/specs/changelog/2026-11-24-cezar-stall-prevention/`.
