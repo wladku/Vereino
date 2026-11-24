@@ -1,0 +1,1 @@
+| 2026-11-24 | Initial draft (PR #697): split out of the Cezar stall prevention spec (ST-Q5); a story phase may start once the owner records its decisions and labels it `phase-ready`, even while the spec is still a Draft |

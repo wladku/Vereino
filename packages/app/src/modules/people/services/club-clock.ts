@@ -35,6 +35,13 @@ export async function clubSettings(container: AwilixContainer, scope: ClubScope)
   return (await service.get(scope)).values
 }
 
+/** The club's public slug, which names its address (many clubs spec phase 3, #631), or null. */
+export async function clubPublicSlug(container: AwilixContainer, scope: ClubScope): Promise<string | null> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return (await service.get(scope)).publicSettings.publicSlug
+}
+
 /** The club logo for the member header (#29): the authenticated image URL, or null (the header shows the name). */
 export async function clubLogoUrl(container: AwilixContainer, scope: ClubScope): Promise<string | null> {
   if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null

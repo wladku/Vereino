@@ -1,6 +1,6 @@
 // The public header (navigation spec REQ-N09; E09-S07 #261): the club's logo and name linking to its page, one
-// labelled `nav` landmark with `aria-current` on the current link, the second scrolling row under 480 px, and the
-// title alone while the club is unknown.
+// labelled `nav` landmark with `aria-current` on the current link, the second scrolling row under 768 px, a long name
+// that truncates instead of covering the links (#488), and the title alone while the club is unknown.
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import * as React from 'react'
@@ -43,12 +43,19 @@ test('the club: its initial and name linking to its page, the links in one label
     /<span aria-hidden="true" class="bg-club-accent text-club-accent-foreground [^"]*" data-testid="public-logo-initial"/,
   )
   assert.match(html, /<div class="mx-auto flex max-w-3xl /)
+  // From 768 px (`md`) one row that never wraps: the name takes the room the links leave and truncates, its full text in
+  // `title`; the links keep their own width and are never pushed under the name (#488).
+  assert.match(html, /<div class="mx-auto flex max-w-3xl [^"]*flex-wrap[^"]* md:flex-nowrap"/)
   assert.match(
     html,
-    /<a href="\/p\/ks-avocado" class="[^"]*order-1[^"]*" data-testid="public-club-link"><span aria-hidden="true" [^>]*data-testid="public-logo-initial" data-logo-source="initial">K<\/span><span class="truncate">KS Avocado<\/span><\/a>/,
+    /<div class="order-1 flex min-w-0 flex-1 basis-0 md:min-w-24" data-testid="public-header-club"><a href="\/p\/ks-avocado" class="[^"]*min-w-0[^"]*" data-testid="public-club-link"><span aria-hidden="true" [^>]*data-testid="public-logo-initial" data-logo-source="initial">K<\/span><span class="truncate" title="KS Avocado" data-testid="public-header-club-name">KS Avocado<\/span><\/a><\/div>/,
   )
   assert.equal(html.match(/<nav /g).length, 1)
-  assert.match(html, /<nav aria-label="Club page" class="order-3 [^"]*w-full overflow-x-auto min-\[480px\]:order-2/)
+  assert.match(html, /<nav aria-label="Club page" class="order-3 [^"]*w-full overflow-x-auto md:order-2/)
+  const navClass = html.match(/<nav aria-label="Club page" class="([^"]*)"/)[1]
+  assert.match(navClass, /md:min-w-0/)
+  assert.doesNotMatch(navClass, /flex-1/)
+  assert.match(html, /<ul class="flex items-center gap-1">/)
   assert.match(
     html,
     /<a href="\/p\/ks-avocado" class="[^"]*font-semibold[^"]*" aria-current="page" data-testid="public-nav-club">club<\/a>/,
@@ -64,7 +71,10 @@ test('the club: its initial and name linking to its page, the links in one label
   const section = render({ pathname: '/p/ks-avocado/sections/football' })
   assert.match(section, /aria-current="location" data-testid="public-nav-sections"/)
   assert.equal(section.match(/aria-current/g).length, 1)
-  assert.match(html, /<div class="order-2 min-\[480px\]:order-3"><span id="switcher">PL<\/span><\/div>/)
+  assert.match(
+    html,
+    /<div class="order-2 shrink-0 md:order-3" data-testid="public-header-end"><span id="switcher">PL<\/span><\/div>/,
+  )
 })
 
 test('a club logo is an image with an empty alt; a wide page widens the header', () => {
@@ -74,7 +84,7 @@ test('a club logo is an image with an empty alt; a wide page widens the header',
     html,
     /<img src="\/logo.png" alt="" width="40" height="40" class="bg-muted size-10 shrink-0 rounded-md object-contain" data-testid="public-logo" data-logo-source="club"\/>/,
   )
-  assert.doesNotMatch(html, /order-2 min-\[480px\]:order-3/)
+  assert.doesNotMatch(html, /public-header-end/)
 })
 
 test('no club yet: the title alone, no links, the header end kept', () => {

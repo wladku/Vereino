@@ -63,6 +63,8 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `OM_ENABLE_ENTERPRISE_MODULES=false` | no effect since the enterprise package was removed (ADR-023, #466); keep it false so a reinstalled package stays off |
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_INIT_ADMIN_PASSWORD` | only for the one-time initialisation below; remove it afterwards |
+| `VEREINO_CLUB_DOMAIN` | optional; the club domain of an instance with many clubs (see *Club addresses* below). Unset: one club per instance |
+| `VEREINO_HOME_CLUB_SLUG` | **deprecated**; the public slug of the one club of an instance without `VEREINO_CLUB_DOMAIN`, which `/` leads a guest to. Ignored once `VEREINO_CLUB_DOMAIN` is set; kept as the single-club fallback |
 
 Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST`, `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
@@ -248,6 +250,28 @@ release; a second run registers nothing twice.
 
 The commands print what they registered; every entry under `schedules` must be `true`. A later change of the club's time zone
 re-registers the time-zoned schedules on its own (`activities:reregister-schedule`, `payments:reregister-schedules`).
+
+## Club addresses
+
+With `VEREINO_CLUB_DOMAIN` set (many clubs spec phase 3, DD-M02; #631), every club is reached at
+`https://<public slug>.<club domain>`, from the public slug in its settings:
+
+- **Before setting it:** a wildcard DNS record `*.<club domain>` (and the bare domain) points at the app service, with
+  a certificate for both (owner action, D12; on Railway a wildcard custom domain plus the delegated `_acme-challenge`
+  record). Keep `APP_URL` on its own host (for example `app.<club domain>`); it stays the instance's address.
+- **What changes:** `/` on a club's address opens that club (its public page while published, else its sign-in page);
+  its sign-in page signs in to that club only; `/p/<slug>` pages opened anywhere else move to the club's address, so
+  printed links and QR codes keep working; links in Vereino e-mails point at the recipient's club address and the
+  sender's display name is "<club> via Vereino" in front of `NOTIFICATIONS_EMAIL_FROM`'s address. The bare domain and
+  `APP_URL`'s host show a neutral landing page and the maintainers' sign-in; any other host answers 404. A session of
+  one club opened on another club's address is sent back to its own club's address.
+- **Still on `APP_URL` (owner's decision of 2026-11-23 on #631, option (c)):** the platform's password reset (`/reset`
+  on a club's address moves to `APP_URL`), the platform's own notification e-mails and the account invitations, which
+  link to the reset page. A later decision moves them (an upstream change or an override).
+- **Check after setting it:** open `https://<slug>.<club domain>/` of two clubs, the bare domain and an unknown label
+  (404); send a test announcement and check its link and sender.
+- **Rollback:** while one club exists, unset the variable. With several clubs, unsetting it strands every club but the
+  one in `VEREINO_HOME_CLUB_SLUG` and breaks e-mailed links; fix forward instead.
 
 ## Rollback
 

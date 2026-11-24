@@ -1,10 +1,13 @@
 import { Suspense } from 'react'
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
+import { redirect } from 'next/navigation'
 import LoginPage from '@open-mercato/core/modules/auth/frontend/login'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { SignInClubHeader } from '@/modules/club_core/components/SignInClubHeader'
-import { SIGN_IN_CLUB_COOKIE, signInClub } from '@/modules/club_core/lib/sign-in-club'
+import { signInTenantRedirect } from '@/modules/club_core/lib/club-host'
+import { SIGN_IN_CLUB_COOKIE, signInClub, type SignInClub } from '@/modules/club_core/lib/sign-in-club'
+import { requestClub } from '@/modules/club_core/services/request-club'
 
 type LoginRouteProps = { searchParams: Promise<Record<string, string | string[] | undefined>> }
 
@@ -16,8 +19,17 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function LoginRoutePage({ searchParams }: LoginRouteProps) {
-  // The club above the form comes from `?club=` (the public header's "Sign in" link) or the remembered-club cookie.
-  const club = signInClub((await searchParams).club, (await cookies()).get(SIGN_IN_CLUB_COOKIE)?.value)
+  const query = await searchParams
+  // On a club's address (many clubs spec phase 3, #631) the form signs in to that club's tenant, and the club above the
+  // form is the host's; elsewhere it comes from `?club=` (the public header's "Sign in" link) or the remembered-club
+  // cookie, as on a one-club instance.
+  const request = await requestClub()
+  const tenantRedirect = signInTenantRedirect({ host: request.host, hostClub: request.hostClub, query })
+  if (tenantRedirect) redirect(tenantRedirect)
+  const club: SignInClub | null =
+    request.host.kind === 'club'
+      ? { slug: request.host.slug, source: 'host' }
+      : signInClub(query.club, (await cookies()).get(SIGN_IN_CLUB_COOKIE)?.value)
   return (
     <div className="flex min-h-svh flex-col">
       <SignInClubHeader club={club} />
