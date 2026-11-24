@@ -8,7 +8,8 @@
 // per consent key (at most 1000 characters; empty restores the built-in text, shown as the placeholder) with the date it
 // was last changed; a consent given before a change stays valid and reads "given to an earlier wording". Since #486 the
 // group "Club" holds the club's colour (a hex colour; empty uses the default), painting the member header bar, the public
-// hero and the fallback logo.
+// hero and the fallback logo. Since #471 (club spec REQ-041) the group "Data retention" holds the months after which a
+// former participant is anonymised.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -24,6 +25,7 @@ import {
   CALLED_UP_CHILDREN_VISIBILITY,
   COACH_SETTLEMENT_MODELS,
   DECLARATION_KINDS,
+  FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE,
   ONLINE_FEE_MODES,
   OWN_ACCOUNT_MIN_AGE_RANGE,
   timeZoneOptions,
@@ -94,6 +96,7 @@ function toFormValues(settings: SettingsResponse): FormValues {
     showCalledUpChildren: settings.showCalledUpChildren,
     coachMayCancel: settings.coachMayCancel,
     orderSalesDocument: settings.orderSalesDocument,
+    formerParticipantRetentionMonths: settings.formerParticipantRetentionMonths,
     bankAccount: settings.bankAccount ? formatBankAccount(settings.bankAccount) : '',
     accentColor: settings.accentColor ?? '',
     updatedAt: settings.updatedAt,
@@ -122,6 +125,7 @@ function toPayload(values: Record<string, unknown>) {
     showCalledUpChildren: values.showCalledUpChildren,
     coachMayCancel: values.coachMayCancel === true,
     orderSalesDocument: values.orderSalesDocument,
+    formerParticipantRetentionMonths: numberOrNull(values.formerParticipantRetentionMonths) ?? undefined,
     bankAccount: textOrNull(values.bankAccount),
     accentColor: textOrNull(values.accentColor),
     // An empty text restores the built-in one; an unchanged text keeps its "last changed" date (DD-L11).
@@ -194,6 +198,16 @@ export function ClubSettingsForm() {
         label: t('club_core.settings.fields.ownAccountMinAge'),
         type: 'number',
         description: t('club_core.settings.fields.ownAccountMinAge.description', OWN_ACCOUNT_MIN_AGE_RANGE),
+        required: true,
+      },
+      {
+        id: 'formerParticipantRetentionMonths',
+        label: t('club_core.settings.fields.formerParticipantRetentionMonths'),
+        type: 'number',
+        description: t(
+          'club_core.settings.fields.formerParticipantRetentionMonths.description',
+          FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE,
+        ),
         required: true,
       },
       ...ACTIVITY_TYPES.map<CrudField>((type) => ({
@@ -304,6 +318,13 @@ export function ClubSettingsForm() {
         title: t('club_core.settings.groups.staff'),
         column: 2,
         fields: ['coachSettlementModel', 'showCalledUpChildren', 'coachMayCancel'],
+      },
+      {
+        id: 'retention',
+        title: t('club_core.settings.groups.retention'),
+        description: t('club_core.settings.groups.retention.description'),
+        column: 2,
+        fields: ['formerParticipantRetentionMonths'],
       },
       {
         id: 'consentTexts',

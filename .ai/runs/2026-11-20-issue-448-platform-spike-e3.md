@@ -125,7 +125,7 @@ V-12 needs no new `AGENTS.md` exception: the S8.6 lookup is already in `AGENTS.m
 - **Key areas:** member/guardian auth — V-1, V-2 confirmed (no blocker; MFA absent but a commercial option, ENG-Q-09); tenancy and scope — V-12 fallback within the approved `AGENTS.md` exception, RLS rejected as defence in depth (no blocker: not a required behaviour); payments gateway — V-5 resolved (no blocker); member frontend pages — V-1 confirmed (no blocker); i18n — V-11 fallback in Vereino code (no blocker).
 - **Counted key-area blockers: 0** (exit trigger: ≥ 2). **Upgrade cost:** 0 hours — still on 0.9.0, no upgrade run logs in `.ai/runs/`.
 - **Proposal: keep Open Mercato for 1.0.** Gaps for E4, all closable in app-owned code or configuration: Origin check for cookie-authenticated mutations (ENG-Q-11), session lifetime and "remember me" for staff (ENG-Q-12), `no-store` on `/api`, `QUEUE_STRATEGY=async`, a non-owner runtime role plus an owner migration role, removal of `agent_examples` before removing the enterprise package (ENG-Q-10).
-- **Owner decision:** open. Nothing here marks ADR-001 decided.
+- **Owner decision:** open. Nothing here marks ADR-001 decided. *Update 2026-11-24 (#579):* the owner decided "keep" ([#579 comment](https://github.com/wladku/Vereino/issues/579#issuecomment-7123253163)).
 
 ## Files changed
 

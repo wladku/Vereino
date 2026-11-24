@@ -153,23 +153,29 @@ export type PeopleErasureCounts = { guardianships: number; departureRequests: nu
 /**
  * `people`'s own part: the person row, the ward's guardianships, the departure requests and staged import rows the
  * erasure wrote to (a table with no changed row is left out), and what it keeps — the request and decision as the
- * proof that the club answered, and the name while the retention hold (DD-L07) keeps it.
+ * proof that the club answered (only for an erasure on request; the retention sweep answers no request, #471), and
+ * the name while the retention hold (DD-L07) keeps it.
  */
-export function peopleErasurePart(counts: PeopleErasureCounts, keepNameUntil: CalendarDate | null): ErasurePart {
+export function peopleErasurePart(
+  counts: PeopleErasureCounts,
+  keepNameUntil: CalendarDate | null,
+  onRequest = true,
+): ErasurePart {
   const touched: ErasureTouched[] = [
     { table: 'people_persons', rows: 1 },
     { table: 'people_guardianships', rows: counts.guardianships },
     { table: 'people_departure_requests', rows: counts.departureRequests },
     { table: 'people_import_rows', rows: counts.importRows },
   ].filter((entry) => entry.rows > 0)
-  const kept: ErasureKept[] = [
-    {
+  const kept: ErasureKept[] = []
+  if (onRequest) {
+    kept.push({
       category: 'erasure_request_and_decision',
       basis: 'GDPR art. 6(1)(c), art. 5(2) — proof that the request was answered',
       retention: 'R13',
       tables: ['people_departure_requests'],
-    },
-  ]
+    })
+  }
   if (keepNameUntil) {
     kept.push({
       category: 'name_under_retention_hold',

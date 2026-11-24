@@ -2,14 +2,10 @@
 // `payments.order_links.purge_dead` deletes the club's order links that expired 30 days ago or earlier.
 // The scheduler injects the registration's `tenantId` and `organizationId`; the worker re-validates them and dispatches
 // the job command with a session-less job context (acting role `system`).
-import { z } from 'zod'
-import type { QueuedJob, WorkerMeta } from '@open-mercato/queue'
+import type { WorkerMeta } from '@open-mercato/queue'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
-import { createLogger } from '@open-mercato/shared/lib/logger'
-import { jobCommandContext } from '@/modules/foundation'
-
-const logger = createLogger('payments').child({ component: 'purge-order-links-worker' })
+import { clubJobWorker, jobCommandContext, type TrustedScope } from '@/modules/foundation'
 
 export const metadata: WorkerMeta = {
   queue: 'payments-purge-order-links',
@@ -17,18 +13,15 @@ export const metadata: WorkerMeta = {
   concurrency: 1,
 }
 
-const payloadSchema = z.object({ tenantId: z.uuid(), organizationId: z.uuid() })
-
-export default async function handle(job: QueuedJob<Record<string, unknown>>): Promise<void> {
-  const parsed = payloadSchema.safeParse(job.payload)
-  if (!parsed.success) {
-    logger.warn('payments:purge-order-links received a payload without a valid scope; skipped')
-    return
-  }
+async function handle(scope: TrustedScope): Promise<void> {
   const container = await createRequestContainer()
   const commandBus = container.resolve<CommandBus>('commandBus')
   await commandBus.execute('payments.order_links.purge_dead', {
     input: {},
-    ctx: jobCommandContext(container, parsed.data),
+    ctx: jobCommandContext(container, scope),
   })
 }
+
+/** Run by the club job sweep with its claim, or by a per-club schedule of the old setup (#629); `clubJobWorker` hands
+ * the handler a trusted scope only (AC-G05, #591). */
+export default clubJobWorker('payments:purge-order-links', handle)

@@ -18,6 +18,7 @@ import {
   mergeOutcome,
   pauseIssue,
   requiredChecks,
+  stampsVerified,
   treeMatches,
 } from '../../../../scripts/merge-train-guard.mjs'
 import { CONFLICT_LABEL, FAILED_LABEL } from '../../../../scripts/merge-train-plan.mjs'
@@ -136,6 +137,21 @@ describe('BT-TEST-03: requiredChecks', () => {
     assert.deepEqual(requiredChecks(['gate'], ' , '), ['gate'])
     assert.deepEqual(requiredChecks([], 'gate, integration,gate'), ['gate', 'integration'])
     assert.deepEqual(requiredChecks([], ''), [])
+  })
+
+  it('never judges the train’s own merge-train/verified status (#698)', () => {
+    const ruleset = ['gate', 'integration', 'browser-smoke', VERIFIED_STATUS]
+    assert.deepEqual(requiredChecks(ruleset, undefined), ['gate', 'integration', 'browser-smoke'])
+    assert.deepEqual(requiredChecks([], `gate,${VERIFIED_STATUS}`), ['gate'])
+    assert.deepEqual(requiredChecks([VERIFIED_STATUS], undefined), [])
+  })
+})
+
+describe('BT-TEST-03: stampsVerified', () => {
+  it('is true only while the ruleset requires merge-train/verified (#698)', () => {
+    assert.equal(stampsVerified(['gate', 'integration', 'browser-smoke', VERIFIED_STATUS]), true)
+    assert.equal(stampsVerified(['gate', 'integration', 'browser-smoke']), false)
+    assert.equal(stampsVerified([]), false)
   })
 })
 
