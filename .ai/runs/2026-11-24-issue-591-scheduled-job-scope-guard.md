@@ -49,3 +49,9 @@ Decisions:
 - The guard moved into `clubJobWorker` (`foundation/services/club-jobs.ts`), which now hands the handler `(scope, job)` with a trusted scope only. A claimed job (the sweep's `_clubJobClaim`) is proven by the claim: `startClubJobRun` starts the run only on the club's `foundation_club_jobs` row of that key under the exact lease the sweep set, so a forged claim is skipped. A job without a claim (a per-club schedule of the old setup) goes through `verifyScheduledJobScope`. Without this, the guard would have refused every sweep-run job once an operator retires the per-club schedules (they are deleted, so no registration is left).
 - `foundation:dispatch-sweep` keeps `main`'s system path (null scope → `sweepAllDispatches`, which trusts no club scope and narrows to each club itself); its per-club path keeps `verifyScheduledJobScope`.
 - `people:retention-sweep` (new on `main`, #471) is the 20th scheduled worker and takes the same `clubJobWorker` shape.
+
+Results after the merge:
+- `yarn install`, `yarn generate`, `yarn typecheck` — clean.
+- Every other `yarn verify` step run one by one (typecheck:packages, typecheck:qa, lint, secrets, format, ds, i18n --strict, contracts, route-isolation, settings-prefixes, glossary, qa-texts, di-commands, forbidden-packages, lessons, spec-changelogs, dockerfiles, test: 1963 passed, test:scripts) — all exit 0; `build` is covered by the integration runs' production build.
+- `yarn test:integration:vereino --filter TEST-G06` — 1 passed (54.3s); `--filter ISSUE-629-club-job-sweep` — 1 passed (1.0m); `--filter ISSUE-629-retire-club-schedules` — 1 passed (1.3m); `--filter TEST-M02` — 1 passed (1.0m).
+- `yarn guard` (against `8bb6e6d5`) — no blocking findings.
