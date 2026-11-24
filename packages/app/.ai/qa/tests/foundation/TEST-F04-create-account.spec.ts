@@ -107,12 +107,18 @@ test('TEST-F04 create_account: age threshold, invitation, second account, failed
     expect((await getPerson(request, club.adminToken, failingId)).body?.userId).toBe(failedUserId)
     expect(capturedFor(failingEmail)).toEqual([])
 
-    // Resend through the platform route (needs `auth.users.create`, which the club roles do not carry).
-    const resent = await call(request, 'POST', '/api/auth/users/resend-invite', club.superToken, {
-      data: { id: failedUserId },
-    })
+    // The club administrator sends it again through `people.persons.resend_invitation` (Q18, closed by #339 and #584).
+    const resent = await call<{ sentAt?: string; warning?: string }>(
+      request,
+      'POST',
+      `/api/people/persons/${failingId}/account/invitation`,
+      club.adminToken,
+      { data: {} },
+    )
     expect(resent.status, JSON.stringify(resent.body)).toBe(200)
+    expect(resent.body?.warning).toBeUndefined()
     await expect.poll(() => capturedFor(failingEmail).length).toBeGreaterThan(0)
+    expect(capturedFor(failingEmail)[0]?.links.some((link) => link.includes('/reset/'))).toBe(true)
   } finally {
     if (fs.existsSync(capturePath)) fs.chmodSync(capturePath, 0o644)
     await club.cleanup()

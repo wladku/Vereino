@@ -1,14 +1,15 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { expect, test } from '@playwright/test'
-import { birthDateTurning, createAccount, createClub, createPerson, uniqueSuffix } from '../_fixtures/club'
+import { expect, test, type APIRequestContext } from '@playwright/test'
+import { birthDateTurning, call, createAccount, createClub, createPerson, uniqueSuffix } from '../_fixtures/club'
+import { uiTextIn } from '../_fixtures/ui-text'
 
-// TEST-F10 (foundation spec), integration part for phase A1: the account invitation renders with the platform
-// dictionaries in pl and en. Known deviation from AC-F04/AC-F11: `auth.users.create` takes no locale, so the
-// invitation follows the request locale (cookie `locale`, then `Accept-Language`), not the person's
-// `preferred_locale`; `renderLocalized` / `localeForPerson` (person → club default → en) get their first e-mail
-// consumer with the reminder e-mails of a later phase.
+// TEST-F10 (foundation spec): the account invitation renders with the dictionaries in pl and en. The first
+// invitation follows the request locale (cookie `locale`, then `Accept-Language`): `auth.users.create` takes no
+// locale, an accepted deviation from AC-F11 (owner decision on #584, 2026-11-24). The invitation sent again
+// (`people.persons.resend_invitation`) follows the person — `localeForPerson`: preferred locale, club default, `en` —
+// so each person is resent with a request in the other language and still gets their own.
 test.describe.configure({ timeout: 300_000 })
 
 const capturePath =
@@ -25,7 +26,17 @@ function subjectFor(email: string): string | null {
   return entries.at(-1)?.subject ?? null
 }
 
-test('TEST-F10 the invitation is rendered in pl and in en (request locale)', async ({ request }) => {
+function resend(request: APIRequestContext, token: string, personId: string, headers: Record<string, string>) {
+  return call<{ sentAt?: string; warning?: string }>(
+    request,
+    'POST',
+    `/api/people/persons/${personId}/account/invitation`,
+    token,
+    { data: {}, headers },
+  )
+}
+
+test('TEST-F10 the invitation renders in the request locale, the resend in the person locale', async ({ request }) => {
   const club = await createClub(request, 'test-f10')
   try {
     const polishId = await createPerson(request, club.adminToken, {
@@ -55,6 +66,23 @@ test('TEST-F10 the invitation is rendered in pl and in en (request locale)', asy
 
     await expect.poll(() => subjectFor(polishEmail)).toBe('Zaproszenie do systemu')
     await expect.poll(() => subjectFor(englishEmail)).toBe('You have been invited')
+
+    // The resend follows the person, not the administrator's request in the other language.
+    const polishResent = await resend(request, club.adminToken, polishId, {
+      Cookie: 'locale=en',
+      'Accept-Language': 'en-US',
+    })
+    expect(polishResent.status, JSON.stringify(polishResent.body)).toBe(200)
+    expect(polishResent.body?.warning).toBeUndefined()
+    const englishResent = await resend(request, club.adminToken, englishId, {
+      Cookie: 'locale=pl',
+      'Accept-Language': 'pl-PL',
+    })
+    expect(englishResent.status, JSON.stringify(englishResent.body)).toBe(200)
+    expect(englishResent.body?.warning).toBeUndefined()
+
+    await expect.poll(() => subjectFor(polishEmail)).toBe(uiTextIn('pl', 'foundation.account.invitation.subject'))
+    await expect.poll(() => subjectFor(englishEmail)).toBe(uiTextIn('en', 'foundation.account.invitation.subject'))
   } finally {
     await club.cleanup()
   }

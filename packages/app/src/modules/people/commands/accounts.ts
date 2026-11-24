@@ -17,6 +17,7 @@ import {
   authorizeScoped,
   closeAccount,
   createAccount,
+  localeForPerson,
   resendInvitation,
   updateAccount,
   type AccountView,
@@ -227,6 +228,16 @@ async function clubToday(ctx: CommandRuntimeContext, scope: { tenantId: string; 
   return calendarDateInZone(new Date(), settings.timezone)
 }
 
+/** The locale of the invitation sent again (AC-F11, #584): the person's, else the club default, else `en`. */
+async function invitationLocale(
+  ctx: CommandRuntimeContext,
+  scope: { tenantId: string; organizationId: string },
+  person: Person,
+) {
+  const settings = await clubSettings(ctx.container, { tenantId: scope.tenantId, organizationId: scope.organizationId })
+  return localeForPerson(person, settings.defaultLocale)
+}
+
 export type ResendInvitationCommandResult = {
   personId: string
   tenantId: string
@@ -245,12 +256,12 @@ const resendInvitationCommand: CommandHandler<Record<string, unknown>, ResendInv
   id: 'people.persons.resend_invitation',
   isUndoable: false,
   async execute(rawInput, ctx) {
-    const target = await inWriteTransaction(ctx, 'people.persons.resend_invitation.check', async (em) => {
-      const { target } = await authorizeAccountTarget(rawInput, ctx, em, { schema: personAccountSchema, lock: 'none' })
-      if (target.account.state !== 'invited') return peopleErrors.throw('invitation_not_pending')
-      return target
+    const { target, person } = await inWriteTransaction(ctx, 'people.persons.resend_invitation.check', async (em) => {
+      const authorized = await authorizeAccountTarget(rawInput, ctx, em, { schema: personAccountSchema, lock: 'none' })
+      if (authorized.target.account.state !== 'invited') return peopleErrors.throw('invitation_not_pending')
+      return authorized
     })
-    const sent = await resendInvitation(ctx, target, target.userId)
+    const sent = await resendInvitation(ctx, target, target.userId, await invitationLocale(ctx, target, person))
     return {
       personId: target.personId,
       tenantId: target.tenantId,
@@ -340,7 +351,7 @@ const updateAccountCommand: CommandHandler<Record<string, unknown>, UpdateAccoun
     // An invited account follows its new address at once (J-L01 step 3); a failed e-mail is a warning only.
     const resent =
       prepared.email && target.account.state === 'invited' && prepared.blocked !== true
-        ? await resendInvitation(ctx, target, target.userId)
+        ? await resendInvitation(ctx, target, target.userId, await invitationLocale(ctx, target, updated))
         : null
     const account = await accountView(ctx.container, target, target.userId)
 

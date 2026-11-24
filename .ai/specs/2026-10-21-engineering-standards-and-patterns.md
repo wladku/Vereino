@@ -82,19 +82,19 @@ Versions are those installed in `packages/app/node_modules` on 2026-10-21.
 | Runtime | Node.js; Docker `node:24-alpine` | ≥ 24 (root `preinstall` guard, `engines`) | P3; Docker base pinned by digest in E4 |
 | Package manager | Yarn workspaces, `nodeLinker: node-modules`, `nmHoistingLimits: workspaces` | 4.17.1 (`packageManager` with hash) | exact via `packageManager`; Corepack |
 | Platform | `@open-mercato/*` | 0.9.0 (every package identical) | P1 |
-| Web framework | Next.js App Router | 16.3.6 (exact in app) | P2 |
+| Web framework | Next.js App Router | 16.4.6 (exact in app; P6, #454) | P2 |
 | UI runtime | React, React DOM | 19.2.8 (exact in app) | P2 |
 | Language | TypeScript (strict) | 6.0.3 | P3 |
 | ORM | MikroORM, legacy decorators | 7.2.5 resolved from `^7.1.14` | P2 |
 | Database | PostgreSQL | 17 (`pgvector/pgvector:pg17-trixie` locally) | production image chosen in E3/E4 (S15.7) |
 | Cache and queue | Redis | 7 (`redis:7-alpine` locally) | P3 |
 | DI | Awilix (platform container, `InjectionMode.CLASSIC`) | 13.0.5 | P2 |
-| Validation | Zod | 4.4.3 (root `resolutions`) | P2 + P4 |
+| Validation | Zod | 4.6.7 (root `resolutions`; P6, #454) | P2 + P4 |
 | Styling | Tailwind CSS + shadcn/ui through `@open-mercato/ui` | 4.3.3 | P3 |
 | Dates and time zones | `date-fns`, `date-fns-tz` | 4.4.0 (exact), `^3.2.0` | P2 for `date-fns`, P3 for `date-fns-tz` |
 | Unit tests | Jest + ts-jest (`scripts/jest-mikroorm-transformer.cjs`) | 30.5.2 / ts-jest 29.4.15 | P3 |
 | Integration / E2E | Playwright through `yarn test:integration:vereino` (Testcontainers) | 1.64.1 resolved from `^1.58.2` | P3 |
-| Lint | ESLint 9 flat config + `eslint-config-next` | 9.39.5 / 16.3.6 | P3 / P2 |
+| Lint | ESLint 9 flat config + `eslint-config-next` | 9.39.5 / 16.4.6 | P3 / P2 |
 | Hosting | Railway, Dockerfile builder, health check `/api/healthz` | — | ADR-012 |
 | Payments | Stripe through `@open-mercato/gateway-stripe` | 0.9.0 | P1 |
 | E-mail | Resend through `@open-mercato/channel-resend` (subject to club spec V-4) | 0.9.0 | P1 |

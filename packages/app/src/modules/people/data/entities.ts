@@ -1,9 +1,12 @@
 import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import {
+  AppendOnlyEntityBase,
   ScopedEntityBase,
   consentColumn,
+  decorateAppendOnlyEntityBase,
   decorateScopedEntityBase,
+  type AppendOnlyEntityOptionalProps,
   validFromColumn,
   validToColumn,
   type ScopedEntityOptionalProps,
@@ -12,6 +15,7 @@ import type { AssignableRole } from '@vereino/core'
 import type { GuardianRelation, StoredConsents } from '../lib/people-rules'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
+decorateAppendOnlyEntityBase({ PrimaryKey, Property })
 
 /**
  * A person of the club (club spec *Data Models* → `people_persons`). Phase A1 (#38) holds the columns accounts and
@@ -492,4 +496,38 @@ export type ImportRowResult = {
   guardianshipIds: string[]
   /** The participant membership the `groups` hook created or found for the row (#65). */
   membershipId?: string | null
+}
+
+/**
+ * One export of a person's data for an access or portability request (person data export spec *Data Models* →
+ * `people_data_export_log`, DD-X04; #527): who exported, in which role, which person, and why — ids only, never a
+ * value exported. Append-only: written by `auditedRead` and committed before any data is read; the `foundation` guard
+ * refuses an update or a delete (409 `append_only`). A row means an export was started, not that it was delivered.
+ */
+@Entity({ tableName: 'people_data_export_log' })
+@Index({
+  name: 'people_data_export_log_tenant_org_created_idx',
+  properties: ['tenantId', 'organizationId', 'createdAt'],
+})
+export class PersonDataExportLog extends AppendOnlyEntityBase {
+  [OptionalProps]?: AppendOnlyEntityOptionalProps
+
+  @Property({ name: 'actor_user_id', type: 'uuid' })
+  actorUserId!: string
+
+  /** The acting role of the export (`club_admin`). */
+  @Property({ name: 'acting_role', type: 'text' })
+  actingRole!: string
+
+  /** `people:person`. */
+  @Property({ name: 'resource_kind', type: 'text' })
+  resourceKind!: string
+
+  /** The exported person (`[personId]`). */
+  @Property({ name: 'resource_ids', type: 'text[]', columnType: 'uuid[]' })
+  resourceIds!: string[]
+
+  /** `data_subject_export`. */
+  @Property({ name: 'purpose', type: 'text' })
+  purpose!: string
 }

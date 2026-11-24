@@ -4,7 +4,8 @@
 // never the package root with its `.tsx` member components.
 import * as React from 'react'
 import type { Locale } from '@open-mercato/shared/lib/i18n/config'
-import type { AudienceReason } from '@vereino/core'
+import { resolveDefaultEmailFromAddress } from '@open-mercato/shared/lib/email/config'
+import { clubOrigin, senderWithDisplayName, type AudienceReason } from '@vereino/core'
 import { EmailLayout, emailLayoutText, expandEmailTree } from '@vereino/ui/emails'
 import { primaryReason } from '../lib/dispatch-rules'
 import { absoluteLink } from '../lib/email-templates'
@@ -19,7 +20,22 @@ export function appBaseUrl(env: NodeJS.ProcessEnv = process.env): string {
   return 'http://localhost:3000'
 }
 
-export type RenderedEmail = { subject: string; react: React.ReactElement; text: string; locale: Locale }
+/**
+ * The base URL of a club's links (many clubs spec phase 3, REQ-M03; #631): the club's address when
+ * `VEREINO_CLUB_DOMAIN` is set and the club has a public slug, else `APP_URL`.
+ */
+export function clubLinkBaseUrl(publicSlug: string | null | undefined, env: NodeJS.ProcessEnv = process.env): string {
+  return clubOrigin(publicSlug, env) ?? appBaseUrl(env)
+}
+
+export type RenderedEmail = {
+  subject: string
+  react: React.ReactElement
+  text: string
+  locale: Locale
+  /** `"<club> via Vereino" <instance address>` (Q-M03), or null to keep the platform's default sender. */
+  from: string | null
+}
 
 /**
  * Renders a template for one recipient in their language: the subject, the body inside `EmailLayout` (expanded to
@@ -30,10 +46,11 @@ export async function renderEmail(
   template: EmailTemplate,
   rawParams: unknown,
   recipient: { locale: string; reasons: readonly AudienceReason[]; secrets: Readonly<Record<string, unknown>> },
-  club: { name: string },
+  club: { name: string; publicSlug?: string | null },
 ): Promise<RenderedEmail> {
   const params = template.params.parse(rawParams)
-  const appUrl = appBaseUrl()
+  // Links point at the recipient's club address (REQ-M03); `ctx.appUrl` carries the same base for templates.
+  const appUrl = clubLinkBaseUrl(club.publicSlug)
   return renderLocalized(recipient.locale, (t, locale) => {
     const ctx: EmailRenderContext = {
       locale,
@@ -68,6 +85,10 @@ export async function renderEmail(
       react: expandEmailTree(layout) as React.ReactElement,
       text: emailLayoutText(chrome, template.text(t, params, ctx)),
       locale,
+      from: senderWithDisplayName(
+        t('foundation.email.senderName', '{club} via Vereino', { club: club.name }),
+        resolveDefaultEmailFromAddress(),
+      ),
     }
   })
 }

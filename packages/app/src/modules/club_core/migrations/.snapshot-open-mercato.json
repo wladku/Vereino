@@ -6,6 +6,23 @@
       "name": "club_core_club_settings",
       "schema": "public",
       "columns": {
+        "accent_color": {
+          "name": "accent_color",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "bank_account": {
           "name": "bank_account",
           "type": "text",
@@ -175,6 +192,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "former_participant_retention_months": {
+          "name": "former_participant_retention_months",
+          "type": "int",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "12",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "integer"
         },
         "id": {
           "name": "id",
@@ -552,7 +586,13 @@
           "unique": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "club_core_club_settings_retention_months_check",
+          "expression": "former_participant_retention_months between 1 and 120",
+          "definition": "check (former_participant_retention_months between 1 and 120)"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null

@@ -144,14 +144,18 @@ yarn mercato club_core restore-club --in /path/orlik-zielonka.zip --dry-run
 yarn mercato club_core restore-club --in /path/orlik-zielonka.zip
 ```
 
-It checks the manifest and the checksum of every module file and attachment, then refuses — before writing — a
-database that holds the club's tenant (`tenant_exists`), a slug another club holds (`slug_taken`), any row of the club
+It checks the manifest and the checksum of every module file and attachment. The checksums sit inside the archive and
+only catch corruption, so it then refuses an archive that reaches beyond its club (`archive_out_of_scope`, with the
+reasons): a table that is not part of a club export, a row of another tenant or of a user outside the archive, or an
+attachment whose partition code or path would leave its partition. It refuses — before writing — a database that
+holds the club's tenant (`tenant_exists`), a slug another club holds (`slug_taken`), any row of the club
 (`club_rows_exist`, with the tables) or a schema without a column of the archive (`schema_mismatch`; migrate the
 target first). A deleted club's tombstone is replaced. In one transaction it inserts every table in foreign-key order,
 encrypts the decrypted columns again with the target's key for the club's tenant, and writes the attachment files back
 through the storage driver; `status: "restored"` prints the rows per module. Then rebuild the indexes, which are not exported
 (`yarn mercato query_index rebuild-all --tenant <tenantId>`, `yarn mercato search reindex --tenant <tenantId>`); sign-in tokens, API keys and provider credentials (Stripe) were not exported
-and are set up again by the club. The audit log records the restore.
+and are set up again by the club. The archive carries no password hashes: every user sets a password again (send the
+administrator a reset link; the members reset theirs from the sign-in page). The audit log records the restore.
 
 ### Single-club restore drill
 

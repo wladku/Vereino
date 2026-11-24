@@ -1,7 +1,7 @@
 # Run: issue #527 — spec for the person data export (access and portability)
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 527`, label `cezar`), step 1 of 3 (build, draft PR).
-- **Spec/issue:** #527. New spec `.ai/specs/2026-11-21-vereino-person-data-export.md`.
+- **Spec/issue:** #527. New spec `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md`.
 - **Branch:** `docs/issue-527-person-data-export-spec`.
 
 ## Steps
@@ -41,7 +41,7 @@
 
 ## Files changed
 
-- `.ai/specs/2026-11-21-vereino-person-data-export.md` (new)
+- `.ai/specs/implemented/2026-11-21-vereino-person-data-export.md` (new)
 - `.ai/specs/changelog/2026-11-21-vereino-person-data-export/2026-11-21-initial-draft.md` (new)
 - this run log
 

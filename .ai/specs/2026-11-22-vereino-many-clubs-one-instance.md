@@ -509,7 +509,7 @@ phases.
 | Backups keep a deleted club's data | retention beyond termination | key destruction only with a key store (Q-M07); backup retention stated in the DPA | until backups expire |
 | No key store in production (derived keys) | no crypto-shredding; one master secret protects every club | Q-M07 (2026-11-23): derived keys accepted until a second club's real data; a key store is a pre-condition for it | until the key store lands |
 | Wildcard domain setup on Railway | phase 3 blocked until DNS is ready | Railway supports wildcard custom domains (wildcard CNAME plus a delegated `_acme-challenge` record); owner action D12 | phase 3 delay |
-| Platform e-mails and reset origin check use one base URL | links in platform-sent mail point at the wrong host; reset refused on club hosts | upstream change or override (Ask First), TEST-M04 | until the platform change lands |
+| Platform e-mails and reset origin check use one base URL | links in platform-sent mail point at the wrong host; reset refused on club hosts | phase 3 takes option (c) (owner, 2026-11-23 on #631): the platform's reset page, its notification e-mails and the account invitations (reset links) stay on `APP_URL`, and `/reset` opened on a club's address moves to `APP_URL`; Vereino-sent mail links to the club's address (TEST-M04). An upstream change or an override (options (a)/(b)) is a later, separate decision | platform-sent mail and the reset keep `APP_URL` until that decision |
 | Two accounts for a person in two clubs | inconvenience for that person | D-014 later | accepted |
 | ACL sync skipped when it should have run | missing features after deploy | hash covers every module's defaults; `--force` flag; TEST-M10 | low |
 

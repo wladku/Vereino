@@ -33,8 +33,12 @@ import {
   missingTables,
   moduleEntryName,
   orderForInsert,
+  archiveScopeViolations,
   parseManifest,
   parseRowJson,
+  presentTables,
+  redactExportRow,
+  safeAttachmentLocation,
   uncoveredTables,
   type ClubArchiveManifest,
   type ClubTable,
@@ -79,6 +83,13 @@ export class ClubCatalogError extends Error {
     readonly missing: string[],
   ) {
     super(`club tables not covered: ${uncovered.join(', ') || '-'}; listed but missing: ${missing.join(', ') || '-'}`)
+  }
+}
+
+/** Thrown by `deleteClub` when, inside its transaction, the club is no longer due (a notice cancelled meanwhile). */
+export class ClubNotDueError extends Error {
+  constructor() {
+    super('the club is not due for deletion: its notice was cancelled or has not ended')
   }
 }
 
@@ -143,10 +154,12 @@ type ClubTargets = { tables: ClubTable[]; insertOrder: ClubTable[]; catalogue: C
  */
 async function clubTargets(container: AwilixContainer, em: EntityManager): Promise<ClubTargets> {
   const catalogue = await readCatalogue(em)
-  const tables = clubTables(moduleContributors(container))
-  const uncovered = uncoveredTables(catalogue.tenantTables, tables)
-  const missing = missingTables([...catalogue.columns.keys()], tables)
+  const listed = clubTables(moduleContributors(container))
+  const existing = [...catalogue.columns.keys()]
+  const uncovered = uncoveredTables(catalogue.tenantTables, listed)
+  const missing = missingTables(existing, listed)
   if (uncovered.length > 0 || missing.length > 0) throw new ClubCatalogError(uncovered, missing)
+  const tables = presentTables(existing, listed)
   const byName = new Map(tables.map((entry) => [entry.table, entry]))
   const insertOrder = orderForInsert(
     tables.map((entry) => entry.table),
@@ -227,7 +240,7 @@ async function exportRows(
     `select to_jsonb(t)::text as row from ${quoteIdent(entry.table)} t where ${where.sql} order by t.id`,
     where.params,
   )
-  const rows = result.map((item) => parseRowJson(item.row))
+  const rows = result.map((item) => redactExportRow(entry.table, parseRowJson(item.row)))
   if (!encryption || !entityId || rows.length === 0) return { rows, decrypted: [] }
   const fields = await encryption.getEncryptedFieldNames(entityId, scope.tenantId, scope.organizationId, {
     ignoreRuntimeHealth: true,
@@ -252,7 +265,7 @@ async function exportRows(
         )
       }
     }
-    decryptedRows.push(plain)
+    decryptedRows.push(redactExportRow(entry.table, plain))
   }
   return { rows: decryptedRows, decrypted: present.sort() }
 }
@@ -405,10 +418,16 @@ export async function deleteClub(
   // The administrator's export archives (#676) are named by the club's progress jobs, which the deletion removes.
   const exportArchives = supersededArchives(await findClubExportJobs(em, scope), '')
   await em.transactional(async (tx) => {
-    await tx.execute(`update club_core_club_settings set ${TOMBSTONE_SCRUB} where id = ? and tenant_id = ?`, [
-      club.settingsId,
-      scope.tenantId,
-    ])
+    // The notice is checked again in the deletion's own transaction: the update locks the settings row, so an
+    // `offboard-club --cancel` that commits first leaves no due row here and nothing is deleted.
+    const tombstone = await tx.execute<{ id: string }[]>(
+      `update club_core_club_settings set ${TOMBSTONE_SCRUB}
+        where id = ? and tenant_id = ? and deleted_at is null
+          and offboarding_delete_after is not null and offboarding_delete_after <= now()
+        returning id`,
+      [club.settingsId, scope.tenantId],
+    )
+    if (tombstone.length === 0) throw new ClubNotDueError()
     for (const entry of deleteOrder) {
       const where = clubWhere(entry, scope)
       const keepTombstone = entry.table === 'club_core_club_settings'
@@ -464,6 +483,7 @@ export type ClubRestoreRefusal =
   | { status: 'refused'; reason: 'not_a_club_archive' | 'checksum_mismatch' | 'tenant_exists' | 'slug_taken' }
   | { status: 'refused'; reason: 'club_rows_exist'; tables: string[] }
   | { status: 'refused'; reason: 'schema_mismatch'; tables: string[] }
+  | { status: 'refused'; reason: 'archive_out_of_scope'; tables: string[] }
 
 export type ClubRestorePlan = {
   manifest: ClubArchiveManifest
@@ -504,7 +524,16 @@ function archiveRows(plan: ClubRestorePlan, table: ManifestTable): Row[] {
   return plan.data.get(moduleEntryName(table.module))?.[table.table] ?? []
 }
 
-/** Why the target cannot take the club, or null: it must not hold the tenant, the slug or any row of the club. */
+/** The rows of the archive's table `name`, wherever the manifest lists it. */
+function archiveTableRows(plan: ClubRestorePlan, name: string): Row[] {
+  const table = plan.manifest.tables.find((entry) => entry.table === name)
+  return table ? archiveRows(plan, table) : []
+}
+
+/**
+ * Why the target cannot take the club, or null: the archive must stay inside its own club (its tables, its tenant's
+ * rows, its files inside their partitions), and the target must not hold the tenant, the slug or any row of the club.
+ */
 async function restoreBlocker(
   container: AwilixContainer,
   em: EntityManager,
@@ -523,6 +552,14 @@ async function restoreBlocker(
     return { status: 'refused', reason: 'slug_taken' }
   }
   const { tables, catalogue } = await clubTargets(container, em)
+  const outOfScope = archiveScopeViolations(plan.manifest, (table) => archiveRows(plan, table), tables)
+  // A freshly migrated target has no partition rows yet (they are seeded at init), so the code is checked for shape,
+  // not looked up: a plain code and a relative path keep the write inside `<storage root>/<code>`.
+  const unsafeFile = archiveTableRows(plan, 'attachments').some(
+    (row) => !safeAttachmentLocation(row.partition_code, row.storage_path),
+  )
+  if (unsafeFile) outOfScope.push('attachments: a file outside its partition')
+  if (outOfScope.length > 0) return { status: 'refused', reason: 'archive_out_of_scope', tables: outOfScope }
   const nonEmpty: string[] = []
   for (const entry of tables) {
     if (RESTORE_TOLERATED.has(entry.table)) continue

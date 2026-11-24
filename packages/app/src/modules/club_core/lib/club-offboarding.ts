@@ -35,7 +35,11 @@ export type ClubTableKey = 'tenant' | 'user' | 'tenant_row'
  */
 export type ClubTableKind = 'data' | 'derived' | 'secret'
 
-export type ClubTable = { module: string; table: string; key: ClubTableKey; kind: ClubTableKind }
+/**
+ * `optional`: a table the platform creates at run time, not by a migration (the pgvector driver's `vector_search`), so
+ * a database may not have it yet. It is covered when present and not reported missing when absent.
+ */
+export type ClubTable = { module: string; table: string; key: ClubTableKey; kind: ClubTableKind; optional?: true }
 
 function platform(module: string, kind: ClubTableKind, tables: string[], key: ClubTableKey = 'tenant'): ClubTable[] {
   return tables.map((table) => ({ module, table, key, kind }))
@@ -112,6 +116,9 @@ export const PLATFORM_CLUB_TABLES: readonly ClubTable[] = [
     'indexer_status_logs',
   ]),
   ...platform('search', 'derived', ['search_tokens']),
+  // Created by `@open-mercato/search`'s pgvector driver on first use (`CREATE TABLE IF NOT EXISTS vector_search`), not
+  // by a migration: a freshly migrated database has no such table, a running instance has it (QA on #677).
+  { module: 'search', table: 'vector_search', key: 'tenant', kind: 'derived', optional: true },
 ]
 
 /** A Vereino module's tables as its contributor declares them (`@/modules/foundation` `ClubDataContributor`). */
@@ -147,13 +154,22 @@ export function uncoveredTables(tenantTables: readonly string[], covered: readon
   return tenantTables.filter((table) => !known.has(table)).sort()
 }
 
-/** Listed tables the database does not have (a module disabled, or a platform table renamed), sorted. */
+/**
+ * Listed tables the database does not have (a module disabled, or a platform table renamed), sorted. An `optional`
+ * table (created at run time) is never missing.
+ */
 export function missingTables(existing: readonly string[], covered: readonly ClubTable[]): string[] {
   const present = new Set(existing)
   return covered
+    .filter((entry) => !entry.optional && !present.has(entry.table))
     .map((entry) => entry.table)
-    .filter((table) => !present.has(table))
     .sort()
+}
+
+/** The listed tables the database has: every table but an `optional` one that is not created yet. */
+export function presentTables(existing: readonly string[], covered: readonly ClubTable[]): ClubTable[] {
+  const present = new Set(existing)
+  return covered.filter((entry) => !entry.optional || present.has(entry.table))
 }
 
 /** A foreign key: `table` references `references`. */
@@ -408,4 +424,77 @@ export function parseRowJson(text: string): Record<string, unknown> {
   const row: unknown = JSON.parse(text, reviver)
   if (!isRecord(row)) throw new Error('[internal] a table row is not a JSON object')
   return row
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// What leaves the instance, and what an archive may write back
+
+/**
+ * Columns of exported tables that are set to null in the archive: credentials that must not reach the club in a file
+ * (*Data out*, like the `secret` tables). `users.password_hash` would let the holder of the archive crack every member's
+ * password offline; `foundation_deliveries.secret_params` holds the raw one-time link tokens of deliveries still in the
+ * queue. After a restore the members set a password again (the administrator through a reset link), and a queued
+ * delivery's link no longer works.
+ */
+export const CLUB_EXPORT_REDACTED_COLUMNS: Readonly<Record<string, readonly string[]>> = {
+  users: ['password_hash'],
+  foundation_deliveries: ['secret_params'],
+}
+
+/** The row with the redacted columns of `table` set to null; the row itself when the table has none. */
+export function redactExportRow(table: string, row: Record<string, unknown>): Record<string, unknown> {
+  const columns = CLUB_EXPORT_REDACTED_COLUMNS[table]
+  if (!columns) return row
+  const redacted = { ...row }
+  for (const column of columns) if (column in redacted) redacted[column] = null
+  return redacted
+}
+
+/**
+ * Why an archive's tables or rows reach beyond its own club, sorted, or an empty list. The checksums sit inside the
+ * archive and only catch corruption, so a restore trusts nothing else in it: every manifest table must be one of the
+ * club's exported (`data`) tables with the same module and key, every tenant-keyed row must carry the manifest's
+ * tenant, the tenant row must be that tenant, and every user-keyed row must belong to one of the archive's users.
+ */
+export function archiveScopeViolations(
+  manifest: ClubArchiveManifest,
+  rowsOf: (table: ManifestTable) => readonly Record<string, unknown>[],
+  clubTablesList: readonly ClubTable[],
+): string[] {
+  const exported = new Map(clubTablesList.filter((entry) => entry.kind === 'data').map((entry) => [entry.table, entry]))
+  const { tenantId } = manifest.club
+  const users = manifest.tables.find((table) => table.table === 'users')
+  const userIds = new Set((users ? rowsOf(users) : []).map((row) => row.id))
+  const violations = new Set<string>()
+  for (const table of manifest.tables) {
+    const entry = exported.get(table.table)
+    if (!entry || entry.module !== table.module || entry.key !== table.key) {
+      violations.add(`${table.table}: not a table of a club export`)
+      continue
+    }
+    for (const row of rowsOf(table)) {
+      const inScope =
+        entry.key === 'tenant_row'
+          ? row.id === tenantId
+          : entry.key === 'user'
+            ? userIds.has(row.user_id)
+            : row.tenant_id === tenantId
+      if (!inScope) violations.add(`${table.table}: a row of another tenant`)
+    }
+  }
+  return [...violations].sort()
+}
+
+const PARTITION_CODE_PATTERN = /^[a-z0-9][a-z0-9_-]*$/i
+
+/**
+ * Whether an archived attachment's partition code and storage path are safe to write: a plain code, and a relative
+ * path without `..`, NUL or a drive letter. The local storage driver joins both to its root without a containment
+ * check on write, so an archive could otherwise place a file anywhere the process can write.
+ */
+export function safeAttachmentLocation(partitionCode: unknown, storagePath: unknown): boolean {
+  if (typeof partitionCode !== 'string' || !PARTITION_CODE_PATTERN.test(partitionCode)) return false
+  if (typeof storagePath !== 'string' || storagePath.length === 0 || storagePath.includes('\0')) return false
+  if (/^([/\\]|[a-zA-Z]:)/.test(storagePath)) return false
+  return storagePath.split(/[/\\]/).every((segment) => segment !== '..')
 }
