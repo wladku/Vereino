@@ -89,8 +89,8 @@ async function authorizedBase(
       groupId: group.id,
       deletedAt: null,
       startAt: {
-        $gte: zonedInstant(query.from as CalendarDate, '00:00', timeZone),
-        $lt: zonedInstant(addCalendarDays(query.to as CalendarDate, 1), '00:00', timeZone),
+        $gte: zonedInstant(query.from, '00:00', timeZone),
+        $lt: zonedInstant(addCalendarDays(query.to, 1), '00:00', timeZone),
       },
     },
     { orderBy: { startAt: 'asc', id: 'asc' } },
