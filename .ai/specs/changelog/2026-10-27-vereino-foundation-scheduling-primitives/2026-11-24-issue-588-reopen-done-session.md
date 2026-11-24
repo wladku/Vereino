@@ -1,0 +1,1 @@
+| 2026-11-24 | #588: AC-G02 ticked — owner decision 2026-11-24 keeps the reopen of a done session: `activities.occurrences.reopen` (`POST /api/activities/occurrences/{id}/reopen`), club administrator only, reason 3–500 characters in the audit log, `done → planned`, attendance and score kept, undoable; proven by `ISSUE-588-reopen-done-session` |

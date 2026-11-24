@@ -62,6 +62,8 @@ export type OccurrenceItem = {
   opponentName?: string | null
   invitedTeamNames?: string[]
   actingRole?: string
+  /** The detail read's flag: the caller may reopen the done session (#588). */
+  mayReopen?: boolean
   code?: string
 }
 

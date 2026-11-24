@@ -15,6 +15,8 @@ export const errorCodes = [
   // and only while its end is in the future.
   { code: 'occurrence_not_cancelled', status: 409, messageKey: 'activities.errors.occurrence_not_cancelled' },
   { code: 'occurrence_already_ended', status: 409, messageKey: 'activities.errors.occurrence_already_ended' },
+  // Reopening a done session (foundation II AC-G02, #588): only a done session.
+  { code: 'occurrence_not_done', status: 409, messageKey: 'activities.errors.occurrence_not_done' },
   // The club setting `coach_may_cancel` is off and the caller cancels only as a coach (#199, club spec DD-37).
   { code: 'coach_cancel_disabled', status: 403, messageKey: 'activities.errors.coach_cancel_disabled' },
   { code: 'activity_has_sessions', status: 409, messageKey: 'activities.errors.activity_has_sessions' },

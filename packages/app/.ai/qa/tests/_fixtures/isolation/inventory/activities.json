@@ -557,6 +557,14 @@
     "/api/activities/occurrences/[id]/guardian-contacts": {
       "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } }
     },
+    "/api/activities/occurrences/[id]/reopen": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:occurrence" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "body": { "reason": "Probe reason" }
+      }
+    },
     "/api/activities/occurrences/[id]/restore": {
       "POST": {
         "probe": "foreign-id",

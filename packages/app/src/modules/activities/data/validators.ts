@@ -196,6 +196,9 @@ export const occurrenceRestoreSchema = z
   })
   .strict()
 
+/** Reopening a done session (foundation II AC-G02, #588): the administrator's reason, 3–500 characters once trimmed. */
+export const occurrenceReopenSchema = occurrenceRestoreSchema
+
 /** `POST /api/activities/occurrences/{id}/absence` (E06-S13 #95): the assigned coach's optional reason. */
 export const occurrenceAbsenceSchema = z
   .object({
