@@ -32,6 +32,7 @@ Route first; never probe unmatched context.
 - Editable records expose `updated_at`/`updatedAt`; custom update/delete clients send the version and surface 409s.
 - Run `yarn db:generate`, review scoped SQL/snapshot, and ask before applying it.
 - Run `yarn generate` after discovery files/`src/modules.ts`/routes/pages/events/widgets/agents/tools/workflows change.
+- A new or changed API route (or HTTP method) gets its cross-club probes in `packages/app/.ai/qa/tests/_fixtures/isolation/inventory/<module>.json` (and the records they address in `seed-<module>.ts`); `route-isolation:check` in `yarn verify` fails on a route without one, and `ISSUE-628-cross-club-isolation` runs them against two clubs: a club B id answers like an unknown id (404), never 403 (#628, D-034).
 - Contract-surface changes (route/schema/ID/export/seam/signature/event payload/CLI/config/script) MUST read root `BACKWARD_COMPATIBILITY.md` (Vereino-owned surfaces, protection tier, breaking-change checklist) and `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md` (Open Mercato surfaces; it wins for `@open-mercato/*`); tenant/org scope alone is not a contract.
 - Localize strings; use shared UI/tokens and cover loading/empty/error/conflict/keyboard/a11y.
 - A change to when a `data-testid` element shows, or to a menu item's href, label, group or order, or to a page's `pageTitleKey`, greps `packages/app/.ai/qa/tests` for that testid/href/key and updates and runs every older test that asserts it, in the same PR, and again after each merge of `main` (lesson `changed-ui-contract-search-older-tests-for-testid`; #354, #513).
@@ -48,6 +49,7 @@ Route first; never probe unmatched context.
 
 ## Never
 
+- Never add or remove the `guard-approved` label and never bypass or work around `yarn guard` (no renamed markers, no moved tests, no edits to the guard to let a change through). Run `yarn guard` before pushing; a blocking finding means stop, explain it in the PR and ask the owner (SDLC.md "Validation gate").
 - Never leak tenants, trust payload scope, or treat missing scope as unrestricted.
 - Never merge `main` into an open PR only to refresh it or rerun CI, and never merge a PR by hand while the merge train runs: the train updates and merges one PR at a time (SDLC.md "Validation gate"). Fix real failures and conflicts on the PR's own branch.
 - Never edit `node_modules`/`.mercato/generated/**`/generated facts/shipped migrations.

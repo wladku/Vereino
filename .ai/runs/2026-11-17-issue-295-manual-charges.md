@@ -3,7 +3,7 @@
 - **Date:** 2026-11-17
 - **Trigger:** cezar run fd025469 (`issue.labeled` `cezar`), skill `om-auto-fix-issue` with the vereino override.
 - **Issue:** [#295](https://github.com/wladku/Vereino/issues/295) — feature route.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-payments.md`, phase 5 (REQ-C06, REQ-C07; TEST-C07, TEST-C08, TEST-C02 tab part, TEST-C16 payer eligibility; AC-C06, AC-C07; DD-C05, DD-C12).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md`, phase 5 (REQ-C06, REQ-C07; TEST-C07, TEST-C08, TEST-C02 tab part, TEST-C16 payer eligibility; AC-C06, AC-C07; DD-C05, DD-C12).
 - **Branch:** `feat/issue-295-admin-manual-charges`
 
 ## Gate decisions

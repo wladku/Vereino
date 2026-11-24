@@ -71,7 +71,7 @@ open measures are listed in §5.
 | D-10 | Erased data come back or persist: backups up to ~13 months, audit snapshots (V-L03), order contact data | medium | medium | backups encrypted, key held by two people only | medium — see R-F, R-G, R-E |
 | D-11 | Transfer to US vendors' staff (Railway, Resend) without a confirmed mechanism | medium | medium | EU regions chosen | medium until P-1a and P-2a are confirmed |
 | D-12 | A child's name or image is published without permission | low | high | public pages show no participant names (S9.4); image and name publication only with recorded consent (S9.2) | low |
-| D-13 | A person cannot get a copy of their data (no export) or the request is missed | medium | low | procedure and manual compilation ([`data-subject-requests.md`](data-subject-requests.md)) | medium until the export exists |
+| D-13 | A person cannot get a copy of their data (no export) or the request is missed | medium | low | procedure ([`data-subject-requests.md`](data-subject-requests.md)) and the logged person data export (#527) | low |
 
 ## 4. Measures (art. 35(7)(d))
 
@@ -86,7 +86,7 @@ and [`asvs-checklist.md`](asvs-checklist.md); the incident and breach path is in
 | DP-2 | Decide ENG-Q-09 (MFA) and ENG-Q-12 (session lifetime); at least hide "remember me" for staff roles | D-4 | product owner |
 | DP-3 | Build the retention jobs: former participants after 12 months (#471), dead tokens, and the open periods (R-A … R-G) | D-3, D-9, D-10 | #471, #525, #526, #528 |
 | DP-4 | Club instruction to staff on free text; decide the art. 9(2) basis for incident and substitution notes (e.g. art. 9(2)(c) vital interests or (f) legal claims) | D-8 | club |
-| DP-5 | Person data export for access and portability | D-13 | #527 |
+| DP-5 | ~~Person data export for access and portability~~ — done (#527) | D-13 | #527 |
 | DP-6 | Privacy notices, including backups and retention (#469) | transparency | #469 |
 
 ## 6. Conclusion

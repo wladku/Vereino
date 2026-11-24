@@ -3,7 +3,8 @@
 // #383): the target group (an active group other than this one; the server keeps it within the caller's sections), the
 // first day there (default the 1st of the next month, never in the past) and the roster's active participants as a
 // checklist, ticked from the table's selection. Once a target is chosen the chip **Fits {group}** ticks the children
-// whose age on that day lies within the group's range. The preview (`dryRun`) lists per child whether it moves or is
+// the preview's `fitRule` matches: a team with a ranged age category by birth year in its season (AC-L16, DD-L17),
+// any other group by age on that day within its range. The preview (`dryRun`) lists per child whether it moves or is
 // skipped and why, the declarations that will be dropped and the fee note; **Move {n}** previews the ticked children
 // once more, applies with that preview's token and refreshes with a notice when anything changed in between (409
 // `move_preview_stale`). On the phone roster the same form opens as a full-screen sheet with the button at the bottom.
@@ -19,7 +20,7 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { StatusTag } from '@vereino/ui'
-import { MOVE_MANY_LIMIT, moveDateBounds, type MoveOutcome } from '../lib/groups-rules'
+import { MOVE_MANY_LIMIT, formatBirthYears, moveDateBounds, type FitRule, type MoveOutcome } from '../lib/groups-rules'
 import { personName, type GroupRow, type MembershipRow, type Translate } from './client-helpers'
 import { FormFrame, buttonClass, type FormSurface } from './MembershipDialogs'
 
@@ -41,10 +42,11 @@ type Preview = {
   moved: number
   skipped: number
   futureDeclarations: number
+  fitRule: FitRule | null
   previewToken: string
 }
 
-type Target = { id: string; name: string; ageFrom: number | null; ageTo: number | null }
+type Target = { id: string; name: string; ageFrom: number | null; ageTo: number | null; categorized: boolean }
 
 export type MoveChildrenResult = { moved: number; skipped: number; undoToken: string | null }
 
@@ -58,14 +60,30 @@ function errorOf(result: unknown, fallback: string): string {
   return (result as ApiBody | null)?.error ?? fallback
 }
 
-/** The chip's label: the group with its age range, e.g. "Fits Skrzaty (6–7 years)". */
-function fitsLabel(t: Translate, target: Target): string {
-  if (target.ageFrom !== null && target.ageTo !== null) {
-    return t('groups.memberships.moveMany.fits.range', { group: target.name, from: target.ageFrom, to: target.ageTo })
+/**
+ * The chip's label: the team with its birth years, e.g. "Fits Orliki (born 2016–2017)", or the group with its age
+ * range, e.g. "Fits Skrzaty (6–7 years)".
+ */
+function fitsLabel(t: Translate, group: string, rule: FitRule): string {
+  if (rule.kind === 'birth_years') {
+    return t('groups.memberships.moveMany.fits.birthYears', { group, years: formatBirthYears(rule) })
   }
-  if (target.ageFrom !== null)
-    return t('groups.memberships.moveMany.fits.from', { group: target.name, from: target.ageFrom })
-  return t('groups.memberships.moveMany.fits.to', { group: target.name, to: target.ageTo ?? 0 })
+  if (rule.ageFrom !== null && rule.ageTo !== null) {
+    return t('groups.memberships.moveMany.fits.range', { group, from: rule.ageFrom, to: rule.ageTo })
+  }
+  if (rule.ageFrom !== null) return t('groups.memberships.moveMany.fits.from', { group, from: rule.ageFrom })
+  return t('groups.memberships.moveMany.fits.to', { group, to: rule.ageTo ?? 0 })
+}
+
+/**
+ * The rule the chip shows: the preview's once it is loaded; before that the target's age range, unless the target is a
+ * team with an age category (its birth years come with the preview).
+ */
+function chipRule(target: Target | null, preview: Preview | undefined): FitRule | null {
+  if (!target) return null
+  if (preview) return preview.fitRule
+  if (target.categorized || (target.ageFrom === null && target.ageTo === null)) return null
+  return { kind: 'age', ageFrom: target.ageFrom, ageTo: target.ageTo }
 }
 
 /** One POST of the bulk move; the parsed body and the status, never a throw for a coded refusal. */
@@ -160,7 +178,7 @@ export function MoveChildrenDialog({
     () => new Map((preview.data?.items ?? []).map((item) => [item.membershipId, item])),
     [preview.data],
   )
-  // **Fits {group}** ticks the movable children whose age on the day fits the target, in step with a new day; a
+  // **Fits {group}** ticks the movable children who fit the target by the preview's rule, in step with a new day; a
   // tick or an untick afterwards starts from that selection.
   const effective = React.useMemo(
     () =>
@@ -178,7 +196,7 @@ export function MoveChildrenDialog({
   const moving = tickedItems.filter((item) => item.outcome === 'move')
   const skipping = tickedItems.filter((item) => item.outcome !== 'move')
   const declarations = moving.reduce((sum, item) => sum + item.futureDeclarations, 0)
-  const hasRange = target !== null && (target.ageFrom !== null || target.ageTo !== null)
+  const rule = chipRule(target, preview.data)
   const previewReady = Boolean(preview.data) && !preview.isFetching
 
   const fetchGroups = React.useCallback(
@@ -199,7 +217,15 @@ export function MoveChildrenDialog({
   const chooseTarget = (id: string | null) => {
     const row = id ? groupsById.current.get(id) : undefined
     setTarget(
-      row ? { id: row.id, name: row.name ?? row.id, ageFrom: row.ageFrom ?? null, ageTo: row.ageTo ?? null } : null,
+      row
+        ? {
+            id: row.id,
+            name: row.name ?? row.id,
+            ageFrom: row.ageFrom ?? null,
+            ageTo: row.ageTo ?? null,
+            categorized: row.kind === 'team' && Boolean(row.ageCategoryEntryId),
+          }
+        : null,
     )
     setFitsOnly(false)
     setStaleNotice(false)
@@ -375,7 +401,7 @@ export function MoveChildrenDialog({
           <legend className="text-sm font-medium">
             {t('groups.memberships.moveMany.children', { count: ticked.length, total: children.length })}
           </legend>
-          {target && hasRange ? (
+          {target && rule ? (
             <div className="flex flex-wrap gap-2">
               <Button
                 type="button"
@@ -390,7 +416,7 @@ export function MoveChildrenDialog({
                   setFitsOnly(!fitsOnly)
                 }}
               >
-                {fitsLabel(t, target)}
+                {fitsLabel(t, target.name, rule)}
               </Button>
             </div>
           ) : null}

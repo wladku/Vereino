@@ -34,6 +34,8 @@ export const errorCodes = [
   { code: 'departure_request_exists', status: 409, messageKey: 'people.errors.departure_request_exists' },
   { code: 'departure_request_minor', status: 422, messageKey: 'people.errors.departure_request_minor' },
   { code: 'departure_request_not_open', status: 409, messageKey: 'people.errors.departure_request_not_open' },
+  // Person data export spec (#527): the exported person is not a person of the caller's organization.
+  { code: 'person_not_found', status: 404, messageKey: 'people.errors.person_not_found' },
   { code: 'pesel_duplicate', status: 409, messageKey: 'people.errors.pesel_duplicate' },
   { code: 'pesel_invalid', status: 422, messageKey: 'people.errors.pesel_invalid' },
   // E06-S22 (#104): a phone that is neither a Polish number nor E.164, with a field error on `phone`.
@@ -76,6 +78,9 @@ export const errorCodes = [
   { code: 'import_review_pending', status: 422, messageKey: 'people.errors.import_review_pending' },
   { code: 'import_decision_invalid', status: 422, messageKey: 'people.errors.import_decision_invalid' },
   { code: 'import_person_not_found', status: 422, messageKey: 'people.errors.import_person_not_found' },
+  // The commit's progress job could not be created or advanced (foundation spec TEST-F08; #585): nothing was written,
+  // the import stays open and the commit can be retried.
+  { code: 'import_progress_unavailable', status: 503, messageKey: 'people.errors.import_progress_unavailable' },
   // The people list's filters (UX parity spec REQ-U01): a membership filter without `groups`, a filter resolving to
   // more ids than the list loads, and a failed `groups.personFilter` call (retryable).
   { code: 'people_filter_age_range', status: 400, messageKey: 'people.errors.people_filter_age_range' },

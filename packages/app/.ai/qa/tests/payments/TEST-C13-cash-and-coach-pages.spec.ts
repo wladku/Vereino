@@ -11,6 +11,7 @@ import {
 } from '../_fixtures/club'
 import { create as createStructure, signInBrowser, signOutBrowser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
+import { updateClubSettings } from '../_fixtures/members'
 import { uniqueAddress } from '../_fixtures/messaging'
 import { getCampaign, postCampaign, seedOrder, transition } from '../_fixtures/orders'
 import { createGuardianship } from '../_fixtures/people'
@@ -18,7 +19,7 @@ import { cashToday, createFee, generate, periodFromNow, type CodedBody } from '.
 import { uiText } from '../_fixtures/ui-text'
 
 // TEST-C13 (payments parity spec phase 10, REQ-C12, AC-C12, J-C02 steps 1–2; issue #300 E12-S10), at 375 px in both
-// colour schemes. Coach Marek leads Żaki; coordinator Krystyna coordinates the academy and leads Orliki. Bartek (Żaki)
+// colour schemes and both locales (#595: M-15 and M-18 run their assertions in English and in Polish). Coach Marek leads Żaki; coordinator Krystyna coordinates the academy and leads Orliki. Bartek (Żaki)
 // has an overdue fee and a delivered kit the coach hands over; Ada (Orliki) has her fees; Anna pays for both.
 // - `GET /api/payments/group-charges` carries `coachFeeAccess`, each group `own` (the caller's own first) and each
 //   order `handedOverAt`; a `groupId` outside the caller's groups answers 403 `scope_denied`.
@@ -28,6 +29,9 @@ import { uiText } from '../_fixtures/ui-text'
 // - M-15 names the receiver before saving; after saving "Received today" shows the charge's description over the
 //   receipt number (`GET /api/payments/cash` adds `descriptions`).
 test.describe.configure({ timeout: 360_000 })
+
+const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
+const LOCALES = ['en', 'pl'] as const
 
 type GroupView = CodedBody & {
   coachFeeAccess?: string
@@ -72,6 +76,16 @@ test('TEST-C13 M-15 names the receiver and lists receipts by charge; M-18 keeps 
   const club = await createClub(request, 'test-c13')
   try {
     const admin = club.adminToken
+    // The administrator's API token; replaced when the administrator signs into the browser, which ends the old one.
+    let settingsToken = admin
+    // A member page in `locale`: the club's default locale (the members here have no preferred one, so the shell
+    // resolves to it, DD-34) and the cookie agree; `<html lang>` proves the switch, since `uiText()` matches either.
+    const openIn = async (target: Page, locale: (typeof LOCALES)[number], path: string) => {
+      expect((await updateClubSettings(request, settingsToken, { defaultLocale: locale })).status).toBe(200)
+      await target.context().addCookies([{ name: 'locale', value: locale, url: BASE_URL }])
+      await target.goto(path)
+      await expect(target.locator('html')).toHaveAttribute('lang', locale)
+    }
     const scope = { tenantId: club.tenant.tenantId, organizationId: club.tenant.organizationId }
     const since = calendarDate(-120)
     const academy = await createStructure(request, admin, 'sections', { name: 'Akademia piłkarska' })
@@ -186,41 +200,49 @@ test('TEST-C13 M-15 names the receiver and lists receipts by charge; M-18 keeps 
     await page.setViewportSize({ width: 375, height: 812 })
     const coachPassword = await signInBrowser(page, request, club, coach.userId, coach.email)
     coach.token = await getAuthToken(request, coach.email, coachPassword)
-    await page.goto('/club')
-    const tile = page.getByTestId('club-tile-coach-payments')
-    await expect(tile).toHaveAttribute('href', `/club/coach/payments?group=${zaki}&due=1`)
-    await tile.click()
-    await expect(page).toHaveURL(new RegExp(`/club/coach/payments\\?group=${zaki}&due=1$`))
-    await expect(page.getByTestId('coach-filter-due')).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByTestId('coach-group-chip')).toHaveAttribute('aria-pressed', 'true')
-    await page.reload()
-    await expect(page.getByTestId('coach-filter-due')).toHaveAttribute('aria-pressed', 'true')
-    await expect(page.getByTestId('coach-filter-all')).toHaveAttribute('aria-pressed', 'false')
-    await expect(page.getByTestId('coach-group-mode')).toHaveText(
-      uiText('payments.coach.mode.collect', { exact: true }),
-    )
-    const badge = page.getByTestId('coach-kit-handed-over')
-    await expect(badge).toHaveText(uiText('payments.coach.handOver.handedOverAt', { exact: true }))
-    await expect(badge).toContainText(/\d{1,2}:\d{2}/)
-    await page.getByTestId('coach-filter-all').click()
-    await expect(page).toHaveURL(new RegExp(`/club/coach/payments\\?group=${zaki}$`))
-    await page.goto(`/club/coach/payments?group=${zaki}&due=1`)
-    const violations = await scanSchemes(page, testInfo, '/club/coach/payments')
+    const violations: Record<string, unknown> = {}
+    for (const locale of LOCALES) {
+      await openIn(page, locale, '/club')
+      const tile = page.getByTestId('club-tile-coach-payments')
+      await expect(tile).toHaveAttribute('href', `/club/coach/payments?group=${zaki}&due=1`)
+      await tile.click()
+      await expect(page).toHaveURL(new RegExp(`/club/coach/payments\\?group=${zaki}&due=1$`))
+      await expect(page.getByTestId('coach-filter-due')).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByTestId('coach-group-chip')).toHaveAttribute('aria-pressed', 'true')
+      await page.reload()
+      await expect(page.locator('html')).toHaveAttribute('lang', locale)
+      await expect(page.getByTestId('coach-filter-due')).toHaveAttribute('aria-pressed', 'true')
+      await expect(page.getByTestId('coach-filter-all')).toHaveAttribute('aria-pressed', 'false')
+      await expect(page.getByTestId('coach-group-mode'), locale).toHaveText(
+        uiText('payments.coach.mode.collect', { exact: true }),
+      )
+      const badge = page.getByTestId('coach-kit-handed-over')
+      await expect(badge, locale).toHaveText(uiText('payments.coach.handOver.handedOverAt', { exact: true }))
+      await expect(badge).toContainText(/\d{1,2}:\d{2}/)
+      await page.getByTestId('coach-filter-all').click()
+      await expect(page).toHaveURL(new RegExp(`/club/coach/payments\\?group=${zaki}$`))
+      await openIn(page, locale, `/club/coach/payments?group=${zaki}&due=1`)
+      Object.assign(violations, await scanSchemes(page, testInfo, `/club/coach/payments (${locale})`))
+    }
 
     // The mode line follows the club's "Coaches and payments" setting.
     for (const mode of ['view', 'none'] as const) {
       await setCoachFeeAccess(request, admin, mode)
-      await page.reload()
-      await expect(page.getByTestId('coach-group-mode')).toHaveText(
-        uiText(`payments.coach.mode.${mode}`, { exact: true }),
-      )
+      for (const locale of LOCALES) {
+        await openIn(page, locale, `/club/coach/payments?group=${zaki}&due=1`)
+        await expect(page.getByTestId('coach-group-mode'), locale).toHaveText(
+          uiText(`payments.coach.mode.${mode}`, { exact: true }),
+        )
+      }
     }
     await setCoachFeeAccess(request, admin, 'collect')
 
     // A group outside the coach's: the 403 state, no charges.
-    await page.goto(`/club/coach/payments?group=${orliki}`)
-    await expect(page.getByTestId('coach-forbidden')).toBeVisible()
-    await expect(page.getByTestId('coach-child')).toHaveCount(0)
+    for (const locale of LOCALES) {
+      await openIn(page, locale, `/club/coach/payments?group=${orliki}`)
+      await expect(page.getByTestId('coach-forbidden'), locale).toBeVisible()
+      await expect(page.getByTestId('coach-child')).toHaveCount(0)
+    }
     await signOutBrowser(page)
 
     // The coordinator's chips: own Orliki first, Żaki marked "(section)".
@@ -229,15 +251,17 @@ test('TEST-C13 M-15 names the receiver and lists receipts by charge; M-18 keeps 
       const coordinatorPage = await coordinatorContext.newPage()
       coordinatorPage.setDefaultTimeout(30_000)
       await signInBrowser(coordinatorPage, request, club, coordinator.userId, coordinator.email)
-      await coordinatorPage.goto('/club/coach/payments')
-      const chips = coordinatorPage.getByTestId('coach-group-chip')
-      await expect(chips).toHaveCount(2)
-      await expect(chips.nth(0)).toHaveAttribute('data-own', 'true')
-      await expect(chips.nth(0)).not.toContainText(uiText('payments.coach.sectionSuffix'))
-      await expect(chips.nth(1)).toHaveAttribute('data-own', 'false')
-      await expect(chips.nth(1)).toContainText(uiText('payments.coach.sectionSuffix'))
-      await expect(coordinatorPage.getByTestId('coach-group-chips')).toHaveCSS('overflow-x', 'auto')
-      await expectNoPageOverflow(coordinatorPage)
+      for (const locale of LOCALES) {
+        await openIn(coordinatorPage, locale, '/club/coach/payments')
+        const chips = coordinatorPage.getByTestId('coach-group-chip')
+        await expect(chips).toHaveCount(2)
+        await expect(chips.nth(0)).toHaveAttribute('data-own', 'true')
+        await expect(chips.nth(0), locale).not.toContainText(uiText('payments.coach.sectionSuffix'))
+        await expect(chips.nth(1)).toHaveAttribute('data-own', 'false')
+        await expect(chips.nth(1), locale).toContainText(uiText('payments.coach.sectionSuffix'))
+        await expect(coordinatorPage.getByTestId('coach-group-chips')).toHaveCSS('overflow-x', 'auto')
+        await expectNoPageOverflow(coordinatorPage)
+      }
     } finally {
       await coordinatorContext.close()
     }
@@ -247,22 +271,30 @@ test('TEST-C13 M-15 names the receiver and lists receipts by charge; M-18 keeps 
     const adminName = `${String(me.body?.person?.firstName)} ${String(me.body?.person?.lastName)}`
     const adminPassword = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     const adminToken = await getAuthToken(request, club.tenant.email, adminPassword)
-    await page.goto('/club/cash')
-    await page.getByTestId('cash-payer-search').fill('Płatnik')
-    await page.getByTestId('cash-payer-option').first().click()
-    await expect(page.getByTestId('cash-taken-by')).toHaveText(
-      uiText('payments.cash.takenBy', { exact: true, params: { name: adminName } }),
-    )
+    settingsToken = adminToken
+    // Before saving, in both locales; the payment itself is saved once, in the last one.
+    for (const locale of LOCALES) {
+      await openIn(page, locale, '/club/cash')
+      await page.getByTestId('cash-payer-search').fill('Płatnik')
+      await page.getByTestId('cash-payer-option').first().click()
+      await expect(page.getByTestId('cash-taken-by'), locale).toHaveText(
+        uiText('payments.cash.takenBy', { exact: true, params: { name: adminName } }),
+      )
+    }
     await page.getByTestId('cash-confirm').click()
     await expect(page.getByTestId('cash-today-item')).toHaveCount(1)
     const today = await cashToday(request, adminToken)
     expect(today.body?.items, JSON.stringify(today.body)).toHaveLength(1)
     const [receipt] = today.body?.items ?? []
     expect(receipt.descriptions.length).toBeGreaterThan(1)
-    const item = page.getByTestId('cash-today-item')
-    await expect(item.getByTestId('cash-today-description')).toHaveText(receipt.descriptions.join(', '))
-    await expect(item.getByTestId('cash-today-receipt')).toContainText(receipt.receiptNumber)
-    Object.assign(violations, await scanSchemes(page, testInfo, '/club/cash'))
+    for (const locale of LOCALES) {
+      await openIn(page, locale, '/club/cash')
+      const item = page.getByTestId('cash-today-item')
+      await expect(item).toHaveCount(1)
+      await expect(item.getByTestId('cash-today-description'), locale).toHaveText(receipt.descriptions.join(', '))
+      await expect(item.getByTestId('cash-today-receipt'), locale).toContainText(receipt.receiptNumber)
+      Object.assign(violations, await scanSchemes(page, testInfo, `/club/cash (${locale})`))
+    }
     expect(violations).toEqual({})
   } finally {
     await club.cleanup()

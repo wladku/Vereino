@@ -1,8 +1,10 @@
+import { asValue } from 'awilix'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import { registerEmailTemplate } from '@/modules/foundation'
 import { announcementTemplate, replyTemplate, sessionCancelledTemplate, sessionMovedTemplate } from './emails/templates'
 import notificationTypes from './notifications'
+import { COMMUNICATION_DATA_EXPORT_CONTRIBUTOR, dataExportContribution } from './services/data-export-contribution'
 
 /**
  * The e-mail templates of `communication` (foundation III P-31): `communication.announcement`, `communication.reply`
@@ -13,6 +15,10 @@ import notificationTypes from './notifications'
  * registry only in the web runtime, so the dispatch worker's `getNotificationType` would not find
  * `communication.announcement` in the queue worker process (the in-app deliveries would fail `render_failed`). The
  * registry is a map keyed by the type id, so repeating the registration is harmless.
+ *
+ * `people.dataExport.communication` (person data export spec DD-X01, #527): the data export contributor `people` reads
+ * with `hasRegistration` (`people/services/data-export.ts`) — the subject's threads, own participation, read markers and
+ * own messages. Stateless and read only: it works in the caller's EntityManager.
  */
 export function register(container: AppContainer) {
   registerNotificationTypes(notificationTypes)
@@ -20,4 +26,5 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, replyTemplate)
   registerEmailTemplate(container, sessionCancelledTemplate)
   registerEmailTemplate(container, sessionMovedTemplate)
+  container.register({ [COMMUNICATION_DATA_EXPORT_CONTRIBUTOR]: asValue(dataExportContribution) })
 }

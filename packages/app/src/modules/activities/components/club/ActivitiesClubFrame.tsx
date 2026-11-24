@@ -119,7 +119,11 @@ export function ActivitiesClubFrame({
 
   return (
     <MemberShell
-      brand={{ name: profile?.club.shortName ?? t('activities.club.title'), logoUrl: profile?.club.logoUrl ?? null }}
+      brand={{
+        name: profile?.club.shortName ?? t('activities.club.title'),
+        logoUrl: profile?.club.logoUrl ?? null,
+        accent: profile?.club.accent ?? null,
+      }}
       nav={nav}
       navLabel={labels.nav}
       signOutLabel={labels.signOut}

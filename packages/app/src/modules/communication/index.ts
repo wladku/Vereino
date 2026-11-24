@@ -7,7 +7,7 @@ export const metadata: ModuleInfo = {
   description:
     'Announcements to the club, a section, a group, an activity or a session with an in-app notification and an e-mail, replies, the session-cancellation thread, the share text, the member inbox (foundation III phase B, #35) and cases (phase C, #36).',
   author: 'Vereino',
-  license: 'MIT',
+  license: 'AGPL-3.0-only',
   // Club spec *Architecture*: `communication` reaches `people`, `groups` and `club_core` only through DI and ids;
   // `activities` is optional (`activities.scheduleDirectory`, `activities.shareText` read with `hasRegistration`).
   requires: ['people', 'groups', 'club_core'],

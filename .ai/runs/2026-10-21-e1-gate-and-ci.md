@@ -48,6 +48,34 @@ Commits on `build/e1-gate-and-ci`: agent skills (two commits), slice (a) tooling
 - `yarn tsc … --noUncheckedIndexedAccess` on the app → 584 errors, all in platform sources under `node_modules`; the flag stays off for the app (S3.2).
 - Platform runner `yarn test:integration:ephemeral --filter ENG-TEST` → "Application did not become ready within 90 seconds … Authenticated GET /api/customers/people returned 404" (first attempts: "Another Open Mercato production server is already running … pid 267004 on port 3000").
 
+## ENG-TEST-17 Lighthouse baseline (recorded 2026-11-23, #582)
+
+Source: the `perf` job of CI run [45131377056](https://github.com/wladku/Vereino/actions/runs/45131377056) on `main` at `4456442e` (job [137547557243](https://github.com/wladku/Vereino/actions/runs/45131377056/job/137547557243), artifact `lighthouse-results`, fetched 2026-11-23T07:33Z). Lighthouse 12.6.1 through `treosh/lighthouse-ci-action` 12.6.2, mobile form factor with default throttling, 3 runs against the ephemeral production build (`yarn test:integration:vereino:start`) on a GitHub-hosted `ubuntu-latest` runner. Page: the platform sign-in page `http://127.0.0.1:5001/login` (the only URL the job audits).
+
+Baseline = the median run (by performance score, as Lighthouse CI picks its representative run):
+
+| Category | Score |
+|---|---|
+| Performance | 82 |
+| Accessibility | 100 |
+| Best practices | 96 |
+| SEO | 100 |
+
+| Metric | Median run | Range over the 3 runs |
+|---|---|---|
+| First Contentful Paint | 1.67 s | 1.67 s |
+| Largest Contentful Paint | 4.66 s | 4.66–4.68 s |
+| Total Blocking Time | 114 ms | 50–1 854 ms |
+| Cumulative Layout Shift | 0 | 0–0.085 |
+| Speed Index | 1.67 s | 1.67–1.71 s |
+| Time to Interactive | 7.37 s | 7.12–7.37 s |
+
+Performance per run: 54, 82, 83. The first run is a cold start (TBT 1.85 s, CLS 0.085); the two warm runs agree. Cross-check: the `perf` job of run [45123362726](https://github.com/wladku/Vereino/actions/runs/45123362726) (`main` at `93336b54`) scored 53 / 82 / 83, accessibility 100, best practices 96, SEO 100, LCP 4.38–5.47 s, so the baseline is stable across commits.
+
+Known deductions (all in platform code, not Vereino modules): best practices loses `errors-in-console` and `valid-source-maps` (no source maps for large first-party JavaScript); performance is held back by LCP (≈ 4.7 s, Lighthouse "poor" above 4 s) and about 291 KiB of unused JavaScript.
+
+The `perf` job stays advisory (`continue-on-error: true`, no assertions). Compare future runs with the median row above; a drop of more than 10 performance points or a category below this baseline on two consecutive `main` runs is worth an issue.
+
 ## Open problems
 
 - E1 stays `in_progress`: the exit gate needs a push, the E1 pull request, a green first CI run (incl. `browser-smoke` and `perf` baseline, ENG-TEST-17, ENG-TEST-23) and the repository settings from `docs/ops/github-settings.md`, then ENG-TEST-02. Pushing waits for the product owner's request.

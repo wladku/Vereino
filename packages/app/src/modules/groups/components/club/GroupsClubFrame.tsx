@@ -32,7 +32,12 @@ export type GroupsClubProfile = {
   wards: { personId: string; firstName: string; lastName: string }[]
   contexts: string[]
   locale: string
-  club: { shortName: string | null; timezone: string; logoUrl: string | null }
+  club: {
+    shortName: string | null
+    timezone: string
+    logoUrl: string | null
+    accent?: { color: string; foreground: '#000000' | '#ffffff' } | null
+  }
   /** Whether the person holds `payments.view_own` and is an adult (payments R10): the Payments tab (#258). */
   paymentsVisible: boolean
   /** An active participant membership today: with the wards, the member side of the acting context (spec N). */
@@ -139,7 +144,11 @@ export function GroupsClubFrame({ children }: { children: (profile: GroupsClubPr
 
   return (
     <MemberShell
-      brand={{ name: profile?.club.shortName ?? t('groups.club.title'), logoUrl: profile?.club.logoUrl ?? null }}
+      brand={{
+        name: profile?.club.shortName ?? t('groups.club.title'),
+        logoUrl: profile?.club.logoUrl ?? null,
+        accent: profile?.club.accent ?? null,
+      }}
       nav={nav}
       navLabel={labels.nav}
       signOutLabel={labels.signOut}

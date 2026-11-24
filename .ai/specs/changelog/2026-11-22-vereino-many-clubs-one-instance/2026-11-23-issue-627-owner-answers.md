@@ -1,0 +1,1 @@
+| 2026-11-23 | E22-S01 (#627, PR #644): owner's answers recorded — Q-M01 tenant per club, Q-M02 subdomains now, Q-M05 sweep statements approved, Q-M06 30 days' notice and 90 days' slug reservation, Q-M07 derived keys until a key store, which is a pre-condition before a second club's real data; Q-M03, Q-M04, Q-M08 take the recommendation; status Ready for implementation |

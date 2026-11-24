@@ -4,6 +4,7 @@ import {
   MAX_REMINDERS,
   MIN_GENERATION_DAY,
   REMINDER_INTERVAL_DAYS,
+  automaticGenerationRecorded,
   firstAutomaticPeriod,
   generationDue,
   reminderBatches,
@@ -68,6 +69,17 @@ describe('generationDue', () => {
       due: false,
       reason: 'boundary_unknown',
     })
+  })
+})
+
+describe('automaticGenerationRecorded', () => {
+  it('records no automatic generation that would create no charge and skip none (#666)', () => {
+    expect(automaticGenerationRecorded({ created: 0, skipped: 0 })).toBe(false)
+  })
+
+  it('records a plan that creates or skips charges', () => {
+    expect(automaticGenerationRecorded({ created: 2, skipped: 0 })).toBe(true)
+    expect(automaticGenerationRecorded({ created: 0, skipped: 3 })).toBe(true)
   })
 })
 

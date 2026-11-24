@@ -1,0 +1,1 @@
+| 2026-11-22 | Close-out III (#568): AC-G07 and AC-G08 ticked, verified by reading; AC-G02 #588 (owner decision) and #589, AC-G03 #590, AC-G05 #591 (owner decision on forged scope), coverage criterion linked |

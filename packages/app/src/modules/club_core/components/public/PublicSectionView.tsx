@@ -82,14 +82,18 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
   return (
     <>
       <Breadcrumb page={page} />
-      <section className="flex items-start gap-4" aria-labelledby="public-section-title">
-        <LogoMark logo={section.logo} size="lg" />
+      <section
+        className="bg-club-accent text-club-accent-foreground flex items-start gap-4 rounded-lg p-4"
+        aria-labelledby="public-section-title"
+        data-testid="public-hero"
+      >
+        <LogoMark logo={section.logo} size="lg" onAccent />
         <div className="flex flex-col gap-2">
           <h1 id="public-section-title" className="text-2xl font-semibold" data-testid="public-section-name">
             {section.name}
           </h1>
           {blocks.description ? (
-            <p className="text-muted-foreground max-w-prose whitespace-pre-line" data-testid="public-block-description">
+            <p className="max-w-prose whitespace-pre-line" data-testid="public-block-description">
               {blocks.description.text}
             </p>
           ) : null}
