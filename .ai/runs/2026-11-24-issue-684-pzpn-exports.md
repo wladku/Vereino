@@ -50,6 +50,7 @@ Build phase 3 of the training outlines spec: two report routes, the page `/club/
 - `packages/app/src/modules/activities/components/club/ClubPzpnPage.tsx`, `frontend/club/reports/pzpn/page.tsx`,
   `page.meta.ts`, `i18n/en.json`, `i18n/pl.json`, `README.md`
 - `packages/app/src/modules/groups/components/club/ClubGroupPage.tsx`, `groups/i18n/en.json`, `groups/i18n/pl.json`
+- `packages/app/scripts/check-glossary.allow.json`, `.ai/lessons/moved-session-keeps-occurrence-date.md`
 - `packages/app/.ai/qa/tests/activities/TEST-O08-pzpn-exports.spec.ts`,
   `packages/app/.ai/qa/tests/_fixtures/isolation/inventory/activities.json`
 - `.ai/specs/changelog/2026-11-23-vereino-training-outlines-and-medical-expiry/2026-11-24-issue-684-phase-3.md`
@@ -59,6 +60,16 @@ Build phase 3 of the training outlines spec: two report routes, the page `/club/
 - `npx jest src/modules/activities/lib/__tests__/pzpn-export.test.ts --coverage` — 100 % lines, branches, functions.
 - `yarn generate` — ok. `yarn typecheck` — ok. `yarn route-isolation:check` — 214 routes, 0 problems (a first draft
   with `"expect": [404]` failed: "a non-default expect must say why"; the default already accepts 404).
+
+- `yarn test:integration:vereino --filter TEST-O08` — first run failed: `Expected: 200 Received: 201` on
+  `POST /api/activities/attendance/declare` (it answers 201 for a new row); second run failed:
+  `Unrecognized key: "venueName"` (the create body takes `venue: { name, address }`); third run: 1 passed (48.5s).
+- `yarn test:integration:vereino --filter ISSUE-628` (the inventory changed) — 1 passed (2.9m).
+- `yarn verify` — first run failed at `lint`: `no-unnecessary-type-assertion` twice in `services/pzpn-export.ts`;
+  then at `glossary:check`: `"activities.reports.pzpn.schedule.columns.coach" uses the retired term /trener/` — the
+  column copies PZPN's own form header, so the key is allow-listed with that reason. Final full run: all 22 steps passed.
+- `yarn guard` — no blocking findings.
+- Lesson added: `.ai/lessons/moved-session-keeps-occurrence-date.md`.
 
 ## Open problems
 
