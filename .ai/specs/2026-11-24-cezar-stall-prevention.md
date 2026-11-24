@@ -5,7 +5,7 @@
 
 Extends: .ai/specs/2026-11-18-merge-throughput.md
 
-> Related: `.ai/specs/2026-11-24-qa-evidence-instead-of-owner-hold.md` and `.ai/specs/2026-11-24-phase-level-story-start.md` (split out of this spec on review, 2026-11-24, because they relax human gates and need their own review); `.ai/specs/2026-11-18-merge-throughput.md`; `SDLC.md` → "The automation contract"; `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs`. Operations outside the repository: `~/vereino-alerts/vereino_alerts.py` and the Cezar picker on cezar-ws, the scheduled decision session on the owner's laptop. Identifiers: decisions `ST-D01…`, requirements `REQ-ST01…`, tests `ST-TEST-01…`, acceptance `ST-AC-01…`, questions `ST-Q1…`.
+> Related: `.ai/specs/2026-11-24-qa-request-email.md` and `.ai/specs/2026-11-24-phase-level-story-start.md` (split out of this spec on review, 2026-11-24); `.ai/specs/2026-11-18-merge-throughput.md`; `SDLC.md` → "The automation contract"; `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs`. Operations outside the repository: `~/vereino-alerts/vereino_alerts.py` and the Cezar picker on cezar-ws, the scheduled decision session on the owner's laptop. Identifiers: decisions `ST-D01…`, requirements `REQ-ST01…`, tests `ST-TEST-01…`, acceptance `ST-AC-01…`, questions `ST-Q1…`.
 
 ## 📝 TLDR
 
@@ -28,7 +28,7 @@ Evidence from 2026-11-20…24 (server outbox, `gh`, Cezar run history):
 
 ## Non-goals
 
-- The QA hold and the start of stories before a spec is Ready (the two split-out specs).
+- QA request e-mails and the start of stories before a spec is Ready (the two split-out specs). The QA hold itself (MT-D02) stays: the owner confirms `risk-high` + `needs-qa` PRs with `qa`.
 - Changing `maxParallel` (MT-D04 stays); any automation setting `qa`, `qa-failed`, `qa-approved` or `guard-approved`.
 - Auto-accepting the owner's questions after a timeout.
 - Retargeting a stacked PR whose base was closed without merging (it is held and escalated, ST-D04).
@@ -126,4 +126,4 @@ Phase 1: disable the scheduled task. Phase 2: set `transport` back to `outbox`. 
 
 ## Resolved questions
 
-ST-Q1 phone push; ST-Q1a ntfy; ST-Q3 warn below 5; ST-Q4 keep stacking and retarget — owner, 2026-11-24. On review (2026-11-24): numbers-only content, episode dedupe and night priority; the retarget moved from the picker prompt into the train and limited to merged bases. ST-Q2 (QA) and ST-Q5 (phase-level start) belong to the two split-out specs.
+ST-Q1 phone push; ST-Q1a ntfy; ST-Q3 warn below 5; ST-Q4 keep stacking and retarget — owner, 2026-11-24. On review (2026-11-24): numbers-only content, episode dedupe and night priority; the retarget moved from the picker prompt into the train and limited to merged bases. ST-Q2 (QA) and ST-Q5 (phase-level start) belong to the two split-out specs; on ST-Q2 the owner finally kept his `qa` confirmation and asked for a QA e-mail with a concrete test instruction (2026-11-24).
