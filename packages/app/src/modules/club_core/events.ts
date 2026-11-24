@@ -5,6 +5,9 @@ const events = [
   // Many clubs spec (#630): the operator created a club (`club_core create-club`); ids only. Phase 1's job state
   // subscribes to it (`initClub`).
   { id: 'club_core.club.created', label: 'Club created', entity: 'club', category: 'lifecycle' },
+  // Many clubs spec phase 4 (#632): the operator deleted a club (`club_core delete-club`); ids only. Phase 1's job state
+  // subscribes to it (`removeClub`).
+  { id: 'club_core.club.deleted', label: 'Club deleted', entity: 'club', category: 'lifecycle' },
   // Emitted after the club settings change; modules that cache settings invalidate on it (foundation DD-F16).
   { id: 'club_core.settings.updated', label: 'Club settings updated', entity: 'settings', category: 'crud' },
   { id: 'club_core.section.created', label: 'Section created', entity: 'section', category: 'crud' },

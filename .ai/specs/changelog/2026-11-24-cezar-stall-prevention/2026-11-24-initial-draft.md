@@ -1,0 +1,1 @@
+| 2026-11-24 | Initial draft (PR #697): Cezar stall prevention — decision sessions at 9:00 and 18:00, urgent alerts as ntfy phone pushes (numbers-only content, episode dedupe), a warning when the ready backlog drops below 5, the merge train retargets a stacked PR to `main` once its base merges; owner answers ST-Q1, ST-Q1a, ST-Q3 and ST-Q4 recorded |

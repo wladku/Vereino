@@ -11,8 +11,11 @@ export const SIGN_IN_CLUB_COOKIE = 'vereino_club'
 /** One year, in seconds. */
 export const SIGN_IN_CLUB_COOKIE_MAX_AGE = 31_536_000
 
-/** Where the slug came from: only a slug from the link is remembered, only a remembered one is forgotten. */
-export type SignInClub = { slug: string; source: 'query' | 'cookie' }
+/**
+ * Where the slug came from: only a slug from the link is remembered, only a remembered one is forgotten; `host` is the
+ * club of the address the page is on (many clubs spec phase 3, #631), never written to the cookie.
+ */
+export type SignInClub = { slug: string; source: 'query' | 'cookie' | 'host' }
 
 /** The club to show: `?club=` when the link has one (even a malformed one, which shows none), else the cookie. */
 export function signInClub(query: string | string[] | undefined, cookie: string | undefined): SignInClub | null {

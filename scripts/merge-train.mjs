@@ -48,6 +48,7 @@ import {
   mergeOutcome,
   pauseIssue,
   requiredChecks,
+  stampsVerified,
   treeMatches,
 } from './merge-train-guard.mjs'
 import { parseTrailers } from './merge-train-trailers.mjs'
@@ -90,11 +91,10 @@ async function ok(method, path, body) {
   return result.body
 }
 
-// The required checks: MERGE_TRAIN_REQUIRED_CHECKS when set (the ruleset API answers 403 on a private repository
-// without rulesets, such as the rehearsal repository), else the ruleset's.
+// The ruleset's required check names, `merge-train/verified` included; none when MERGE_TRAIN_REQUIRED_CHECKS is set (the
+// ruleset API answers 403 on a private repository without rulesets, such as the rehearsal repository).
 async function rulesetChecks(branch) {
-  const override = requiredChecks([], process.env.MERGE_TRAIN_REQUIRED_CHECKS)
-  if (override.length) return override
+  if (requiredChecks([], process.env.MERGE_TRAIN_REQUIRED_CHECKS).length) return []
   const rules = await ok('GET', `/repos/${repo}/rules/branches/${branch}`)
   const names = rules
     .filter((rule) => rule.type === 'required_status_checks')
@@ -420,8 +420,12 @@ async function batchTrain(baseBranch, required) {
 
 async function main() {
   const baseBranch = (await ok('GET', `/repos/${repo}`)).default_branch
-  const required = await rulesetChecks(baseBranch)
-  console.log(`required checks on ${baseBranch}: ${required.join(', ')}; skip labels: ${skipLabels.join(', ')}`)
+  const ruleset = await rulesetChecks(baseBranch)
+  const required = requiredChecks(ruleset, process.env.MERGE_TRAIN_REQUIRED_CHECKS)
+  const stamp = stampsVerified(ruleset)
+  console.log(
+    `required checks on ${baseBranch}: ${required.join(', ')}${stamp ? ` (+ ${VERIFIED_STATUS}, set by the train)` : ''}; skip labels: ${skipLabels.join(', ')}`,
+  )
   if (batchSize > 1) return batchTrain(baseBranch, required)
   for (let merges = 0; merges <= MAX_MERGES_PER_RUN; merges++) {
     const { prs } = await readQueue(baseBranch, required)
@@ -441,6 +445,12 @@ async function main() {
         await syncLabels([{ pr: pr.number, label: CONFLICT_LABEL, add: true, ...(issue ? { issue } : {}) }])
       }
       return
+    }
+    // While the ruleset requires `merge-train/verified`, the one-PR train marks the up-to-date green head it merges, so
+    // a batch size of 1 (before the switch-on or after a rollback) keeps merging (#698).
+    if (stamp) {
+      const target = process.env.GITHUB_RUN_ID ? runUrl : undefined
+      await setStatus(pr.headSha, VERIFIED_STATUS, 'success', 'up to date with main and green', target)
     }
     const merge = await api('PUT', `/repos/${repo}/pulls/${pr.number}/merge`, {
       merge_method: 'squash',

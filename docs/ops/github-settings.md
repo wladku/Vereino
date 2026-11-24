@@ -27,7 +27,9 @@ The required checks appear in the ruleset picker only after they have run once. 
   - [ ] Require linear history.
   - [ ] Require a pull request before merging — required approvals **0** for now; allowed merge method **Squash**.
     - [ ] Require review from Code Owners — turn on only after the second maintainer's handle is in `.github/CODEOWNERS` (a sole owner cannot approve their own pull request).
-  - [ ] Require status checks to pass, **Require branches to be up to date** — add exactly `gate`, `integration`, `browser-smoke` (checked against the live ruleset 2026-11-20). The merge train reads this list to decide when a PR is green, so a check outside it never holds the train. Do **not** add `perf` (advisory, S7.6) or `dependency-review` (S14.3: findings are triaged before merge); `pr-title` and `DCO` still run on every PR but are not required.
+  - [ ] Require status checks to pass — add `gate`, `integration`, `browser-smoke` with source **GitHub Actions** (checked against the live ruleset 2026-11-24, ruleset 26707580). The merge train reads this list to decide when a PR or a batch is green, so a check outside it never holds the train. Do **not** add `perf` (advisory, S7.6) or `dependency-review` (S14.3: findings are triaged before merge); `pr-title` and `DCO` still run on every PR but are not required.
+    - **One-PR train** (`MERGE_TRAIN_BATCH_SIZE` unset or `1`): **Require branches to be up to date before merging** — on.
+    - **Batch train** (`MERGE_TRAIN_BATCH_SIZE` `2`–`8`, `.ai/specs/2026-11-18-batch-merge-train.md`): **Require branches to be up to date before merging** — off, and a fourth required check **`merge-train/verified`** with source **any source** (the train sets it as a commit status with `MERGE_TRAIN_TOKEN`, not as a GitHub Actions check). The train ignores `merge-train/verified` when it judges a head and sets it itself right before each merge, in both modes. Switch-on, checks and rollback in their safe order: `docs/ops/batch-train-switch-on.md`.
   - [ ] Block force pushes.
 
 ## 3. DCO app
@@ -54,7 +56,16 @@ The required checks appear in the ruleset picker only after they have run once. 
 
 *Settings → Secrets and variables → Actions → `MERGE_TRAIN_TOKEN`* (`.github/workflows/merge-train.yml`, SDLC.md "Validation gate")
 
-- [ ] A fine-grained token of the owner for `wladku/Vereino` only, with **Contents**, **Pull requests**, **Issues** and **Workflows** read and write. Pull requests write covers labels and comments on PRs; adding a label to an issue (the train mirrors `merge-train-failed` / `merge-train-conflict` onto the issue named by `issue-N` in the PR's branch) needs **Issues** write. Without it the train logs a warning for that step and keeps merging.
+- [ ] A fine-grained token of the owner for `wladku/Vereino` only, with **Contents**, **Pull requests**, **Issues**, **Commit statuses** and **Workflows** read and write. Pull requests write covers labels and comments on PRs; adding a label to an issue (the train mirrors `merge-train-failed` / `merge-train-conflict` onto the issue named by `issue-N` in the PR's branch) and opening the `merge-train-paused` issue need **Issues** write. **Commit statuses** write sets `merge-train/verified` (before every merge once the ruleset requires it) and `merge-train/verdict` (a PR that broke a batch alone); without it such a run fails before it merges anything.
+- [ ] Changing a permission of an existing fine-grained token (*Settings → Developer settings → Personal access tokens → Fine-grained tokens → the token → Edit*) keeps the token value, so the secret needs no new value; only **Regenerate token** issues a new value, which then goes into the secret.
+
+## 6a. Merge train variables
+
+*Settings → Secrets and variables → Actions → Variables* (<https://github.com/wladku/Vereino/settings/variables/actions>)
+
+- `MERGE_TRAIN_BATCH_SIZE` — unset (or `1`): the one-PR train; `2`–`8`: the batch train (an invalid value means `1`). Set together with the ruleset of section 2 in the order of `docs/ops/batch-train-switch-on.md`.
+- `MERGE_TRAIN_SKIP_LABELS` — optional, comma-separated; replaces the default skip labels.
+- `MERGE_TRAIN_REQUIRED_CHECKS` — leave unset on this repository (the train then reads the ruleset). Only a repository without rulesets, such as the rehearsal repository, sets it.
 
 ## 7. Release workflow
 
