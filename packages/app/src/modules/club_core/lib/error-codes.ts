@@ -38,6 +38,10 @@ export const errorCodes = [
   // Many clubs spec glossary *Club address* (#630): a club's slug is its subdomain, so the instance's own host names and
   // the cell labels are refused (`lib/club-onboarding.ts` `RESERVED_CLUB_SLUGS`).
   { code: 'slug_reserved', status: 400, messageKey: 'club_core.errors.slug_reserved' },
+  // A club leaving the instance (many clubs spec phase 4, J-M03; #632): the operator named no live club, or deletion was
+  // asked for before the notice period ended.
+  { code: 'club_not_found', status: 404, messageKey: 'club_core.errors.club_not_found' },
+  { code: 'offboarding_not_due', status: 409, messageKey: 'club_core.errors.offboarding_not_due' },
   { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
   // Online booking requests need the facility calendar (navigation spec REQ-N12, DD-N13; #262).
   {

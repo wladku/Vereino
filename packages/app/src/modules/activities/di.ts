@@ -3,7 +3,12 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import { audienceProviderToken } from '@vereino/core'
-import { createTokenLinkService, declareClubJobs, registerEmailTemplate } from '@/modules/foundation'
+import {
+  createTokenLinkService,
+  declareClubJobs,
+  registerEmailTemplate,
+  registerClubDataContributor,
+} from '@/modules/foundation'
 import { DeclarationToken } from './data/entities'
 import { declarationLinkTemplate } from './emails/templates'
 import { DECLARATION_LINK_TTL_MS } from './lib/declaration-links'
@@ -21,6 +26,7 @@ import { ACTIVITIES_SCHEDULE_DIRECTORY, createScheduleDirectory } from './servic
 import { ACTIVITIES_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 import { ACTIVITIES_CLUB_JOBS } from './lib/club-jobs'
+import { ACTIVITIES_CLUB_TABLES } from './lib/club-tables'
 
 /**
  * `vereino.audience.activity` and `vereino.audience.occurrence` (foundation III P-29, DD-M05; #71): the audience
@@ -69,6 +75,7 @@ const declarationLinks = createTokenLinkService(DeclarationToken, {
 export function register(container: AppContainer) {
   // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
   declareClubJobs(ACTIVITIES_CLUB_JOBS)
+  registerClubDataContributor(container, 'activities', ACTIVITIES_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, declarationLinkTemplate)
   container.register({
