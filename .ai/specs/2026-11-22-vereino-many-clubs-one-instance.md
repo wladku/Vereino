@@ -1,7 +1,7 @@
 # Many clubs on one instance
 
 **Date**: 2026-11-22
-**Status**: Ready for implementation (design approved by the owner on 2026-11-23, PR #644: answers to Q-M01…Q-M08; issue #627, epic E22 #626, decision D-034. Every phase stays Ask First for its migrations and destructive steps unless an approval is recorded on its story, listed in *Ask First items*.)
+**Status**: In progress (design approved by the owner on 2026-11-23, PR #644: answers to Q-M01…Q-M08; issue #627, epic E22 #626, decision D-034. Every phase stays Ask First for its migrations and destructive steps unless an approval is recorded on its story, listed in *Ask First items*.)
 
 ## TLDR
 

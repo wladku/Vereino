@@ -18,6 +18,7 @@ import type { AudienceReason } from '@vereino/core'
 import {
   deliveryExists,
   dispatchExists,
+  clubsWithDueDeliveries,
   dueDeliveries,
   failExhaustedDeliveries,
   finalizeDeliveries,
@@ -302,4 +303,34 @@ export async function sweepDispatches(
   const result = { republished: inAppDispatches.size + emailIds.length, failed }
   logger.info('Dispatch sweep finished', { organizationId: scope.organizationId, ...result })
   return result
+}
+
+/** At most this many clubs per system-scope dispatch sweep; the next tick (2 minutes) takes the rest. */
+const SWEEP_CLUBS_PER_RUN = 200
+
+/**
+ * The system-scope dispatch sweep (many-clubs spec DD-M07 (b), #629): finds the clubs with due deliveries (ids and
+ * scope only) and runs `sweepDispatches` in each club's own scope; one club's failure is logged and the others go on.
+ */
+export async function sweepAllDispatches(
+  container: AwilixContainer,
+): Promise<{ clubs: number; republished: number; failed: number; clubsFailed: number }> {
+  const clubs = await clubsWithDueDeliveries(container.resolve<EntityManager>('em').fork(), SWEEP_CLUBS_PER_RUN)
+  const total = { clubs: clubs.length, republished: 0, failed: 0, clubsFailed: 0 }
+  for (const scope of clubs) {
+    try {
+      const result = await sweepDispatches(container, scope)
+      total.republished += result.republished
+      total.failed += result.failed
+    } catch (error: unknown) {
+      total.clubsFailed += 1
+      logger.warn('Dispatch sweep failed for a club; the next sweep retries it', {
+        organizationId: scope.organizationId,
+        err: error,
+      })
+    }
+  }
+  // The same message as a club's sweep: the log digest reads it as the worker's liveness (`docs/ops/monitoring.md`).
+  logger.info('Dispatch sweep finished', { scope: 'system', ...total })
+  return total
 }

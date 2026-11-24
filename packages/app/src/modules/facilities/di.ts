@@ -2,7 +2,12 @@ import { asFunction, asValue } from 'awilix'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
-import { OCCUPANCY_PROVIDER_TOKEN, registerEmailTemplate, registerClubDataContributor } from '@/modules/foundation'
+import {
+  OCCUPANCY_PROVIDER_TOKEN,
+  declareClubJobs,
+  registerEmailTemplate,
+  registerClubDataContributor,
+} from '@/modules/foundation'
 import {
   banRequestTemplate,
   maintenanceDuePlannerTemplate,
@@ -23,6 +28,7 @@ import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } f
 import { createPublicPlacesBlock } from './services/public-schedule'
 import { FACILITIES_RENTAL_LINKS, createRentalLinkService } from './services/rental-links'
 import { FACILITIES_REQUEST_LINKS, createRequestLinkService } from './services/requests'
+import { FACILITIES_CLUB_JOBS } from './lib/club-jobs'
 import { FACILITIES_CLUB_TABLES } from './lib/club-tables'
 
 /** The club page block of the public places (club spec DD-28; #124), read by `club_core` with `hasRegistration`. */
@@ -46,6 +52,8 @@ const requestLinkService = createRequestLinkService()
 const rentalLinkService = createRentalLinkService()
 
 export function register(container: AppContainer) {
+  // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
+  declareClubJobs(FACILITIES_CLUB_JOBS)
   registerClubDataContributor(container, 'facilities', FACILITIES_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   for (const template of requestEmailTemplates) registerEmailTemplate(container, template)
