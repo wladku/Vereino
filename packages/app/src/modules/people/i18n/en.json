@@ -782,6 +782,7 @@
   "people.persons.filters.attention.turns_18_soon": "Turns 18 within 30 days",
   "people.persons.filters.attention.adult_without_contact": "Adult without contact",
   "people.audit.jobs.life_cycle": "Run the people life cycle",
+  "people.audit.jobs.retention_sweep": "Anonymise former participants",
   "people.club.wards.notices.mayHaveAccount": "May have an own account — ask the club",
   "people.club.wards.notices.turns18": "Turns 18 on {date}: from then {name} decides alone",
   "people.club.profile.notice.turns18.title": "You turn 18 on {date}",

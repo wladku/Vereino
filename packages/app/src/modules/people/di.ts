@@ -3,7 +3,7 @@ import { registerNotificationTypes } from '@open-mercato/core/modules/notificati
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { CONTACT_RESOLVER_TOKEN, audienceProviderToken } from '@vereino/core'
-import { SCOPE_PROVIDER_TOKEN, registerEmailTemplate } from '@/modules/foundation'
+import { SCOPE_PROVIDER_TOKEN, registerEmailTemplate, registerClubDataContributor } from '@/modules/foundation'
 import {
   departureConfirmedTemplate,
   departureRequestDeclinedTemplate,
@@ -18,6 +18,7 @@ import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-ga
 import { createPersonDirectory } from './services/person-directory'
 import { syncPersonRoles, type PersonRoleSyncOutcome } from './services/role-sync'
 import { createPeopleScopeService } from './services/scope-service'
+import { PEOPLE_CLUB_TABLES } from './lib/club-tables'
 
 /** `people.scopeService` (club spec DD-06): the record-scope provider, also registered as `vereino.scopeProvider`. */
 export const PEOPLE_SCOPE_SERVICE = 'people.scopeService' as const
@@ -53,6 +54,7 @@ export type PeopleRoleSync = {
 }
 
 export function register(container: AppContainer) {
+  registerClubDataContributor(container, 'people', PEOPLE_CLUB_TABLES)
   // People life-cycle spec phase L4 (#306): the departure notices — in-app types and the e-mail templates (P-31).
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, departureRequestReceivedTemplate)

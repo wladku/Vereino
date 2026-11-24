@@ -27,7 +27,7 @@ import {
   type ContactResolver,
 } from '@/modules/foundation'
 import { Person, RoleAssignment } from '../data/entities'
-import { clubSettings, clubToday, type ClubScope } from './club-clock'
+import { clubPublicSlug, clubSettings, clubToday, type ClubScope } from './club-clock'
 import { membershipContribution } from './membership-contribution'
 import { activeGuardians } from './person-directory'
 
@@ -172,6 +172,7 @@ export function createContactResolver(): ContactResolver {
         name: await clubName(emOf(ctx), scope, settings.shortName),
         defaultLocale: settings.defaultLocale,
         today: await clubToday(ctx.container, scope),
+        publicSlug: await clubPublicSlug(ctx.container, scope),
       }
     },
   }

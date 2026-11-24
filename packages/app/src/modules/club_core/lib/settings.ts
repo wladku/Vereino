@@ -26,18 +26,26 @@ export function timeZoneOptions(supported: readonly string[], current: string | 
 /** The account age threshold a club may set (README B-02; #87 Q1). */
 export const OWN_ACCOUNT_MIN_AGE_RANGE = { min: 13, max: 18 } as const
 
-export type ClubSettingsRuleProblem = {
-  code: 'timezone_unknown' | 'account_age_threshold_out_of_range'
-  field: 'timezone' | 'ownAccountMinAge'
-}
+/**
+ * The months after which a former participant's data are anonymised (club spec REQ-041, amendment B; #471): 1–120,
+ * default 12, no "off" value — the owner chose automatic anonymisation (ENG-Q-07).
+ */
+export const FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE = { min: 1, max: 120 } as const
+
+export type ClubSettingsRuleProblem =
+  | { code: 'timezone_unknown'; field: 'timezone' }
+  | { code: 'account_age_threshold_out_of_range'; field: 'ownAccountMinAge' }
+  | { code: 'retention_months_out_of_range'; field: 'formerParticipantRetentionMonths' }
 
 /**
- * The first business rule a well-formed settings update breaks (#87): an unknown IANA zone, or a threshold outside
- * `OWN_ACCOUNT_MIN_AGE_RANGE`. Keys the update does not name are not checked.
+ * The first business rule a well-formed settings update breaks (#87): an unknown IANA zone, a threshold outside
+ * `OWN_ACCOUNT_MIN_AGE_RANGE`, or a retention period outside `FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE` (#471). Keys
+ * the update does not name are not checked.
  */
 export function clubSettingsRuleProblem(patch: {
   timezone?: string
   ownAccountMinAge?: number
+  formerParticipantRetentionMonths?: number
 }): ClubSettingsRuleProblem | null {
   if (patch.timezone !== undefined && !isTimeZone(patch.timezone)) {
     return { code: 'timezone_unknown', field: 'timezone' }
@@ -45,6 +53,11 @@ export function clubSettingsRuleProblem(patch: {
   const age = patch.ownAccountMinAge
   if (age !== undefined && (age < OWN_ACCOUNT_MIN_AGE_RANGE.min || age > OWN_ACCOUNT_MIN_AGE_RANGE.max)) {
     return { code: 'account_age_threshold_out_of_range', field: 'ownAccountMinAge' }
+  }
+  const months = patch.formerParticipantRetentionMonths
+  const range = FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE
+  if (months !== undefined && (months < range.min || months > range.max)) {
+    return { code: 'retention_months_out_of_range', field: 'formerParticipantRetentionMonths' }
   }
   return null
 }
@@ -142,6 +155,12 @@ export const clubSettingFieldSchemas = {
   orderSalesDocument: z
     .enum(ORDER_SALES_DOCUMENTS)
     .refine(isAvailableSalesDocument, { message: 'This sales document is not available in this version' }),
+  /** Months without membership after which a former participant is anonymised (REQ-041; 1–120, #471). */
+  formerParticipantRetentionMonths: z
+    .number()
+    .int()
+    .min(FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE.min)
+    .max(FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE.max),
 } as const
 
 export const clubSettingsSchema = z.object(clubSettingFieldSchemas)
@@ -174,6 +193,7 @@ export const CLUB_SETTINGS_DEFAULTS: Readonly<ClubSettingsValues> = {
   showCalledUpChildren: 'none',
   coachMayCancel: true,
   orderSalesDocument: 'none',
+  formerParticipantRetentionMonths: 12,
 }
 
 export const CLUB_SETTING_KEYS = Object.keys(clubSettingFieldSchemas) as ClubSettingKey[]
