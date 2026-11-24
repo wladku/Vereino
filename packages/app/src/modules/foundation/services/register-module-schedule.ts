@@ -48,7 +48,7 @@ export type ModuleScheduleRegistration = {
 }
 
 /** sha256 of the stable key formatted as a uuid (`scheduled_jobs.id` is a uuid column). */
-function stableScheduleUuid(stableKey: string): string {
+export function stableScheduleUuid(stableKey: string): string {
   const hex = createHash('sha256').update(stableKey).digest('hex')
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20, 32)}`
 }

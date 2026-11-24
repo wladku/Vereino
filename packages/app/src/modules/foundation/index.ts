@@ -72,6 +72,12 @@ export {
 } from './services/occupancy'
 export { parseRecurrence, type ParseRecurrenceInput } from './services/recurrence'
 export { registerModuleSchedule, type ModuleScheduleRegistration } from './services/register-module-schedule'
+export {
+  verifyScheduledJobScope,
+  type ScheduledJobRef,
+  type ScheduledJobScopeRefusal,
+  type ScheduledJobScopeResult,
+} from './services/scheduled-job-scope'
 export { commandContextForRequest, errorResponse } from './services/route-context'
 export {
   loadPublicRoute,
