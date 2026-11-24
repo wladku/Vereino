@@ -154,6 +154,10 @@ const settingsResponseSchema = z.object({
   showCalledUpChildren: z.enum(CALLED_UP_CHILDREN_VISIBILITY),
   coachMayCancel: z.boolean().describe('Whether a coach may cancel a session; false leaves only reporting an absence'),
   orderSalesDocument: z.enum(ORDER_SALES_DOCUMENTS),
+  formerParticipantRetentionMonths: z
+    .number()
+    .int()
+    .describe("Months without membership after which a former participant's data are anonymised (1–120)"),
   publicSlug: z.string().nullable().describe('Globally unique slug of `/p/{publicSlug}`'),
   publicDescription: z.string().nullable(),
   contactPhone: z.string().nullable(),
@@ -204,7 +208,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Update the club settings',
       description:
-        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them), `accentColor` (the club colour, a hex colour such as `#1b8f3a` or `#fd0`, stored as `#rrggbb`; blank or null restores the default) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. `consentTexts` (`{ <key>: string }`, at most 1000 characters each) sets the club consent texts; an empty string restores the built-in text, and a changed text keeps every consent given earlier valid (it reads "given to an earlier wording"). Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
+        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 and `formerParticipantRetentionMonths` 1–120 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them), `accentColor` (the club colour, a hex colour such as `#1b8f3a` or `#fd0`, stored as `#rrggbb`; blank or null restores the default) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. `consentTexts` (`{ <key>: string }`, at most 1000 characters each) sets the club consent texts; an empty string restores the built-in text, and a changed text keeps every consent given earlier valid (it reads "given to an earlier wording"). Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
       requestBody: {
         contentType: 'application/json',
         schema: clubSettingsUpdateSchema.extend({ clubName: clubNameSchema.optional() }),
@@ -218,7 +222,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 422,
           description:
-            '`publication_slug_required`, `locale_unsupported`, `timezone_unknown`, `account_age_threshold_out_of_range`, `club_name_invalid`, `consent_text_too_long`',
+            '`publication_slug_required`, `locale_unsupported`, `timezone_unknown`, `account_age_threshold_out_of_range`, `retention_months_out_of_range`, `club_name_invalid`, `consent_text_too_long`',
           schema: errorSchema,
         },
       ],
