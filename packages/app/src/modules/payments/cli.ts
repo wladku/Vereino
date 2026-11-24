@@ -27,8 +27,7 @@ const reconcile: ModuleCli = {
     const organizationId = typeof values.org === 'string' ? values.org : undefined
     if (!tenantId || !organizationId) {
       process.stderr.write('Usage: mercato payments reconcile-checkouts --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments reconcile-checkouts: invalid options')
     }
     const container = await createRequestContainer()
     const summary = await reconcileCheckouts(container, { tenantId, organizationId })
@@ -51,8 +50,7 @@ const closeCampaigns: ModuleCli = {
     const organizationId = typeof values.org === 'string' ? values.org : undefined
     if (!tenantId || !organizationId) {
       process.stderr.write('Usage: mercato payments close-order-campaigns --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments close-order-campaigns: invalid options')
     }
     const container = await createRequestContainer()
     const summary = await closeOrderCampaigns(container, { tenantId, organizationId })
@@ -77,13 +75,13 @@ const setUpClub: ModuleCli = {
     const { tenant, org } = readOptions(argv, ['tenant', 'org'])
     if (!tenant || !org) {
       process.stderr.write('Usage: mercato payments set-up-club --tenant <tenantId> --org <organizationId>\n')
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments set-up-club: invalid options')
     }
     const container = await createRequestContainer()
     const result = await setUpClubPayments(container, { tenantId: tenant, organizationId: org })
     process.stdout.write(`${JSON.stringify(result)}\n`)
-    if (!Object.values(result.schedules).every(Boolean)) process.exitCode = 1
+    if (!Object.values(result.schedules).every(Boolean))
+      throw new Error('[internal] payments set-up-club: a schedule was not registered')
   },
 }
 
@@ -111,8 +109,7 @@ const runJob: ModuleCli = {
       process.stderr.write(
         `Usage: mercato payments run-job --job <${Object.keys(JOB_COMMANDS).join('|')}> --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n`,
       )
-      process.exitCode = 1
-      return
+      throw new Error('[internal] payments run-job: invalid options')
     }
     const container = await createRequestContainer()
     const commandBus = container.resolve<CommandBus>('commandBus')

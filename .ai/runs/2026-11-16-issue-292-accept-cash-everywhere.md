@@ -1,7 +1,7 @@
 # Run: #292 — E12-S02 the administrator accepts cash from B-21, B-22 and B-29; B-21 and B-22 match the mockup
 
 - **Goal and trigger:** unattended cezar run (task 9216ff95) of `om-auto-fix-issue` on #292, queued by the `cezar` label. Feature route: payments parity spec phase 2 (REQ-C03; REQ-C02 except the B-32 and dashboard mounts; TEST-C03 and TEST-C04 for B-21, B-22, B-29; AC-C03, AC-C02 in part; DD-C03).
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-payments.md` (In progress; Contract 3 — the default sort of `GET /api/payments/charges` — approved by the owner on 2026-11-16 on #254, Q-C20). **Issue:** #292, epic #254. **Branch:** `feat/issue-292-accept-cash-charges-b21-b22`.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` (In progress; Contract 3 — the default sort of `GET /api/payments/charges` — approved by the owner on 2026-11-16 on #254, Q-C20). **Issue:** #292, epic #254. **Branch:** `feat/issue-292-accept-cash-charges-b21-b22`.
 
 ## Steps
 

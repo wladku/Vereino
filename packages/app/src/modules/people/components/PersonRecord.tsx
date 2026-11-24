@@ -26,6 +26,7 @@ import { errorCodeOf } from '@vereino/core'
 import { StatusTag, useClubToday } from '@vereino/ui'
 import { personAge } from '../lib/people-rules'
 import { AccountPanel } from './AccountPanel'
+import { DataExportPanel } from './DataExportPanel'
 import { GuardianshipsPanel } from './GuardianshipsPanel'
 import { OwnConsentsPanel } from './OwnConsentsPanel'
 import { LeavingPanel } from './LeavingPanel'
@@ -210,6 +211,9 @@ export function PersonRecord({ id }: { id: string }) {
           ) : (
             <ReadOnlyDetails person={person} t={t} />
           )}
+          {features['people.persons.export'] && person.access === 'full' ? (
+            <DataExportPanel personId={person.id} />
+          ) : null}
         </TabsContent>
         <TabsContent value="guardianship" className="flex flex-col gap-4 pt-4">
           {canEdit && person.holdsOwnConsents ? (

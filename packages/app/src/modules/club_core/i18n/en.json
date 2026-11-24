@@ -1,5 +1,6 @@
 {
   "club_core.audit.settings.update": "Update club settings",
+  "club_core.audit.clubs.provision": "Set up the club address",
   "club_core.audit.sections.create": "Create a section",
   "club_core.audit.sections.update": "Change a section",
   "club_core.audit.sections.delete": "Delete a section",
@@ -366,6 +367,7 @@
   "club_core.contracts.errors.rates": "Check the coach rates.",
   "club_core.contracts.errors.paymentDeadlineDays": "Enter a whole number of days from 0 to {max}.",
   "club_core.errors.public_slug_taken": "This address is already taken. Choose another one.",
+  "club_core.errors.slug_reserved": "This address is reserved for the service itself. Choose another one.",
   "club_core.errors.publication_slug_required": "Set the page address before publishing the club page.",
   "club_core.errors.publication_requests_need_calendar": "Online requests require the facility calendar to be enabled.",
   "club_core.errors.section_public_slug_required": "Set the page address before making the section public.",
@@ -729,6 +731,9 @@
   "club_core.externalPlace.errors.fields": "Enter a name of 2–160 characters and an address of 5–500 characters.",
   "club_core.externalPlace.errors.existsUnavailable": "This place is already on the list, but it is inactive or divided into parts, so it cannot be picked here. Ask the administrator.",
   "club_core.externalPlace.errors.save": "The place could not be added. Try again.",
+  "club_core.errors.accent_color_invalid": "Enter a colour as # and six hex digits, e.g. #1b8f3a",
+  "club_core.settings.fields.accentColor": "Club colour",
+  "club_core.settings.fields.accentColor.description": "A hex colour, e.g. #1b8f3a. It fills the header bar of the member app, the top of the public page and the logo box when there is no logo; text on it is black or white, whichever reads better. Leave empty for the default colour.",
   "club_core.privacy.title": "Privacy policy",
   "club_core.privacy.intro": "This notice explains how {club} processes personal data in Vereino, the system the club uses to run its membership, classes, fees and facilities.",
   "club_core.privacy.childrenLink": "Short version for children and teenagers",
@@ -789,5 +794,10 @@
   "club_core.privacy.kids.item3": "Only the people who need it can see it: your coaches and the people who run the club. Your name never appears on the club's public pages.",
   "club_core.privacy.kids.item4": "We keep it while you are in the club. A year after you leave, we remove what we no longer need. We keep only what the club must keep for its accounts.",
   "club_core.privacy.kids.item5": "You can ask what we know about you and ask us to fix it or delete it. Your parent, your coach or the club board will help you.",
-  "club_core.privacy.kids.item6": "If you think we are doing something wrong with your information, you or your parent can complain to the data protection office (UODO)."
+  "club_core.privacy.kids.item6": "If you think we are doing something wrong with your information, you or your parent can complain to the data protection office (UODO).",
+  "club_core.landing.title": "Vereino",
+  "club_core.landing.findClub": "Find your club",
+  "club_core.landing.exampleSlug": "your-club",
+  "club_core.landing.hint": "Every club has its own address, such as {example}. Open the link your club gave you, or the one in its e-mails.",
+  "club_core.landing.signIn": "Sign in to manage the service"
 }

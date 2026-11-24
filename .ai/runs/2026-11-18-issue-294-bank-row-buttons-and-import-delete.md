@@ -1,7 +1,7 @@
 # Run — #294 E12-S04: B-29 row buttons, history table, deleting an import
 
 - **Goal and trigger:** unattended cezar run of `om-auto-fix-issue 294` (issue labelled `cezar`), feature route.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-payments.md` phase 4 (REQ-C04, DD-C13, TEST-C05, TEST-C16); issue #294; branch `feat/issue-294-admin-decides-transfers`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-payments.md` phase 4 (REQ-C04, DD-C13, TEST-C05, TEST-C16); issue #294; branch `feat/issue-294-admin-decides-transfers`.
 - **Approval:** the spec is `Ready for implementation`; Contract 5 (the new route, command, event and error code) and Q-C20 were approved by the owner on 2026-11-16 ([#254](https://github.com/wladku/Vereino/issues/254#issuecomment-6910005798)). No migration.
 
 ## Steps

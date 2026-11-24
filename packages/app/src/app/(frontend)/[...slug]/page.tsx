@@ -1,3 +1,4 @@
+import { headers } from 'next/headers'
 import { notFound, redirect } from 'next/navigation'
 import { findRouteManifestMatch, getFrontendRouteManifests, registerFrontendRouteManifests } from '@open-mercato/shared/modules/registry'
 import { frontendRoutes } from '@/.mercato/generated/frontend-routes.generated'
@@ -14,6 +15,8 @@ import type { Metadata } from 'next'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { resolveLocalizedTitleMetadata } from '@/lib/metadata'
 import type { ClubCorePublicSite } from '@/modules/club_core/services/public-site'
+import { instancePageRedirect, publicPageRedirect, requestHost } from '@/modules/club_core/lib/club-host'
+import { requestClub, sessionRedirectForHost } from '@/modules/club_core/services/request-club'
 import { resolvePageMiddlewareRedirect } from '@open-mercato/shared/lib/middleware/page-executor'
 import { frontendMiddlewareEntries } from '@/.mercato/generated/frontend-middleware.generated'
 
@@ -101,12 +104,34 @@ async function publicClubName(params: Record<string, unknown>): Promise<string |
   }
 }
 
+/** The path with its query string, rebuilt from the route's search params. */
+function pathAndQuery(pathname: string, query: SearchParams): string {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query)) {
+    if (value === undefined) continue
+    for (const entry of Array.isArray(value) ? value : [value]) params.append(key, entry)
+  }
+  const search = params.toString()
+  return search ? `${pathname}?${search}` : pathname
+}
+
 export default async function SiteCatchAll({ params, searchParams }: FrontendParams) {
   const p = await params
   const query = (await searchParams) ?? {}
   const pathname = '/' + (p.slug?.join('/') ?? '')
   const match = findRouteManifestMatch(getFrontendRouteManifests(), pathname)
   if (!match) return notFound()
+
+  // Many clubs spec phase 3 (DD-M03, #631): with `VEREINO_CLUB_DOMAIN` set, a public club page opened anywhere but at its
+  // club's address moves there, and the platform's reset pages, which stay on `APP_URL` for now, move back to it.
+  const host = requestHost((await headers()).get('host'), process.env)
+  const clubSlug = typeof match.params?.clubSlug === 'string' ? match.params.clubSlug : null
+  const moved =
+    instancePageRedirect({ host, pathAndQuery: pathAndQuery(pathname, query), env: process.env }) ??
+    (clubSlug && pathname.startsWith('/p/')
+      ? publicPageRedirect({ host, clubSlug, pathAndQuery: pathAndQuery(pathname, query), env: process.env })
+      : null)
+  if (moved) redirect(moved)
 
   // Customer portal auth gate — separate from staff auth
   if (match.route.requireCustomerAuth) {
@@ -157,6 +182,11 @@ export default async function SiteCatchAll({ params, searchParams }: FrontendPar
   if (match.route.requireAuth) {
     auth = await getAuthFromCookies()
     if (!auth) redirect('/api/auth/session/refresh?redirect=' + encodeURIComponent(pathname))
+    // A session of another club on a club's address goes to its own club's address (fail closed; #631).
+    if (host.kind === 'club') {
+      const elsewhere = await sessionRedirectForHost(await requestClub(), auth, pathAndQuery(pathname, query))
+      if (elsewhere) redirect(elsewhere)
+    }
     const required = match.route.requireRoles || []
     if (required.length) {
       const roles = auth.roles || []

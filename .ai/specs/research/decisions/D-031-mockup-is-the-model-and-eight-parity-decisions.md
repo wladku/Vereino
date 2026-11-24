@@ -22,7 +22,7 @@ The audit of 2026-11-14 found places where the mockup, the specifications and th
 
 **The public Events menu (confirmed 2026-11-15).** The owner's decision of 2026-10-27 stands: the club's matches, tournaments and camps leave the club and section pages for their own optional page P-06 with an "Events" item in the public header, switched on or off on B-03. That mockup change had stayed on an unpushed branch, so "the mockup is the model" means the mockup with P-06; it lands with the specifications below.
 
-**Already decided elsewhere and unchanged:** D-029 (phone-first), D-030 (the administrator does the treasurer's work; the treasurer role stays held back, #245), #118 (B-33 for the administrator only), #124 Q1 (the public schedule shows a calendar month), #126 Q1 (the attendant may mark a no-show), #195 (the club owns its rules and privacy links).
+**Already decided elsewhere and unchanged:** D-029 (phone-first), D-030 (the administrator does the treasurer's work; the treasurer role stays held back, #245 — lifted on 2026-11-19 by [D-037](D-037-treasurer-role-released.md), built in PR #432), #118 (B-33 for the administrator only), #124 Q1 (the public schedule shows a calendar month), #126 Q1 (the attendant may mark a no-show), #195 (the club owns its rules and privacy links).
 
 **Applied in:** the five specifications of 2026-11-14, all `Draft` until the owner reviews them:
 

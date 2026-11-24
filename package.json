@@ -54,6 +54,7 @@
     "lessons:check": "node ./scripts/check-lessons.mjs",
     "lessons:list": "node ./scripts/check-lessons.mjs --list",
     "spec-changelogs:check": "node ./scripts/check-spec-changelogs.mjs",
+    "dockerfiles:check": "node ./scripts/check-dockerfiles.mjs",
     "secrets:check": "node ./scripts/check-secrets.mjs",
     "guard": "node ./scripts/guard.mjs",
     "licenses:check": "node ./scripts/check-licenses.mjs",
@@ -73,7 +74,7 @@
   "resolutions": {
     "lodash": "4.18.1",
     "lodash-es": "4.18.1",
-    "zod": "4.4.3",
+    "zod": "4.6.7",
     "handlebars": "4.7.10",
     "happy-dom": "21.0.4",
     "node-forge": "1.4.3",

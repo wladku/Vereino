@@ -354,6 +354,8 @@ async function runStep(step) {
         code: body?.code ?? null,
         ids: items ? items.map((item) => item.id) : null,
         withGroups: items ? items.filter((item) => item._groups !== undefined).length : null,
+        // The whole body only when the step asks for it (many clubs TEST-M04: the share link at the club address).
+        ...(step.withBody ? { body } : {}),
       }
     }
     case 'publish': {

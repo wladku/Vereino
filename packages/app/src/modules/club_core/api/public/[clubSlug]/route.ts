@@ -9,6 +9,7 @@ import {
   jsonResponse,
   notOkResponse,
   publicErrorSchema,
+  publicClubAccentSchema,
   publicClubLinksSchema,
   publicClubNavSchema,
   publicLogoSchema,
@@ -39,6 +40,7 @@ const clubPageSchema = z.object({
     logo: publicLogoSchema,
     contact: z.object({ phone: z.string() }).nullable().describe('Only with the `contact` block'),
     links: publicClubLinksSchema,
+    accent: publicClubAccentSchema,
     nav: publicClubNavSchema,
   }),
   sections: z.array(

@@ -1,9 +1,10 @@
 // The composer's reads (foundation III REQ-M05, P-32 `AudiencePicker`; DD-M14): the audience kinds and targets the
 // author's grants allow, the live recipient counts of an audience (counts only — never a name), and the share text of
 // a session or a thread. Each read checks the author's scope over the target the same way the post command does.
-import type { AudienceCounts, AudienceKind, GrantKind } from '@vereino/core'
+import { clubOrigin, type AudienceCounts, type AudienceKind, type GrantKind } from '@vereino/core'
 import {
   assertInScope,
+  contactResolver,
   foundationErrors,
   isUnlinkedScope,
   resolveAudience,
@@ -70,6 +71,16 @@ function appUrl(): string {
   return (process.env.APP_URL?.trim() || 'http://localhost:3000').replace(/\/+$/, '')
 }
 
+/** The base of the reader's club links: the club's address with `VEREINO_CLUB_DOMAIN` set (#631), else `APP_URL`. */
+async function clubLinkBase(viewer: Viewer): Promise<string> {
+  const club = await contactResolver(viewer.container).club({
+    container: viewer.container,
+    ...viewer.scope,
+    scope: viewer.grants,
+  })
+  return clubOrigin(club.publicSlug, process.env) ?? appUrl()
+}
+
 export type ShareText = { text: string; url: string }
 
 /**
@@ -91,6 +102,6 @@ export async function shareText(
   }
   const subject = await threadSubject(viewer, target.threadId as string)
   if (subject === null) return communicationErrors.throw('share_text_unavailable')
-  const url = absoluteUrl(appUrl(), memberThreadPath(target.threadId as string))
+  const url = absoluteUrl(await clubLinkBase(viewer), memberThreadPath(target.threadId as string))
   return { text: shareLine(subject, url), url }
 }
