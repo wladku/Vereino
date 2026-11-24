@@ -27,15 +27,19 @@ The required checks appear in the ruleset picker only after they have run once. 
   - [ ] Require linear history.
   - [ ] Require a pull request before merging — required approvals **0** for now; allowed merge method **Squash**.
     - [ ] Require review from Code Owners — turn on only after the second maintainer's handle is in `.github/CODEOWNERS` (a sole owner cannot approve their own pull request).
-  - [ ] Require status checks to pass — add `gate`, `integration`, `browser-smoke` with source **GitHub Actions** (checked against the live ruleset 2026-11-24, ruleset 26707580). The merge train reads this list to decide when a PR or a batch is green, so a check outside it never holds the train. Do **not** add `perf` (advisory, S7.6) or `dependency-review` (S14.3: findings are triaged before merge); `pr-title` and `DCO` still run on every PR but are not required.
+  - [ ] Require status checks to pass — add `gate`, `integration`, `browser-smoke` with source **GitHub Actions** (checked against the live ruleset 2026-11-24, ruleset 26707580; ENG-AC-02 as amended by the owner on 2026-11-24, #576). The merge train reads this list to decide when a PR or a batch is green, so a check outside it never holds the train. Do **not** add `perf` (advisory, S7.6), `dependency-review` (S14.3: findings are triaged before merge), `pr-title` (runs on every PR, advisory) or `DCO` (not required: the CLA of D-035, #648, covers outside contributions).
     - **One-PR train** (`MERGE_TRAIN_BATCH_SIZE` unset or `1`): **Require branches to be up to date before merging** — on.
     - **Batch train** (`MERGE_TRAIN_BATCH_SIZE` `2`–`8`, `.ai/specs/2026-11-18-batch-merge-train.md`): **Require branches to be up to date before merging** — off, and a fourth required check **`merge-train/verified`** with source **any source** (the train sets it as a commit status with `MERGE_TRAIN_TOKEN`, not as a GitHub Actions check). The train ignores `merge-train/verified` when it judges a head and sets it itself right before each merge, in both modes. Switch-on, checks and rollback in their safe order: `docs/ops/batch-train-switch-on.md`.
   - [ ] Block force pushes.
 
-## 3. DCO app
+Live state, read 2026-11-24 (#576): the ruleset `main: merge only when up to date and green` (id 26707580) holds only the status-check rule above (`gate`, `integration`, `browser-smoke`, strict, empty bypass list). Restrict deletions, linear history, the pull request requirement and the force-push block are not in it; squash-only merging comes from section 1. Applying them is the owner's call.
 
-- [ ] Install <https://github.com/apps/dco> for `wladku/Vereino` only. It reports the `DCO` check on every pull request (ADR-022).
-- [ ] Every commit then needs `Signed-off-by:`; use `git commit -s`. Set a real name and e-mail first: `git config user.name` / `git config user.email`.
+## 3. DCO app (optional)
+
+DCO is not a required check (ENG-AC-02, owner decision on #576), and the app is not installed (checked 2026-11-24: no `DCO` check runs on pull requests). Commits are still signed off by project rule (`git commit -s`, `CONTRIBUTING.md`).
+
+- [ ] Optional: install <https://github.com/apps/dco> for `wladku/Vereino` only to report an advisory `DCO` check (ADR-022). Do not add it to the ruleset.
+- [ ] Set a real name and e-mail for the sign-off: `git config user.name` / `git config user.email`.
 
 ## 4. Dependency graph and code scanning
 
@@ -85,13 +89,10 @@ If a pull request merges between steps 2 and 3, release-please rewrites the rele
 
 ## 8. Verify (ENG-TEST-02)
 
-Open three draft pull requests against `main` and confirm that each one cannot be merged, then close them:
+1. Read the live ruleset as the administrator: `gh api repos/wladku/Vereino/rulesets` for its id, then `gh api repos/wladku/Vereino/rulesets/<id>`. Expect `enforcement: active`, target `~DEFAULT_BRANCH`, required checks exactly `gate`, `integration`, `browser-smoke`, `strict_required_status_checks_policy: true`, `bypass_actors: []` and `current_user_can_bypass: never`.
+2. Open a throwaway pull request (not a draft, which reports `DRAFT` instead of its merge state, and without labels, so the merge train skips it) whose commit fails a required check, for example a type error in `packages/core/src`. Once `gate` is red, `gh pr view <n> --json mergeStateStatus` reports `BLOCKED`. Never try to merge it; close it unmerged and delete its branch.
 
-1. a commit that makes `yarn verify` fail (for example a hard-coded string in a Vereino module once one exists, or an unformatted Vereino file);
-2. a title that is not a Conventional Commit (`update stuff`);
-3. a commit without `Signed-off-by:`.
-
-Record the result (screenshots or links) in the E1 run log.
+Record the result in a run log. Last recorded 2026-11-24 in `.ai/runs/2026-11-24-issue-576-branch-ruleset-criterion.md` (#576).
 
 ## 9. Security settings (phase E2)
 
