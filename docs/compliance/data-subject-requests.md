@@ -27,19 +27,27 @@ helps it (art. 28(3)(e)). Code paths are under `packages/app/src/modules/`. It i
 
 ### Access (art. 15) and portability (art. 20)
 
-Vereino has **no export** that gathers a person's data across modules (`people` CRUD routes set
-`export: { enabled: false }`). Until it exists (open item D-1), the administrator compiles the answer by hand:
+The club administrator exports one person's data in one file: the person record › *Details* › **Data requests** ›
+**Export personal data** (`GET /api/people/persons/{id}/data-export`, feature `people.persons.export`; person data
+export spec, #527). The file is a JSON document (`vereino.person-data-export`, version 1) with the person's rows from
+every table of [`ropa.md`](ropa.md) that refers to them, encrypted values decrypted. Every export is recorded in
+`people_data_export_log` (who, when, which person, why) before any data is read.
 
-1. Profile, consents, wards: `GET /api/people/persons/{id}` (feature `people.view`); the person can see their own in
-   the member area (`GET /api/people/me`).
-2. Memberships, attendance, charges and payments, orders, rentals, messages, incidents: the person's views in each
-   module, using the table list of [`ropa.md`](ropa.md) as the checklist.
-3. Add the purposes, bases, recipients, retention and the right to complain (art. 15(1)(a)–(h)) by pointing to the
+1. Check the requester's identity (§1), then download the export from the person record.
+2. Read the `reviewRequired` list (the success message gives its count): free-text fields such as incident
+   descriptions, substitution reasons, import rows and bank counterparty fields may name other people. Remove other
+   people's data from those fields before sending (art. 15(4)). Other people already appear only as a relation (with
+   a name only for a guardian, ward, payer, debtor, orderer or coach), never by id.
+3. `actorCounts` says how many rows the person wrote as staff (attendance marked, payments recorded, …); the club
+   gives the details on request, with art. 15(4) applied by hand.
+4. `omitted` lists what the file leaves out and why: modules not enabled, the platform audit and access logs,
+   application logs and backups (security records mixing several people's data, art. 6(1)(f)), and attachment
+   binaries (the file lists their metadata; send the person's photo or a contract file separately on request).
+5. Add the purposes, bases, recipients, retention and the right to complain (art. 15(1)(a)–(h)) by pointing to the
    privacy notice.
-4. **Portability** covers data the person provided, processed under art. 6(1)(a) or (b) by automated means: profile,
-   contacts, consents, orders, rental requests. Deliver them in a structured, machine-readable format (CSV or JSON);
-   the charges table CSV export (`payments/components/ChargesTable.tsx`) covers the person's charges.
-5. Leave out other people's data (other children in a thread, other renters) — art. 15(4).
+6. **Portability** covers data the person provided, processed under art. 6(1)(a) or (b) by automated means: the
+   sections marked `"portable": true` (profile, contacts, consents, orders, rental requests). The same JSON file is the
+   structured, machine-readable copy.
 
 ### Rectification (art. 16)
 
@@ -95,7 +103,7 @@ stored, history is in the audit log; the club removes any published name or imag
 
 | Id | What | Owner |
 |---|---|---|
-| D-1 | Person data export for access and portability (structured, machine-readable) | #527 |
+| D-1 | ~~Person data export for access and portability (structured, machine-readable)~~ — done (#527) | #527 |
 | D-2 | ~~The anonymisation audit row records the legal basis for what is kept and the tables touched (S9.6)~~ — done (#528) | #528 |
 | D-3 | Erasure gaps: audit snapshots (V-L03); order contact data, payer label and delivery rows are cleared since #528 | people life-cycle spec |
 | D-4 | A restriction flag, or a documented manual way to restrict processing | product owner |

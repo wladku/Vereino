@@ -34,6 +34,8 @@ export const errorCodes = [
   { code: 'departure_request_exists', status: 409, messageKey: 'people.errors.departure_request_exists' },
   { code: 'departure_request_minor', status: 422, messageKey: 'people.errors.departure_request_minor' },
   { code: 'departure_request_not_open', status: 409, messageKey: 'people.errors.departure_request_not_open' },
+  // Person data export spec (#527): the exported person is not a person of the caller's organization.
+  { code: 'person_not_found', status: 404, messageKey: 'people.errors.person_not_found' },
   { code: 'pesel_duplicate', status: 409, messageKey: 'people.errors.pesel_duplicate' },
   { code: 'pesel_invalid', status: 422, messageKey: 'people.errors.pesel_invalid' },
   // E06-S22 (#104): a phone that is neither a Polish number nor E.164, with a field error on `phone`.

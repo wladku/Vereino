@@ -5,7 +5,7 @@ import { createClub, mercato, type Club } from '../_fixtures/club'
 // Many-clubs spec TEST-M06 (spec REQ-M04, AC-M04, *Rollout*; issue #629 E22-S03): two clubs set up the old way, each with
 // its per-club schedules (`set-up-club` of `activities`, `payments`, `facilities`; `people` from `bootstrap-admin`).
 // - `retire-club-schedules --dry-run` changes nothing; `retire-club-schedules` leaves no per-club schedule of a
-//   declared job type and one system-scope sweep schedule per job type (19 rows, whatever the number of clubs), and a
+//   declared job type and one system-scope sweep schedule per job type (20 rows, whatever the number of clubs), and a
 //   second run changes nothing.
 // - Every job type still runs for the club: with its job state due, one sweep of every type enqueues it and the
 //   module's worker finishes it without an error.
@@ -15,7 +15,7 @@ import { createClub, mercato, type Club } from '../_fixtures/club'
 //   old setup again.
 test.describe.configure({ timeout: 600_000 })
 
-/** Every job type of the old per-club setup that a club gets from its `set-up-club` commands (life-cycle excluded). */
+/** Every job type of the old per-club setup that a club gets from its `set-up-club` commands (life-cycle and retention sweep excluded). */
 const CLUB_JOBS = [
   'activities:expire-guardian-confirmations',
   'activities:generate-occurrences',
@@ -36,8 +36,8 @@ const CLUB_JOBS = [
   'people:sync-role-expiry',
 ]
 
-/** Declared job types (the 17 above and `people:life-cycle`) plus the dispatch sweep: one sweep schedule each. */
-const SWEEP_SCHEDULES = 19
+/** Declared job types (the 17 above, `people:life-cycle` and `people:retention-sweep`) plus the dispatch sweep: one sweep schedule each. */
+const SWEEP_SCHEDULES = 20
 
 type RetireRun = { dryRun: boolean; jobs: Array<{ job: string; clubs: number; retired: number; rowsCreated: number }> }
 

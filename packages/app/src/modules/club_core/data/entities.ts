@@ -1,5 +1,5 @@
 import { OptionalProps } from '@mikro-orm/core'
-import { Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
+import { Check, Entity, Index, PrimaryKey, Property, Unique } from '@mikro-orm/decorators/legacy'
 import type { OpeningHours } from '@vereino/core'
 import {
   ScopedEntityBase,
@@ -19,6 +19,10 @@ decorateScopedEntityBase({ PrimaryKey, Property })
  * DD-35) — its unique index backs that one lookup.
  */
 @Entity({ tableName: 'club_core_club_settings' })
+@Check({
+  name: 'club_core_club_settings_retention_months_check',
+  expression: 'former_participant_retention_months between 1 and 120',
+})
 @Unique({ name: 'club_core_club_settings_organization_unique', properties: ['organizationId'] })
 @Index({ name: 'club_core_club_settings_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({
@@ -49,8 +53,10 @@ export class ClubSettings extends ScopedEntityBase {
     | 'publicDescription'
     | 'rulesUrl'
     | 'privacyPolicyUrl'
+    | 'accentColor'
     | 'publication'
     | 'consentTexts'
+    | 'formerParticipantRetentionMonths'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
   ownAccountMinAge: number = 16
@@ -111,6 +117,13 @@ export class ClubSettings extends ScopedEntityBase {
   @Property({ name: 'order_sales_document', type: 'text', default: 'none' })
   orderSalesDocument: string = 'none'
 
+  /**
+   * Months without membership, role, guardianship or open charge after which the daily `people:retention-sweep`
+   * anonymises a former participant (club spec REQ-041, amendment B; 1–120, default 12; #471).
+   */
+  @Property({ name: 'former_participant_retention_months', type: 'int', default: 12 })
+  formerParticipantRetentionMonths: number = 12
+
   /** Globally unique slug of the public pages `/p/{publicSlug}` (DD-23); null until the club chooses one. */
   @Property({ name: 'public_slug', type: 'text', nullable: true })
   publicSlug?: string | null
@@ -141,6 +154,13 @@ export class ClubSettings extends ScopedEntityBase {
   /** The URL of the club's privacy policy, linked in the public page footer when set (#195). */
   @Property({ name: 'privacy_policy_url', type: 'text', nullable: true })
   privacyPolicyUrl?: string | null
+
+  /**
+   * The club's own colour (design tokens R06.2, #486): `#rrggbb` in lower case, painting the member header bar, the
+   * public hero and the fallback logo; null uses the default, `--primary`. Read through `clubAccent` of `@vereino/core`.
+   */
+  @Property({ name: 'accent_color', type: 'text', nullable: true })
+  accentColor?: string | null
 
   /**
    * The club's consent texts (DD-39; people life-cycle spec REQ-L10, DD-L11; #309): `{ <key>: { text, changedAt } }`

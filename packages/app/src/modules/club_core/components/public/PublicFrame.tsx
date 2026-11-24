@@ -10,12 +10,23 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { LanguageSwitcher } from '@open-mercato/ui/frontend/LanguageSwitcher'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { privacyPolicyHref, PublicHeader, type PublicHeaderLabels } from '@vereino/ui'
+import { privacyPolicyHref, PublicHeader, ClubAccentRoot, type PublicHeaderLabels } from '@vereino/ui'
 import { phoneHref } from '../../lib/public-page'
-import type { PublicClubContact, PublicClubLinks, PublicClubNav, PublicLogo } from './public-client'
+import type { PublicClubAccent, PublicClubContact, PublicClubLinks, PublicClubNav, PublicLogo } from './public-client'
 
-/** A logo, or the initial of the name in its place (glossary *Logo*: never an empty image). Decorative: the name is next to it. */
-export function LogoMark({ logo, size = 'md' }: { logo: PublicLogo; size?: 'md' | 'lg' }) {
+/**
+ * A logo, or the initial of the name in its place (glossary *Logo*: never an empty image). Decorative: the name is next
+ * to it. The initial sits on the club's colour (#486); `onAccent` inverts it for a logo inside the club-coloured hero.
+ */
+export function LogoMark({
+  logo,
+  size = 'md',
+  onAccent = false,
+}: {
+  logo: PublicLogo
+  size?: 'md' | 'lg'
+  onAccent?: boolean
+}) {
   const dimension = size === 'lg' ? 64 : 40
   const box = size === 'lg' ? 'size-16 text-2xl' : 'size-10 text-lg'
   if (logo.url) {
@@ -35,7 +46,7 @@ export function LogoMark({ logo, size = 'md' }: { logo: PublicLogo; size?: 'md' 
   return (
     <span
       aria-hidden="true"
-      className={`${box} bg-muted text-muted-foreground flex shrink-0 items-center justify-center rounded-md font-semibold`}
+      className={`${box} ${onAccent ? 'bg-club-accent-foreground text-club-accent' : 'bg-club-accent text-club-accent-foreground'} flex shrink-0 items-center justify-center rounded-md font-semibold`}
       data-testid="public-logo-initial"
       data-logo-source="initial"
     >
@@ -128,6 +139,7 @@ export function PublicFrame({
     logo: PublicLogo
     contact: PublicClubContact
     links: PublicClubLinks
+    accent: PublicClubAccent
     nav: PublicClubNav
   } | null
   children: React.ReactNode
@@ -136,7 +148,7 @@ export function PublicFrame({
   const labels = usePublicHeaderLabels()
   const pathname = usePathname()
   return (
-    <div className="bg-background text-foreground min-h-svh">
+    <ClubAccentRoot accent={club?.accent} className="bg-background text-foreground min-h-svh">
       <PublicHeader
         club={club}
         title={t('club_core.public.title')}
@@ -147,7 +159,7 @@ export function PublicFrame({
       />
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-6">{children}</main>
       {club ? <PublicFooter club={club} /> : null}
-    </div>
+    </ClubAccentRoot>
   )
 }
 

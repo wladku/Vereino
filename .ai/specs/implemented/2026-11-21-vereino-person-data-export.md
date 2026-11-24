@@ -1,7 +1,7 @@
 # Person data export for access and portability requests
 
 **Date**: 2026-11-21
-**Status**: Draft (issue #527; implementation is Ask First: it adds a route, an ACL feature and a migration, and needs the owner's approval of DD-X04 and the assumptions marked ⚠)
+**Status**: Implemented (issue #527; approved by the owner on 2026-11-22 on #527, Q-X01: A-2, A-3, A-4 with the migration of DD-X04, and A-9)
 
 ## TLDR
 
@@ -403,18 +403,18 @@ asserts that the row exists.
 
 ## Acceptance Criteria
 
-- [ ] **AC-X01** — A club administrator of organization A downloads, for one person of A, one JSON file holding that
+- [x] **AC-X01** — A club administrator of organization A downloads, for one person of A, one JSON file holding that
   person's rows from every table in the contributor inventory, with encrypted values decrypted (TEST-X01).
-- [ ] **AC-X02** — The file holds no id of another person and no other author's message body. Links to other people
+- [x] **AC-X02** — The file holds no id of another person and no other author's message body. Links to other people
   appear only as relation plus name, as DD-X03 allows (TEST-X01).
-- [ ] **AC-X03** — A person of another organization or tenant cannot be exported (404), and a caller without
+- [x] **AC-X03** — A person of another organization or tenant cannot be exported (404), and a caller without
   `people.persons.export` gets 403 (TEST-X02).
-- [ ] **AC-X04** — Every export writes one `people_data_export_log` row before the data is read. A failed log write
+- [x] **AC-X04** — Every export writes one `people_data_export_log` row before the data is read. A failed log write
   returns 500 with no data.
-- [ ] **AC-X05** — A module that is not enabled is listed in `omitted` and does not fail the export.
-- [ ] The Data requests panel uses the canonical components and semantic tokens, and covers the idle, busy, success,
+- [x] **AC-X05** — A module that is not enabled is listed in `omitted` and does not fail the export.
+- [x] The Data requests panel uses the canonical components and semantic tokens, and covers the idle, busy, success,
   error, hidden, keyboard, 375 px, light and dark states (TEST-X04).
-- [ ] Every affected API and UI path has self-contained integration coverage, and `yarn verify` passes.
+- [x] Every affected API and UI path has self-contained integration coverage, and `yarn verify` passes.
 
 ## Final Compliance Report
 
@@ -427,7 +427,7 @@ asserts that the row exists.
 | UI contracts identify references, canonical components, and theme/state coverage | pass | Data requests panel row (`ErasurePanel.tsx` reference) |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | Phases X1–X3 |
 
-Verdict: `Blocked — owner approval of the migration (DD-X04) and of the ⚠ assumptions A-2, A-3, A-4 and A-9 (Q-X01)`.
+Verdict: `Implemented — Q-X01 approved on #527 (2026-11-22); phases X1–X3 shipped together (#527)`.
 
 ## Resolved assumptions (autonomous defaults)
 
@@ -450,7 +450,7 @@ most reversible choice. The owner can override any answer on the spec PR.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-X01 | Approve A-2, A-3, A-4 (the migration) and A-9, so that implementation may start | product owner | yes | pending |
+| Q-X01 | Approve A-2, A-3, A-4 (the migration) and A-9, so that implementation may start | product owner | yes | approved as proposed, 2026-11-22 (owner comment on #527) |
 
 ## Changelog
 

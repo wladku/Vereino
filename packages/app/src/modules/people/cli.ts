@@ -7,7 +7,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
-import { registerLifeCycleSchedule, setUpClubPeople } from './services/club-setup'
+import { registerLifeCycleSchedule, registerRetentionSweepSchedule, setUpClubPeople } from './services/club-setup'
 import { PEOPLE_PAYMENTS_GATE, type PaymentsGate } from './services/payments-gate'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
@@ -162,6 +162,59 @@ const lifeCycle: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleExpiry, bootstrapAdmin, checkOwnPayments, purgeImportRows, lifeCycle]
+/**
+ * `people retention-sweep --tenant <id> --org <id> [--today YYYY-MM-DD] [--dry-run] [--register-schedule]`: one run of
+ * the daily former participants' retention sweep (club spec REQ-041; #471). `--dry-run` prints the counts and changes
+ * nothing (the run leaves only its audit entry); `--register-schedule` registers the daily `people:retention-sweep`
+ * schedule after a real run — the confirmed first run on an existing club (`docs/ops/deploy.md`). Prints the job's
+ * result as JSON (counts only).
+ */
+const retentionSweep: ModuleCli = {
+  command: 'retention-sweep',
+  async run(argv) {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        tenant: { type: 'string' },
+        org: { type: 'string' },
+        today: { type: 'string' },
+        'dry-run': { type: 'boolean' },
+        'register-schedule': { type: 'boolean' },
+      },
+      strict: false,
+      allowPositionals: true,
+    })
+    const tenant = typeof values.tenant === 'string' ? values.tenant : undefined
+    const org = typeof values.org === 'string' ? values.org : undefined
+    const today = typeof values.today === 'string' ? values.today : undefined
+    const dryRun = values['dry-run'] === true
+    const register = values['register-schedule'] === true
+    if (!tenant || !org || (dryRun && register)) {
+      process.stderr.write(
+        'Usage: mercato people retention-sweep --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run | --register-schedule]\n',
+      )
+      throw new Error('[internal] people retention-sweep: invalid options')
+    }
+    const scope = { tenantId: tenant, organizationId: org }
+    await runJobCommand('people.persons.retention_sweep', scope, {
+      ...(today ? { today } : {}),
+      ...(dryRun ? { dryRun } : {}),
+    })
+    if (register) {
+      const registered = await registerRetentionSweepSchedule(await createRequestContainer(), scope)
+      process.stdout.write(`${JSON.stringify({ scheduleRegistered: registered })}\n`)
+      if (!registered) throw new Error('[internal] people:retention-sweep schedule not registered')
+    }
+  },
+}
+
+const commands: ModuleCli[] = [
+  syncRoleExpiry,
+  bootstrapAdmin,
+  checkOwnPayments,
+  purgeImportRows,
+  lifeCycle,
+  retentionSweep,
+]
 
 export default commands

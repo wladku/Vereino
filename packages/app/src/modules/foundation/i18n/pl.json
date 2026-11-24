@@ -33,5 +33,6 @@
   "foundation.errors.scope_unlinked": "Twoje konto nie jest powiązane z osobą w tym klubie, więc nie ma dostępu do danych klubu. Musi je powiązać administrator klubu. W nowym klubie pierwszego administratora wybiera się w panelu: baner „Klub nie ma jeszcze administratora” › „Pierwszy administrator”.",
   "foundation.errors.token_link_expired": "Ten link wygasł. Poproś klub o nowy link.",
   "foundation.errors.token_link_used": "Ten link został już użyty. Jeśli chcesz wprowadzić kolejną zmianę, poproś klub o nowy link.",
-  "foundation.errors.validity_inverted": "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia."
+  "foundation.errors.validity_inverted": "Data zakończenia nie może być wcześniejsza niż data rozpoczęcia.",
+  "foundation.email.senderName": "{club} przez Vereino"
 }

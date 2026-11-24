@@ -171,7 +171,7 @@ async function deliverEmail(
         reasons: delivery.reasons as AudienceReason[],
         secrets: delivery.secretParams ? (JSON.parse(delivery.secretParams) as Record<string, unknown>) : {},
       },
-      { name: club.name },
+      { name: club.name, publicSlug: club.publicSlug ?? null },
     )
   } catch (error: unknown) {
     logger.warn('E-mail render failed', {
@@ -190,6 +190,7 @@ async function deliverEmail(
       subject: rendered.subject,
       react: rendered.react,
       text: rendered.text,
+      ...(rendered.from ? { from: rendered.from } : {}),
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
     })

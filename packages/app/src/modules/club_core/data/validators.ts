@@ -68,12 +68,17 @@ export const clubSettingsUpdateSchema = clubSettingsPatchSchema
     // (`clubSettingsRuleProblem`, #87).
     timezone: z.string().trim().min(1).max(100).optional(),
     ownAccountMinAge: z.number().int().optional(),
+    // Outside 1–120 is a 422 business error of the command too (#471).
+    formerParticipantRetentionMonths: z.number().int().optional(),
     publicSlug: nullableSlug.optional(),
     publicDescription: nullableText(4000).optional(),
     contactPhone: nullableText(50).optional(),
     bankAccount: nullableText(64).optional(),
     rulesUrl: nullableLink.optional(),
     privacyPolicyUrl: nullableLink.optional(),
+    // The club's colour (#486): blank or null clears it; a value that is not a hex colour is a 422
+    // `accent_color_invalid` of the command, so the cap here only bounds the request.
+    accentColor: nullableText(20).optional(),
     publication: publicationPatchSchema.optional(),
     // The club's consent texts (#309): an empty string restores the built-in text; the 1000-character limit is a
     // 422 business error of the command, so the cap here only bounds the request.

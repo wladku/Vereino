@@ -1,7 +1,7 @@
 // The club's calendar: today's date in the club time zone, from `club_core`'s settings service (foundation spec
 // DD-F16; resolved through DI with `hasRegistration`, so `people` degrades to the default zone without `club_core`).
 import type { AwilixContainer } from 'awilix'
-import type { CalendarDate } from '@vereino/core'
+import { clubAccent, type CalendarDate, type ClubAccent } from '@vereino/core'
 import type { ClubCoreSettingsService, ClubSettingsSnapshot } from '../../club_core/services/settings'
 import { calendarDateInZone } from '../lib/people-rules'
 
@@ -9,12 +9,12 @@ import { calendarDateInZone } from '../lib/people-rules'
 const CLUB_CORE_SETTINGS_SERVICE = 'clubCoreSettings'
 
 /**
- * The club settings `people` reads: the account age threshold, the default locale, the time zone and the club's short
- * name (club content, shown in the club's language on `/club`).
+ * The club settings `people` reads: the account age threshold, the default locale, the time zone, the club's short
+ * name (club content, shown in the club's language on `/club`) and the former participants' retention period (#471).
  */
 export type PeopleClubSettings = Pick<
   ClubSettingsSnapshot['values'],
-  'ownAccountMinAge' | 'defaultLocale' | 'timezone' | 'shortName'
+  'ownAccountMinAge' | 'defaultLocale' | 'timezone' | 'shortName' | 'formerParticipantRetentionMonths'
 >
 
 /** The default club zone and age threshold when `club_core` is not enabled (club spec DD-37 defaults). */
@@ -23,6 +23,7 @@ const FALLBACK_SETTINGS: PeopleClubSettings = {
   defaultLocale: 'pl',
   timezone: 'Europe/Warsaw',
   shortName: null,
+  formerParticipantRetentionMonths: 12,
 }
 
 export type ClubScope = { tenantId: string; organizationId: string }
@@ -34,11 +35,25 @@ export async function clubSettings(container: AwilixContainer, scope: ClubScope)
   return (await service.get(scope)).values
 }
 
+/** The club's public slug, which names its address (many clubs spec phase 3, #631), or null. */
+export async function clubPublicSlug(container: AwilixContainer, scope: ClubScope): Promise<string | null> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return (await service.get(scope)).publicSettings.publicSlug
+}
+
 /** The club logo for the member header (#29): the authenticated image URL, or null (the header shows the name). */
 export async function clubLogoUrl(container: AwilixContainer, scope: ClubScope): Promise<string | null> {
   if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
   const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
   return (await service.get(scope)).publicSettings.logoUrl
+}
+
+/** The club's colour for the member header bar (#486), or null (the default) without one or without `club_core`. */
+export async function clubAccentOf(container: AwilixContainer, scope: ClubScope): Promise<ClubAccent | null> {
+  if (!container.hasRegistration(CLUB_CORE_SETTINGS_SERVICE)) return null
+  const service = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS_SERVICE)
+  return clubAccent((await service.get(scope)).publicSettings.accentColor)
 }
 
 /** The club's full name for the Today header (R06.1, E20-S14 #493): the platform organization's name, or null. */

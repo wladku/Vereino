@@ -15,6 +15,14 @@ export const features = [
     module: 'people',
     dependsOn: ['people.manage'],
   },
+  // Person data export spec DD-X01, A-6 (#527): one person's data for an access or portability request; the club
+  // administrator holds it through `people.*`, the route also requires the `club_admin` grant.
+  {
+    id: 'people.persons.export',
+    title: "Export a person's data",
+    module: 'people',
+    dependsOn: ['people.view'],
+  },
 ]
 
 export default features

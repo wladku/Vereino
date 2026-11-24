@@ -17,7 +17,7 @@ import { emitCrudSideEffects, emitCrudUndoSideEffects } from '@open-mercato/shar
 import type { CrudEventsConfig } from '@open-mercato/shared/lib/crud/types'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
-import { normalizeBankAccount, type ActingRole } from '@vereino/core'
+import { normalizeBankAccount, normalizeHexColor, type ActingRole } from '@vereino/core'
 import { assertSupportedLocale, authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { clubCoreErrors } from '../api/errors'
 import { ClubSettings } from '../data/entities'
@@ -80,6 +80,8 @@ type SettingsSnapshot = Record<ClubSettingKey, unknown> & {
   // The footer links (#195); absent in log entries written before them.
   rulesUrl?: string | null
   privacyPolicyUrl?: string | null
+  // The club's colour (#486); absent in log entries written before it.
+  accentColor?: string | null
   publication?: Publication
   // The consent texts (#309); absent in log entries written before them.
   consentTexts?: ConsentTexts
@@ -106,6 +108,7 @@ function snapshot(row: ClubSettings): SettingsSnapshot {
     bankAccount: row.bankAccount ?? null,
     rulesUrl: row.rulesUrl ?? null,
     privacyPolicyUrl: row.privacyPolicyUrl ?? null,
+    accentColor: row.accentColor ?? null,
     publication: resolvePublication(row.publication),
     consentTexts: parseConsentTexts(row.consentTexts),
   }
@@ -155,6 +158,7 @@ function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
   row.showCalledUpChildren = values.showCalledUpChildren
   row.coachMayCancel = values.coachMayCancel
   row.orderSalesDocument = values.orderSalesDocument
+  row.formerParticipantRetentionMonths = values.formerParticipantRetentionMonths
   row.updatedAt = new Date()
 }
 
@@ -178,12 +182,17 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
   row.showCalledUpChildren = text(before.showCalledUpChildren, row.showCalledUpChildren)
   if (typeof before.coachMayCancel === 'boolean') row.coachMayCancel = before.coachMayCancel
   row.orderSalesDocument = text(before.orderSalesDocument, row.orderSalesDocument)
+  row.formerParticipantRetentionMonths = integer(
+    before.formerParticipantRetentionMonths,
+    row.formerParticipantRetentionMonths,
+  )
   if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
   if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone
   if (before.bankAccount !== undefined) row.bankAccount = before.bankAccount
   if (before.rulesUrl !== undefined) row.rulesUrl = before.rulesUrl
   if (before.privacyPolicyUrl !== undefined) row.privacyPolicyUrl = before.privacyPolicyUrl
+  if (before.accentColor !== undefined) row.accentColor = before.accentColor
   if (before.publication !== undefined) row.publication = resolvePublication(before.publication)
   if (before.consentTexts !== undefined) row.consentTexts = { ...parseConsentTexts(before.consentTexts) }
   row.updatedAt = new Date()
@@ -240,7 +249,7 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
             const before = snapshot(row)
             const current = resolveStoredSettings(row, row.organizationId).values
             const patch = authorized.parsed
-            // An unknown zone or a threshold outside 13–18 → 422 with a field error (#87).
+            // An unknown zone, a threshold outside 13–18 or a retention period outside 1–120 → 422 with a field error (#87, #471).
             const rule = clubSettingsRuleProblem(patch)
             if (rule) await throwFieldError(rule.code, rule.field)
             // Unknown locale → 422 `locale_unsupported` (club spec glossary *Language*); stored in its canonical form.
@@ -254,6 +263,13 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
             else if (typeof bankAccount === 'string' && bankAccount !== row.bankAccount) {
               row.bankAccount =
                 normalizeBankAccount(bankAccount) ?? (await throwFieldError('bank_account_invalid', 'bankAccount'))
+            }
+            // The club's colour (#486): a hex colour stored as `#rrggbb`, or 422 `accent_color_invalid`.
+            const accentColor = patch.accentColor
+            if (accentColor === null) row.accentColor = null
+            else if (typeof accentColor === 'string') {
+              row.accentColor =
+                normalizeHexColor(accentColor) ?? (await throwFieldError('accent_color_invalid', 'accentColor'))
             }
             // The club's consent texts (#309): the limit first, then the change with its instant.
             const consentPatch = patch.consentTexts as ConsentTextsPatch | undefined
