@@ -22,6 +22,11 @@ describe('club_core error codes', () => {
         status: 422,
         messageKey: 'club_core.errors.account_age_threshold_out_of_range',
       },
+      {
+        code: 'retention_months_out_of_range',
+        status: 422,
+        messageKey: 'club_core.errors.retention_months_out_of_range',
+      },
       { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
       { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
       { code: 'accent_color_invalid', status: 422, messageKey: 'club_core.errors.accent_color_invalid' },
@@ -31,6 +36,11 @@ describe('club_core error codes', () => {
       { code: 'section_name_taken', status: 409, messageKey: 'club_core.errors.section_name_taken' },
       { code: 'public_slug_taken', status: 409, messageKey: 'club_core.errors.public_slug_taken' },
       { code: 'slug_reserved', status: 400, messageKey: 'club_core.errors.slug_reserved' },
+      { code: 'club_not_found', status: 404, messageKey: 'club_core.errors.club_not_found' },
+      { code: 'offboarding_not_due', status: 409, messageKey: 'club_core.errors.offboarding_not_due' },
+      { code: 'export_unavailable', status: 409, messageKey: 'club_core.errors.export_unavailable' },
+      { code: 'export_running', status: 409, messageKey: 'club_core.errors.export_running' },
+      { code: 'export_not_found', status: 404, messageKey: 'club_core.errors.export_not_found' },
       { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
       {
         code: 'publication_requests_need_calendar',

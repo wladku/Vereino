@@ -5,6 +5,7 @@
 // calendar when the club publishes no public page). No names, no roster, no token. `communication` resolves it with
 // `hasRegistration` after it has authorized the author's scope over the session.
 import type { AwilixContainer } from 'awilix'
+import { clubOrigin } from '@vereino/core'
 import { renderLocalized } from '@/modules/foundation'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import { sessionWhen, shareTextKey, shareTextPath } from '../lib/share-text'
@@ -35,7 +36,9 @@ export function createShareText(container: AwilixContainer): ActivitiesShareText
       const occurrence = (await directory.findOccurrences(scope, [occurrenceId])).get(occurrenceId)
       if (!occurrence) return null
       const settings = await container.resolve<ClubCoreSettingsService>('clubCoreSettings').get(scope)
-      const url = `${appUrl()}${shareTextPath(
+      // The club's address with `VEREINO_CLUB_DOMAIN` set (many clubs spec phase 3, #631), else `APP_URL`.
+      const base = clubOrigin(settings.publicSettings.publicSlug, process.env) ?? appUrl()
+      const url = `${base}${shareTextPath(
         {
           publicSlug: settings.publicSettings.publicSlug,
           publicationEnabled: settings.publicSettings.publication.enabled,

@@ -1,7 +1,10 @@
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
+import { ClubLanding } from '@/modules/club_core/components/ClubLanding'
+import { clubHostHome } from '@/modules/club_core/lib/club-host'
 import { homeClubSlug, homeRedirect } from '@/modules/club_core/lib/home-route'
+import { requestClub, sessionRedirectForHost } from '@/modules/club_core/services/request-club'
 import type { ClubCorePublicSite } from '@/modules/club_core/services/public-site'
 
 function isAutoLoginEnabled(): boolean {
@@ -27,9 +30,11 @@ async function publishedHomeClubSlug(): Promise<string | null> {
   }
 }
 
-// The home route is a pure router: it never renders (#485; owner decision 4 of epic #479). The platform start page is
-// no landing any more: a guest goes to the club's public page while it is published, otherwise to the sign-in page; a
-// signed-in visitor goes into the app.
+// The home route (#485; owner decision 4 of epic #479). On a one-club instance it is a pure router: a guest goes to the
+// club's public page while it is published, otherwise to the sign-in page; a signed-in visitor goes into the app. With
+// `VEREINO_CLUB_DOMAIN` set (many clubs spec phase 3, DD-M02; #631) the request's host picks the club: a club's address
+// routes the same way for that club, the instance's own address shows the neutral landing page to a guest, and an
+// unknown host or a label that names no club is not found. A session of another club goes to its own club's address.
 export default async function Home() {
   const auth = await getAuthFromCookies()
 
@@ -42,5 +47,14 @@ export default async function Home() {
     redirect('/api/auth/autologin')
   }
 
-  redirect(homeRedirect({ authenticated: Boolean(auth), publishedClubSlug: auth ? null : await publishedHomeClubSlug() }))
+  const request = await requestClub()
+  if (request.host.kind === 'single') {
+    redirect(homeRedirect({ authenticated: Boolean(auth), publishedClubSlug: auth ? null : await publishedHomeClubSlug() }))
+  }
+  const elsewhere = await sessionRedirectForHost(request, auth, '/backend')
+  if (elsewhere) redirect(elsewhere)
+  const outcome = clubHostHome({ host: request.host, authenticated: Boolean(auth), hostClub: request.hostClub })
+  if (outcome.kind === 'not_found') notFound()
+  if (outcome.kind === 'redirect') redirect(outcome.to)
+  return <ClubLanding />
 }

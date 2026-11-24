@@ -3,11 +3,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test, type Page } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { createClub, uniqueSuffix } from '../_fixtures/club'
+import { publicGet, publish } from '../_fixtures/publication'
 import { createIsolatedTenant } from '../_fixtures/tenant'
 
 // ENG-TEST-11 (engineering standards spec, phase E4, S8.4; issue #463), locally on the runner's production build:
 // pages carry HSTS, Permissions-Policy and the decided CSP (no `'unsafe-eval'`), authenticated API responses are
-// `no-store` while anonymous public JSON keeps its shared caching, `scripts/smoke.mjs` passes every check with a smoke
+// `no-store` while anonymous public JSON keeps its shared caching (S8.6, a public club route; #557), `scripts/smoke.mjs` passes every check with a smoke
 // account, and the admin UI runs under the stricter CSP without a violation.
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', '..', '..')
 const HSTS = 'max-age=63072000; includeSubDomains'
@@ -85,6 +87,32 @@ test('ENG-TEST-11 authenticated API responses are no-store, anonymous ones are n
   const anonymous = await request.get('/api/healthz', { headers: { cookie: '' } })
   expect(anonymous.ok()).toBe(true)
   expect(anonymous.headers()['cache-control'] ?? '').not.toContain('private, no-store')
+})
+
+test('ENG-TEST-11 a sessionless public club JSON route keeps public s-maxage=60 for anonymous callers (S8.6)', async ({
+  request,
+}) => {
+  const club = await createClub(request, 'eng-test-11-public')
+  try {
+    const slug = `e11-${uniqueSuffix()}`
+    await publish(request, club.adminToken, slug, ['contact'], { shortName: 'Klub E11' })
+    const route = `/api/club_core/public/${slug}`
+
+    // No cookie, no bearer token, no API key: the route's own shared caching survives the config's S8.4 header.
+    const anonymous = await publicGet(request, route)
+    expect(anonymous.status, JSON.stringify(anonymous.body)).toBe(200)
+    const cacheControl = anonymous.headers['cache-control'] ?? ''
+    expect(cacheControl).toContain('public')
+    expect(cacheControl).toContain('s-maxage=60')
+    expect(cacheControl).not.toContain('no-store')
+
+    // The same route with a session cookie is the safe side: `private, no-store`.
+    const signedIn = await request.get(route, { headers: { cookie: `auth_token=${club.adminToken}` } })
+    expect(signedIn.status()).toBe(200)
+    expect(signedIn.headers()['cache-control']).toContain('no-store')
+  } finally {
+    await club.cleanup()
+  }
 })
 
 test('ENG-TEST-11 the post-deploy smoke check passes every check with a smoke account', async ({

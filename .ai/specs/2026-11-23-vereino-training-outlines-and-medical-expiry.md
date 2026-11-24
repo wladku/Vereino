@@ -1,7 +1,7 @@
 # Training outlines, a shared outline library and the medical certificate expiry date
 
 **Date**: 2026-11-23
-**Status**: Draft (issue #672, epic E24 #671, decision D-038 in PR #670; the owner's choices are left as Open Questions Q-O01…Q-O10; every migration, the new module and the library scope are Ask First items)
+**Status**: Ready for implementation — approved by the product owner on 2026-11-24 ([owner decision on #671](https://github.com/wladku/Vereino/issues/671#issuecomment-7123134361); issue #672, epic E24 #671, decision D-038 in PR #670)
 
 > Use om-spec-writing for the process. This spec is design-only: nothing is built in its PR.
 
@@ -496,18 +496,22 @@ Polish always (they are PZPN's values). The exact column order is checked agains
 
 ### Ask First items (need the owner's approval before the phase starts)
 
-| Item | Phase | Kind |
-|---|---|---|
-| `people_persons.medical_valid_until` and the `medical` consent kind | 1 | migration; Art. 9 data |
-| `activities.occurrenceFacts` DI contract and the `vereino:club:occurrence:sections` spot | 2 | new contract surfaces (additive) |
-| `VEREINO_LIBRARY_TENANT_ID`, `VEREINO_LIBRARY_ORGANIZATION_ID`, `VEREINO_LIBRARY_RATER_SECRET` | 4 | configuration; secret |
-| New module `training` (registration, ACL, roles) | 2 | new module |
-| `training_outlines`, `training_authors` | 2 | migration |
-| `club_core_club_settings.outline_library_max_visibility` | 4 | migration; contract (settings schema) |
-| Library tenant, its configuration and the `trainingLibrary` scope rule in AGENTS.md | 4 | architecture; scope |
-| `training_library_entries`, `_ratings`, `_uses`, `_reports` | 4 | migration |
-| New probe kind in `check-route-isolation.mjs` | 4 | change to a gate script |
-| A server-side PDF library, only if Q-O07 chooses it | 2 | dependency |
+The owner approved on 2026-11-24 ([decision on #671](https://github.com/wladku/Vereino/issues/671#issuecomment-7123134361)) the new module `training` and every migration this spec
+defines for phases 1–4, as specified. Anything beyond the spec still needs a separate approval; the items below marked
+*open* are asked before their phase starts.
+
+| Item | Phase | Kind | Approval |
+|---|---|---|---|
+| `people_persons.medical_valid_until` and the `medical` consent kind | 1 | migration; Art. 9 data | approved 2026-11-24 (migration as specified) |
+| `activities.occurrenceFacts` DI contract and the `vereino:club:occurrence:sections` spot | 2 | new contract surfaces (additive) | open — ask before phase 2 |
+| `VEREINO_LIBRARY_TENANT_ID`, `VEREINO_LIBRARY_ORGANIZATION_ID`, `VEREINO_LIBRARY_RATER_SECRET` | 4 | configuration; secret | open — ask before phase 4 |
+| New module `training` (registration, ACL, roles) | 2 | new module | approved 2026-11-24 (Q-O09) |
+| `training_outlines`, `training_authors` | 2 | migration | approved 2026-11-24 |
+| `club_core_club_settings.outline_library_max_visibility` | 4 | migration; contract (settings schema) | approved 2026-11-24 (migration as specified) |
+| Library tenant, its configuration and the `trainingLibrary` scope rule in AGENTS.md | 4 | architecture; scope | open — ask before phase 4 |
+| `training_library_entries`, `_ratings`, `_uses`, `_reports` | 4 | migration | approved 2026-11-24 |
+| New probe kind in `check-route-isolation.mjs` | 4 | change to a gate script | open — ask before phase 4 |
+| A server-side PDF library, only if Q-O07 chooses it | 2 | dependency | not needed — Q-O07 chose the print page |
 
 ## Requirement Traceability
 
@@ -586,32 +590,34 @@ Every criterion that names a phone page is checked at 375 px, in English and Pol
 | Tenant and organization scope derived on the server | pass | club data via `personScope`/`authorizeScoped`; library via fixed configured scope (DD-O10) |
 | No system-scope query added | pass with open item | the library tenant is a real tenant, no `organizationId: null`; the cross-tenant write still needs the AGENTS.md exception of DD-O10a (Ask First) |
 | No cross-module ORM relation | pass | scalar ids, optional DI (`people.medicalStatus`, `training.outlineTopics`), events |
-| Sensitive data | pass with open item | encrypted date, consent, compliance pack; legal basis Q-O06 |
+| Sensitive data | pass with open item | encrypted date, consent, compliance pack; legal basis Q-O06 decided (explicit consent), the lawyer confirms it before the production release of phase 1 |
 | Canonical UI primitives | pass | `CrudForm`/`DataTable` back office, Tailwind member pages, status variants |
 | Every requirement has a phase, test and AC | pass | *Requirement Traceability* |
-| Migrations and new module listed as Ask First | pass | *Ask First items* |
+| Migrations and new module listed as Ask First | pass | *Ask First items*; module and migrations approved 2026-11-24 |
 | Backward compatibility | pass | additive columns, routes and settings; settings schema gains one optional key |
 
-Verdict: `Draft — ready for implementation after the owner answers Q-O01…Q-O10 and approves the Ask First items.`
+Verdict: `Ready for implementation — the owner answered Q-O01…Q-O10 and approved the module and the migrations on 2026-11-24; the lawyer items of Q-O03 and Q-O06 block the production release of phases 4 and 1 (not building); V-O1 and V-O2 stay open as exit-gate checks of phases 3 and 2; the remaining Ask First items are asked before their phase.`
 
 ## Open Questions
 
-Each question has a recommended default that the design above already assumes; the owner confirms or changes it.
+Each question had a recommended default that the design above already assumes. The owner accepted every default on
+2026-11-24 ([decision on #671](https://github.com/wladku/Vereino/issues/671#issuecomment-7123134361)). The lawyer items (Q-O03, Q-O06) do not block building; they block the
+production release of phase 4 (public library) and phase 1 (medical date). V-O1 and V-O2 stay open as exit-gate checks.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-O01 | Who enters the medical date: (a) administrator + coordinator + guardian + adult self (recommended), (b) administrator and coordinator only, (c) guardian and adult self only? | Władek Kuć | phase 1 | open — default (a) |
-| Q-O02 | Does a coach choose the visibility per outline within the club's level (recommended: yes, new outlines start at "club"), or does every published outline take the club's level? | Władek Kuć | phase 4 | open — default per outline |
-| Q-O03 | The licence and terms for shared outlines: CC BY-SA 4.0 (D-038 proposal) or CC BY 4.0; who signs the terms text (with the D-035 lawyer items)? | Władek Kuć | phase 4 | open — default CC BY-SA 4.0, ⚠ lawyer |
-| Q-O04 | Moderation: automatic hiding after reports from 3 clubs plus an operator CLI (recommended), pre-moderation of public outlines, or no hiding until an operator acts? | Władek Kuć | phase 4 | open — default automatic hiding |
-| Q-O05 | Does a red medical status block confirming a player for a match, or only warn (recommended: warn; the duty is the player's, and the club may hold a paper certificate)? | Władek Kuć | phase 1 | open — default warn |
-| Q-O06 | Legal basis for the date: explicit consent Art. 9(2)(a) (recommended) or another basis named by the lawyer? | Władek Kuć | phase 1 | open — ⚠ lawyer |
-| Q-O07 | PDF: the print page with "Save as PDF" (recommended, no dependency) or a server-side PDF library (Ask First dependency)? | Władek Kuć | phase 2 | open — default print page |
-| Q-O08 | When a club leaves Vereino, do its shared outlines stay in the library under the licence (credit "former club") or are they withdrawn (recommended)? | Władek Kuć | phase 4 | open — default withdraw |
-| Q-O09 | Do outlines, the PDF and the library go into a new module `training` (recommended, DD-O05) or into `activities`? | Władek Kuć | phase 2 | open — default new module |
-| Q-O10 | Keep one spec with four independent phases (recommended; the issue asks for one spec and each phase is its own story with its own Ask First), or split into three specs: medical expiry, outlines with PDF and exports, and the shared library (the new cross-tenant architecture)? | Władek Kuć | no | open — default one spec |
-| V-O1 | Check the export columns against PZPN's system with a certified club's administrator (the system has no import; the order of fields in its forms decides copying). | Władek Kuć | phase 3 | open |
-| V-O2 | Get a filled outline from a certified club and compare it with the print layout (the sample outlines in the PZPN programme are images; their field labels could not be read as text). | Władek Kuć | phase 2 | open |
+| Q-O01 | Who enters the medical date: (a) administrator + coordinator + guardian + adult self (recommended), (b) administrator and coordinator only, (c) guardian and adult self only? | Władek Kuć | phase 1 | decided 2026-11-24 — (a) administrator, coordinator, guardian and adult self |
+| Q-O02 | Does a coach choose the visibility per outline within the club's level (recommended: yes, new outlines start at "club"), or does every published outline take the club's level? | Władek Kuć | phase 4 | decided 2026-11-24 — per outline within the club's level; new outlines start at "club" |
+| Q-O03 | The licence and terms for shared outlines: CC BY-SA 4.0 (D-038 proposal) or CC BY 4.0; who signs the terms text (with the D-035 lawyer items)? | Władek Kuć | phase 4 | decided 2026-11-24 — CC BY-SA 4.0; ⚠ the lawyer confirms the licence and the terms text before the production release of phase 4 (with the D-035 lawyer items) |
+| Q-O04 | Moderation: automatic hiding after reports from 3 clubs plus an operator CLI (recommended), pre-moderation of public outlines, or no hiding until an operator acts? | Władek Kuć | phase 4 | decided 2026-11-24 — automatic hiding after reports from 3 clubs, plus an operator CLI |
+| Q-O05 | Does a red medical status block confirming a player for a match, or only warn (recommended: warn; the duty is the player's, and the club may hold a paper certificate)? | Władek Kuć | phase 1 | decided 2026-11-24 — warn, never block |
+| Q-O06 | Legal basis for the date: explicit consent Art. 9(2)(a) (recommended) or another basis named by the lawyer? | Władek Kuć | phase 1 | decided 2026-11-24 — explicit consent, Art. 9(2)(a) GDPR; ⚠ the lawyer confirms the legal basis before the production release of phase 1 |
+| Q-O07 | PDF: the print page with "Save as PDF" (recommended, no dependency) or a server-side PDF library (Ask First dependency)? | Władek Kuć | phase 2 | decided 2026-11-24 — the print page with "Save as PDF"; no PDF dependency |
+| Q-O08 | When a club leaves Vereino, do its shared outlines stay in the library under the licence (credit "former club") or are they withdrawn (recommended)? | Władek Kuć | phase 4 | decided 2026-11-24 — withdrawn |
+| Q-O09 | Do outlines, the PDF and the library go into a new module `training` (recommended, DD-O05) or into `activities`? | Władek Kuć | phase 2 | decided 2026-11-24 — new module `training` (DD-O05) |
+| Q-O10 | Keep one spec with four independent phases (recommended; the issue asks for one spec and each phase is its own story with its own Ask First), or split into three specs: medical expiry, outlines with PDF and exports, and the shared library (the new cross-tenant architecture)? | Władek Kuć | no | decided 2026-11-24 — one spec with four independent phases |
+| V-O1 | Check the export columns against PZPN's system with a certified club's administrator (the system has no import; the order of fields in its forms decides copying). | Władek Kuć | phase 3 | open — exit-gate check of phase 3 |
+| V-O2 | Get a filled outline from a certified club and compare it with the print layout (the sample outlines in the PZPN programme are images; their field labels could not be read as text). | Władek Kuć | phase 2 | open — exit-gate check of phase 2 |
 
 ## Changelog
 
