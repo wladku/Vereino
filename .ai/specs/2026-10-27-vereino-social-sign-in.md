@@ -1,7 +1,7 @@
 # Vereino social sign-in — Google and Facebook for account holders
 
 **Date**: 2026-10-27
-**Status**: Draft (design complete; waiting for the product owner's approval on the PR, the `arctic` dependency approval and V-S04)
+**Status**: In progress (approved by the product owner on 2026-11-22 on #566, with the `arctic` dependency; V-S04 decided on #566)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -198,7 +198,7 @@ No scheduled job.
 
 - **Authorization:** `start` and `callback` are sessionless with IP rate limits; `start` chooses the link purpose only for a session that holds `foundation.identity.self`; every other route has a feature gate; the identity commands run `authorizeScoped` with the `self_user` grant (`club_admin` for the administrator's unlink); the administrator's list is scoped by `club_admin`.
 - **Tenant isolation:** the only tenant-blind read is the (`provider`, `subject`) lookup — the second entry of the DD-35 list (DD-S03, D27, listed in `AGENTS.md`); it returns at most one row and every later query runs in that row's tenant and organization; the `link` purpose carries the signed-in user's id in the marker, never from the request.
-- **OAuth hygiene:** PKCE S256; random 32-byte state; single-use marker consumed atomically; cookie `HttpOnly`, `SameSite=Lax`, `Secure`; id-token signature, issuer and audience verified by `arctic`; `redirect` sanitized to same-origin paths (`sanitizeRedirectPath` of `auth`); client secrets only in `VEREINO_OAUTH_<PROVIDER>_CLIENT_SECRET`. No nonce and no per-subject limit (DD-S04).
+- **OAuth hygiene:** PKCE S256; random 32-byte state; single-use marker consumed atomically; cookie `HttpOnly`, `SameSite=Lax`, `Secure`; id token taken only from the token endpoint over TLS (back channel) with issuer, audience, authorized party, expiry and subject checked in `lib/identity.ts` — `arctic` decodes but does not verify, so per OIDC Core §3.1.3.7 the TLS server validation stands in for the signature check (V-S04); `redirect` sanitized to same-origin paths (`sanitizeRedirectPath` of `auth`); client secrets only in `VEREINO_OAUTH_<PROVIDER>_CLIENT_SECRET`. No nonce and no per-subject limit (DD-S04).
 - **No enumeration, no JIT:** the three `/login` outcomes render one sentence and the link flow's failure another; the callback never says whether an identity or an e-mail exists, including when a subject is bound to another user; no account is created (DD-S02).
 - **Sessions:** the platform's own cookies (`autologin.ts` pattern), so logout, refresh and `sessionIntegrity.ts` checks apply unchanged; `foundation.identity.signed_in` is emitted next to the platform's `auth` event.
 - **Minors:** a ward aged 16–17 keeps the limited account (R10); Google and Facebook accept users from 13; the club's privacy notice names both providers as processors.
@@ -294,10 +294,10 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 | Platform-native reuse and extension points were chosen before custom code | pass | session, login spot, state pattern, rate limits and the foundation primitives reused; only the table and the OAuth client are new |
 | UI contracts identify references, canonical components, and theme/state coverage | pass | three surfaces with references, components, states and a mock-up |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | phases 1–2 |
-| Contracts of installed modules confirmed at the field and behavior level | pass (V-S04 open) | V-S01 (`AuthService.createSession` + `signJwt`, `autologin.ts`, `login.ts:186`), V-S02 (no OAuth in core `auth`; enterprise `sso` is OIDC/SAML only), V-S03 (`auth.login:form` spot); V-S04 (`arctic`) confirmed in phase 1 step 1 |
-| User approval for implementation | fail | pending: the product owner's approval on the PR; the `arctic` dependency (Ask First, S16.1 evidence) |
+| Contracts of installed modules confirmed at the field and behavior level | pass | V-S01 (`AuthService.createSession` + `signJwt`, `autologin.ts`, `login.ts:186`), V-S02 (no OAuth in core `auth`; enterprise `sso` is OIDC/SAML only), V-S03 (`auth.login:form` spot); V-S04 (`arctic`) checked 2026-11-22, see *Open Questions* |
+| User approval for implementation | pass | the product owner approved the spec, the `arctic` dependency and the migration on #566 (2026-11-22) |
 
-Verdict: `Blocked — the product owner's approval of the design on the PR, the arctic dependency approval, and V-S04`
+Verdict: `Approved — phase 1 built on #566; phase 2 (Facebook) waits for its external reviews`
 
 ## Open Questions
 
@@ -318,7 +318,7 @@ Contract verifications:
 | V-S01 | Session issuance for a user without a password check | 1 | **Confirmed 2026-10-27:** `core/modules/auth/api/autologin.ts` (`AuthService.createSession(user, expiresAt)` + `signJwt`, cookies on the redirect, `emitAuthEvent`); `api/login.ts:186` |
 | V-S02 | Any installed OAuth/OIDC client or social login in the enabled modules | 1 | **Confirmed absent 2026-10-27:** no OAuth/OIDC code in `@open-mercato/core` or `shared`; `enterprise/src/modules/sso` is OIDC/SAML with SCIM and JIT (commercial, not usable) |
 | V-S03 | A place to inject the buttons on `/login` | 1 | **Confirmed 2026-10-27:** injection spot `auth.login:form` (`core/modules/auth/frontend/login-injection.ts`) |
-| V-S04 | `arctic` supports Google (OIDC, PKCE) and Facebook (OAuth 2.0) with endpoints configurable for a test fake, and verifies the id token's signature, issuer and audience | 1 | **Open — phase 1 step 1 with the dependency evidence;** fallback: `openid-client` for Google and a small OAuth 2.0 code exchange for Facebook behind the same provider interface |
+| V-S04 | `arctic` supports Google (OIDC, PKCE) and Facebook (OAuth 2.0) with endpoints configurable for a test fake, and verifies the id token's signature, issuer and audience | 1 | **Checked 2026-11-22 (`arctic@3.7.0`, MIT, deps `@oslojs/jwt` 0.2.0, `@oslojs/crypto` 1.0.1, `@oslojs/encoding` 1.1.0, released 2026-07):** Google PKCE S256 and Facebook OAuth 2.0 yes; endpoints configurable through the generic `OAuth2Client` (the provider classes hard-code them); id-token verification **no** (`decodeIdToken` only decodes). Decided on #566 (option 1, no further dependency): the token comes only from the token endpoint over TLS, so the claims are checked in our code (`idTokenIdentity`: `iss`, `aud`/`azp`, `exp`, `sub`) and TLS stands in for the signature (OIDC Core §3.1.3.7) |
 
 ## Changelog
 
