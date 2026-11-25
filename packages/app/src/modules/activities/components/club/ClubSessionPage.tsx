@@ -13,11 +13,14 @@
 // a match or sparring, and in the coach block "Take the session", "Message the group", the score form and the
 // substitution history. E10-S08 (#273, REQ-A10): a section coordinator reads it as the coordinator (`?as=coordinator`
 // from a section list or count, or by default when they do not coach) and gets the same block with the actions the
-// read allows; a session of another section is "This is not your session".
+// read allows; a session of another section is "This is not your session". E24-S03 (#683, training outlines spec
+// DD-O07a, M-O6): a staff reader (coach or coordinator) gets the spot `vereino:club:occurrence:sections` below the
+// coach block, which `training` fills with the session's outline; without a provider the spot renders nothing.
 import * as React from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -62,6 +65,12 @@ import {
 } from './club-client'
 
 type Perspective = 'self' | 'guardian'
+
+/**
+ * The spot below the coach block of a session read by its staff (training outlines spec DD-O07a, #683). Context:
+ * `{ occurrence: { id, activityId, activityType, status, occurrenceDate, startAt, endAt }, as: 'coach' | 'coordinator' }`.
+ */
+const OCCURRENCE_SECTIONS_SPOT = 'vereino:club:occurrence:sections'
 
 function readState(enabled: boolean, query: { data?: SessionLoad; isError: boolean }): SessionReadState {
   if (!enabled) return 'off'
@@ -425,6 +434,23 @@ function Session({ profile, id }: { profile: ClubProfile; id: string }) {
               flash(message, 'success')
             }
             await refresh()
+          }}
+        />
+      ) : null}
+      {coachEntry ? (
+        <InjectionSpot
+          spotId={OCCURRENCE_SECTIONS_SPOT}
+          context={{
+            occurrence: {
+              id: occurrence.id,
+              activityId: occurrence.activityId,
+              activityType: occurrence.activityType,
+              status: occurrence.status,
+              occurrenceDate: occurrence.occurrenceDate,
+              startAt: occurrence.startAt,
+              endAt: occurrence.endAt,
+            },
+            as: staffAs,
           }}
         />
       ) : null}
