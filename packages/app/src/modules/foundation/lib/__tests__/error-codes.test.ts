@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 
 describe('foundation error codes', () => {
-  it('declares the phase A1 codes, the locale code of #27, the foundation II codes, the S5.2 lock-token code, the foundation III codes, the unlinked-account code of #76 and the token-link codes of phase C with their statuses and message keys', () => {
+  it('declares the phase A1 codes, the locale code of #27, the foundation II codes, the S5.2 lock-token code, the foundation III codes, the unlinked-account code of #76 the token-link codes of phase C and the social sign-in codes of #566 with their statuses and message keys', () => {
     expect(errorCodes).toEqual([
       { code: 'scope_denied', status: 403, messageKey: 'foundation.errors.scope_denied' },
       { code: 'validity_inverted', status: 422, messageKey: 'foundation.errors.validity_inverted' },
@@ -19,6 +19,10 @@ describe('foundation error codes', () => {
       { code: 'scope_unlinked', status: 403, messageKey: 'foundation.errors.scope_unlinked' },
       { code: 'token_link_expired', status: 410, messageKey: 'foundation.errors.token_link_expired' },
       { code: 'token_link_used', status: 410, messageKey: 'foundation.errors.token_link_used' },
+      { code: 'identity_provider_disabled', status: 404, messageKey: 'foundation.errors.identity_provider_disabled' },
+      { code: 'identity_unavailable', status: 503, messageKey: 'foundation.errors.identity_unavailable' },
+      { code: 'identity_already_linked', status: 409, messageKey: 'foundation.errors.identity_already_linked' },
+      { code: 'identity_last_method', status: 409, messageKey: 'foundation.errors.identity_last_method' },
     ])
   })
 
