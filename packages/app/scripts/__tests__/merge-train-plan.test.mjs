@@ -6,10 +6,12 @@ import {
   FAILED_LABEL,
   QA_HOLD_MARKER,
   QA_HOLD_REASON,
+  RETARGET_REASONS,
   checksState,
   linkedIssue,
   needsQaHoldComment,
   planMergeTrain,
+  planRetargets,
   qaHold,
 } from '../../../../scripts/merge-train-plan.mjs'
 
@@ -201,5 +203,68 @@ describe('MT-TEST-05: labels mirrored onto the linked issue', () => {
   it('labels no issue when the branch names none', () => {
     const plan = planMergeTrain([pr(9, { branch: 'feat/batch-train', conflict: true })])
     assert.deepEqual(plan.labels, [{ pr: 9, label: CONFLICT_LABEL, add: true }])
+  })
+})
+
+// ST-TEST-01 of `.ai/specs/2026-11-24-cezar-stall-prevention.md` (REQ-ST01): the five scenarios of the Delta.
+describe('ST-TEST-01: planRetargets', () => {
+  const stacked = (number, base) => ({ number, base })
+  const base = (number, head, state, merged = false) => ({ number, head, state, merged })
+
+  it('retargets a PR whose base PR merged (scenario: base merged)', () => {
+    assert.deepEqual(
+      planRetargets([stacked(643, 'feat/issue-563-x')], [base(563, 'feat/issue-563-x', 'closed', true)]),
+      [{ pr: 643, base: 'feat/issue-563-x', action: 'retarget', reason: 'base-merged', basePr: 563 }],
+    )
+  })
+
+  it('blocks, and never retargets, a PR whose base PR was closed without merging (scenario: base closed)', () => {
+    assert.deepEqual(planRetargets([stacked(686, 'feat/b')], [base(677, 'feat/b', 'closed')]), [
+      { pr: 686, base: 'feat/b', action: 'block', reason: 'base-closed', basePr: 677 },
+    ])
+  })
+
+  it('changes nothing while the base PR is open (scenario: base open)', () => {
+    assert.deepEqual(planRetargets([stacked(2, 'feat/a')], [base(1, 'feat/a', 'open')]), [
+      { pr: 2, base: 'feat/a', action: 'none', reason: 'base-open', basePr: 1 },
+    ])
+  })
+
+  it('changes nothing when no PR has the base branch as head (scenario: no PR for the base)', () => {
+    assert.deepEqual(planRetargets([stacked(2, 'release/x')], [base(1, 'feat/other', 'closed', true)]), [
+      { pr: 2, base: 'release/x', action: 'none', reason: 'no-base-pr', basePr: null },
+    ])
+  })
+
+  it('lets an open PR on the base branch win over a merged one, and a merged one over a closed one', () => {
+    const history = [base(10, 'feat/a', 'closed'), base(11, 'feat/a', 'closed', true)]
+    assert.equal(planRetargets([stacked(20, 'feat/a')], history)[0].action, 'retarget')
+    assert.equal(planRetargets([stacked(20, 'feat/a')], history)[0].basePr, 11)
+    const reopened = [...history, base(12, 'feat/a', 'open')]
+    assert.deepEqual(planRetargets([stacked(20, 'feat/a')], reopened)[0], {
+      pr: 20,
+      base: 'feat/a',
+      action: 'none',
+      reason: 'base-open',
+      basePr: 12,
+    })
+  })
+
+  it('never takes a PR as its own base, and moves one level of a stack at a time (C on B on A)', () => {
+    const prs = [stacked(3, 'feat/b'), stacked(2, 'feat/a')]
+    const bases = [base(1, 'feat/a', 'closed', true), base(2, 'feat/b', 'open'), base(3, 'feat/c', 'open')]
+    assert.deepEqual(
+      planRetargets(prs, bases).map((step) => [step.pr, step.action]),
+      [
+        [3, 'none'],
+        [2, 'retarget'],
+      ],
+    )
+    assert.equal(planRetargets([stacked(5, 'feat/self')], [base(5, 'feat/self', 'open')])[0].reason, 'no-base-pr')
+  })
+
+  it('names every reason it gives', () => {
+    assert.deepEqual(Object.keys(RETARGET_REASONS).sort(), ['base-closed', 'base-merged', 'base-open', 'no-base-pr'])
+    assert.deepEqual(planRetargets([], []), [])
   })
 })

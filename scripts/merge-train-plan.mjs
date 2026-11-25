@@ -249,3 +249,41 @@ export function judgeBatch(batch, { headSha, runs, required, ageMinutes, maxAgeM
   if (batch.prs.length === 1) return { type: 'culprit', pr: batch.prs[0].number, sha: batch.prs[0].sha }
   return { type: 'bisect', suspects: numbers }
 }
+
+// Stacked PRs (`.ai/specs/2026-11-24-cezar-stall-prevention.md`, ST-D04, REQ-ST01): a PR built on another PR's branch
+// targets that branch, and the train reads only PRs on `main`. Once the base PR merged, the train retargets the stacked
+// PR to `main`; a base PR closed without merging holds it. `scripts/merge-train-stacked.mjs` reads and applies the plan.
+
+/** Hidden marker of the one comment the train leaves on a PR it retargeted to `main`. */
+export const RETARGET_MARKER = '<!-- merge-train:retarget -->'
+/** Hidden marker of the one comment the train leaves on a stacked PR whose base PR was closed without merging. */
+export const BASE_CLOSED_MARKER = '<!-- merge-train:base-closed -->'
+/** Why a stacked PR gets its action, as the run log prints it. */
+export const RETARGET_REASONS = {
+  'base-merged': 'its base PR merged',
+  'base-closed': 'its base PR was closed without merging',
+  'base-open': 'its base PR is still open',
+  'no-base-pr': 'no PR has its base branch as head',
+}
+
+/**
+ * Plans the stacked PRs (REQ-ST01). `stacked` are the open PRs whose base is not `main`, `{ number, base }` with `base`
+ * the base branch; `basePrs` are the PRs of this repository whose head is one of those branches,
+ * `{ number, head, state: 'open' | 'closed', merged }`. A branch can be the head of several PRs over time: an open one
+ * wins (nothing moves while work on the base goes on), then a merged one, then one closed without merging. The answer
+ * is one `{ pr, base, action, reason, basePr }` per stacked PR, in its order: `action` is `retarget` (to `main`),
+ * `block` (label `blocked`, no retarget) or `none`; `reason` a key of `RETARGET_REASONS`; `basePr` the deciding PR's
+ * number, `null` when no PR has that head.
+ */
+export function planRetargets(stacked, basePrs) {
+  return stacked.map((pr) => {
+    const bases = basePrs.filter((base) => base.head === pr.base && base.number !== pr.number)
+    const decide = (action, reason, base) => ({ pr: pr.number, base: pr.base, action, reason, basePr: base?.number ?? null })
+    const open = bases.find((base) => base.state === 'open')
+    if (open) return decide('none', 'base-open', open)
+    const merged = bases.find((base) => base.merged)
+    if (merged) return decide('retarget', 'base-merged', merged)
+    if (bases.length) return decide('block', 'base-closed', bases[0])
+    return decide('none', 'no-base-pr', null)
+  })
+}
