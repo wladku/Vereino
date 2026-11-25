@@ -43,7 +43,7 @@ Evidence from 2026-11-18:
 
 1. **Six integration shards** (#399) behind the one required `integration` check.
 2. **Date-safe fixtures** — a shared helper picks days at least two days ahead for declarations, bookings and sessions; existing tests that use "today" or "tomorrow" move to it.
-3. **Failure ledger** — a separate, non-blocking job after each failed, cancelled or timed-out CI run (a PR update cancels a run whose finished shards hold real failures) on a same-repository PR or on `main` collects the run's unexpected Playwright failures (not `flaky` retry passes) by test id; when the same test id fails in two runs whose PR sets share no PR within 48 h, or fails on `main`, it opens one quarantine issue labelled `bug`, `priority-high`, `cezar`. Only test ids that match a spec file on `main` are written; no free text from the run is copied (the issue feeds an autonomous agent).
+3. **Failure ledger** — a separate, non-blocking job after each failed, cancelled or timed-out CI run (a PR update cancels a run whose finished shards hold real failures) on a same-repository PR or on `main` collects the run's unexpected Playwright failures (not `flaky` retry passes) by test id; when the same test id fails in two disjoint runs within 48 h, or fails on `main`, it opens one quarantine issue labelled `bug`, `priority-high`, `cezar`; when one pass would open more than three quarantine issues listing the same runs, it opens one triage issue naming all those tests instead, without `cezar` (#774). Only test ids that match a spec file on `main` are written; no free text from the run is copied (the issue feeds an autonomous agent).
 4. **Picker spreads modules** — never two queued or running issue builds of the same spec module.
 5. **Fixes from events** — the train mirrors `merge-train-failed` / `merge-train-conflict` onto the PR's linked issue (the `issue-N` in the branch name), and a Cezar automation on that issue label queues a `vereino-pr` run at once. Cezar 0.16.1 polls issue labels but not pull-request labels, and its schedules run at most hourly (checked 2026-11-18), so the label has to reach an issue.
 6. **Rules** — the train skips a `risk-high` PR with `needs-qa` until `qa` (MT-D02); Cezar runs at most three builds (MT-D04); both written into `SDLC.md`.
@@ -61,7 +61,7 @@ Evidence from 2026-11-18:
 ## Domain Vocabulary and Business Rules
 
 - **Unexpected failure** — a Playwright test whose final status is `unexpected` (failed after its retry); `flaky` (passed on retry) is not counted.
-- **Disjoint runs** — two CI runs whose PR sets share no PR (a PR run's set is that PR; a `main` run's set is empty). A test failing in two disjoint runs is not caused by one PR.
+- **Disjoint runs** — two CI runs whose PR sets share no PR (a PR run's set is that PR; a `main` run's set is empty) and whose heads share no commit that is not on `main` (`git log origin/main..<sha>`; a run whose commits cannot be compared is not disjoint from any PR run; #774). A test failing in two disjoint runs is not caused by one PR.
 - A shard that times out writes no `results.json`: the ledger records "no data" for that shard and never infers a pass.
 
 ## Users, Permissions, and Scope
