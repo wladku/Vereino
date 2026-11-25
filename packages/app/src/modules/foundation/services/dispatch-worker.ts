@@ -32,12 +32,14 @@ import {
 } from '../data/queries'
 import { emitFoundationEvent } from '../events'
 import {
+  CLUB_EMAIL_SENDS_PER_SECOND,
   EMAIL_SENDS_PER_SECOND,
   IN_APP_BATCH_SIZE,
   LEASE_SECONDS,
   MAX_DELIVERY_ATTEMPTS,
   attemptOutcome,
   chunk,
+  createClubSendRateLimiter,
   createSendRateLimiter,
 } from '../lib/dispatch-rules'
 import { isOptOutAvailable } from '../lib/email-templates'
@@ -54,6 +56,11 @@ const logger = createLogger('foundation').child({ component: 'dispatch-worker' }
  * is 1.1 s, so a timer that fires a little late cannot squeeze a ninth send into a second.
  */
 const sendRateLimiter = createSendRateLimiter({ max: EMAIL_SENDS_PER_SECOND, windowMs: 1100 })
+/**
+ * Each club's own pace inside that (many-clubs DD-M10, #633): at most 2 of one club's e-mails in any second, even when
+ * its paced jobs run late and several become due at once. Taken before the process slot, so a waiting club holds none.
+ */
+const clubSendRateLimiter = createClubSendRateLimiter({ max: CLUB_EMAIL_SENDS_PER_SECOND, windowMs: 1000 })
 
 const scopeShape = { tenantId: z.uuid(), organizationId: z.uuid() }
 export const dispatchJobSchema = z.union([
@@ -183,6 +190,7 @@ async function deliverEmail(
     return done({ status: 'failed', failureCode: 'render_failed' })
   }
 
+  await clubSendRateLimiter.acquire(scope.organizationId)
   await sendRateLimiter.acquire()
   try {
     await emailSender(container).send({

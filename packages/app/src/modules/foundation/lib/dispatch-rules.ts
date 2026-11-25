@@ -219,3 +219,52 @@ export function createSendRateLimiter(options: {
     },
   }
 }
+
+export type ClubSendRateLimiter = { acquire(clubKey: string): Promise<void>; size(): number }
+
+/**
+ * One `createSendRateLimiter` per club (many-clubs spec DD-M10, #633): at most `max` sends of one club in any window of
+ * `windowMs`, inside the process's own limit. The enqueue delays of `paceClubEmails` spread a club's jobs; this keeps
+ * the pace when jobs run late and several become due at once. A club with no caller waiting and whose last send left
+ * the window is forgotten once more than `maxIdleClubs` clubs are held, so the map stays small with 1,000 clubs.
+ */
+export function createClubSendRateLimiter(options: {
+  max: number
+  windowMs: number
+  maxIdleClubs?: number
+  now?: () => number
+  sleep?: (ms: number) => Promise<void>
+}): ClubSendRateLimiter {
+  const now = options.now ?? Date.now
+  const maxIdleClubs = options.maxIdleClubs ?? 100
+  const clubs = new Map<string, { limiter: SendRateLimiter; waiting: number; lastSent: number }>()
+  return {
+    async acquire(clubKey) {
+      const current = now()
+      if (clubs.size > maxIdleClubs) {
+        for (const [key, held] of clubs) {
+          if (held.waiting === 0 && current - held.lastSent > options.windowMs) clubs.delete(key)
+        }
+      }
+      let entry = clubs.get(clubKey)
+      if (!entry) {
+        const limiter = createSendRateLimiter({
+          max: options.max,
+          windowMs: options.windowMs,
+          now,
+          sleep: options.sleep,
+        })
+        entry = { limiter, waiting: 0, lastSent: current }
+        clubs.set(clubKey, entry)
+      }
+      entry.waiting += 1
+      try {
+        await entry.limiter.acquire()
+      } finally {
+        entry.waiting -= 1
+        entry.lastSent = now()
+      }
+    },
+    size: () => clubs.size,
+  }
+}

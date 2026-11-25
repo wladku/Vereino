@@ -5,7 +5,8 @@
 //   minute, `VEREINO_CLUB_RATE_LIMIT_POINTS` / `_DURATION`; 0 points switch it off). Public routes keep their own
 //   per-route limits, keyed by client address and club, so one club's visitors cannot use up another club's budget.
 // - Imports: one running import per club, across import kinds (people import commit, bank statement import).
-// - E-mail: see `paceClubEmails` in `dispatch-rules.ts` (2 per second per club inside the process's 8 per second).
+// - E-mail: see `paceClubEmails` and `createClubSendRateLimiter` in `dispatch-rules.ts` (2 per second per club inside
+//   the process's 8 per second).
 
 /** A limiter config in the shape of the platform's `RateLimitConfig` (`@open-mercato/shared/lib/ratelimit/types`). */
 export type ClubRequestLimit = { points: number; duration: number; blockDuration: number; keyPrefix: string }
