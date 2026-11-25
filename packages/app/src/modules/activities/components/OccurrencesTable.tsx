@@ -17,7 +17,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query'
 import { DataTable } from '@open-mercato/ui/backend/DataTable'
 import { EmptyState } from '@open-mercato/ui/backend/EmptyState'
 import type { FilterDef, FilterValues } from '@open-mercato/ui/backend/FilterOverlay'
@@ -348,10 +348,18 @@ function SessionsList({
   const [moving, setMoving] = React.useState<OccurrenceRow | null>(null)
   const pinned = perspectiveQuery(perspective)
 
-  const { data, isLoading, error, dataUpdatedAt, refetch } = useQuery({
+  // The rows on screen stay while a new key loads (the organization scope settling after the page loads, a filter,
+  // a page): dropping them unmounted every row, and with it an open row menu (#653).
+  const {
+    data: read,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ['activities-occurrences', perspective, activityId, filters, page, scopeVersion],
-    queryFn: () =>
-      fetchCrudList<OccurrenceRow>('activities/occurrences', {
+    placeholderData: keepPreviousData,
+    queryFn: async () => ({
+      list: await fetchCrudList<OccurrenceRow>('activities/occurrences', {
         page,
         pageSize: PAGE_SIZE,
         sortField: 'startAt',
@@ -360,9 +368,14 @@ function SessionsList({
         ...pinned,
         ...(activityId ? { activityId } : {}),
       }),
+      readAt: Date.now(),
+    }),
   })
-  // "Started" is judged at the moment the page was read, so the row actions match the rows shown.
-  const readAt = React.useMemo(() => new Date(dataUpdatedAt), [dataUpdatedAt])
+  const data = read?.list
+  // "Started" is judged at the moment the rows shown were read (kept with them, so a placeholder keeps its own),
+  // so the row actions match the rows shown.
+  const readAtMs = read?.readAt ?? 0
+  const readAt = React.useMemo(() => new Date(readAtMs), [readAtMs])
   const can = React.useMemo(
     () => ({ manage: features.manage, coach: features.coach }),
     [features.manage, features.coach],
@@ -607,6 +620,7 @@ export function ActivitySessions({ activityId }: { activityId: string }) {
   const rowActions = useOccurrenceRowActions(t)
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['activities-occurrences', 'activity', activityId, page],
+    placeholderData: keepPreviousData,
     queryFn: () =>
       fetchCrudList<OccurrenceRow>('activities/occurrences', {
         activityId,
