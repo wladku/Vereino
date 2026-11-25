@@ -4,11 +4,12 @@
 // one person. The date is encrypted without a hash, so every read loads the scoped rows and decrypts in memory.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
+import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { emitCrudSideEffects } from '@open-mercato/shared/lib/commands/helpers'
 import type { DataEngine } from '@open-mercato/shared/lib/data/engine'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import type { CalendarDate, Scope } from '@vereino/core'
+import type { ActingRole, CalendarDate, Scope } from '@vereino/core'
 import { personEvents } from '../commands/shared'
 import { Guardianship, Person } from '../data/entities'
 import { emitPeopleEvent } from '../events'
@@ -201,4 +202,43 @@ export async function memberMedicalView(
     consentInForce: await medicalConsentOf(em, scope, person, today),
     updatedAt: person.updatedAt ? new Date(person.updatedAt).toISOString() : null,
   }
+}
+
+/**
+ * The `medical` block of `GET /api/people/persons/{id}` (M-O4, #682): only for a reader with `people.medical.manage` —
+ * the club administrator, or a coordinator for a member of their own sections (the coordinator's read of people is
+ * club-wide, health data is not); never for an anonymised person.
+ */
+export async function staffMedicalBlock(
+  ctx: CommandRuntimeContext,
+  scope: { tenantId: string; organizationId: string },
+  person: Person,
+  actingRole: ActingRole,
+  grants: Scope,
+): Promise<{ medical?: MemberMedicalView }> {
+  if (person.anonymizedAt || !ctx.auth) return {}
+  const rbac = ctx.container.resolve<RbacService>('rbacService')
+  if (!(await rbac.userHasAllFeatures(ctx.auth.sub, ['people.medical.manage'], scope))) return {}
+  const em = ctx.container.resolve<EntityManager>('em').fork()
+  const today = await clubToday(ctx.container, scope)
+  const isAdmin = grants.some((grant) => grant.kind === 'club_admin')
+  if (!isAdmin) {
+    if (actingRole !== 'coordinator') return {}
+    const sectionIds = grants.flatMap((grant) => (grant.kind === 'coordinator' ? (grant.ids ?? []) : []))
+    if (!(await inSections(ctx.container, em, scope, person.id, sectionIds, today))) return {}
+  }
+  return { medical: await memberMedicalView(em, scope, person, today) }
+}
+
+/** The ids of `requested` the caller's grants cover (`medicalStatusScopedIds`) and the read of their statuses. */
+export async function medicalStatusRead(
+  container: AwilixContainer,
+  scope: ClubScope,
+  grants: Scope,
+  requested: readonly string[],
+  today: CalendarDate,
+) {
+  const em = container.resolve<EntityManager>('em').fork()
+  const allowed = await medicalStatusScopedIds(container, em, scope, grants, requested, today)
+  return { allowed, read: () => readMedicalStatuses(em, scope, allowed.ids, today) }
 }

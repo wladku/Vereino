@@ -11,7 +11,7 @@ import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacS
 import type { ActingRole } from '@vereino/core'
 import { authorizeScoped, foundationErrors } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
-import { Person } from '../data/entities'
+import type { Person } from '../data/entities'
 import { medicalSetSchema } from '../data/validators'
 import { holdsOwnConsents } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'

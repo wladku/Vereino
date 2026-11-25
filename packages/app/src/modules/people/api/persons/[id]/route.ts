@@ -8,10 +8,8 @@
 // `DELETE` — `people.persons.delete` (REQ-L05; phase L6, #308): a person created by mistake, without any history, is
 // soft-deleted (204, `people.person.deleted`); 409 `person_in_use` with `reasons` otherwise. Undoable through the
 // audit log.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
-import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
-import type { ActingRole, Scope } from '@vereino/core'
+import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
@@ -23,10 +21,8 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { visibleName } from '../../../lib/erasure-rules'
-import { clubToday } from '../../../services/club-clock'
 import { formerMemberLabel } from '../../../services/former-member'
-import type { Person } from '../../../data/entities'
-import { inSections, memberMedicalView, type MemberMedicalView } from '../../../services/medical'
+import { staffMedicalBlock } from '../../../services/medical'
 import { findPerson, ownConsentsForStaff } from '../../../services/people-read'
 import {
   PEOPLE_READ_OPTIONS,
@@ -65,7 +61,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     // #682 (M-O4): the medical certificate block for a staff writer (`people.medical.manage`) — the club administrator,
     // or a coordinator for a member of their own sections only (the coordinator's read is club-wide); never for an
     // anonymised person.
-    const medical = await medicalBlock(ctx, scope, person, actingRole, grants)
+    const medical = await staffMedicalBlock(ctx, scope, person, actingRole, grants)
     // An anonymised person reads "Former member"; a name kept under the hold only with `people.manage` (#308).
     if (isBasicRead(actingRole)) {
       return Response.json({ ...personBasicView(person, visibleName(person, formerMember, false)), ...medical })
@@ -85,27 +81,6 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
   } catch (error: unknown) {
     return errorResponse(error, 'people.persons.detail')
   }
-}
-
-async function medicalBlock(
-  ctx: CommandRuntimeContext,
-  scope: { tenantId: string; organizationId: string },
-  person: Person,
-  actingRole: ActingRole,
-  grants: Scope,
-): Promise<{ medical?: MemberMedicalView }> {
-  if (person.anonymizedAt || !ctx.auth) return {}
-  const rbac = ctx.container.resolve<RbacService>('rbacService')
-  if (!(await rbac.userHasAllFeatures(ctx.auth.sub, ['people.medical.manage'], scope))) return {}
-  const em = ctx.container.resolve<EntityManager>('em').fork()
-  const today = await clubToday(ctx.container, scope)
-  const isAdmin = grants.some((grant) => grant.kind === 'club_admin')
-  if (!isAdmin) {
-    if (actingRole !== 'coordinator') return {}
-    const sectionIds = grants.flatMap((grant) => (grant.kind === 'coordinator' ? (grant.ids ?? []) : []))
-    if (!(await inSections(ctx.container, em, scope, person.id, sectionIds, today))) return {}
-  }
-  return { medical: await memberMedicalView(em, scope, person, today) }
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {

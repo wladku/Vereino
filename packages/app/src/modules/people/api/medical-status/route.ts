@@ -4,7 +4,6 @@
 // dropped, never answered 403 one by one: the club administrator reads every person, a coordinator the members of their
 // sections, a coach the members of their groups, a guardian the wards, a person themself. A read through a
 // coordinator's or coach's grant is recorded first through `auditedRead` (DPIA D-14), ids only.
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { z } from 'zod'
 import {
@@ -17,7 +16,7 @@ import {
 import { peopleErrors } from '../../api/errors'
 import { PersonDataExportLog } from '../../data/entities'
 import { clubToday } from '../../services/club-clock'
-import { MEDICAL_STATUS_MAX_IDS, medicalStatusScopedIds, readMedicalStatuses } from '../../services/medical'
+import { MEDICAL_STATUS_MAX_IDS, medicalStatusRead } from '../../services/medical'
 import { errorSchema } from '../shared'
 
 export const metadata = {
@@ -56,10 +55,8 @@ export async function GET(request: Request): Promise<Response> {
     const { personIds } = querySchema.parse({ personIds: url.searchParams.get('personIds') ?? '' })
     if (personIds.length > MEDICAL_STATUS_MAX_IDS) await peopleErrors.throw('medical_status_too_many')
     const today = await clubToday(ctx.container, scope)
-    const em = ctx.container.resolve<EntityManager>('em').fork()
     const grants = await scopeContract.resolve(ctx)
-    const allowed = await medicalStatusScopedIds(ctx.container, em, scope, grants, personIds, today)
-    const read = () => readMedicalStatuses(em, scope, allowed.ids, today)
+    const { allowed, read } = await medicalStatusRead(ctx.container, scope, grants, personIds, today)
     const items =
       allowed.staff && allowed.ids.length > 0
         ? await auditedRead(
