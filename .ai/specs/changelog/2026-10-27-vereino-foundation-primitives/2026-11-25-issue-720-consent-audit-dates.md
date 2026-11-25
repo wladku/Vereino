@@ -1,0 +1,1 @@
+| 2026-11-25 | TEST-F05 audit dates (#720): `TEST-L11-own-consents` now asserts that the `people.persons.set_own_consents` audit entries of a grant, a withdrawal and a second grant carry the dates before and after each change; AC-F05 evidence extended |
