@@ -67,6 +67,8 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `RATE_LIMIT_STRATEGY=redis` | the app's request limits (per route, per club) count in Redis, so every app replica shares them; with the default `memory` each process counts alone (many-clubs spec DD-M10, #633) |
 | `VEREINO_CLUB_RATE_LIMIT_POINTS`, `VEREINO_CLUB_RATE_LIMIT_DURATION` | optional; each club's budget of authenticated API requests, default 600 per 60 s; `0` points switch it off. Tune from the capacity report ([`capacity.md`](capacity.md)) |
 | `VEREINO_HOME_CLUB_SLUG` | **deprecated**; the public slug of the one club of an instance without `VEREINO_CLUB_DOMAIN`, which `/` leads a guest to. Ignored once `VEREINO_CLUB_DOMAIN` is set; kept as the single-club fallback |
+| `VEREINO_INSTANCE_ID` | optional; the id of this deployment that Vereino Enterprise licence keys are bound to (one for the shared cloud, its own for each dedicated instance). See *Enterprise licence keys* below |
+| `VEREINO_LICENCE_KEYS`, `VEREINO_LICENCE_KEYS_FILE` | optional, sealed; the installed Enterprise licence keys. Unset: every Enterprise feature is off |
 
 Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST`, `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
@@ -187,6 +189,11 @@ Every deploy of the **app** service runs, in this order (ADR-013, S14.5):
 The **worker** service (`sh ./scripts/railway-worker.sh`) runs the boot check and then `yarn mercato queue worker
 --all`; it never migrates. Deploy it after the app service, from the same commit.
 
+Before a change to the `Dockerfile`, the start scripts or the server packages reaches staging, the CI job
+`image-smoke` runs `scripts/image-smoke.sh`: it builds the `runner` stage and runs steps 2–4 above, `yarn initialize`
+and the worker against throwaway PostgreSQL and Redis containers, with the start scripts' default
+`CACHE_STRATEGY=redis`. Run it locally the same way (`scripts/image-smoke.sh`; Docker and Node needed) (#727).
+
 - **staging**: every commit on `main` deploys automatically; turn on Railway's "Wait for CI" so a red `main` never
   deploys.
 - **production**: only a commit with a release tag, inside the release window, following the
@@ -291,6 +298,35 @@ yarn mercato foundation restore-club-schedules --job payments:generate-charges
 runs, the per-club schedules left and the clubs, due, leased and failing counts. `yarn mercato foundation club-jobs
 sweep [--job <key>]` runs one sweep now. One club's job still runs by hand without the sweep, as before, for example
 `yarn mercato payments run-job --job generate-charges --tenant <id> --org <id>`.
+
+## Enterprise licence keys
+
+Vereino Enterprise features are switched on per tenant by a licence key (`.ai/specs/2026-11-23-vereino-enterprise-package.md`,
+DD-E04, DD-E05, DD-E07; #649). A key is `vereino-lic.v1.<payload>.<signature>`, signed offline by the owner with
+Ed25519 for one instance, one tenant, a list of features and an expiry; the app verifies it offline against the public
+keys compiled into `foundation/lib/licence-public-keys.ts`. No key, no variable and no Enterprise package: every
+Enterprise feature is off and the core works exactly as before.
+
+1. Set `VEREINO_INSTANCE_ID` once per environment (for example `cloud-eu-1`, `staging-1`); a key signed for another
+   instance id is rejected as `wrong_instance`. Never reuse an instance id for another deployment.
+2. Add the key to `VEREINO_LICENCE_KEYS` as a **sealed** Railway variable (newline- or comma-separated with the keys
+   already there), or to the file named by `VEREINO_LICENCE_KEYS_FILE`, on the app and the worker. Keys name customers:
+   never paste one into an issue, a pull request, a log or a run log; refer to a key by its `lid`.
+3. Restart (a redeploy does it). Keys are read once at boot; the app logs
+   `[foundation] licence keys: <n> valid of <m> installed; rejected: <lid> (<reason>)` — never the key.
+4. Check from a shell on the app service (`railway ssh` or the service's shell): `yarn mercato foundation licence-status` prints one JSON line: the instance id,
+   per valid key its `lid`, tenant, features with their state (`on`, `read_only`) and the expiry, and the rejected keys
+   by `lid` (or position) and reason (`unknown_kid`, `bad_signature`, `malformed`, `invalid_payload`, `wrong_prefix`,
+   `wrong_instance`). Without keys it prints `"message":"no licence keys installed"`.
+
+Expiry: a feature stays `on` until `expiresAt` plus the key's grace period (14 days), with a renewal notice from
+`expiresAt`; after that it is `read_only` — the club still reads and exports its data, writes answer 409
+`enterprise_feature_read_only`. **Keep an expired key installed**: removing the last key of a tenant turns its features
+`off` (404 `enterprise_feature_disabled`), so remove it only after the customer's export or termination. A renewal is a
+new key added next to the old one; the key whose grace period ends last wins.
+
+Staging and production never trust the committed test key pair (`packages/app/.ai/qa/fixtures/licence-test-key-pair.json`,
+kid `test-…`): a test-signed key shows as `unknown_kid` there. That is the exit check of phase 1a.
 
 ## Club addresses
 

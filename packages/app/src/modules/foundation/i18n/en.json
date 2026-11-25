@@ -66,5 +66,7 @@
   "foundation.identity.profile.lead": "Connect an account to sign in with one click. Connecting never creates a new account.",
   "foundation.identity.retry": "Try again",
   "foundation.identity.title": "Connected accounts",
-  "foundation.identity.unlink": "Unlink {provider}"
+  "foundation.identity.unlink": "Unlink {provider}",
+  "foundation.errors.enterprise_feature_disabled": "This page is not available.",
+  "foundation.errors.enterprise_feature_read_only": "The licence for this feature has expired. You can still view and export its data, but not change it. Ask your club administrator to renew the licence."
 }
