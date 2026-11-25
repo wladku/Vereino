@@ -17,7 +17,7 @@ yarn setup          # install, .env, Docker services, generate, migrate, initial
 
 `yarn setup` checks every step before it runs it, so you can repeat it at any time. The manual steps and options are in the [README](README.md#getting-started). The repository is a Yarn workspace monorepo: the Open Mercato application lives in `packages/app`, and the shared packages `@vereino/core`, `@vereino/db` and `@vereino/ui` in `packages/core`, `packages/db` and `packages/ui` (see the README's *Monorepo* section for what may import what).
 
-Recommended VS Code extensions: ESLint (`dbaeumer.vscode-eslint`), Prettier (`esbenp.prettier-vscode`), EditorConfig (`editorconfig.editorconfig`), Tailwind CSS IntelliSense (`bradlc.vscode-tailwindcss`), Playwright Test (`ms-playwright.playwright`), Jest (`orta.vscode-jest`), GitHub Actions (`github.vscode-github-actions`), Docker (`ms-azuretools.vscode-docker`) and YAML (`redhat.vscode-yaml`). A `.vscode/extensions.json` that makes VS Code offer them is tracked in #456.
+Recommended VS Code extensions are listed in [`.vscode/extensions.json`](.vscode/extensions.json); VS Code offers to install them when you open the folder.
 
 ## How a change gets to `main`
 
