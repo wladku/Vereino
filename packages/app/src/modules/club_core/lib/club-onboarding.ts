@@ -17,6 +17,8 @@ export const RESERVED_CLUB_SLUGS: readonly string[] = [
   'admin',
   'mail',
   'status',
+  'demo',
+  'blog',
   ...Array.from({ length: 9 }, (_, index) => `c${String(index + 1)}`),
 ]
 

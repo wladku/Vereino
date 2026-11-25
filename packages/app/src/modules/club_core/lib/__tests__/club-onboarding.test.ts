@@ -17,7 +17,7 @@ const VALID = {
 }
 
 describe('isReservedClubSlug', () => {
-  it('reserves the instance host names and the cell labels c1…c9', () => {
+  it('reserves the instance host names, the product demo and blog hosts and the cell labels c1…c9', () => {
     expect(RESERVED_CLUB_SLUGS).toEqual([
       'www',
       'app',
@@ -25,6 +25,8 @@ describe('isReservedClubSlug', () => {
       'admin',
       'mail',
       'status',
+      'demo',
+      'blog',
       'c1',
       'c2',
       'c3',
@@ -37,6 +39,8 @@ describe('isReservedClubSlug', () => {
     ])
     expect(isReservedClubSlug('admin')).toBe(true)
     expect(isReservedClubSlug('c9')).toBe(true)
+    expect(isReservedClubSlug('demo')).toBe(true)
+    expect(isReservedClubSlug('blog')).toBe(true)
   })
 
   it('leaves every other slug free', () => {
