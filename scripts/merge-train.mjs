@@ -3,7 +3,8 @@
 // CI completion, push to `main` or the quarter-hour schedule starts the train again.
 //
 // Labels set on a PR are mirrored onto the issue its branch names (`issue-N`), so Cezar's issue-label automation starts
-// a fix run at once; a PR held for manual QA (MT-D02) gets one comment and a line in the log.
+// a fix run at once; a PR held for manual QA (MT-D02) gets one comment and a line in the log. Before the queue step a
+// PR stacked on a merged PR is retargeted to `main` (`scripts/merge-train-stacked.mjs`, ST-D04).
 //
 // Env: GH_TOKEN (a token whose pushes trigger CI — not the workflow's GITHUB_TOKEN), GITHUB_REPOSITORY (owner/name),
 // MERGE_TRAIN_SKIP_LABELS (optional, comma-separated), MERGE_TRAIN_DRY_RUN=1 (log the plan, change nothing),
@@ -51,6 +52,7 @@ import {
   stampsVerified,
   treeMatches,
 } from './merge-train-guard.mjs'
+import { applyRetargets } from './merge-train-stacked.mjs'
 import { parseTrailers } from './merge-train-trailers.mjs'
 
 const token = process.env.GH_TOKEN
@@ -426,6 +428,12 @@ async function main() {
   console.log(
     `required checks on ${baseBranch}: ${required.join(', ')}${stamp ? ` (+ ${VERIFIED_STATUS}, set by the train)` : ''}; skip labels: ${skipLabels.join(', ')}`,
   )
+  // Stacked PRs first (ST-D04): a PR retargeted to `main` here joins the queue read below.
+  try {
+    await applyRetargets({ api, repo, baseBranch, dryRun })
+  } catch (error) {
+    console.log(`::warning::merge train: stacked PRs not checked — ${error.message}`)
+  }
   if (batchSize > 1) return batchTrain(baseBranch, required)
   for (let merges = 0; merges <= MAX_MERGES_PER_RUN; merges++) {
     const { prs } = await readQueue(baseBranch, required)
