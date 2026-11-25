@@ -39,6 +39,9 @@ async function departAndAnonymize(request: APIRequestContext, admin: string, per
     data: { personIds: [personId], lastDay, previewToken: preview.body?.previewToken },
   })
   expect(departed.status, JSON.stringify(departed.body)).toBe(200)
+  // The account closes the day after the last day; close it now so the anonymisation may run today.
+  const closed = await call(request, 'DELETE', `/api/people/persons/${personId}/account`, admin)
+  expect(closed.status, JSON.stringify(closed.body)).toBeLessThan(300)
   const recorded = await call<{ id?: string }>(request, 'POST', '/api/people/departure-requests', admin, {
     data: { subjectPersonId: personId, requesterKind: 'self', erasure: true, note: 'Letter' },
   })

@@ -48,7 +48,7 @@ test('TEST-O04 a red player in a match squad gets a warning, not a block', async
       personId: younger,
       declared: 'yes',
     })
-    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(200)
+    expect(confirmed.status, JSON.stringify(confirmed.body)).toBe(201)
 
     await signInBrowser(page, request, club, family.coach.userId, family.coach.email)
     await prepareForAccessibilityScan(page)
