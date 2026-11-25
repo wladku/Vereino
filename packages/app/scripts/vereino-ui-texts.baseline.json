@@ -32,6 +32,6 @@
   ".ai/qa/tests/people/E06-S02-person-record-tabs.spec.ts": 2,
   ".ai/qa/tests/people/E06-S22-profile-wards-guardians.spec.ts": 1,
   ".ai/qa/tests/people/ISSUE-191-phone-rule-and-consent-authors.spec.ts": 1,
-  ".ai/qa/tests/people/TEST-006-person-record-and-member-pages.spec.ts": 11,
+  ".ai/qa/tests/people/TEST-006-person-record-and-member-pages.spec.ts": 9,
   ".ai/qa/tests/people/TEST-055-account-threshold-settings.spec.ts": 1
 }

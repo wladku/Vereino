@@ -95,3 +95,6 @@ Trigger: required checks `integration (shard 4/6)`, `integration (shard 6/6)` an
   (the tags are counted while the list refetches), unrelated to this PR; left as is.
 - Local: `yarn test:integration:vereino --filter ISSUE-629-retire-club-schedules`: 1 passed (1.3 m);
   `--filter TEST-006`: 2 passed (1.1 m).
+- The CI gate then failed at `qa-texts:check` (the TEST-006 locator change removed hardcoded texts; the baseline only
+  shrinks): `TEST-006 ... has 9 hardcoded UI text(s) now; lower its entry to 9`. Baseline lowered 11 → 9;
+  `yarn verify --from qa-texts:check`: all remaining steps passed.
