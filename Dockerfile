@@ -126,6 +126,12 @@ RUN if grep -Eq 'http://(localhost|127\\.0\\.0\\.1):' .yarnrc.yml; then \
       mv .yarnrc.yml.container .yarnrc.yml; \
     fi
 RUN yarn workspaces focus @vereino/app --production
+# The shared packages (`@vereino/ui`, `@vereino/db`) declare React and MikroORM as peer dependencies, which the app
+# provides; a production install puts them only into `packages/app/node_modules`. Every `yarn mercato` process (the
+# pre-deploy script, `yarn start`, the worker) loads their source outside the Next bundle, and Node resolves a package
+# imported from `packages/<name>/src` by walking up to `packages/node_modules`: link it to the app's, so their peers
+# resolve to the app's single copy (#727; checked by `scripts/image-smoke.sh`).
+RUN ln -s app/node_modules packages/node_modules
 
 COPY --from=builder /app/packages/app/.mercato ./packages/app/.mercato
 COPY --from=builder /app/packages/app/public ./packages/app/public
