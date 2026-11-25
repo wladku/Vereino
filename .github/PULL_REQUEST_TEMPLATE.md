@@ -17,6 +17,10 @@
 - [ ] Spec updated (Implementation Status, acceptance checkbox, Changelog row) and lessons recorded where something was learned
 - [ ] Every commit is signed off (`git commit -s`, DCO)
 
+## QA (only for a `risk-high` PR with `needs-qa`)
+
+<!-- Add the Polish `qa-instruction` block from SDLC.md "QA" here, filled in for this PR. Without it the merge train holds the PR with "QA instruction missing". Delete this section otherwise. -->
+
 ## Agent work
 
 <!-- Only when an AI agent produced this pull request (S19.3). -->

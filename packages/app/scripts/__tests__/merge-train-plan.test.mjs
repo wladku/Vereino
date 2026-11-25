@@ -6,13 +6,19 @@ import {
   FAILED_LABEL,
   QA_HOLD_MARKER,
   QA_HOLD_REASON,
+  QA_INSTRUCTION_END,
+  QA_INSTRUCTION_MISSING,
+  QA_INSTRUCTION_MISSING_MARKER,
+  QA_INSTRUCTION_START,
   RETARGET_REASONS,
   checksState,
+  hasQaInstruction,
   linkedIssue,
-  needsQaHoldComment,
   planMergeTrain,
   planRetargets,
   qaHold,
+  qaHoldComment,
+  qaHoldCommentAction,
 } from '../../../../scripts/merge-train-plan.mjs'
 
 const REQUIRED = ['gate', 'integration', 'browser-smoke']
@@ -163,7 +169,12 @@ describe('MT-TEST-05: QA hold (MT-D02)', () => {
       pr(1, { labels: ['risk-high', 'needs-qa', 'priority-high'], checks: 'success' }),
       pr(2, { behindBy: 1 }),
     ])
-    assert.deepEqual(plan, { type: 'update', pr: 2, labels: [], held: [{ pr: 1, reason: QA_HOLD_REASON }] })
+    assert.deepEqual(plan, {
+      type: 'update',
+      pr: 2,
+      labels: [],
+      held: [{ pr: 1, reason: `${QA_HOLD_REASON}; ${QA_INSTRUCTION_MISSING}`, instruction: false }],
+    })
   })
 
   it('queues the same PR once the owner sets qa', () => {
@@ -181,10 +192,66 @@ describe('MT-TEST-05: QA hold (MT-D02)', () => {
     assert.deepEqual(plan, { type: 'idle', labels: [], held: [] })
   })
 
-  it('comments on a held PR only the first time', () => {
-    assert.equal(needsQaHoldComment([]), true)
-    assert.equal(needsQaHoldComment(['Merge train: other']), true)
-    assert.equal(needsQaHoldComment([`Merge train: held ${QA_HOLD_MARKER}`]), false)
+  it('comments on a held PR only the first time, and edits that comment when its text changes', () => {
+    const wanted = `Merge train: held ${QA_HOLD_MARKER}`
+    assert.deepEqual(qaHoldCommentAction([], wanted), { type: 'create' })
+    assert.deepEqual(qaHoldCommentAction([{ id: 1, body: 'Merge train: other' }, { id: 2 }], wanted), {
+      type: 'create',
+    })
+    assert.equal(qaHoldCommentAction([{ id: 1, body: wanted }], wanted), null)
+    const stale = [
+      { id: 7, body: `Merge train: old ${QA_HOLD_MARKER}` },
+      { id: 8, body: wanted },
+    ]
+    assert.deepEqual(qaHoldCommentAction(stale, wanted), { type: 'update', id: 7 })
+  })
+})
+
+const block = (inner) => `${QA_INSTRUCTION_START}\n${inner}\n${QA_INSTRUCTION_END}`
+
+describe('QM-TEST-01: the QA instruction block (REQ-QM01)', () => {
+  const instruction = block('## Jak przetestować (QA)\n**Co się zmienia:** eksport członków.')
+
+  it('finds the block in a PR body', () => {
+    assert.equal(hasQaInstruction(`## Summary\n\n${instruction}\n\nFixes #1`), true)
+  })
+
+  it('counts a missing body, a missing marker or an empty block as missing', () => {
+    assert.equal(hasQaInstruction(null), false)
+    assert.equal(hasQaInstruction(undefined), false)
+    assert.equal(hasQaInstruction('## Summary'), false)
+    assert.equal(hasQaInstruction(`${QA_INSTRUCTION_START}\nKroki: 1.`), false)
+    assert.equal(hasQaInstruction(`Kroki: 1.\n${QA_INSTRUCTION_END}`), false)
+    assert.equal(hasQaInstruction(block('  \n ')), false)
+  })
+
+  it('counts markers out of order as missing', () => {
+    assert.equal(hasQaInstruction(`${QA_INSTRUCTION_END}\nKroki: 1.\n${QA_INSTRUCTION_START}`), false)
+  })
+
+  it('names the missing instruction in the hold reason, and only when it is missing', () => {
+    const held = { labels: ['risk-high', 'needs-qa'], checks: 'success' }
+    const plan = planMergeTrain([pr(1, { ...held, body: instruction }), pr(2, { ...held, body: 'no block' })])
+    assert.deepEqual(plan.held, [
+      { pr: 1, reason: QA_HOLD_REASON, instruction: true },
+      { pr: 2, reason: `${QA_HOLD_REASON}; ${QA_INSTRUCTION_MISSING}`, instruction: false },
+    ])
+  })
+
+  it('links the instruction in the hold comment, or names it missing with its marker', () => {
+    const url = 'https://github.com/wladku/Vereino/pull/5'
+    const present = qaHoldComment({ instruction: true, url })
+    assert.ok(present.includes(`[PR description](${url})`) && present.includes('Jak przetestować (QA)'))
+    assert.ok(present.endsWith(QA_HOLD_MARKER))
+    assert.ok(!present.includes(QA_INSTRUCTION_MISSING) && !present.includes(QA_INSTRUCTION_MISSING_MARKER))
+    const missing = qaHoldComment({ instruction: false, url })
+    assert.ok(missing.includes(`**${QA_INSTRUCTION_MISSING}**`) && missing.includes(QA_INSTRUCTION_MISSING_MARKER))
+    assert.ok(missing.includes(`[PR description](${url})`) && missing.endsWith(QA_HOLD_MARKER))
+  })
+
+  it('never sets qa: the plan holds a PR with an instruction and labels nothing (MT-D02 stays)', () => {
+    const plan = planMergeTrain([pr(1, { labels: ['risk-high', 'needs-qa'], checks: 'success', body: instruction })])
+    assert.deepEqual(plan, { type: 'idle', labels: [], held: [{ pr: 1, reason: QA_HOLD_REASON, instruction: true }] })
   })
 })
 
