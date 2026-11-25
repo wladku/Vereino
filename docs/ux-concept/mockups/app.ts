@@ -20,7 +20,7 @@
   type TxtArg = string | number | { date: string; fmt?: 'short' | 'long' } | { money: number } | Txt
   type Txt = string | { k: string; p?: Record<string, TxtArg> } | Txt[]
 
-  interface Person { id: string; first: string; last: string; birth: string; email?: string; phone?: string; account?: boolean; publishConsent?: boolean; pesel?: string; updatedAt: number }
+  interface Person { id: string; first: string; last: string; birth: string; email?: string; phone?: string; account?: boolean; publishConsent?: boolean; pesel?: string; medicalUntil?: string; updatedAt: number }
   interface Guardianship { id: string; guardian: string; ward: string; relation: string; primaryPayer: boolean; consents: { regulations: boolean; image: boolean; trips: boolean } }
   interface RoleAssignment { id: string; person: string; role: 'club_admin' | 'treasurer' | 'coordinator' | 'coach' | 'facility_operator'; section?: string; place?: string }
   interface Section { id: string; name: string; slug: string; short: string; description: string; isPublic: boolean; conditions: string; contactName: string; contactEmail: string; contactPhone: string; materials: string[]; active: boolean; color: string; logo?: string; updatedAt: number }
@@ -48,6 +48,10 @@
   interface Rental { id: string; place: string; renter: string; renterId?: string; category: string; contact: string; email: string; phone: string; date: string; start: string; end: string; units: number; amount: number; status: string; via: string; holdUntil?: string; purpose?: string; token?: string; chargeId?: string; reason?: string; banMatch?: boolean }
   interface Booking { id: string; place: string; date: string; start: string; end: string; purpose: string; by: string; section: string; status: 'confirmed' | 'cancelled' }
   interface Closure { id: string; place: string; date: string; start: string; end: string; reason: string; note: string }
+  // Training outline (konspekt, D-038) in the PZPN layout: three parts with minutes; attached to sessions.
+  interface Outline { id: string; title: string; group: string; author: string; goal: string; equipment: string; parts: { kind: 'intro' | 'main' | 'final'; minutes: number; text: string }[]; occs: string[]; updatedAt: number }
+  // Club event with parts (D-032): one event (e.g. a tournament) with parts per age group, optionally on the public Events page (P-06).
+  interface ClubEvent { id: string; slug: string; name: string; date: string; place: string; description: string; public: boolean; parts: { id: string; name: string; group?: string; start: string; end: string; teams: string[] }[]; files: string[] }
   interface Mail { id: number; to: string; subject: Txt; body: Txt; link?: string; linkLabel?: Txt }
   // label: the person's name (club data); the guest label and all role descriptions come from the catalog (personaLabel / personaRole).
   interface Persona { id: PersonaId; person?: string; label: string; roleKey: string; features: string[]; home: string; email?: string }
@@ -209,6 +213,7 @@
     bankImports: BankImport[]; bankTx: BankTx[]; receiptSeq: number
     kitCampaigns: KitCampaign[]; kitOrders: KitOrder[]; kitTokens: Record<string, { guardian: string; campaign: string }>; cashHandovers: CashHandover[]
     log: { opened: boolean; closed: boolean; before: string; after: string; openedAt?: string }
+    outlines: Outline[]; clubEvents: ClubEvent[]
   }
 
   const P = (id: string, first: string, last: string, birth: string, extra: Partial<Person> = {}): Person => ({ id, first, last, birth, updatedAt: 1, ...extra })
@@ -217,7 +222,7 @@
     const db: Db = {
       settings: {
         name: 'LKS Przykład Dolina', short: 'Przykład', slug: 'przyklad', tz: 'Europe/Warsaw', minAge: 13, phone: '600 000 000', logo: LOGO_CLUB,
-        description: 'Klub sportowy z Doliny: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem 2024 w imieniu Gminy Zielony Las.',
+        description: 'Klub sportowy z Doliny: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem w imieniu Gminy Zielony Las.',
         publication: { enabled: true, description_schedule: true, conditions: true, prices: true, coaches: true, materials: true, contact: true, places_calendar: true, online_requests: true, events: true },
         // Online payment fee (R13): the club pays it by default; the example operator fee is the ~PLN 2 per payment a parent named in an interview.
         coachFees: 'collect', onlineFee: { mode: 'club_pays', fixed: 200 },
@@ -226,8 +231,8 @@
       },
       persons: [
         P('p-kasia', 'Kasia', 'Nowak', '1986-04-02', { email: 'kasia.nowak@example.pl', phone: '600 100 200', account: true }),
-        P('p-jas', 'Jaś', 'Nowak', '2017-05-03'),
-        P('p-ola', 'Ola', 'Nowak', '2012-03-14', { email: 'ola.nowak@example.pl', account: true }),
+        P('p-jas', 'Jaś', 'Nowak', '2017-05-03', { medicalUntil: '2027-05-20' }),
+        P('p-ola', 'Ola', 'Nowak', '2012-03-14', { email: 'ola.nowak@example.pl', account: true, medicalUntil: '2027-03-14' }),
         P('p-rafal', 'Rafał', 'Malinowski', '1990-06-11', { email: 'rafal@przyklad.example', phone: '601 222 333', account: true, publishConsent: true }),
         P('p-piotr', 'Piotr', 'Zieliński', '1995-01-20', { email: 'piotr@przyklad.example', account: true, publishConsent: true }),
         P('p-anna', 'Anna', 'Kowalczyk', '1992-09-30', { email: 'anna@przyklad.example', account: true, publishConsent: true }),
@@ -240,15 +245,15 @@
         P('p-marcin', 'Marcin', 'Sobczak', '1980-05-05', { email: 'marcin@przyklad.example', account: true, publishConsent: true }),
         P('p-natalia', 'Natalia', 'Krawczyk', '1998-02-20', { email: 'natalia@przyklad.example', account: true, publishConsent: true }),
         P('p-marek', 'Marek', 'Kowalski', '1983-08-08', { email: 'marek.k@example.pl', account: true }),
-        P('p-adam', 'Adam', 'Kowalski', '2017-02-14'),
-        P('p-zosia', 'Zosia', 'Kowalska', '2012-11-02'),
+        P('p-adam', 'Adam', 'Kowalski', '2017-02-14', { medicalUntil: '2027-01-15' }),
+        P('p-zosia', 'Zosia', 'Kowalska', '2012-11-02', { medicalUntil: '2026-11-28' }),
         P('p-ewelina', 'Ewelina', 'Mazur', '1988-03-03', { email: 'e.mazur@example.pl', account: true }),
-        P('p-bartek', 'Bartek', 'Mazur', '2017-06-21'),
-        P('p-filip', 'Filip', 'Sowa', '2017-10-10'),
+        P('p-bartek', 'Bartek', 'Mazur', '2017-06-21', { medicalUntil: '2026-11-30' }),
+        P('p-filip', 'Filip', 'Sowa', '2017-10-10', { medicalUntil: '2027-09-01' }),
         P('p-robert', 'Robert', 'Tracz', '1985-05-05', { email: 'r.tracz@example.pl' }),
-        P('p-lena', 'Lena', 'Tracz', '2017-04-04'),
+        P('p-lena', 'Lena', 'Tracz', '2017-04-04', { medicalUntil: '2026-10-31' }),
         P('p-iwona', 'Iwona', 'Pawlak', '1987-01-12', { email: 'iwona.p@example.pl', account: true }),
-        P('p-kuba', 'Kuba', 'Pawlak', '2012-07-19', { account: false }),
+        P('p-kuba', 'Kuba', 'Pawlak', '2012-07-19', { account: false, medicalUntil: '2026-10-20' }),
         P('p-maja', 'Maja', 'Pawlak', '2018-02-02'),
         P('p-dorota', 'Dorota', 'Wójcik', '1979-09-09', { email: 'dorota.w@example.pl', account: true }),
         P('p-teresa', 'Teresa', 'Lis', '1970-04-25', { email: 'teresa.lis@example.pl', account: true }),
@@ -403,6 +408,29 @@
       kitCampaigns: [], kitOrders: [], kitTokens: { 'kit-robert': { guardian: 'p-robert', campaign: 'oc-akad' } }, cashHandovers: [],
       tokens: { 'tok-expired': { guardian: 'p-kasia', occ: 'a-orlm-2026-11-10', expired: true } },
       log: { opened: false, closed: false, before: '', after: '' },
+      outlines: [
+        { id: 'ol-zwody', title: 'Prowadzenie piłki i zwody w grze 1×1', group: 'g-orlm', author: 'p-rafal', goal: 'Prowadzenie piłki ze zmianą kierunku i zwód przy wyjściu 1×1', equipment: '20 piłek, 12 pachołków, 4 małe bramki, znaczniki w 2 kolorach', updatedAt: 3,
+          parts: [{ kind: 'intro', minutes: 15, text: 'Prowadzenie piłki w kwadracie 20×20 m, zmiana kierunku i tempa na sygnał trenera; zabawa „berek z piłką”.' }, { kind: 'main', minutes: 60, text: 'Ćw. 1: slalom między pachołkami w dwóch rzędach, zwód „na zewnątrz”. Ćw. 2: 1×1 na małe bramki, start z linii. Gra 4×4: gol po minięciu rywala zwodem liczy się podwójnie.' }, { kind: 'final', minutes: 15, text: 'Gra swobodna 5×5, ćwiczenia rozciągające, krótka rozmowa: który zwód wychodził najlepiej?' }],
+          occs: ['a-orlm-2026-11-10', 'a-orlm-2026-11-12'] },
+        { id: 'ol-podania', title: 'Podanie i przyjęcie — gra 4×4 na cztery bramki', group: 'g-zaks', author: 'p-rafal', goal: 'Podanie wewnętrzną częścią stopy i przyjęcie kierunkowe', equipment: '16 piłek, 4 małe bramki, pachołki', updatedAt: 2,
+          parts: [{ kind: 'intro', minutes: 15, text: 'Podania w parach w ruchu, „rondo” 4×1.' }, { kind: 'main', minutes: 45, text: 'Trójkąty podań z przyjęciem kierunkowym. Gra 4×4 na cztery bramki: bramkę można zdobyć tylko po podaniu.' }, { kind: 'final', minutes: 15, text: 'Rzuty karne „do trzech”, rozciąganie.' }],
+          occs: ['a-zaks-2026-11-16', 'a-zaks-2026-11-18'] },
+        { id: 'ol-pressing', title: 'Odbiór piłki po stracie — pressing w 5 sekund', group: 'g-tramp', author: 'p-piotr', goal: 'Szybki powrót do odbioru piłki po jej stracie', equipment: '20 piłek, znaczniki, 2 duże bramki', updatedAt: 1,
+          parts: [{ kind: 'intro', minutes: 20, text: 'Rozgrzewka dynamiczna, „rondo” 5×2 z liczeniem podań.' }, { kind: 'main', minutes: 55, text: 'Gra 6×6 w strefach: po stracie zespół ma 5 sekund na odbiór. Gra 8×8 na dwie bramki z tą samą zasadą.' }, { kind: 'final', minutes: 15, text: 'Rozbieganie, rozciąganie, omówienie.' }],
+          occs: ['a-tramp-2026-11-16'] },
+      ],
+      clubEvents: [
+        { id: 'ce-puchar', slug: 'turniej-o-puchar-przykladu', name: 'Turniej o Puchar Przykładu', date: '2026-11-28', place: 'pl-boisko', public: true, files: ['Regulamin turnieju (PDF)', 'Plakat turnieju (PDF)', 'Harmonogram meczów (PDF)'],
+          description: 'Jesienny turniej akademii na Orliku dla trzech roczników. Każdy rocznik gra w swojej części dnia; po każdej części dekoracja i medale dla wszystkich dzieci.',
+          parts: [
+            { id: 'cp-1', name: 'Żak starszy — rocznik 2018', group: 'g-zaks', start: '09:00', end: '11:30', teams: ['et-laki', 'et-gorki', 'et-sas'] },
+            { id: 'cp-2', name: 'Orlik młodszy — rocznik 2017', group: 'g-orlm', start: '12:00', end: '14:30', teams: ['et-brzezie', 'et-laki', 'et-brzozow'] },
+            { id: 'cp-3', name: 'Orlik starszy — rocznik 2015–2016', group: 'g-orls', start: '15:00', end: '17:30', teams: ['et-gorki', 'et-sas', 'et-brzozow'] },
+          ] },
+        { id: 'ce-mikolajki', slug: 'mikolajki-akademii', name: 'Mikołajki Akademii', date: '2026-12-06', place: 'pl-salka', public: false, files: [],
+          description: 'Spotkanie dla dzieci i rodziców: gry z piłką, zdjęcia drużyn, paczki od Mikołaja.',
+          parts: [{ id: 'cp-4', name: 'Kids i Skrzat', group: 'g-kids', start: '10:00', end: '11:00', teams: [] }, { id: 'cp-5', name: 'Żaki i Orliki', group: 'g-orlm', start: '11:15', end: '12:30', teams: [] }] },
+      ],
     }
 
     const weekdays: [Zone, string, string, number][] = [['public_free', '08:00', '16:00', 1], ['club_training', '16:00', '19:30', 2], ['reservable_paid', '19:30', '22:00', 2]]
@@ -597,7 +625,7 @@
     { id: 'kasia', person: 'p-kasia', label: 'Kasia Nowak', roleKey: 'persona.role.guardian', features: ['people.self', 'activities.attendance.declare', 'communication.view', 'payments.view_own', 'payments.pay_online', 'payments.orders.place'], home: '/club', email: 'kasia.nowak@example.pl' },
     { id: 'ola', person: 'p-ola', label: 'Ola Nowak', roleKey: 'persona.role.participant', features: ['people.self', 'activities.attendance.declare', 'communication.view'], home: '/club', email: 'ola.nowak@example.pl' },
     { id: 'rafal', person: 'p-rafal', label: 'Rafał Malinowski', roleKey: 'persona.role.coachCoordinator', features: ['people.self', 'activities.attendance.declare', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'backend', 'club_core.view', 'club_core.sections.public_content', 'people.view', 'groups.view', 'groups.manage', 'activities.view', 'activities.manage', 'activities.reports.view', 'communication.cases.manage', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'rafal@przyklad.example' },
-    { id: 'anna', person: 'p-anna', label: 'Anna Kowalczyk', roleKey: 'persona.role.swimInstructor', features: ['people.self', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'anna@przyklad.example' },
+    { id: 'anna', person: 'p-anna', label: 'Anna Kowalczyk', roleKey: 'persona.role.swimInstructor', features: ['people.self', 'communication.view', 'groups.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'anna@przyklad.example' },
     { id: 'joanna', person: 'p-joanna', label: 'Joanna Wiśniewska', roleKey: 'persona.role.admin', features: ['*'], home: '/backend', email: 'joanna@przyklad.example' },
     { id: 'beata', person: 'p-beata', label: 'Beata Zając', roleKey: 'persona.role.treasurer', features: ['people.self', 'backend', 'payments.view', 'payments.manage', 'payments.bank.import', 'payments.cash.record', 'payments.cash.settle', 'payments.orders.manage'], home: '/backend', email: 'skarbnik@przyklad.example' },
     { id: 'tomek', person: 'p-tomek', label: 'Tomek Lis', roleKey: 'persona.role.attendant', features: ['people.self', 'facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage', 'backend'], home: '/club/facility', email: 'tomek@przyklad.example' },
@@ -878,6 +906,8 @@
     { id: 'F-12', title: 'flow.F12.title', steps: [['joanna', '/backend/facilities/reports/owner', 'flow.F12.s1']] },
     { id: 'F-13', title: 'flow.F13.title', steps: [['joanna', '/backend/payments/orders', 'flow.F13.s1'], ['joanna', '/backend/payments/orders/create', 'flow.F13.s2'], ['kasia', '/club/orders/oc-akad', 'flow.F13.s3'], ['guest', '/club/orders/oc-akad', 'flow.F13.s4'], ['guest', '/club/o/kit-robert', 'flow.F13.s5'], ['rafal', '/club/coach/payments', 'flow.F13.s6'], ['beata', '/backend/payments/cash-custody', 'flow.F13.s7'], ['joanna', '/backend/payments/orders/oc-akad?view=supplier', 'flow.F13.s8'], ['rafal', '/club/coach/payments', 'flow.F13.s9']] },
     { id: 'F-14', title: 'flow.F14.title', steps: [['joanna', '/backend/payments/fees', 'flow.F14.s1'], ['rafal', '/club', 'flow.F14.s2'], ['rafal', '/club/coach/payments?group=g-orlm&due=1', 'flow.F14.s3'], ['anna', '/club/coach/payments', 'flow.F14.s4'], ['beata', '/backend/payments/cash-custody', 'flow.F14.s5'], ['beata', '/backend', 'flow.F14.s6']] },
+    { id: 'F-15', title: 'flow.F15.title', steps: [['rafal', '/club/occurrences/a-orlm-2026-11-10', 'flow.F15.s1'], ['rafal', '/club/training/outlines/ol-zwody', 'flow.F15.s2'], ['rafal', '/club/training/outlines/ol-zwody/print', 'flow.F15.s3'], ['rafal', '/club/occurrences/a-orlm-2026-11-10/attendance', 'flow.F15.s4'], ['rafal', '/club/groups/g-tramp', 'flow.F15.s5'], ['rafal', '/club/reports/pzpn?group=g-orlm&month=2026-11&kind=attendance', 'flow.F15.s6'], ['kasia', '/club/profile', 'flow.F15.s7']] },
+    { id: 'F-16', title: 'flow.F16.title', steps: [['rafal', '/club/club-events', 'flow.F16.s1'], ['rafal', '/club/club-events/ce-puchar', 'flow.F16.s2'], ['joanna', '/backend/club/publication', 'flow.F16.s3'], ['guest', '/p/przyklad/events', 'flow.F16.s4'], ['guest', '/p/przyklad/events/turniej-o-puchar-przykladu', 'flow.F16.s5']] },
   ]
 
   // ═══════════════════════════════════════════════════════════════════
@@ -958,7 +988,8 @@
       ${unread.length ? `<p><b>${unread.length}</b> ${esc(t('m.screenToday.unread', { n: unread.length }))}</p><a href="#/club/messages/${unread[0].id}">${esc(txt(unread[0].subject))}</a>` : `<p class="muted">${esc(t('m.screenToday.noNew'))}</p>`}</section>`
     const pay = can('payments.view_own') ? `<section class="card" aria-labelledby="t-pay"><div class="tile-head"><h2 id="t-pay">${esc(t('m.screenToday.payTitle'))}</h2><a href="#/club/payments">${esc(t('m.screenToday.details'))}</a></div>
       ${sum ? `<div class="kpi">${zl(sum)}</div><p class="muted small">${esc(t('m.screenToday.dueBy', { date: dShort(charges.map((c) => c.due).sort()[0]) }))} · ${esc(t('m.screenToday.chargesCount', { n: charges.length }))}</p>${can('payments.pay_online') ? link(esc(t('m.screenToday.pay')), '/club/payments', 'btn primary block') : `<p class="small muted">${esc(t('m.screenToday.guardianPays'))}</p>`}` : `<p class="muted">${esc(t('m.screenToday.allPaid'))}</p>`}</section>` : ''
-    return `<div class="tiles">${cal}${att}${msg}${pay}${kitTodayTiles()}</div>`
+    const shortcuts = `${pay}${kitTodayTiles()}`
+    return `<div class="tiles">${cal}${att}${msg}</div>${shortcuts ? `<div class="section-title">${esc(t('m.screenToday.shortcuts'))}</div><div class="tiles">${shortcuts}</div>` : ''}`
   }
 
   // M-03 (REQ-W06): Najbliższe · Dzień · Tydzień · Miesiąc; the phone opens on Day (Q-W02); Najbliższe is today and
@@ -1010,6 +1041,7 @@
         ${o.coach === pid ? btn(t('m.screenOccurrence.reportAbsence'), 'absence', { occ: o.id }, 'block') : ''}
         ${btn(t('m.screenOccurrence.cancelSession'), 'cancel-occ', { occ: o.id }, 'block danger')}
         ${can('communication.post') ? btn(t('m.screenOccurrence.messageGroup'), 'new-thread', { scope: `occurrence:${o.id}` }, 'block') : ''}</div>` : ''}
+      ${o.type === 'training' ? outlineCard(o) : ''}
       ${subs.length && isCoach ? `<div class="section-title">${t('m.screenOccurrence.substitutionHistory')}</div><ul class="list small">${subs.map((x) => `<li>${esc(x.at)} — ${x.kind === 'absence_reported' ? t('m.screenOccurrence.reportedAbsence', { name: esc(pName(x.prev)) }) : t('m.screenOccurrence.substituteEntry', { next: esc(pName(x.next)), prev: esc(pName(x.prev)) })}${x.reason ? ` (${esc(x.reason)})` : ''}</li>`).join('')}</ul>` : ''}`
   }
 
@@ -1031,7 +1063,7 @@
     const rows = ids.map((m) => {
       const a = att[m]; const v = a?.actual || ''
       const opt = (val: string, l: string): string => `<button type="button" class="${v === val ? 'on' : ''}" data-action="mark" data-occ="${o.id}" data-person="${m}" data-val="${val}" aria-pressed="${v === val}" ${o.status === 'done' ? 'disabled' : ''}>${l}</button>`
-      return `<li><div class="row between"><div><div class="item-title">${esc(pName(m))}</div><div class="small">${declBadge(a, kind)}</div></div><div class="seg" role="group" aria-label="${esc(t('m.screenAttendance.rowLabel', { name: pName(m) }))}">${opt('present', t('m.screenAttendance.present'))}${opt('absent', t('m.screenAttendance.absent'))}${opt('late', t('m.screenAttendance.late'))}</div></div></li>`
+      return `<li><div class="row between"><div><div class="item-title">${esc(pName(m))}</div><div class="small">${declBadge(a, kind)}${g.kind === 'team' ? ` ${medChip(m)}` : ''}</div></div><div class="seg" role="group" aria-label="${esc(t('m.screenAttendance.rowLabel', { name: pName(m) }))}">${opt('present', t('m.screenAttendance.present'))}${opt('absent', t('m.screenAttendance.absent'))}${opt('late', t('m.screenAttendance.late'))}</div></div></li>`
     }).join('')
     return `<div class="card"><div class="item-title">${esc(o.name)}</div><div class="small muted">${dShort(o.date)} ${o.start}–${o.end} · ${esc(placeName(db, o.place))} · ${o.coach ? esc(pName(o.coach)) : t('m.screenAttendance.noCoach')}</div>
       <div class="row" style="margin-top:8px">${summary}</div></div>
@@ -1119,20 +1151,27 @@
     return `<form class="form" data-form="profile" novalidate><div class="form-group"><h3>${t('m.screenProfile.myDetails')}</h3><div class="fields">
         ${fld('phone', t('common.phone'), inp('phone', 'tel', p.phone || ''), { hint: t('m.screenProfile.phoneHint') })}${fld('email', t('m.screenProfile.contactEmail'), inp('email', 'email', p.email || ''), { req: true })}
         ${fld('lang', t('m.screenProfile.language'), sel('lang', LANGS.map((c) => [c, langName(c)] as [string, string]), lang, 'data-change="lang" id="profile-lang"'), { hint: t('m.screenProfile.languageHint') })}</div>
+        ${needsMedical(pid) ? `<div style="margin-top:10px" class="small"><b>${esc(t('med.title'))}:</b> ${medChip(pid)}</div>` : ''}
         ${isCoachPersona() ? `<div style="margin-top:10px">${chk('publish', t('m.screenProfile.publishConsent'), !!p.publishConsent)}</div>` : ''}
         <div class="form-actions" style="margin-top:10px"><button class="btn primary" type="submit">${t('common.save')}</button></div></div></form>
       ${wards.length ? `<div class="section-title">${t('m.screenProfile.wardsAndConsents')}</div>${wards.map((g) => { const w = personById(db, g.ward); const grs = db.groups.filter((x) => x.members.includes(w.id)); return `<div class="card"><div class="row between"><span class="item-title">${esc(w.first)} ${esc(w.last)}</span><span class="small muted">${t('m.screenProfile.age', { n: ageOn(w.birth) })}${w.account ? ` · ${t('m.screenProfile.hasAccount')}` : ''}</span></div>
         <div class="small muted">${grs.map((x) => `${esc(x.name)} (${esc(section(x.section).name)})`).join(' · ') || t('m.screenProfile.noGroups')}</div>
+        ${needsMedical(w.id) ? `<div class="small" style="margin-top:6px"><b>${esc(t('med.title'))}:</b> ${medChip(w.id)}</div>` : ''}
         <div class="stack" style="margin-top:8px">${(['regulations', 'image', 'trips'] as const).map((k) => `<label class="check"><input type="checkbox" data-change="consent" data-gs="${g.id}" data-key="${k}" ${g.consents[k] ? 'checked' : ''}><span>${consentLabel[k]}</span></label>`).join('')}</div>
         ${g.primaryPayer ? `<div style="margin-top:6px">${badge(t('m.screenProfile.primaryPayer'), 'info')}</div>` : ''}</div>` }).join('')}` : ''}
       ${guardOf.length ? `<div class="section-title">${t('m.screenProfile.myGuardians')}</div><div class="card small">${t('m.screenProfile.guardiansNote', { names: guardOf.map((g) => esc(pName(g.guardian))).join(', ') })}</div>` : ''}
       <div class="section-title">${t('m.screenProfile.more')}</div><div class="stack">
+        ${isCoachPersona() ? link(t('m.screenProfile.myUnits'), '/club/coach/units', 'btn block') : ''}
+        ${can('groups.view') && staffGroups().length ? link(t('m.screenProfile.groups'), '/club/groups', 'btn block') : ''}
         ${can('facilities.view') ? link(t('m.screenProfile.facilities'), '/club/places', 'btn block') : ''}
         ${can('facilities.log.write') ? link(t('m.screenProfile.facilityToday'), '/club/facility', 'btn block') : ''}
         ${can('payments.orders.place') ? link(t('m.screenProfile.orders'), '/club/orders', 'btn block') : ''}
         ${can('payments.groups.view') ? link(t('m.screenProfile.groupPayments'), '/club/coach/payments', 'btn block') : ''}
         ${can('payments.cash.record') ? link(t('m.screenProfile.acceptCash'), '/club/cash', 'btn block') : ''}
-        ${can('backend') ? link(t('m.screenProfile.adminPanel'), '/backend', 'btn block') : ''}
+        ${can('activities.manage') ? link(t('m.screenProfile.clubEvents'), '/club/club-events', 'btn block') : ''}
+        ${isCoachPersona() || can('activities.manage') ? link(t('m.screenProfile.outlines'), '/club/training/outlines', 'btn block') : ''}
+        ${can('backend') && (isAdmin() || coordSections(pid).length || can('payments.manage') || can('facilities.log.write')) ? link(t('m.screenProfile.adminPanel'), '/backend', 'btn block') : ''}
+        ${hasMemberRole(pid) ? btn(t('m.screenProfile.leaveClub'), 'leave-club', {}, 'block') : ''}
         ${btn(t('m.screenProfile.signOut'), 'logout', {}, 'block')}</div>`
   }
 
@@ -1962,8 +2001,10 @@
   function eventsList(sectionId: string | undefined, when: 'upcoming' | 'past'): string {
     const evs = db.activities.filter((a) => a.oneOff && group(a.group).isPublic && section(group(a.group).section).isPublic && (!sectionId || group(a.group).section === sectionId) && (when === 'upcoming' ? a.to >= TODAY : a.to < TODAY && a.from >= addDays(TODAY, -60)))
       .sort((a, b) => (when === 'upcoming' ? a.from.localeCompare(b.from) : b.from.localeCompare(a.from)))
-    if (!evs.length) return ''
-    return `<div class="stack">${evs.map((a) => { const past = a.to < TODAY; const g = group(a.group); const place = db.places.find((x) => x.id === a.place); return `<div class="card"><div class="row between"><div class="row" style="gap:10px">${logoBox(sectionLogo(section(g.section)), t('p.eventsList.sectionLogo', { name: section(g.section).name }), 36)}<div><div class="item-title">${esc(a.name)}</div><div class="small muted">${esc(t('p.eventsList.start', { date: dLong(a.from), time: a.start }))} · ${esc(placeName(db, a.place))}${place?.external ? ` · <a href="${esc(mapUrl(db, a.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a>` : ''} · ${esc(section(g.section).name)}</div></div></div>${past ? badge(t('p.eventsList.past'), 'neutral') : badge(typeLabel(a.type, g.kind), 'info')}</div>${a.info?.length ? `<ul class="small" style="margin:8px 0 0;padding-left:18px">${a.info.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>` }).join('')}</div>`
+    const ces = sectionId && sectionId !== 's-akad' ? [] : db.clubEvents.filter((ce) => ce.public && (when === 'upcoming' ? ce.date >= TODAY : ce.date < TODAY && ce.date >= addDays(TODAY, -60)))
+    const cevCards = ces.map((ce) => `<a class="card" href="#/p/przyklad/events/${ce.slug}" style="display:block;text-decoration:none"><div class="row between"><div class="row" style="gap:10px">${logoBox(db.settings.logo, t('p.eventsList.sectionLogo', { name: db.settings.name }), 36)}<div><div class="item-title">${esc(ce.name)}</div><div class="small muted">${esc(t('p.eventsList.start', { date: dLong(ce.date), time: cevRange(ce).slice(0, 5) }))} · ${esc(placeName(db, ce.place))} · ${esc(t('m.cev.parts', { n: ce.parts.length }))}</div></div></div>${badge(t('occType.tournament'), 'info')}</div></a>`).join('')
+    if (!evs.length && !cevCards) return ''
+    return `<div class="stack">${cevCards}${evs.map((a) => { const past = a.to < TODAY; const g = group(a.group); const place = db.places.find((x) => x.id === a.place); return `<div class="card"><div class="row between"><div class="row" style="gap:10px">${logoBox(sectionLogo(section(g.section)), t('p.eventsList.sectionLogo', { name: section(g.section).name }), 36)}<div><div class="item-title">${esc(a.name)}</div><div class="small muted">${esc(t('p.eventsList.start', { date: dLong(a.from), time: a.start }))} · ${esc(placeName(db, a.place))}${place?.external ? ` · <a href="${esc(mapUrl(db, a.place))}" target="_blank" rel="noopener">${icon('map-pin')} ${esc(t('m.occCard.map'))}</a>` : ''} · ${esc(section(g.section).name)}</div></div></div>${past ? badge(t('p.eventsList.past'), 'neutral') : badge(typeLabel(a.type, g.kind), 'info')}</div>${a.info?.length ? `<ul class="small" style="margin:8px 0 0;padding-left:18px">${a.info.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}</div>` }).join('')}</div>`
   }
 
   function screenPublicEvents(q: URLSearchParams): string {
@@ -2448,6 +2489,167 @@
     return w(t('kit.kitDashboardWidget.title'), `${camps.length ? `<ul class="list small">${camps.map((c) => { const s = kitStats(c); return `<li><a href="#/backend/payments/orders/${c.id}">${esc(c.name)}</a> ${kitBadge(c.status)}<br><span class="muted">${esc(t('kit.kitDashboardWidget.progress', { orders: s.orders, kids: s.kids, paid: zl(s.paid), value: zl(s.value) }))}</span></li>` }).join('')}</ul>` : `<p class="muted small">${esc(t('kit.kitDashboardWidget.none'))}</p>`}${held ? `<p class="small" style="margin:8px 0 0">${esc(t('kit.kitDashboardWidget.cashHeld'))} <b>${zl(held)}</b> — <a href="#/backend/payments/cash-custody">${esc(t('kit.kitDashboardWidget.settle'))}</a></p>` : ''}`, '/backend/payments/orders', camps.length)
   }
 
+  // ═══════════════════════════════════════════════════════════════════
+  // Built on main by 2026-11-25: medical certificate expiry (D-038), training outlines (D-038), PZPN exports,
+  // phone squads and coach units, club events with parts (D-032) and the public event page.
+  // ═══════════════════════════════════════════════════════════════════
+  // Medical certificate: only the "valid until" date (D-038). Red = expired, orange = 30 days or less, green = valid.
+  type MedKind = 'success' | 'warning' | 'error' | 'neutral'
+  function medStatus(pid: string): { kind: MedKind; text: string } {
+    const d = personById(db, pid).medicalUntil
+    if (!d) return { kind: 'neutral', text: t('med.none') }
+    const dShort = (x: string): string => `${x.slice(8, 10)}.${x.slice(5, 7)}.${x.slice(0, 4)}` // full date with the year, as on the certificate
+    if (d < TODAY) return { kind: 'error', text: t('med.expired', { date: dShort(d) }) }
+    if (d <= addDays(TODAY, 30)) return { kind: 'warning', text: t('med.soon', { date: dShort(d) }) }
+    return { kind: 'success', text: t('med.valid', { date: dShort(d) }) }
+  }
+  // The chip is shown for players of teams (football); class groups (pool, zumba…) keep their own rules.
+  const needsMedical = (pid: string): boolean => db.groups.some((g) => g.kind === 'team' && g.members.includes(pid))
+  const medChip = (pid: string): string => { const m = medStatus(pid); return badge(m.text, m.kind, m.kind === 'success' ? 'circle-check' : m.kind === 'neutral' ? 'circle-dashed' : 'circle-alert') }
+  const canWriteMedical = (g: Group): boolean => isAdmin() || coordSections(me()).includes(g.section)
+
+  // Groups a staff member works with on the phone: coached groups plus every group of the coordinated sections.
+  const staffGroups = (): Group[] => db.groups.filter((g) => g.coaches.includes(me()) || coordSections(me()).includes(g.section))
+
+  // ── Training outlines (konspekty) ──
+  const outlineOf = (occId: string): Outline | undefined => db.outlines.find((o) => o.occs.includes(occId))
+  const PART_KEYS: Outline['parts'][number]['kind'][] = ['intro', 'main', 'final']
+  function screenOutlines(): string {
+    const mine = staffGroups().map((g) => g.id)
+    const list = db.outlines.filter((o) => isAdmin() || mine.includes(o.group)).sort((a, b) => b.updatedAt - a.updatedAt)
+    return `<p class="small muted" style="margin-top:0">${esc(t('m.outlines.intro'))}</p>
+      <div style="margin-bottom:8px">${btn(esc(t('m.outlines.new')), 'outline-new', {}, 'primary block')}</div>
+      ${list.length ? `<ul class="list">${list.map((o) => { const next = o.occs.map((id) => occById(id)).filter((x): x is Occurrence => !!x && x.date >= TODAY).sort((a, b) => a.date.localeCompare(b.date))[0]; return `<li><a href="#/club/training/outlines/${o.id}" style="text-decoration:none"><div class="item-title">${esc(o.title)}</div>
+        <div class="small muted">${esc(group(o.group).name)} · ${esc(t('m.outlines.minutes', { n: o.parts.reduce((s, p) => s + p.minutes, 0) }))} · ${esc(pName(o.author))}</div>
+        <div class="small">${next ? esc(t('m.outlines.nextUse', { date: dShort(next.date), time: next.start })) : `<span class="muted">${esc(t('m.outlines.notAttached'))}</span>`}</div></a></li>` }).join('')}</ul>`
+        : empty(t('m.outlines.emptyTitle'), t('m.outlines.emptyText'), '', 'file-text')}`
+  }
+  function outlineBody(o: Outline, printable: boolean): string {
+    const g = group(o.group)
+    const total = o.parts.reduce((s, p) => s + p.minutes, 0)
+    const head = `<table class="pzpn"><tbody>
+      <tr><th>${esc(t('m.outline.club'))}</th><td>${esc(db.settings.name)}</td><th>${esc(t('common.group'))}</th><td>${esc(g.name)}${g.category ? ` (${esc(g.category)})` : ''}</td></tr>
+      <tr><th>${esc(t('common.coach'))}</th><td>${esc(pName(o.author))}</td><th>${esc(t('m.outline.duration'))}</th><td>${esc(t('m.outlines.minutes', { n: total }))}</td></tr>
+      <tr><th>${esc(t('m.outline.goal'))}</th><td colspan="3">${esc(o.goal)}</td></tr>
+      <tr><th>${esc(t('m.outline.equipment'))}</th><td colspan="3">${esc(o.equipment)}</td></tr></tbody></table>`
+    const parts = `<table class="pzpn"><thead><tr><th>${esc(t('m.outline.part'))}</th><th>${esc(t('m.outline.time'))}</th><th>${esc(t('m.outline.content'))}</th></tr></thead><tbody>${o.parts.map((p) => `<tr><td><b>${esc(t(`m.outline.part.${p.kind}`))}</b></td><td>${p.minutes}′</td><td>${esc(p.text)}</td></tr>`).join('')}</tbody></table>`
+    return `${printable ? `<h1 style="font-size:20px;margin:0 0 4px">${esc(t('m.outline.printTitle'))}</h1>` : ''}<h2 style="font-size:17px;margin:0 0 8px">${esc(o.title)}</h2>${head}${parts}`
+  }
+  function screenOutline(p: Record<string, string>): string {
+    const o = db.outlines.find((x) => x.id === p.id)
+    if (!o) return empty(t('m.outline.notFound'), '', link(esc(t('m.outline.backToList')), '/club/training/outlines'))
+    const occs = o.occs.map((id) => occById(id)).filter((x): x is Occurrence => !!x).sort((a, b) => a.date.localeCompare(b.date))
+    return `<div class="card">${outlineBody(o, false)}</div>
+      <div class="section-title">${esc(t('m.outline.attachedTo'))}</div>
+      ${occs.length ? `<ul class="list small">${occs.map((x) => `<li class="row between"><a href="#/club/occurrences/${x.id}">${esc(dShort(x.date))} ${x.start} — ${esc(x.name)}</a>${x.date < TODAY ? badge(t('m.outline.used'), 'neutral') : badge(t('m.outline.planned'), 'info')}</li>`).join('')}</ul>` : `<p class="small muted">${esc(t('m.outlines.notAttached'))}</p>`}
+      <div class="stack" style="margin-top:12px">${btn(esc(t('m.outline.attach')), 'outline-attach', { id: o.id }, 'block')}${btn(esc(t('m.outline.series')), 'outline-series', { id: o.id }, 'block')}${link(esc(t('m.outline.print')), `/club/training/outlines/${o.id}/print`, 'btn primary block')}</div>
+      <p class="small muted">${esc(t('m.outline.libraryNote'))}</p>`
+  }
+  function screenOutlinePrint(p: Record<string, string>): string {
+    const o = db.outlines.find((x) => x.id === p.id)
+    if (!o) return empty(t('m.outline.notFound'), '')
+    return `<div class="print-page"><div class="row between no-print" style="margin-bottom:12px">${link(esc(t('common.back')), `/club/training/outlines/${o.id}`)}<button type="button" class="btn primary" data-action="outline-print">${esc(t('m.outline.printNow'))}</button></div>${outlineBody(o, true)}<p class="small muted">${esc(t('m.outline.printFoot', { club: db.settings.name, date: dShort(TODAY) }))}</p></div>`
+  }
+  function outlineCard(o: Occurrence): string {
+    const ol = outlineOf(o.id)
+    const coach = o.coach === me() || group(o.group).coaches.includes(me()) || coordSections(me()).includes(group(o.group).section)
+    if (!ol && !coach) return ''
+    return `<div class="section-title">${esc(t('m.outline.cardTitle'))}</div>${ol ? `<a class="card" href="#/club/training/outlines/${ol.id}" style="display:block;text-decoration:none"><div class="item-title">${esc(ol.title)}</div><div class="small muted">${esc(ol.goal)}</div></a>` : `<div class="card small"><span class="muted">${esc(t('m.outline.noneYet'))}</span><div style="margin-top:6px">${link(esc(t('m.outline.pick')), '/club/training/outlines', 'btn sm')}</div></div>`}`
+  }
+
+  // ── PZPN exports (CSV, D-038: exports instead of an integration) ──
+  function pzpnRows(gid: string, month: string, kind: string): string[][] {
+    const g = group(gid)
+    const occs = db.occurrences.filter((o) => o.group === gid && o.date.startsWith(month)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
+    if (kind === 'schedule') return [[t('m.pzpn.col.date'), t('m.pzpn.col.from'), t('m.pzpn.col.to'), t('common.group'), t('m.pzpn.col.category'), t('common.type'), t('common.place'), t('common.coach'), t('m.pzpn.col.status')],
+      ...occs.map((o) => [o.date, o.start, o.end, g.name, g.category || '', typeLabel(o.type, g.kind), placeName(db, o.place), pName(o.coach), t(`m.pzpn.status.${o.status}`)])]
+    const done = occs.filter((o) => o.status === 'done')
+    return [[t('m.pzpn.col.date'), t('m.pzpn.col.player'), t('m.pzpn.col.born'), t('m.pzpn.col.presence')],
+      ...done.flatMap((o) => g.members.map((m) => { const a = db.attendance[o.id]?.[m]; return [o.date, pName(m), personById(db, m).birth.slice(0, 4), t(`m.pzpn.presence.${a?.actual || 'none'}`)] }))]
+  }
+  function screenPzpn(q: URLSearchParams): string {
+    const groups = staffGroups().filter((g) => g.kind === 'team')
+    if (!groups.length) return empty(t('m.pzpn.noGroupsTitle'), t('m.pzpn.noGroupsText'))
+    const gid = groups.some((g) => g.id === q.get('group')) ? q.get('group') as string : groups[0].id
+    const month = q.get('month') || '2026-11', kind = q.get('kind') === 'attendance' ? 'attendance' : 'schedule'
+    const href = (k: string, v: string): string => { const x = new URLSearchParams({ group: gid, month, kind }); x.set(k, v); return `/club/reports/pzpn?${x}` }
+    const chip = (label: string, k: string, v: string, on: boolean): string => `<a class="chip ${on ? 'on' : ''}" href="#${href(k, v)}">${esc(label)}</a>`
+    const rows = pzpnRows(gid, month, kind)
+    return `<p class="small muted" style="margin-top:0">${esc(t('m.pzpn.intro'))}</p>
+      <div class="section-title">${esc(t('common.group'))}</div><div class="chips">${groups.map((g) => chip(g.name, 'group', g.id, g.id === gid)).join('')}</div>
+      <div class="section-title">${esc(t('m.pzpn.month'))}</div><div class="chips">${['2026-11', '2026-10'].map((m) => chip(fmtMonth(m), 'month', m, m === month)).join('')}</div>
+      <div class="section-title">${esc(t('m.pzpn.kind'))}</div><div class="chips">${chip(t('m.pzpn.kindSchedule'), 'kind', 'schedule', kind === 'schedule')}${chip(t('m.pzpn.kindAttendance'), 'kind', 'attendance', kind === 'attendance')}</div>
+      <div class="card" style="margin-top:12px;overflow-x:auto"><div class="small muted" style="margin-bottom:6px">${esc(t('m.pzpn.preview', { n: rows.length - 1 }))}</div><table class="pzpn small"><thead><tr>${rows[0].map((c) => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${rows.slice(1, 7).map((r) => `<tr>${r.map((c) => `<td>${esc(c)}</td>`).join('')}</tr>`).join('')}</tbody></table>${rows.length > 7 ? `<div class="small muted">${esc(t('m.pzpn.more', { n: rows.length - 7 }))}</div>` : ''}</div>
+      <div style="margin-top:12px">${btn(esc(t('m.pzpn.download')), 'pzpn-csv', { group: gid, month, kind }, 'primary block')}</div>`
+  }
+
+  // ── Squads on the phone: coach reads, coordinator writes the medical date ──
+  function screenSquads(): string {
+    const gs = staffGroups()
+    return gs.length ? `<ul class="list">${gs.map((g) => { const reds = g.kind === 'team' ? g.members.filter((m) => medStatus(m).kind === 'error' || medStatus(m).kind === 'warning').length : 0; return `<li><a href="#/club/groups/${g.id}" style="text-decoration:none"><div class="row between"><span class="item-title"><span class="dot sec-${section(g.section).color}" aria-hidden="true"></span> ${esc(g.name)}</span>${reds ? badge(t('m.squad.medAlerts', { n: reds }), 'warning') : ''}</div><div class="small muted">${esc(section(g.section).name)}${g.category ? ` · ${esc(g.category)}` : ''}${g.league ? ` · ${esc(g.league)}` : ''} · ${esc(t('m.squad.players', { n: g.members.length }))}</div></a></li>` }).join('')}</ul>`
+      : empty(t('m.squad.emptyTitle'), t('m.squad.emptyText'))
+  }
+  function screenSquad(p: Record<string, string>): string {
+    const g = db.groups.find((x) => x.id === p.id)
+    if (!g || !staffGroups().includes(g)) return `<div class="alert error" role="alert"><strong>${esc(t('shell.render.deniedTitle'))}</strong>${esc(t('m.squad.denied'))}</div>`
+    const write = canWriteMedical(g)
+    return `<div class="card"><div class="item-title">${esc(g.name)}</div><div class="small muted">${esc(section(g.section).name)}${g.category ? ` · ${esc(g.category)}` : ''}${g.league ? ` · ${esc(g.league)}` : ''} · ${esc(g.coaches.map((c) => pName(c)).join(', '))}</div>
+      ${g.kind === 'team' ? `<div class="row" style="margin-top:8px">${link(esc(t('m.squad.export')), `/club/reports/pzpn?group=${g.id}`, 'btn sm')}</div>` : ''}</div>
+      ${g.members.length ? `<ul class="list">${g.members.map((m) => `<li><div class="row between"><div><div class="item-title">${esc(pName(m))}</div><div class="small muted">${esc(t('m.squad.born', { year: personById(db, m).birth.slice(0, 4) }))}</div></div><div style="text-align:right">${g.kind === 'team' ? medChip(m) : ''}${g.kind === 'team' && write ? `<div style="margin-top:4px">${btn(esc(t('m.squad.setDate')), 'med-date', { person: m }, 'sm')}</div>` : ''}</div></div></li>`).join('')}</ul>` : empty(t('m.squad.noPlayers'), '')}
+      <p class="small muted">${esc(t(write ? 'm.squad.hintCoordinator' : 'm.squad.hintCoach'))}</p>`
+  }
+
+  // ── Coach units on the phone ──
+  function screenMyUnits(q: URLSearchParams): string {
+    const month = q.get('month') || '2026-11'
+    const r = unitsReport(month).find((x) => x.coach === me())
+    const chips = `<div class="chips" style="margin-bottom:12px">${['2026-11', '2026-10'].map((m) => `<a class="chip ${m === month ? 'on' : ''}" href="#/club/coach/units?month=${m}">${esc(fmtMonth(m))}</a>`).join('')}</div>`
+    if (!r) return `${chips}${empty(t('m.units.emptyTitle'), t('m.units.emptyText'))}`
+    const kpi = (label: string, v: number): string => `<div class="card"><div class="small muted">${esc(label)}</div><div class="kpi">${v}</div></div>`
+    return `${chips}<div class="kpi-grid">${kpi(t('b.screenUnits.colPlanned'), r.planned)}${kpi(t('b.screenUnits.colGiven'), r.given)}${kpi(t('b.screenUnits.colTaken'), r.taken)}${kpi(t('b.screenUnits.colBalance'), r.balance)}</div>
+      <div class="card" style="margin-top:12px"><div class="row between"><span>${esc(t('b.screenUnits.colMatches'))}</span><b>${r.matches}</b></div></div>
+      <div class="section-title">${esc(t('b.screenUnits.colSessions'))}</div><ul class="list small">${r.occs.map((o) => `<li><a href="#/club/occurrences/${o.id}">${dShort(o.date)} ${o.start} — ${esc(group(o.group).name)}</a>${o.coach !== o.defaultCoach ? ` ${badge(o.coach === me() ? t('m.units.took') : t('m.units.gave', { name: pName(o.coach) }), 'info')}` : ''}</li>`).join('')}</ul>
+      <p class="small muted">${esc(t('m.units.note'))}</p>`
+  }
+
+  // ── Club events with parts (D-032) ──
+  function cevRange(ce: ClubEvent): string { const s = ce.parts.map((p) => p.start).sort()[0], e = ce.parts.map((p) => p.end).sort().slice(-1)[0]; return s ? `${s}–${e}` : '' }
+  function screenClubEvents(): string {
+    const list = [...db.clubEvents].sort((a, b) => a.date.localeCompare(b.date))
+    return `<p class="small muted" style="margin-top:0">${esc(t('m.cev.intro'))}</p><div style="margin-bottom:8px">${btn(esc(t('m.cev.new')), 'cev-new', {}, 'primary block')}</div>
+      ${list.length ? `<ul class="list">${list.map((ce) => `<li><a href="#/club/club-events/${ce.id}" style="text-decoration:none"><div class="row between"><span class="item-title">${esc(ce.name)}</span>${ce.public ? badge(t('m.cev.public'), 'success') : badge(t('m.cev.internal'), 'neutral')}</div><div class="small muted">${esc(dLong(ce.date))} · ${cevRange(ce)} · ${esc(placeName(db, ce.place))} · ${esc(t('m.cev.parts', { n: ce.parts.length }))}</div></a></li>`).join('')}</ul>` : empty(t('m.cev.emptyTitle'), t('m.cev.emptyText'))}`
+  }
+  function cevParts(ce: ClubEvent, manage: boolean): string {
+    return `<ul class="list">${ce.parts.sort((a, b) => a.start.localeCompare(b.start)).map((p) => `<li><div class="row between"><span class="item-title">${esc(p.name)}</span><span class="small"><b>${p.start}–${p.end}</b></span></div><div class="small muted">${p.group ? `${esc(group(p.group).name)} · ` : ''}${esc(p.teams.map((x) => (db.externalTeams.find((et) => et.id === x) || { name: x }).name).join(', '))}</div>${manage && p.group ? `<div class="small" style="margin-top:4px">${esc(t('m.cev.squadHint', { group: group(p.group).name, coach: pName(group(p.group).coaches[0]) }))}</div>` : ''}</li>`).join('')}</ul>`
+  }
+  function screenClubEvent(p: Record<string, string>): string {
+    const ce = db.clubEvents.find((x) => x.id === p.id)
+    if (!ce) return empty(t('m.cev.notFound'), '', link(esc(t('common.back')), '/club/club-events'))
+    return `<div class="card"><div class="row between">${badge(t('occType.tournament'), 'info')}${ce.public ? badge(t('m.cev.public'), 'success') : badge(t('m.cev.internal'), 'neutral')}</div>
+      <h2 style="margin:8px 0 2px;font-size:18px">${esc(ce.name)}</h2><p class="muted" style="margin:0">${esc(dLong(ce.date))}, ${cevRange(ce)} · ${esc(placeName(db, ce.place))}</p><p class="small" style="margin:8px 0 0">${esc(ce.description)}</p></div>
+      <div class="section-title">${esc(t('m.cev.partsTitle'))}</div>${cevParts(ce, true)}
+      <div class="stack" style="margin-top:12px">${btn(esc(t('m.cev.addPart')), 'cev-part', { id: ce.id }, 'block')}${btn(esc(ce.public ? t('m.cev.unpublish') : t('m.cev.publish')), 'cev-publish', { id: ce.id }, 'block')}${ce.public ? link(esc(t('m.cev.openPublic')), `/p/przyklad/events/${ce.slug}`, 'btn block') : ''}</div>
+      <p class="small muted">${esc(t('m.cev.note'))}</p>`
+  }
+  function screenClubEventsAdmin(): string {
+    return `${pageHead(t('route.B-34'), t('b.cev.sub'), link(esc(t('m.cev.openPhone')), '/club/club-events', 'btn'))}
+      ${table({ cols: [
+        { label: t('common.name'), cell: (r: ClubEvent) => `<b>${esc(r.name)}</b>` },
+        { label: t('common.date'), cell: (r: ClubEvent) => `${esc(dShort(r.date))} ${cevRange(r)}` },
+        { label: t('common.place'), cell: (r: ClubEvent) => esc(placeName(db, r.place)) },
+        { label: t('m.cev.partsTitle'), cell: (r: ClubEvent) => esc(r.parts.map((x) => x.name).join(' · ')) },
+        { label: t('b.cev.public'), cell: (r: ClubEvent) => r.public ? badge(t('m.cev.public'), 'success') : badge(t('m.cev.internal'), 'neutral') },
+      ], rows: db.clubEvents, empty: [t('m.cev.emptyTitle'), t('m.cev.emptyText')] })}`
+  }
+  function screenPublicEvent(p: Record<string, string>): string {
+    const ce = db.clubEvents.find((x) => x.slug === p.slug && x.public)
+    if (!pub().enabled || !pub().events || !ce) return empty(t('p.event.notFound'), t('p.event.notFoundText'), link(esc(t('p.screenEvents.title')), '/p/przyklad/events'), 'ban')
+    return `<div class="hero"><p class="small" style="margin:0 0 4px">${esc(t('occType.tournament'))} · ${esc(db.settings.name)}</p><h1>${esc(ce.name)}</h1><p>${esc(dLong(ce.date))}, ${cevRange(ce)} · ${esc(placeName(db, ce.place))}, ${esc((db.places.find((x) => x.id === ce.place) || { address: '' }).address)}</p></div>
+      <p>${esc(ce.description)}</p><div class="section-title">${esc(t('p.event.schedule'))}</div>${cevParts(ce, false)}
+      <div class="section-title">${esc(t('p.event.files'))}</div><ul class="list small">${ce.files.map((f) => `<li><a href="#" data-action="todo" data-what="${esc(f)}">${icon('file-text')} ${esc(f)}</a></li>`).join('')}</ul>
+      <p class="small muted">${esc(t('p.event.contact', { phone: db.settings.phone }))}</p>`
+  }
+
   // Route table. name = catalog key (displayed with t(route.name)); empty = [titleKey, textKey] for the "Empty" demo state;
   // api entries starting with "api." are catalog keys for captions, the rest are literal API paths.
   const R = (pattern: string, id: string, name: string, shell: ShellKind, api: string[], render: RouteDef['render'], extra: Partial<RouteDef> = {}): RouteDef => ({ pattern, id, name, shell, api, render, ...extra })
@@ -2513,6 +2715,19 @@
     R('/p/przyklad/events', 'P-06', 'route.P-06', 'public', ['GET /api/club_core/public/{clubSlug}/events?section='], (_p, q) => screenPublicEvents(q), { persona: false, empty: ['route.P-06.emptyTitle', ''] }),
     R('/p/przyklad/requests/verify/:token', 'P-05', 'route.P-05', 'public', ['POST /api/facilities/public/requests/verify/{token}'], (p) => screenVerify(p), { persona: false }),
   ]
+  ROUTES.push(
+    R('/club/training/outlines', 'M-20', 'route.M-20', 'member', ['GET /api/training/outlines', 'POST /api/training/outlines'], () => screenOutlines(), { empty: ['m.outlines.emptyTitle', 'm.outlines.emptyText'], back: '/club/profile' }),
+    R('/club/training/outlines/:id', 'M-21', 'route.M-21', 'member', ['GET/PUT /api/training/outlines/{id}', 'POST /api/training/outlines/{id}/attach', 'POST /api/training/outlines/{id}/copy-to-series'], (p) => screenOutline(p), { back: '/club/training/outlines' }),
+    R('/club/training/outlines/:id/print', 'M-21', 'route.M-21.print', 'bare', ['GET /api/training/outlines/{id} (układ PZPN, druk do PDF)'], (p) => screenOutlinePrint(p)),
+    R('/club/reports/pzpn', 'M-22', 'route.M-22', 'member', ['GET /api/activities/reports/pzpn?groupId&month&kind=schedule|attendance&format=csv'], (_p, q) => screenPzpn(q), { back: '/club/groups' }),
+    R('/club/groups', 'M-23', 'route.M-23', 'member', ['GET /api/groups/groups?mine=1'], () => screenSquads(), { empty: ['m.squad.emptyTitle', 'm.squad.emptyText'], back: '/club/profile' }),
+    R('/club/groups/:id', 'M-23', 'route.M-23.squad', 'member', ['GET /api/groups/groups/{id}/roster', 'PUT /api/people/persons/{id}/medical'], (p) => screenSquad(p), { back: '/club/groups' }),
+    R('/club/coach/units', 'M-24', 'route.M-24', 'member', ['GET /api/activities/reports/coach-units?mine=1&month'], (_p, q) => screenMyUnits(q), { back: '/club/profile' }),
+    R('/club/club-events', 'M-25', 'route.M-25', 'member', ['GET /api/activities/club-events', 'POST /api/activities/club-events'], () => screenClubEvents(), { empty: ['m.cev.emptyTitle', 'm.cev.emptyText'], back: '/club/profile' }),
+    R('/club/club-events/:id', 'M-25', 'route.M-25.event', 'member', ['GET/PUT /api/activities/club-events/{id}', 'POST /api/activities/club-events/{id}/parts'], (p) => screenClubEvent(p), { back: '/club/club-events' }),
+    R('/backend/activities/club-events', 'B-34', 'route.B-34', 'backend', ['GET /api/activities/club-events'], () => screenClubEventsAdmin()),
+    R('/p/przyklad/events/:slug', 'P-07', 'route.P-07', 'public', ['GET /api/club_core/public/{clubSlug}/events/{eventSlug}'], (p) => screenPublicEvent(p), { persona: false }),
+  )
   // ACL features required by the pages (requireFeatures in page.meta.ts).
   const ROUTE_FEATURES: Record<string, string> = {
     'M-08': 'payments.view_own', 'M-09': 'payments.view_own', 'M-11': 'facilities.view', 'M-12': 'facilities.log.write',
@@ -2521,6 +2736,7 @@
     'B-16': 'activities.reports.view', 'B-17': 'activities.manage', 'B-18': 'communication.view', 'B-19': 'communication.view',
     'B-20': 'payments.manage', 'B-21': 'payments.view', 'B-22': 'payments.view', 'B-29': 'payments.bank.import', 'M-15': 'payments.cash.record', 'M-16': 'payments.orders.place', 'M-17': 'payments.orders.place', 'M-18': 'payments.groups.view', 'B-30': 'payments.orders.manage', 'B-31': 'payments.orders.manage', 'B-32': 'payments.orders.manage', 'B-33': 'payments.cash.settle', 'B-23': 'facilities.view', 'B-24': 'facilities.rentals.manage', 'B-25': 'facilities.rentals.approve',
     'B-26': 'facilities.manage', 'B-27': 'facilities.log.write', 'B-28': 'facilities.reports.view',
+    'M-20': 'activities.coach', 'M-21': 'activities.coach', 'M-22': 'groups.view', 'M-23': 'groups.view', 'M-24': 'activities.coach', 'M-25': 'activities.manage', 'B-34': 'activities.manage',
   }
   for (const r of ROUTES) if (ROUTE_FEATURES[r.id]) r.feature = ROUTE_FEATURES[r.id]
 
@@ -2562,7 +2778,7 @@
       ['', [['shell.backendShell.dashboard', '/backend', 'backend']]],
       ['shell.backendShell.groupClub', [['shell.backendShell.sections', '/backend/club/sections', 'club_core.view'], ['shell.backendShell.places', '/backend/club/places', 'club_core.manage'], ['shell.backendShell.institutions', '/backend/club/institutions', 'club_core.manage'], ['shell.backendShell.settings', '/backend/club/settings', 'club_core.manage'], ['shell.backendShell.publication', '/backend/club/publication', 'club_core.publication.manage']]],
       ['shell.backendShell.groupPeople', [['shell.backendShell.persons', '/backend/people/persons', 'people.view']]],
-      ['shell.backendShell.groupClasses', [['shell.backendShell.groups', '/backend/groups/groups', 'groups.view'], ['shell.backendShell.activities', '/backend/activities/activities', 'activities.manage'], ['shell.backendShell.occurrences', '/backend/activities/occurrences', 'activities.view', db.occurrences.filter((o) => o.status === 'planned' && !o.coach && o.date >= TODAY).length], ['shell.backendShell.units', '/backend/activities/reports/coach-units', 'activities.reports.view'], ['shell.backendShell.policies', '/backend/activities/policies', 'activities.manage']]],
+      ['shell.backendShell.groupClasses', [['shell.backendShell.groups', '/backend/groups/groups', 'groups.view'], ['shell.backendShell.activities', '/backend/activities/activities', 'activities.manage'], ['shell.backendShell.clubEvents', '/backend/activities/club-events', 'activities.manage'], ['shell.backendShell.occurrences', '/backend/activities/occurrences', 'activities.view', db.occurrences.filter((o) => o.status === 'planned' && !o.coach && o.date >= TODAY).length], ['shell.backendShell.units', '/backend/activities/reports/coach-units', 'activities.reports.view'], ['shell.backendShell.policies', '/backend/activities/policies', 'activities.manage']]],
       ['shell.backendShell.groupCommunication', [['shell.backendShell.threads', '/backend/communication/threads', 'communication.view']]],
       ['shell.backendShell.groupFinance', [['shell.backendShell.fees', '/backend/payments/fees', 'payments.manage'], ['shell.backendShell.charges', '/backend/payments/charges', 'payments.view'], ['shell.backendShell.bank', '/backend/payments/bank', 'payments.manage', db.bankTx.filter((bt) => bt.status === 'suggested' || bt.status === 'unmatched').length], ['shell.backendShell.orders', '/backend/payments/orders', 'payments.orders.manage', db.kitCampaigns.filter((c) => ['open', 'closed', 'ordered', 'delivered'].includes(c.status)).length], ['shell.backendShell.cashCustody', '/backend/payments/cash-custody', 'payments.cash.settle', custodians().length]]],
       ['shell.backendShell.groupFacility', [['shell.backendShell.calendar', '/backend/facilities/calendar', 'facilities.view'], ['shell.backendShell.rentals', '/backend/facilities/rentals', 'facilities.rentals.manage'], ['shell.backendShell.requests', '/backend/facilities/requests', 'facilities.rentals.approve', db.rentals.filter((r) => r.status === 'pending_approval').length], ['shell.backendShell.zones', '/backend/facilities/zones', 'facilities.manage'], ['shell.backendShell.logs', '/backend/facilities/logs', 'facilities.log.write'], ['shell.backendShell.report', '/backend/facilities/reports/owner', 'facilities.reports.view']]],
@@ -2639,7 +2855,7 @@
       <span class="spacer"></span>
       <button type="button" data-action="drawer" data-which="flows">${esc(t('chrome.renderChrome.flows'))}</button><button type="button" data-action="drawer" data-which="screens">${esc(t('chrome.renderChrome.screens'))}</button><button type="button" data-action="drawer" data-which="mail">${esc(t('chrome.renderChrome.mailbox', { n: db.mails.length }))}</button>
       <button type="button" data-action="theme">${esc(t('chrome.renderChrome.theme'))}</button><button type="button" data-action="reset">${esc(t('chrome.renderChrome.reset'))}</button></div>
-      <div class="chrome-row">${route ? `<span class="screen-id">${esc(route.id)}</span><span>${esc(t(route.name))}</span><code>${esc(path)}</code><span class="api-list">${esc(t('chrome.renderChrome.demoToday', { date: dLong(TODAY), time: NOW }))}</span>` : `<span>${esc(t('chrome.renderChrome.unknownScreen'))}</span>`}</div></header>`
+      <div class="chrome-row">${route ? `<span class="screen-id">${esc(route.id)}</span><span>${esc(t(route.name))}</span><code>${esc(`${db.settings.slug}.vereino.org${path}`)}</code><span class="api-list">${esc(t('chrome.renderChrome.demoToday', { date: dLong(TODAY), time: NOW }))}</span>` : `<span>${esc(t('chrome.renderChrome.unknownScreen'))}</span>`}</div></header>`
     // Single-file artifact builds (build-artifact.mjs) show a mockup banner above the chrome, in the current UI language.
     const mb = document.getElementById('mock-banner')
     if (mb) mb.innerHTML = BUILD === 'dev' ? '' : t(BUILD === 'real' ? 'artifact.bannerReal' : 'artifact.bannerFictional', { club: esc(db.settings.name) })
@@ -2650,7 +2866,7 @@
     if (!drawer) { host.innerHTML = ''; return }
     let title = '', body = ''
     if (drawer === 'flows') { title = t('drawer.renderDrawer.flowsTitle'); body = FLOWS.map((f) => `<div class="flow"><h3>${f.id} ${esc(t(f.title))}</h3><ol>${f.steps.map(([pp, href, l]) => `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${href}">${esc(t(l))}</a> <span class="small muted">— ${esc(personaLabel(PERSONAS.find((x) => x.id === pp) as Persona).split(' ')[0])}</span></li>`).join('')}</ol></div>`).join('') }
-    if (drawer === 'screens') { title = t('drawer.renderDrawer.screensTitle'); const groups: [string, string][] = [['M', 'drawer.renderDrawer.groupMember'], ['B', 'drawer.renderDrawer.groupPanel'], ['P', 'drawer.renderDrawer.groupPublic']]; body = groups.map(([k, l]) => `<div class="section-title">${esc(t(l))}</div><ul class="list">${ROUTES.filter((r) => r.id.startsWith(k)).map((r) => { const sample = r.pattern.replace(':id', r.id === 'M-04' || r.id === 'M-05' ? 'a-orlm-2026-11-10' : r.id === 'M-07' ? 't-orlm' : r.id === 'M-11' ? 'pl-boisko' : r.id === 'B-05' ? 's-akad' : r.id === 'B-10' ? 'p-kasia' : r.id === 'B-12' ? 'g-orlm' : r.id === 'B-19' ? 't-uwagi' : r.id === 'M-17' || r.id === 'B-31' || r.id === 'B-32' ? 'oc-akad' : r.id === 'B-22' ? (db.charges[0] || { id: '' }).id : 'x').replace(':token', r.id === 'M-14' ? 'tok-expired' : r.id === 'M-19' ? 'kit-robert' : 'expired').replace(':slug', r.id === 'P-02' ? 'basen' : 'orlik-boisko'); const pp: PersonaId = k === 'P' ? 'guest' : k === 'B' ? 'joanna' : r.id === 'M-12' ? 'tomek' : r.id === 'M-18' ? 'rafal' : r.id === 'M-19' ? 'guest' : r.id === 'M-15' ? 'joanna' : r.id === 'M-05' || r.id === 'M-11' ? 'rafal' : 'kasia'; return `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${sample}"><b>${r.id}</b> ${esc(t(r.name))}</a> <code class="small">${esc(r.pattern)}</code></li>` }).join('')}</ul>`).join('') }
+    if (drawer === 'screens') { title = t('drawer.renderDrawer.screensTitle'); const groups: [string, string][] = [['M', 'drawer.renderDrawer.groupMember'], ['B', 'drawer.renderDrawer.groupPanel'], ['P', 'drawer.renderDrawer.groupPublic']]; body = groups.map(([k, l]) => `<div class="section-title">${esc(t(l))}</div><ul class="list">${ROUTES.filter((r) => r.id.startsWith(k)).map((r) => { const sample = r.pattern.replace(':id', r.id === 'M-04' || r.id === 'M-05' ? 'a-orlm-2026-11-10' : r.id === 'M-07' ? 't-orlm' : r.id === 'M-11' ? 'pl-boisko' : r.id === 'B-05' ? 's-akad' : r.id === 'B-10' ? 'p-kasia' : r.id === 'B-12' ? 'g-orlm' : r.id === 'B-19' ? 't-uwagi' : r.id === 'M-17' || r.id === 'B-31' || r.id === 'B-32' ? 'oc-akad' : r.id === 'B-22' ? (db.charges[0] || { id: '' }).id : r.id === 'M-21' ? 'ol-zwody' : r.id === 'M-23' ? 'g-orlm' : r.id === 'M-25' ? 'ce-puchar' : 'x').replace(':token', r.id === 'M-14' ? 'tok-expired' : r.id === 'M-19' ? 'kit-robert' : 'expired').replace(':slug', r.id === 'P-02' ? 'basen' : r.id === 'P-07' ? 'turniej-o-puchar-przykladu' : 'orlik-boisko'); const pp: PersonaId = k === 'P' ? 'guest' : k === 'B' ? 'joanna' : r.id === 'M-12' ? 'tomek' : r.id === 'M-18' ? 'rafal' : r.id === 'M-19' ? 'guest' : r.id === 'M-15' ? 'joanna' : r.id === 'M-05' || r.id === 'M-11' || ['M-20', 'M-21', 'M-22', 'M-23', 'M-24', 'M-25'].includes(r.id) ? 'rafal' : 'kasia'; return `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${sample}"><b>${r.id}</b> ${esc(t(r.name))}</a> <code class="small">${esc(r.pattern)}</code></li>` }).join('')}</ul>`).join('') }
     if (drawer === 'mail') { title = t('drawer.renderDrawer.mailTitle', { n: db.mails.length }); body = db.mails.length ? db.mails.map((m) => `<div class="mail"><div class="small muted">${esc(t('drawer.renderDrawer.mailTo', { to: m.to }))}</div><div class="subj">${esc(txt(m.subject))}</div><pre>${esc(txt(m.body))}</pre>${m.link ? `<a class="btn sm primary" href="#" data-action="mail-link" data-href="${m.link}">${esc(m.linkLabel ? txt(m.linkLabel) : t('drawer.renderDrawer.openLink'))}</a>` : ''}</div>`).join('') : empty(t('drawer.renderDrawer.mailEmptyTitle'), t('drawer.renderDrawer.mailEmptyText')) }
     host.innerHTML = `<aside class="drawer" aria-label="${esc(title)}"><div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="btn sm" data-action="drawer-close" aria-label="${esc(t('common.close'))}">${icon('x')}</button></div><div class="drawer-body">${body}</div></aside>`
   }
@@ -3000,6 +3216,72 @@
       onSubmit: (fd) => { const pid = String(fd.get('person') || ''); if (!pid) return { person: t('action.addMember.errPerson') }; if (fd.get('role') === 'participant') g.members.push(pid); else g.coaches.push(pid); toast(t('action.addMember.done')); render() } }) },
     'end-member': (el) => { const g = group(el.dataset.group as string); g.members = g.members.filter((m) => m !== el.dataset.person); g.coaches = g.coaches.filter((m) => m !== el.dataset.person); toast(t('action.endMember.done')); render() },
   }
+  // Actions of the screens built on main by 2026-11-25 (outlines, PZPN export, medical date, club events, leaving the club).
+  Object.assign(ACTIONS, {
+    'outline-new': () => {
+      const gs = staffGroups()
+      openModal({ title: t('m.outlines.new'), submitLabel: t('m.outlines.create'), body: `<div class="fields">${fld('title', t('m.outline.title'), inp('title', 'text', ''), { req: true })}${fld('group', t('common.group'), sel('group', gs.map((g) => [g.id, g.name] as [string, string]), gs[0]?.id || ''), { req: true })}${fld('goal', t('m.outline.goal'), inp('goal', 'text', ''), { req: true })}${fld('equipment', t('m.outline.equipment'), inp('equipment', 'text', ''))}</div>
+        <p class="small muted">${esc(t('m.outlines.newHint'))}</p>`,
+      onSubmit: (fd) => {
+        const errs: Errors = {}; required(fd, ['title', 'goal'], errs); if (Object.keys(errs).length) return errs
+        const o: Outline = { id: uid('ol'), title: String(fd.get('title')), group: String(fd.get('group')), author: me(), goal: String(fd.get('goal')), equipment: String(fd.get('equipment') || ''), parts: PART_KEYS.map((k) => ({ kind: k, minutes: k === 'main' ? 50 : 15, text: '' })), occs: [], updatedAt: Date.now() }
+        db.outlines.push(o); toast(t('m.outlines.created')); go(`/club/training/outlines/${o.id}`)
+      } })
+    },
+    'outline-attach': (el: HTMLElement) => {
+      const o = db.outlines.find((x) => x.id === el.dataset.id) as Outline
+      const next = db.occurrences.filter((x) => x.group === o.group && x.status === 'planned' && x.date >= TODAY && !o.occs.includes(x.id)).sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start)).slice(0, 8)
+      openModal({ title: t('m.outline.attach'), submitLabel: t('m.outline.attachSubmit'), body: next.length ? `<div class="stack">${next.map((x, i) => chk('occ', `${dShort(x.date)} ${x.start} — ${esc(x.name)}`, i === 0, `value="${x.id}"`)).join('')}</div>` : `<p class="muted">${esc(t('m.outline.noUpcoming'))}</p>`,
+        onSubmit: (fd) => { const ids = fd.getAll('occ').map(String); for (const id of ids) { for (const other of db.outlines) other.occs = other.occs.filter((x) => x !== id); o.occs.push(id) } toast(t('m.outline.attached', { n: ids.length })); render() } })
+    },
+    'outline-series': (el: HTMLElement) => {
+      const o = db.outlines.find((x) => x.id === el.dataset.id) as Outline
+      const act = db.activities.find((a) => a.group === o.group && !a.oneOff)
+      if (!act) { toast(t('m.outline.noSeries'), true); return }
+      const ids = db.occurrences.filter((x) => x.activity === act.id && x.status === 'planned' && x.date >= TODAY).map((x) => x.id)
+      for (const id of ids) { for (const other of db.outlines) if (other !== o) other.occs = other.occs.filter((x) => x !== id); if (!o.occs.includes(id)) o.occs.push(id) }
+      toast(t('m.outline.seriesDone', { n: ids.length, name: act.name })); render()
+    },
+    'outline-print': () => { try { window.print() } catch { toast(t('m.outline.printNow')) } },
+    'pzpn-csv': (el: HTMLElement) => {
+      const rows = pzpnRows(el.dataset.group as string, el.dataset.month as string, el.dataset.kind as string)
+      const csv = rows.map((r) => r.map((c) => (/[;"\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c)).join(';')).join('\r\n')
+      const name = `pzpn-${el.dataset.kind}-${group(el.dataset.group as string).name.toLowerCase().replace(/[^a-z0-9ąćęłńóśźż]+/g, '-')}-${el.dataset.month}.csv`
+      try {
+        const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' })); a.download = name; document.body.appendChild(a); a.click(); a.remove()
+        toast(t('m.pzpn.downloaded', { file: name }))
+      } catch { csvModal(name, csv) }
+    },
+    'med-date': (el: HTMLElement) => {
+      const p = personById(db, el.dataset.person as string)
+      openModal({ title: t('m.squad.setDateTitle', { name: `${p.first} ${p.last}` }), body: `${fld('until', t('m.squad.validUntil'), inp('until', 'date', p.medicalUntil || ''), { req: true, hint: t('m.squad.validUntilHint') })}`,
+        onSubmit: (fd) => { const v = String(fd.get('until') || ''); if (!v) return { until: t('validation.required') }; p.medicalUntil = v; toast(t('m.squad.dateSaved')); render() } })
+    },
+    'cev-new': () => openModal({ title: t('m.cev.new'), submitLabel: t('m.cev.create'), body: `<div class="fields">${fld('name', t('common.name'), inp('name', 'text', ''), { req: true })}${fld('date', t('common.date'), inp('date', 'date', addDays(TODAY, 18)), { req: true })}${fld('place', t('common.place'), sel('place', db.places.filter((x) => !x.external && x.kind !== 'complex').map((x) => [x.id, x.name] as [string, string]), 'pl-boisko'))}</div>${fld('description', t('m.cev.description'), area('description', ''))}`,
+      onSubmit: (fd) => {
+        const errs: Errors = {}; required(fd, ['name', 'date'], errs); if (Object.keys(errs).length) return errs
+        const name = String(fd.get('name'))
+        const ce: ClubEvent = { id: uid('ce'), slug: name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/ł/g, 'l').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''), name, date: String(fd.get('date')), place: String(fd.get('place')), description: String(fd.get('description') || ''), public: false, parts: [], files: [] }
+        db.clubEvents.push(ce); toast(t('m.cev.created')); go(`/club/club-events/${ce.id}`)
+      } }),
+    'cev-part': (el: HTMLElement) => {
+      const ce = db.clubEvents.find((x) => x.id === el.dataset.id) as ClubEvent
+      const teams = db.groups.filter((g) => g.kind === 'team')
+      openModal({ title: t('m.cev.addPart'), body: `<div class="fields">${fld('name', t('common.name'), inp('name', 'text', ''), { req: true, hint: t('m.cev.partNameHint') })}${fld('group', t('m.cev.ourTeam'), sel('group', [['', '—'], ...teams.map((g) => [g.id, g.name] as [string, string])]))}${fld('start', t('common.from'), inp('start', 'time', '09:00'), { req: true })}${fld('end', t('m.cev.to'), inp('end', 'time', '11:00'), { req: true })}</div>
+        <div class="stack">${db.externalTeams.map((et) => chk('team', esc(et.name), false, `value="${et.id}"`)).join('')}</div>`,
+      onSubmit: (fd) => {
+        const errs: Errors = {}; required(fd, ['name', 'start', 'end'], errs); if (Object.keys(errs).length) return errs
+        if (String(fd.get('end')) <= String(fd.get('start'))) return { end: t('m.cev.errEnd') }
+        ce.parts.push({ id: uid('cp'), name: String(fd.get('name')), group: String(fd.get('group') || '') || undefined, start: String(fd.get('start')), end: String(fd.get('end')), teams: fd.getAll('team').map(String) }); toast(t('m.cev.partAdded')); render()
+      } })
+    },
+    'cev-publish': (el: HTMLElement) => { const ce = db.clubEvents.find((x) => x.id === el.dataset.id) as ClubEvent; ce.public = !ce.public; toast(t(ce.public ? 'm.cev.published' : 'm.cev.unpublished')); render() },
+    'leave-club': () => {
+      const people = [me(), ...wardsOf(me())].filter((x) => db.groups.some((g) => g.members.includes(x)))
+      openModal({ title: t('m.leave.title'), submitLabel: t('m.leave.submit'), body: `<p class="small muted">${esc(t('m.leave.intro'))}</p><div class="fields">${fld('who', t('m.leave.who'), sel('who', people.map((x) => [x, pName(x)] as [string, string])), { req: true })}${fld('from', t('m.leave.from'), inp('from', 'date', '2026-12-31'), { req: true })}</div>${fld('reason', t('m.leave.reason'), area('reason', ''))}`,
+        onSubmit: (fd) => { if (!fd.get('who')) return { who: t('validation.required') }; mail(personById(db, 'p-joanna').email || '', lt('m.leave.mailSubject', { name: pName(String(fd.get('who'))) }), lt('m.leave.mailBody', { date: ld(String(fd.get('from'))) })); toast(t('m.leave.sent')); render() } })
+    },
+  } as Record<string, (el: HTMLElement, ev: Event) => void>)
 
   function csvModal(name: string, csv: string): void {
     openModal({ title: t('ui.csvModal.title', { name }), submitLabel: t('common.close'), body: `<p class="small muted">${t('ui.csvModal.body', { file: esc(name) })}</p><textarea id="csv-text" readonly rows="8" style="width:100%;font-family:ui-monospace,monospace">${esc(csv)}</textarea><p>${btn(esc(t('ui.csvModal.copy')), 'copy-csv')}</p>`, onSubmit: () => undefined })

@@ -3,7 +3,8 @@
 // CI completion, push to `main` or the quarter-hour schedule starts the train again.
 //
 // Labels set on a PR are mirrored onto the issue its branch names (`issue-N`), so Cezar's issue-label automation starts
-// a fix run at once; a PR held for manual QA (MT-D02) gets one comment and a line in the log. Before the queue step a
+// a fix run at once; a PR held for manual QA (MT-D02) gets a line in the log and one comment that links its QA
+// instruction or names it missing (`scripts/merge-train-holds.mjs`, REQ-QM01). Before the queue step a
 // PR stacked on a merged PR is retargeted to `main` (`scripts/merge-train-stacked.mjs`, ST-D04).
 //
 // Env: GH_TOKEN (a token whose pushes trigger CI — not the workflow's GITHUB_TOKEN), GITHUB_REPOSITORY (owner/name),
@@ -19,13 +20,11 @@ import {
   CONFLICT_LABEL,
   DEFAULT_SKIP_LABELS,
   FAILED_LABEL,
-  QA_HOLD_MARKER,
   VERDICT_STATUS,
   batchesAlone,
   checksState,
   judgeBatch,
   linkedIssue,
-  needsQaHoldComment,
   parseBatchSize,
   planBatch,
   planMergeTrain,
@@ -52,6 +51,7 @@ import {
   stampsVerified,
   treeMatches,
 } from './merge-train-guard.mjs'
+import { announceHolds as announceQaHolds } from './merge-train-holds.mjs'
 import { applyRetargets } from './merge-train-stacked.mjs'
 import { parseTrailers } from './merge-train-trailers.mjs'
 
@@ -153,6 +153,7 @@ async function readQueue(baseBranch, required, withBatchFields = dryRun) {
       number: pull.number,
       title: pull.title,
       branch: pull.head.ref,
+      body: pull.body ?? '',
       headSha: pull.head.sha,
       draft: pull.draft,
       labels: pull.labels.map((label) => label.name),
@@ -212,16 +213,7 @@ async function syncLabels(changes) {
 }
 
 async function announceHolds(held) {
-  for (const hold of held) {
-    console.log(`#${hold.pr}: held — ${hold.reason}`)
-    if (dryRun) continue
-    const comments = await ok('GET', `/repos/${repo}/issues/${hold.pr}/comments?per_page=100`)
-    if (!needsQaHoldComment(comments.map((entry) => entry.body ?? ''))) continue
-    await comment(
-      hold.pr,
-      `this PR is \`risk-high\` and asks for manual QA (\`needs-qa\`). The train holds it until the owner tests it and sets \`qa\` (SDLC.md "QA", MT-D02). ${QA_HOLD_MARKER}`,
-    )
-  }
+  await announceQaHolds({ api, repo, held, dryRun })
 }
 
 // ---- Batch train (MERGE_TRAIN_BATCH_SIZE 2 or more; spec phase 2) ----

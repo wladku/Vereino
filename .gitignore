@@ -140,6 +140,7 @@ packages/app/.ai/qa/test-results/
 
 # Makieta Vereino: pliki z logo i prawdziwą nazwą klubu tylko lokalnie
 docs/ux-concept/mockups/makieta-lks-przyklad.html
+docs/ux-concept/mockups/makieta-*.html
 docs/ux-concept/mockups/logo-klubu*.png
 docs/ux-concept/mockups/logo.js
 docs/ux-concept/vereino-mockupy.zip

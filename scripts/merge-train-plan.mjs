@@ -12,6 +12,13 @@ export const CONFLICT_LABEL = 'merge-train-conflict'
 /** Hidden marker of the one comment the train leaves on a PR it holds for manual QA (MT-D02). */
 export const QA_HOLD_MARKER = '<!-- merge-train:qa-hold -->'
 export const QA_HOLD_REASON = 'risk-high and needs-qa without qa: waits for the owner\'s manual QA (MT-D02)'
+/** Hidden marker the hold comment carries while the PR body has no QA instruction, so the picker can find it (QM-D01). */
+export const QA_INSTRUCTION_MISSING_MARKER = '<!-- merge-train:qa-instruction-missing -->'
+/** The extra hold reason of a held PR whose body has no QA instruction block (REQ-QM01). */
+export const QA_INSTRUCTION_MISSING = 'QA instruction missing'
+/** The markers of the Polish test instruction a PR that asks for QA carries in its body (SDLC.md "QA", QM-D02). */
+export const QA_INSTRUCTION_START = '<!-- qa-instruction:start -->'
+export const QA_INSTRUCTION_END = '<!-- qa-instruction:end -->'
 
 const FAILED_CONCLUSIONS = new Set(['failure', 'timed_out', 'cancelled', 'startup_failure', 'action_required'])
 
@@ -55,9 +62,41 @@ export function linkedIssue(branch) {
   return match ? Number(match[1]) : null
 }
 
-/** Whether the train still owes a held PR its one QA-hold comment; `comments` are the PR's comment bodies. */
-export function needsQaHoldComment(comments) {
-  return !comments.some((body) => body.includes(QA_HOLD_MARKER))
+/**
+ * Whether a PR body carries the QA instruction (`.ai/specs/2026-11-24-qa-request-email.md`, REQ-QM01): the start
+ * marker, then text, then the end marker. A missing marker, markers out of order or an empty block count as missing.
+ */
+export function hasQaInstruction(body) {
+  const text = body ?? ''
+  const start = text.indexOf(QA_INSTRUCTION_START)
+  if (start < 0) return false
+  const from = start + QA_INSTRUCTION_START.length
+  const end = text.indexOf(QA_INSTRUCTION_END, from)
+  return end >= 0 && text.slice(from, end).trim() !== ''
+}
+
+/**
+ * The one comment the train keeps on a PR it holds for manual QA: it links the PR's QA instruction, or names it
+ * missing with `QA_INSTRUCTION_MISSING_MARKER` (REQ-QM01). `url` is the PR's page.
+ */
+export function qaHoldComment({ instruction, url }) {
+  const held =
+    'this PR is `risk-high` and asks for manual QA (`needs-qa`). The train holds it until the owner tests it and sets `qa` (SDLC.md "QA", MT-D02).'
+  const detail = instruction
+    ? `The test instruction is the "Jak przetestować (QA)" section of the [PR description](${url}).`
+    : `**${QA_INSTRUCTION_MISSING}**: the [PR description](${url}) has no \`qa-instruction\` block (SDLC.md "QA"), so a run is queued to write it; no code changes. ${QA_INSTRUCTION_MISSING_MARKER}`
+  return `${held} ${detail} ${QA_HOLD_MARKER}`
+}
+
+/**
+ * What the train does with its QA-hold comment: `comments` are the PR's comments `{ id, body }` and `wanted` the body
+ * it should read (`Merge train: ` + `qaHoldComment`). `{ type: 'create' }` when there is none, `{ type: 'update', id }`
+ * when the instruction was written or removed since, `null` when it is current. Only the first marked comment counts.
+ */
+export function qaHoldCommentAction(comments, wanted) {
+  const current = comments.find((entry) => (entry.body ?? '').includes(QA_HOLD_MARKER))
+  if (!current) return { type: 'create' }
+  return current.body === wanted ? null : { type: 'update', id: current.id }
 }
 
 /** Higher priority first (`priority-high`, then `priority-medium`), then the oldest PR. */
@@ -66,28 +105,35 @@ function byQueueOrder(left, right) {
   return rank(left) - rank(right) || left.number - right.number
 }
 
+/** A held PR as the plans list it: its reason, and whether its body carries the QA instruction (REQ-QM01). */
+function heldEntry(pr) {
+  const instruction = hasQaInstruction(pr.body)
+  const reason = instruction ? QA_HOLD_REASON : `${QA_HOLD_REASON}; ${QA_INSTRUCTION_MISSING}`
+  return { pr: pr.number, reason, instruction }
+}
+
 /**
  * Today's queue: drafts, PRs with a skip label and PRs held by the MT-D02 QA rule left out, then priority and age.
- * `held` names each held PR with its reason.
+ * `held` names each held PR with its reason and `instruction` (`hasQaInstruction` of its `body`).
  */
 export function trainQueue(prs, skipLabels) {
   const eligible = prs.filter((pr) => !pr.draft && !pr.labels.some((label) => skipLabels.includes(label)))
-  const held = eligible.filter((pr) => qaHold(pr.labels)).map((pr) => ({ pr: pr.number, reason: QA_HOLD_REASON }))
+  const held = eligible.filter((pr) => qaHold(pr.labels)).map(heldEntry)
   const queue = eligible.filter((pr) => !qaHold(pr.labels)).sort(byQueueOrder)
   return { queue, held }
 }
 
 /**
  * Plans one step of the train over the open PRs. Each PR is
- * `{ number, draft, labels, behindBy, conflict, checks, branch }`, where `checks` is `checksState` of its head and
- * `branch` its head branch. The answer is one of:
+ * `{ number, draft, labels, behindBy, conflict, checks, branch, body }`, where `checks` is `checksState` of its head,
+ * `branch` its head branch and `body` its description. The answer is one of:
  * - `{ type: 'merge', pr }` — an up-to-date PR is green;
  * - `{ type: 'wait', pr }` — an up-to-date PR is still running its checks (the PR in flight);
  * - `{ type: 'update', pr }` — nothing is in flight, so the next PR takes `main` in and starts its CI;
  * - `{ type: 'idle' }` — no PR can move.
  * `labels` lists the train labels to add or remove on every PR so they match its state; a change carries `issue` when
  * the PR's branch names one (`linkedIssue`), and the same change applies to that issue. `held` lists the PRs kept out
- * by the MT-D02 QA rule (`qaHold`), `{ pr, reason }`, so the run log names each one and why.
+ * by the MT-D02 QA rule (`qaHold`), `{ pr, reason, instruction }`, so the run log names each one and why.
  *
  * A PR that failed on a head behind `main` gets one update (its failure may come from an old `main`); one that failed
  * while up to date waits for a new commit from its author.
