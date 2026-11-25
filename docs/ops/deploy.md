@@ -187,6 +187,11 @@ Every deploy of the **app** service runs, in this order (ADR-013, S14.5):
 The **worker** service (`sh ./scripts/railway-worker.sh`) runs the boot check and then `yarn mercato queue worker
 --all`; it never migrates. Deploy it after the app service, from the same commit.
 
+Before a change to the `Dockerfile`, the start scripts or the server packages reaches staging, the CI job
+`image-smoke` runs `scripts/image-smoke.sh`: it builds the `runner` stage and runs steps 2–4 above, `yarn initialize`
+and the worker against throwaway PostgreSQL and Redis containers, with the start scripts' default
+`CACHE_STRATEGY=redis`. Run it locally the same way (`scripts/image-smoke.sh`; Docker and Node needed) (#727).
+
 - **staging**: every commit on `main` deploys automatically; turn on Railway's "Wait for CI" so a red `main` never
   deploys.
 - **production**: only a commit with a release tag, inside the release window, following the
