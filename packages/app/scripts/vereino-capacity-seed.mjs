@@ -251,6 +251,8 @@ export async function seedClub(ctx, index) {
 
   // One weekly training per group; today's session started in the small hours, so its check-off is open.
   const occurrences = []
+  // Next week's session of each group: declarations close when a session starts, so guardians declare for it.
+  const nextOccurrences = []
   for (let group = 0; group < groups.length; group += 1) {
     const activity = await post(
       '/api/activities/activities',
@@ -270,13 +272,14 @@ export async function seedClub(ctx, index) {
     const sessions = expectStatus(
       await call(
         'GET',
-        `/api/activities/occurrences?pageSize=1&sortField=occurrenceDate&sortDir=asc&activityId=${activity.id}`,
+        `/api/activities/occurrences?pageSize=2&sortField=occurrenceDate&sortDir=asc&activityId=${activity.id}`,
         { token: adminToken },
       ),
       [200],
       `${slug} sessions`,
     )
     occurrences.push(String(sessions.items[0].id))
+    nextOccurrences.push(String(sessions.items[1].id))
   }
 
   for (const groupId of groups) {
@@ -305,7 +308,7 @@ export async function seedClub(ctx, index) {
       userId: String(account.userId),
       email,
       childId,
-      occurrenceId: occurrences[guardian % groups.length],
+      occurrenceId: nextOccurrences[guardian % groups.length],
     })
   }
 

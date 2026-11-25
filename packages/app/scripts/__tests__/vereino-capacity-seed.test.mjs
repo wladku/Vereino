@@ -52,7 +52,7 @@ function fakeApp(overrides = {}) {
     if (/^POST \/api\/people\/persons\/[^/]+\/account$/.test(key)) return reply(201, { userId: id('user') })
     if (key === 'POST /api/people/imports') return reply(201, { id: 'imp-1', updatedAt: '2026-11-25T18:00:00.000Z' })
     if (key === 'POST /api/people/imports/imp-1/commit') return reply(200, { ok: true })
-    if (key === 'GET /api/activities/occurrences') return reply(200, { items: [{ id: id('occ') }] })
+    if (key === 'GET /api/activities/occurrences') return reply(200, { items: [{ id: id('occ') }, { id: id('next') }] })
     if (init.method === 'POST') return reply(201, { id: id('rec') })
     return reply(404, { error: 'not found' })
   }
@@ -184,11 +184,10 @@ test('seedClub creates the club, its records and the signed-in guardians', async
   assert.equal(club.coachToken, 'tok:coach@cap-007.capacity.test')
   assert.equal(club.occurrences.length, 2)
   assert.equal(club.guardians.length, 3)
-  assert.deepEqual(club.guardians[1], {
-    token: 'tok:guardian-1@cap-007.capacity.test',
-    childId: 'p:Dziecko-cap-007-00001',
-    occurrenceId: club.occurrences[1],
-  })
+  const { occurrenceId, ...guardian } = club.guardians[1]
+  assert.deepEqual(guardian, { token: 'tok:guardian-1@cap-007.capacity.test', childId: 'p:Dziecko-cap-007-00001' })
+  // Guardians declare for next week's session of their group (today's has started, its declarations are closed).
+  assert.match(occurrenceId, /^next-/)
   assert.deepEqual(logs, ['[capacity-seed] cap-007 seeded'])
   const activity = app.calls.find((entry) => entry.key === 'POST /api/activities/activities')
   assert.match(JSON.parse(activity.init.body).recurrenceRule, /^FREQ=WEEKLY;BYDAY=WE;UNTIL=20270630$/)
