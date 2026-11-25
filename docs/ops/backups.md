@@ -1,8 +1,9 @@
 # Off-site backups and the restore drill
 
-Engineering standards S15.7 (ADR-012), ENG-10, ENG-TEST-10; issue #464. The Railway project runs on the Hobby
-plan without point-in-time recovery (owner decision ENG-Q-03), so the nightly off-site dump is the only way back
-after data loss.
+Engineering standards S15.7 (ADR-012), ENG-10, ENG-TEST-10; issue #464. The Railway project moves to the Pro
+plan (D-039, superseding the Hobby plan of ENG-Q-03), where volume backups and point-in-time recovery are turned on if
+the plan offers them. Until a PITR restore has been drilled, the nightly off-site dump below stays the documented way
+back after data loss, and the RPO and RTO in this file stand.
 
 | | |
 |---|---|
