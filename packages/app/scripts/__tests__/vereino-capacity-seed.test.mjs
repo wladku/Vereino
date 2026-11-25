@@ -243,7 +243,32 @@ test('runSeed signs in the superadmin, seeds the clubs and writes the state', as
   assert.equal(app.calls[0].init.body, 'email=root%40test&password=pw')
   assert.equal(written[0].file, 's.json')
   assert.deepEqual(JSON.parse(written[0].text), state)
-  assert.match(logs.at(-1), /^\[capacity-seed\] 2 clubs in \d+ s$/)
+  assert.match(logs.at(-1), /^\[capacity-seed\] 2 clubs in \d+ s, 0 failed$/)
+  assert.deepEqual(state.failed, [])
+})
+
+test('runSeed reports a club that fails and seeds the others', async () => {
+  const app = fakeApp()
+  const failing = fakeSpawn((slug) => (slug === 'cap-001' ? 'boom' : `${createdLine(slug)}\n`))
+  const logs = []
+  const state = await runSeed({
+    argv: ['--clubs', '2', '--participants', '1', '--groups', '1', '--guardians', '1', '--state', 's.json'],
+    env: { OM_INIT_SUPERADMIN_EMAIL: 'root@test', OM_INIT_SUPERADMIN_PASSWORD: 'pw' },
+    deps: {
+      fetchImpl: app.fetchImpl,
+      spawnSyncImpl: failing.spawnSyncImpl,
+      now: NOW,
+      log: (line) => logs.push(line),
+      writeFile: () => {},
+    },
+  })
+  assert.deepEqual(
+    state.clubs.map((club) => club.slug),
+    ['cap-002'],
+  )
+  assert.deepEqual(state.failed, [{ slug: 'cap-001', error: 'create-club cap-001 failed: ' }])
+  assert.ok(logs.includes('[capacity-seed] cap-001 failed: create-club cap-001 failed: '))
+  assert.match(logs.at(-1), /1 clubs in \d+ s, 1 failed$/)
 })
 
 test('runSeed takes the superadmin from the options and writes the state file by default', async (t) => {

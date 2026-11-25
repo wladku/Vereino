@@ -343,12 +343,20 @@ export async function runSeed({ argv, env = process.env, deps = {} }) {
   const superToken = await signIn(call, superEmail, superPassword)
   const indexes = Array.from({ length: options.clubs }, (_, offset) => options.from + offset)
   const started = Date.now()
-  const clubs = await pool(indexes, options.concurrency, (index) =>
-    seedClub({ call, options, superToken, now, spawnSyncImpl, log }, index),
+  // One club that fails is reported and left out of the state; the others go on.
+  const failed = []
+  const results = await pool(indexes, options.concurrency, (index) =>
+    seedClub({ call, options, superToken, now, spawnSyncImpl, log }, index).catch((error) => {
+      failed.push({ slug: clubSlug(index), error: error.message })
+      log(`[capacity-seed] ${clubSlug(index)} failed: ${failed[failed.length - 1].error}`)
+      return null
+    }),
   )
-  const state = { baseUrl: options['base-url'], seededAt: now().toISOString(), clubs }
+  const clubs = results.filter(Boolean)
+  const state = { baseUrl: options['base-url'], seededAt: now().toISOString(), clubs, failed }
   writeFile(options.state, `${JSON.stringify(state, null, 2)}\n`)
-  log(`[capacity-seed] ${String(clubs.length)} clubs in ${String(Math.round((Date.now() - started) / 1000))} s`)
+  const seconds = String(Math.round((Date.now() - started) / 1000))
+  log(`[capacity-seed] ${String(clubs.length)} clubs in ${seconds} s, ${String(failed.length)} failed`)
   return state
 }
 
