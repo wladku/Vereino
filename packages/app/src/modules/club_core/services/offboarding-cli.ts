@@ -243,6 +243,7 @@ async function deleteCommand(argv: string[]): Promise<void> {
     rows: countsByModule(result.summary.tables),
     tables: result.summary.tables,
     schedulesUnregistered: result.summary.schedulesUnregistered,
+    schedulesFailed: result.summary.schedulesFailed,
     filesDeleted: result.summary.filesDeleted,
     filesFailed: result.summary.filesFailed,
     // Derived from the master secret and the tenant id (Q-M07): nothing to destroy until a key store holds the keys.
