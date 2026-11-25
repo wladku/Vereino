@@ -1103,6 +1103,7 @@
   "activities.clubEvents.part.cancelOpen.text": "{title} stays on the club event, struck through, with the reason.",
   "activities.occurrences.move.placeLocked": "A part takes place at the club event's place; change the event's place to move every part.",
   "activities.club.nav.clubEvents": "Club events",
+  "activities.club.nav.outlines": "Training outlines",
   "activities.clubEvents.club.list.intro": "The tournaments and other club events you organise, with their parts by day.",
   "activities.clubEvents.club.list.parts": "Parts: {count}",
   "activities.clubEvents.club.list.noUpcoming": "No upcoming club event.",

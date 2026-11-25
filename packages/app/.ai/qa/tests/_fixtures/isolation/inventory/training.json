@@ -1,0 +1,193 @@
+{
+  "$comment": "Cross-club isolation probes of the training routes (#628; training outlines spec phase 2, #683). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/training/outlines": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "view": "mine"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "occurrenceId": "$B:trainingOccurrence"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "activityId": "$B:trainingActivity"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "ids": "$B:outline"
+          }
+        }
+      ],
+      "POST": [
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "occurrenceId": "$B:trainingOccurrence",
+            "language": "pl",
+            "topic": "Probe",
+            "ageCategory": "U11",
+            "durationMinutes": 60,
+            "parts": {}
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "activityId": "$B:trainingActivity",
+            "language": "pl",
+            "topic": "Probe",
+            "ageCategory": "U11",
+            "durationMinutes": 60,
+            "parts": {}
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "groupId": "$B:group",
+            "language": "pl",
+            "topic": "Probe",
+            "ageCategory": "U11",
+            "durationMinutes": 60,
+            "parts": {}
+          }
+        }
+      ],
+      "PUT": {
+        "probe": "foreign-id",
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "id": "$B:outline",
+          "topic": "Probe"
+        }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "query": {
+          "id": "$B:outline"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
+      }
+    },
+    "/api/training/outlines/[id]": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:outline"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:sessionOutline"
+          }
+        }
+      ]
+    },
+    "/api/training/outlines/[id]/attach": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:outline"
+          },
+          "body": {
+            "occurrenceId": "$A:trainingOccurrence"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:outline"
+          },
+          "body": {
+            "occurrenceId": "$B:trainingOccurrence"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:outline"
+          },
+          "body": {
+            "activityId": "$B:trainingActivity"
+          }
+        }
+      ]
+    },
+    "/api/training/outlines/ensure-copy": {
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "occurrenceId": "$B:trainingOccurrence"
+        }
+      }
+    },
+    "/api/training/outlines/[id]/images": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:outline"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "$multipart": {
+            "file": {
+              "$file": "png"
+            },
+            "part": "main",
+            "index": "0"
+          }
+        }
+      }
+    },
+    "/api/training/outlines/[id]/images/[attachmentId]": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:outline",
+            "attachmentId": "$B:outlineImage"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$A:outline",
+            "attachmentId": "$B:outlineImage"
+          }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:outline",
+          "attachmentId": "$B:outlineImage"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
+      }
+    }
+  }
+}
