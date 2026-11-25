@@ -1088,7 +1088,6 @@
   "payments.audit.cashHandover.reject": "Odrzucenie przekazania gotówki",
   "payments.errors.cash_handover_payment_pending": "Wybrana wpłata jest już w przekazaniu czekającym na potwierdzenie.",
   "payments.errors.cash_handover_not_pending": "To przekazanie zostało już potwierdzone, odrzucone albo wycofane.",
-  "payments.errors.cash_handover_not_found": "Nie znaleziono przekazania.",
   "payments.cashCustody.inPendingHandover": "w przekazaniu czekającym na potwierdzenie",
   "payments.cashCustody.history.columns.status": "Stan",
   "payments.cashCustody.history.status.pending": "Czeka na potwierdzenie",

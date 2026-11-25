@@ -103,7 +103,6 @@ export const errorCodes = [
     messageKey: 'payments.errors.cash_handover_payment_pending',
   },
   { code: 'cash_handover_not_pending', status: 409, messageKey: 'payments.errors.cash_handover_not_pending' },
-  { code: 'cash_handover_not_found', status: 404, messageKey: 'payments.errors.cash_handover_not_found' },
   // The rental charge service `payments.chargeService` (payments parity spec Contract 5, #291).
   { code: 'charge_payer_required', status: 422, messageKey: 'payments.errors.charge_payer_required' },
   { code: 'charge_amount_invalid', status: 422, messageKey: 'payments.errors.charge_amount_invalid' },

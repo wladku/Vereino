@@ -1088,7 +1088,6 @@
   "payments.audit.cashHandover.reject": "Reject cash handover",
   "payments.errors.cash_handover_payment_pending": "A selected payment is already in a handover waiting for confirmation.",
   "payments.errors.cash_handover_not_pending": "This handover was already confirmed, rejected or withdrawn.",
-  "payments.errors.cash_handover_not_found": "Handover not found.",
   "payments.cashCustody.inPendingHandover": "in a handover waiting for confirmation",
   "payments.cashCustody.history.columns.status": "Status",
   "payments.cashCustody.history.status.pending": "Waiting for confirmation",
