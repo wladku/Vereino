@@ -39,7 +39,7 @@ read 2026-11-21 and again 2026-11-25).
 | V1.4 Memory, unmanaged code | money as bounded integers (`payments/data/validators.ts`); managed runtime | `amountSchema` (`.int().max(MAX_AMOUNT)`) | met (V1.4.1 and V1.4.3 n/a: TypeScript only) | — |
 | V1.5 Safe deserialization | `JSON.parse` into plain data, then Zod; XLSX parts with a DOCTYPE refused | `people/lib/__tests__/import-file.test.ts` | met | — |
 | V2.1–V2.3 Validation and business logic | Zod schemas on every route, validated on the server; status machines in `packages/core/src/transitions.ts`; locks against double booking | `TEST-036-request-security`, `TEST-085-concurrent-internal-bookings`, `ISSUE-549-concurrent-cash-acceptances`, `yarn test` | partial — no per-flow document of validation rules and business limits; transaction rollback not tested | #743 |
-| V2.4 Anti-automation | platform `lib/ratelimit` on some sessionless routes (S8.6); honeypot and time trap on public forms | `TEST-036-request-security` | partial — limits not on every public route, sign-in limits collapse to one counter on Railway (`RATE_LIMIT_TRUST_PROXY_DEPTH` 0, memory strategy); no edge rate limiting (#739) | #738 |
+| V2.4 Anti-automation | rate limits through the platform `lib/ratelimit` on every sessionless and sign-in route (S8.6, #738): per client in each route's `metadata.rateLimit`, per token and per address within a club in the handlers, per account on sign-in and password reset; counters in Redis on Railway (boot check); see *Sessionless route inventory* below; honeypot and time trap on public forms | `ISSUE-738-sessionless-rate-limits` (429 with `Retry-After` on sign-in, password reset and each public route family), `TEST-036-request-security`, `vereino-boot-env` unit tests | partial — the per-client counters separate clients only once `RATE_LIMIT_TRUST_PROXY_DEPTH` is measured and set per environment (A-8); no edge rate limiting (#739) | #739 |
 | V3.1 Frontend documentation | — | — | outside level 2 (level 3 only) | — |
 | V3.2 Content interpretation | `nosniff` everywhere; `sandbox` CSP on attachment files; file types from magic bytes; React text rendering | `ENG-TEST-11-security-headers`, `packages/core/src/file-format.ts` | partial — no lint rule keeps raw-HTML sinks out | #743 |
 | V3.3 Cookie setup | platform session cookies `Secure`, `HttpOnly`, `SameSite=Lax` (spike #448, observed on the production build); sign-in state cookie `HttpOnly` | E3 spike notes, `foundation/services/identity.ts` | partial — no `__Host-` prefix (matters with club subdomains, D-036); `om_selected_*` cookies not checked | #744 |
@@ -51,7 +51,7 @@ read 2026-11-21 and again 2026-11-25).
 | V4.3 GraphQL, V4.4 WebSocket | — | — | n/a (none used) | — |
 | V5.1–V5.3 File upload and storage | S8.11: formats from magic bytes, size limits, no SVG, XLSX entry and inflated-size limits, uploads only in the private attachments partition, served through route handlers | `packages/core/src/file-format.ts` + `file-format.test.mjs`, `people/lib/__tests__/import-file.test.ts` | partial — no single upload inventory; platform storage paths to verify | #743 |
 | V5.4 File download | generated names and RFC 6266 encoding on Vereino routes; platform `attachments` ACL | `facilities/api/incidents/[id]/photos/[photoId]/route.ts` | **gap** — no malware scan, yet staff-uploaded PDFs (section materials, place regulations) are served on public pages, contrary to S8.11's premise | #743 |
-| V6.1–V6.3 Authentication documentation, passwords, general | platform `auth` (S8.2): bcrypt passwords, change needs the current password, masked fields | `ENG-TEST-16-login-accessibility`, `E06-S22-profile-wards-guardians`, E3 spike notes | **gap** — platform default password policy (6 characters, composition rules, no common or breached list); `yarn initialize` as written in `deploy.md` seeds the platform's default super-administrator (default e-mail, password `secret`); sign-in limits ineffective on Railway (#738); no second factor (#736) | #747 |
+| V6.1–V6.3 Authentication documentation, passwords, general | platform `auth` (S8.2): bcrypt passwords, change needs the current password, masked fields; sign-in limits of the platform (per client, per client and address) and Vereino's per-account limit, documented in *Sessionless route inventory* (#738) | `ENG-TEST-16-login-accessibility`, `E06-S22-profile-wards-guardians`, `ISSUE-738-sessionless-rate-limits`, E3 spike notes | **gap** — platform default password policy (6 characters, composition rules, no common or breached list); `yarn initialize` as written in `deploy.md` seeds the platform's default super-administrator (default e-mail, password `secret`); per-client sign-in limits share one counter until the proxy depth is set (A-8); no second factor (#736) | #747 |
 | V6.4 Factor lifecycle and recovery | invitations and resets as 32-byte hashed single-use links (S8.7); platform reset ends all sessions | `TEST-F04-create-account` | to verify — the reset flow is code-read only | #743 |
 | V6.5–V6.6 Multi-factor, out-of-band | none in 1.0; ENG-Q-09 re-decided for many clubs | — | **gap** — level 2 expects a second factor for administrators | #736 |
 | V6.7 Cryptographic authentication | — | — | outside level 2 (level 3 only) | — |
@@ -75,14 +75,42 @@ read 2026-11-21 and again 2026-11-25).
 | V13.4 Unintended information leakage | `.dockerignore` keeps `.git` out of the image; `NODE_ENV=production`; dev-runtime routes answer 404 | `Dockerfile`, `.dockerignore` | partial — the OpenAPI document is served to anonymous callers without a recorded decision; TRACE and directory listings not checked | #743 |
 | V14.1–V14.2 Data protection documentation and general | this compliance pack: [`ropa.md`](ropa.md) (categories, encrypted columns), [`retention.md`](retention.md) (jobs per period); minimisation S9.4; no analytics (S9.9) | retention jobs (`people:retention-sweep`, `people:life-cycle`, …) | partial — no protection levels per data class; tokens in link URLs by design (mitigated with `no-referrer`, `no-store`); Redis cache contents not reviewed; some retention periods still open | #743 |
 | V14.3 Client-side data protection | `private, no-store` on authenticated API responses and token pages; session tokens only in `HttpOnly` cookies (S8.5) | `ENG-TEST-11-security-headers` | partial — no `Clear-Site-Data` on sign-out; the member context in `sessionStorage` outlives sign-out until the tab closes | #737 |
-| V15.1–V15.2 Architecture and dependencies | Renovate with a 5-day cooldown, licence allowlist, pinned platform packages (S16); remediation times in S16.3; weekly audit (`.github/workflows/security.yml`) | `renovate.json`, `yarn verify` | partial — no SBOM; open Dependabot alerts not triaged; costly functions not listed or all rate-limited (#738) | #741 |
-| V15.3 Defensive coding | TypeScript strict; typed lint; Zod parsing of every body and query | `yarn typecheck`, `yarn lint` | partial — mass assignment, prototype and parameter pollution not tested; trusted proxy depth not set for Railway (#738); outbound fetches follow redirects | #743 |
+| V15.1–V15.2 Architecture and dependencies | Renovate with a 5-day cooldown, licence allowlist, pinned platform packages (S16); remediation times in S16.3; weekly audit (`.github/workflows/security.yml`) | `renovate.json`, `yarn verify` | partial — no SBOM; open Dependabot alerts not triaged; costly authenticated functions (imports, PDF, exports) not listed or rate-limited — sessionless routes are, see *Sessionless route inventory* (#738) | #741 |
+| V15.3 Defensive coding | TypeScript strict; typed lint; Zod parsing of every body and query | `yarn typecheck`, `yarn lint` | partial — mass assignment, prototype and parameter pollution not tested; trusted proxy depth not yet measured and set for Railway (A-8); outbound fetches follow redirects | #743 |
 | V15.4 Safe concurrency | `FOR UPDATE` sequences (S10.5), version checks and 409s, idempotent jobs (S15.8) | `TEST-085-concurrent-internal-bookings` | outside level 2 (level 3 only); the level 2 locking requirement is V2.3.4, met | — |
 | V16.1–V16.2 Security logging, general logging | structured pino logs, no personal data in logs (S15.1); `no-console` in Vereino modules | [`monitoring.md`](../ops/monitoring.md), `vereino-ops-signal.test.mjs` | partial — no single logging inventory; user identity and clock source on log lines not confirmed | #735 |
 | V16.3 Security events | platform audit log (`action_logs`); social sign-in failures logged with a fingerprint; anonymisation writes an audit row (S9.6) | — | partial — no list of security events; password sign-in and authorization failures are not logged to a kept sink | #743 |
 | V16.4 Log protection | Railway logs readable by project members only; kept 30 days on Pro (D-039) | [`monitoring.md`](../ops/monitoring.md), [`incident.md`](../ops/incident.md) (export on incident) | partial — no log drain to a separate system; the workspace audit log needs a monthly export | #735 |
 | V16.5 Error handling | error codes from `lib/error-codes.ts`, never stack traces or personal data (S6.7, S9.4); `reportError` with fingerprints (S15.2, needs `TELEMETRY_BACKEND=console`); scope fails closed | `ISSUE-628-cross-club-isolation` | partial — the production error body and outage paths of Stripe and Resend not checked | #743 |
 | V17 WebRTC | — | — | n/a (not used) | — |
+
+## Sessionless route inventory
+
+Every route a stranger can reach without a session, with its limits (#738; engineering standards S8.6). *Per client*
+is counted by the API dispatcher from the route's `metadata.rateLimit` and keyed by the client address
+(`RATE_LIMIT_TRUST_PROXY_DEPTH`); the other layers are counted in the handler through the foundation
+(`foundation/services/sessionless-limits.ts`), keyed by a SHA-256 hash of the token or address. Over a limit the answer
+is 429 with `Retry-After`, except where the route always answers a uniform 202: there the work is skipped silently.
+Refusals are logged with the limiter key prefix only — no address, token or e-mail.
+
+Accepted trade-off: a per-account counter can be spent by anyone who knows the address, so a stranger can hold one
+account's sign-in for at most 15 minutes (10 attempts) and its password-reset e-mails for an hour (3 requests). That is
+the price of stopping guesses spread across many clients; a successful sign-in clears the counter.
+
+| Route family | Routes | Per client | Per subject |
+|---|---|---|---|
+| Sign-in (platform `auth`, `src/app/api/auth/login/route.ts`) | `POST /api/auth/login` | platform: 20 / min per client, 5 / min per client and address | 10 / 15 min per account from any client (cleared by a successful sign-in) |
+| Password reset (platform `auth`, `src/app/api/auth/reset/route.ts`) | `POST /api/auth/reset`; `POST /api/auth/reset/confirm`, `/validate` | platform: 10 / min per client, 3 / min per client and address; confirm and validate per client | 3 / hour per address from any client (request only) |
+| Social sign-in (`foundation`) | `GET /api/foundation/identity/providers`; `GET /api/foundation/identity/{provider}/start`, `/callback` | 120 / min; 20 / min; 20 / min | — |
+| Public club pages (`club_core`) | `GET /api/club_core/public/{clubSlug}` and its `logo`, `events`, `events/{eventSlug}` (+ `files/{fileId}`), `sections/{sectionSlug}` (+ `logo`, `materials/{materialId}`), `places/{placeSlug}/files/{fileId}`; the server-rendered `/p/{clubSlug}/**` pages through the same limits | 120 / min each | — |
+| Public places (`facilities`) | `GET /api/facilities/public/{clubSlug}/places`, `places/{placeSlug}/schedule` | 120 / min each | — |
+| Booking requests (`facilities`) | `POST /api/facilities/public/{clubSlug}/places/{placeSlug}/requests` | 10 / 10 min | 5 / hour per address (fails closed, V-10) |
+| Booking and rental links (`facilities`) | `POST /api/facilities/public/requests/verify`, `rentals/cancel/preview`, `rentals/cancel` | 30 / 10 min each | 30 / min per token (verify, cancel); 60 / min per token (preview) |
+| Public sessions (`activities`) | `GET /api/activities/public/{clubSlug}/sessions/{occurrenceId}` | 120 / min | — |
+| Declaration links (`activities`) | `POST /api/activities/declaration-links` (uniform 202); `GET`, `POST /api/activities/declaration-links/{token}` | 10 / 15 min; 60 / min; 30 / min | 3 / hour per address within a club (silent); 60 / min read, 30 / min write per token |
+| Order campaigns (`payments`) | `GET /api/payments/public/order-campaigns/{id}`; `POST …/{id}/link-request` (uniform 202) | 60 / min; 10 / 15 min | — ; 3 / hour per address within a club (silent) |
+| Order links (`payments`) | `GET /api/payments/order-links/{token}`; `POST …/{token}/orders`, `…/orders/{id}/cancel` | 60 / min; 30 / min | 60 / min read, 30 / min write per token |
+| Test only (`ratelimit_probe`, not a Vereino module) | `POST /api/ratelimit_probe/ping` | 3 / min | — |
 
 ## Open items
 
@@ -95,3 +123,4 @@ read 2026-11-21 and again 2026-11-25).
 | A-5 | Owner decisions ENG-Q-09 (MFA) and ENG-Q-12 (session lifetime) | open | #736, #737 |
 | A-6 | Owner decision ENG-Q-11 (cross-site request check) | open | #744 |
 | A-7 | Default super-administrator from `yarn initialize` and the production password policy | open | #747 |
+| A-8 | Measure the Railway proxy depth on staging, set `RATE_LIMIT_TRUST_PROXY_DEPTH` on staging and production, and record two clients with separate sign-in counters in a run log (`docs/ops/deploy.md` → *Rate limits*; #738); an edge proxy (#739) changes the depth | open | #739 |

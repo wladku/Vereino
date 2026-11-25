@@ -31,7 +31,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V3 Web Frontend Security | 6 | 8 | 1 | 2 | 2 | 19 |
 | V4 API and Web Service | 0 | 0 | 0 | 4 | 6 | 10 |
 | V5 File Handling | 5 | 2 | 1 | 1 | 0 | 9 |
-| V6 Authentication | 4 | 5 | 8 | 5 | 13 | 35 |
+| V6 Authentication | 5 | 4 | 8 | 5 | 13 | 35 |
 | V7 Session Management | 5 | 8 | 4 | 1 | 0 | 18 |
 | V8 Authorization | 3 | 4 | 0 | 0 | 0 | 7 |
 | V9 Self-contained Tokens | 1 | 1 | 0 | 5 | 0 | 7 |
@@ -43,7 +43,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V15 Secure Coding and Architecture | 1 | 7 | 0 | 5 | 0 | 13 |
 | V16 Security Logging and Error Handling | 0 | 7 | 2 | 7 | 0 | 16 |
 | V17 WebRTC | 0 | 0 | 0 | 0 | 7 | 7 |
-| **All** | **47** | **64** | **20** | **59** | **63** | **253** |
+| **All** | **48** | **63** | **20** | **59** | **63** | **253** |
 
 ## Requirements
 
@@ -93,7 +93,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V2.3.2 | 2 | Business limits enforced as documented | Limits enforced in `lib/` (e.g. `facilities/lib/incidents.ts` photo cap, `people/lib/import-sheet.ts`). Gap: depends on V2.1.3 inventory | partial | #743 |
 | V2.3.3 | 2 | All-or-nothing transactions | Commands write in `em.transactional`; effects post-commit (S5.7). No rollback test collected | to verify | #743 |
 | V2.3.4 | 2 | Locking against double-booking | Row/advisory locks (`FOR UPDATE`, `pg_advisory_xact_lock`); `TEST-085-concurrent-internal-bookings`, `ISSUE-549-concurrent-cash-acceptances` | met | — |
-| V2.4.1 | 2 | Anti-automation on functions | Honeypot (`facilities/commands/requests.ts`, `TEST-036-request-security`), platform `lib/ratelimit` on some public routes. Gap: limits not on every sessionless route; proxy depth/Redis unset | partial | #738 |
+| V2.4.1 | 2 | Anti-automation on functions | Honeypot (`facilities/commands/requests.ts`, `TEST-036-request-security`); platform `lib/ratelimit` on every sessionless and sign-in route, per client, per token, per address and per account, counters in Redis (#738, `ISSUE-738-sessionless-rate-limits`, *Sessionless route inventory* in `asvs-checklist.md`). Gap: per-client counters share one key until the proxy depth is set (A-8); no edge limiting | partial | #739 |
 
 ### V3 Web Frontend Security
 
@@ -125,7 +125,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 |---|---|---|---|---|---|
 | V4.1.1 | 1 | Correct Content-Type with charset | CSV exports send `text/csv; charset=utf-8`, files their detected type; JSON via `Response.json` (no charset parameter). Not checked app-wide | to verify | #743 |
 | V4.1.2 | 2 | HTTP→HTTPS redirect only for browser endpoints | Depends on Railway edge behaviour for `/api`; HSTS set (`next.config.ts`). Not checked on the deployment | to verify | #735 |
-| V4.1.3 | 2 | Intermediary headers not client-overridable | `X-Forwarded-For` trust depends on `RATE_LIMIT_TRUST_PROXY_DEPTH` (default 0); `src/proxy.ts` overwrites `x-next-url`. Depth to measure on staging | to verify | #738 |
+| V4.1.3 | 2 | Intermediary headers not client-overridable | `X-Forwarded-For` trust depends on `RATE_LIMIT_TRUST_PROXY_DEPTH` (default 0); `src/proxy.ts` overwrites `x-next-url`. Boot warns while unset; measuring steps in `docs/ops/deploy.md` → *Rate limits*; depth to measure on staging (A-8) | to verify | #739 |
 | V4.2.1 | 2 | Consistent HTTP message boundaries | Railway edge in front of the Node.js server; no request-smuggling check done | to verify | #743 |
 | V4.3.1 | 2 | GraphQL query cost limits | No GraphQL API | n/a | — |
 | V4.3.2 | 2 | GraphQL introspection off | No GraphQL API | n/a | — |
@@ -152,7 +152,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 
 | Req | L | Topic | Vereino control and evidence | State | Owner |
 |---|---|---|---|---|---|
-| V6.1.1 | 1 | Documented brute-force and lockout defences | S8.6 of `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` documents sessionless-route limits; the platform sign-in/reset limits (`OM/core/src/modules/auth/api/login.ts`) and their production settings are not documented | partial | #738 |
+| V6.1.1 | 1 | Documented brute-force and lockout defences | *Sessionless route inventory* in `asvs-checklist.md` documents the sign-in and password-reset limits (platform per client and per client and address, Vereino per account) and the accepted lockout trade-off; S8.6 of `.ai/specs/2026-10-21-engineering-standards-and-patterns.md`; production settings in `docs/ops/deploy.md` → *Rate limits* (#738) | met | — |
 | V6.1.2 | 2 | Documented banned context words | No list of club, product or role words exists | gap | #747 |
 | V6.1.3 | 2 | All sign-in paths documented together | Password (platform `auth`), Google (`.ai/specs/2026-10-27-vereino-social-sign-in.md`), invitation/reset links (`packages/app/src/modules/foundation/services/accounts.ts`), API keys (`api_keys` in `packages/app/src/modules.ts`) are described separately; no single inventory with strengths | partial | #743 |
 | V6.2.1 | 1 | Minimum password length | Platform default minimum is 6 (`OM/shared/src/lib/auth/passwordPolicy.ts`); `OM_PASSWORD_MIN_LENGTH` is set in neither `docs/ops/deploy.md` nor `packages/app/.env.example` | gap | #747 |
@@ -167,7 +167,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V6.2.10 | 2 | No forced periodic rotation | Feature absent: no password-expiry field or rule in `OM/core/src/modules/auth/data/entities.ts` or Vereino modules | n/a | — |
 | V6.2.11 | 2 | Enforce banned context words | No list to enforce (V6.1.2) | gap | #747 |
 | V6.2.12 | 2 | Reject breached passwords | No breached-password check | gap | #747 |
-| V6.3.1 | 1 | Brute-force controls in place | Platform limits 5/min per IP+e-mail and 20/min per IP, fail-open (`OM/core/src/modules/auth/lib/rateLimitCheck.ts`); on Railway proxy depth 0 and the memory strategy collapse them to one shared counter | partial | #738 |
+| V6.3.1 | 1 | Brute-force controls in place | Platform limits 5/min per IP+e-mail and 20/min per IP, fail-open (`OM/core/src/modules/auth/lib/rateLimitCheck.ts`), plus Vereino's 10 / 15 min per account (#738); counters in Redis on Railway (boot check); `ISSUE-738-sessionless-rate-limits`. Gap: the per-client counters share one key until the proxy depth is set (A-8) | partial | #739 |
 | V6.3.2 | 1 | No default accounts | `yarn initialize` (`OM/cli/src/mercato.ts`) seeds the platform's default super-administrator (default e-mail unless `OM_INIT_SUPERADMIN_EMAIL`, password `secret` unless `OM_INIT_SUPERADMIN_PASSWORD`) plus derived admin/employee users; `docs/ops/deploy.md` names only `OM_INIT_ADMIN_PASSWORD` (#747) | gap | #747 |
 | V6.3.3 | 2 | Multi-factor for access | No second factor in 1.0; platform MFA lived in the removed enterprise `security` module (ADR-023); ENG-Q-09 re-decision pending | gap | #736 |
 | V6.3.4 | 2 | No undocumented sign-in paths | Paths as V6.1.3; `OM_AUTOLOGIN_*` forbidden in production (`docs/ops/deploy.md`); API-key path and equal strength not reviewed | to verify | #743 |
@@ -340,14 +340,14 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 |---|---|---|---|---|---|
 | V15.1.1 | 1 | Remediation time frames documented | S16.3 of `.ai/specs/2026-10-21-engineering-standards-and-patterns.md`: high/critical runtime advisories in 7 days, exploitable critical in 48 hours; `SECURITY.md` | met | — |
 | V15.1.2 | 2 | Component inventory / SBOM | `yarn.lock`, weekly `yarn licenses:check` and `yarn npm audit` (`.github/workflows/security.yml`), Renovate (`renovate.json`); no SBOM produced | partial | #741 |
-| V15.1.3 | 2 | Resource-heavy functions documented | S8.6 rate-limit defaults for sessionless routes only; no list of costly functions (imports, PDF, exports) | partial | #738 |
+| V15.1.3 | 2 | Resource-heavy functions documented | S8.6 and the *Sessionless route inventory* (#738) cover public routes only; no list of costly authenticated functions (imports, PDF, exports) | partial | #741 |
 | V15.2.1 | 1 | Components within update time frames | Dependabot alerts on (`docs/ops/github-settings.md`), weekly audit job not a required check; current alert state not collected | to verify | #741 |
-| V15.2.2 | 2 | Availability defences for heavy functions | Route `metadata.rateLimit` on public routes (e.g. `facilities/api/public/…`), platform login limits; `foundation/services/public-route-load.ts` keeps the limit on server rendering; not all heavy routes covered | partial | #738 |
+| V15.2.2 | 2 | Availability defences for heavy functions | Route `metadata.rateLimit` on every sessionless route and sign-in limits (#738); `foundation/services/public-route-load.ts` keeps the limit on server rendering; authenticated heavy functions (imports, PDF, exports) not limited | partial | #741 |
 | V15.2.3 | 2 | No extraneous functionality in production | Scaffold modules `example`, `example_customers_sync`, `ratelimit_probe` are unregistered in `src/modules.ts` but shipped as source (`Dockerfile` copies `src`); dev-runtime routes present, gated | partial | #743 |
 | V15.3.1 | 1 | Only required fields returned | Minimisation rule S9.4; public pages without personal data (S8.6); no test asserts response field sets | to verify | #743 |
 | V15.3.2 | 2 | Outbound calls do not follow redirects | Heartbeat `fetch` in `payments/services/invariants.ts` uses the default (follows redirects); targets are operator-set; Google endpoints fixed in `arctic` | partial | #743 |
 | V15.3.3 | 2 | Mass-assignment protection | Zod request schemas and server-derived tenant/organization (AGENTS.md); no test sends an unexpected field | to verify | #743 |
-| V15.3.4 | 2 | Trusted client IP through proxies | Platform `getClientIp` honours `RATE_LIMIT_TRUST_PROXY_DEPTH` (default 0 = ignore XFF); the production value for Railway is not set in `docs/ops/deploy.md` | partial | #738 |
+| V15.3.4 | 2 | Trusted client IP through proxies | Platform `getClientIp` honours `RATE_LIMIT_TRUST_PROXY_DEPTH` (default 0 = ignore XFF); `docs/ops/deploy.md` → *Rate limits* documents how to measure it, the production value is not set yet (A-8) | partial | #739 |
 | V15.3.5 | 2 | Strict typing and comparisons | TypeScript `strict` and `strictTypeChecked` lint (`eslint.vereino.mjs`, `yarn typecheck`, `yarn lint`); no `eqeqeq` rule | partial | #743 |
 | V15.3.6 | 2 | Prototype pollution prevented | No specific control; Zod parsing rebuilds objects with known keys only — not verified | to verify | #743 |
 | V15.3.7 | 2 | HTTP parameter pollution | Zod validation of query and body per route; duplicate-parameter handling not tested | to verify | #743 |

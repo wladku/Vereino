@@ -12,6 +12,7 @@ import { errorResponse } from '@/modules/foundation'
 import type { RentalCommandResult } from '../../../../commands/rentals'
 import { rentalCancelByLinkSchema } from '../../../../data/validators'
 import { publicErrorSchema } from '../../../public-shared'
+import { enforceSessionlessLimits, tokenLimit } from '@/modules/foundation'
 
 export const metadata = {
   POST: {
@@ -27,6 +28,10 @@ export async function POST(request: Request): Promise<Response> {
     const body: unknown = await request.json().catch(() => null)
     const parsed = rentalCancelByLinkSchema.safeParse(body)
     if (!parsed.success) return Response.json({ error: 'Validation failed' }, { status: 400, headers: NO_STORE })
+    const limited = await enforceSessionlessLimits(request, [
+      tokenLimit('facilities_rental_cancel_token_write', parsed.data.token, 'write'),
+    ])
+    if (limited) return limited
     const container = await createRequestContainer()
     const ctx: CommandRuntimeContext = {
       container,

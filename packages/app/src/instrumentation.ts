@@ -8,16 +8,31 @@ export async function register(): Promise<void> {
     process.env.NEXT_RUNTIME === 'nodejs'
     && process.env.NEXT_PHASE !== 'phase-production-build'
   ) {
+    // Vereino local patch (#727): `@open-mercato/cache` loads `ioredis` through `globalThis.__non_webpack_require__`
+    // when it is set, else through the bundler. Turbopack's import of ioredis's CommonJS export (the `Redis` class)
+    // is a callable wrapper that the cache takes for the constructor, so every `CACHE_STRATEGY=redis` read failed with
+    // "Class constructor Redis cannot be invoked without 'new'". Node's own `require` returns the class. Nothing else
+    // in the server bundle reads this global (the other readers check `__webpack_require__` first). The server runs
+    // in `packages/app`, whose `node_modules` holds ioredis; `scripts/image-smoke.sh` (CI `image-smoke`) checks it.
+    const { createRequire } = await import('node:module')
+    const { join } = await import('node:path')
+    const runtimeGlobal = globalThis as typeof globalThis & { __non_webpack_require__?: NodeJS.Require }
+    runtimeGlobal.__non_webpack_require__ ??= createRequire(join(process.cwd(), 'package.json'))
     // Vereino local patch (engineering standards S8.10, issue #462): refuse to start when a required variable is
     // missing or malformed, naming the variables (never their values) on stderr. Same check as the Railway start
     // scripts run before the server (`scripts/vereino-boot-env.mjs`).
-    const { findBootEnvProblems, formatBootEnvProblems } = await import('../scripts/vereino-boot-env.mjs')
+    const { findBootEnvProblems, findBootEnvWarnings, formatBootEnvProblems } = await import('../scripts/vereino-boot-env.mjs')
     const bootEnvMessage = formatBootEnvProblems(findBootEnvProblems(process.env))
     if (bootEnvMessage !== null) {
       const nodeProcess = process
       nodeProcess.stderr.write(`${bootEnvMessage}\n`)
       nodeProcess.exit(1)
     }
+    for (const warning of findBootEnvWarnings(process.env)) process.stderr.write(`[vereino] Warning: ${warning}\n`)
+    // Vereino local patch (#738): log an outage of the rate limiter's Redis store, which the platform limiter absorbs
+    // silently by counting per process.
+    const { watchRateLimitStore } = await import('@/modules/foundation/services/rate-limit-store-watch')
+    await watchRateLimitStore(process.env)
     const { assertJwtSecretPolicy } = await import('@open-mercato/shared/lib/auth/jwt')
     try {
       assertJwtSecretPolicy()

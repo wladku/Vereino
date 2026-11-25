@@ -11,6 +11,7 @@ import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { orderLinkRequestSchema } from '../../../../../data/validators'
 import { requestOrderLink } from '../../../../../services/order-links'
 import { errorSchema } from '../../../../shared'
+import { linkRequestEmailLimit, sessionlessSubjectAllowed } from '@/modules/foundation'
 
 const logger = createLogger('payments').child({ component: 'order-link-request' })
 
@@ -34,8 +35,12 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     )
   }
   try {
-    const container = await createRequestContainer()
-    await requestOrderLink(container, { ...parsed.data, campaignId: params.data.id })
+    // Per address within the club (S8.6, #738): over the limit nothing is sent, and the answer stays the same 202.
+    const emailLimit = linkRequestEmailLimit('payments_order_link_email', parsed.data.clubSlug, parsed.data.email)
+    if (await sessionlessSubjectAllowed(request, emailLimit)) {
+      const container = await createRequestContainer()
+      await requestOrderLink(container, { ...parsed.data, campaignId: params.data.id })
+    }
   } catch (error: unknown) {
     // A failure must not answer differently from "no such address"; it is reported, never shown.
     getTelemetryRuntime()?.reportError(error, { module: 'payments', code: 'payments.order_link.request_failed' })
@@ -53,7 +58,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Send a personal order link to an address',
       description:
-        'Sessionless (REQ-032). The club comes from its public slug, the campaign from the share link. While the campaign takes orders and the address belongs to an active guardian of a child in its groups, an e-mail with a personal link to `/club/o/{token}` is sent (valid until the end of the orders deadline); otherwise nothing is sent. Always 202 with the same body and no sooner than one second. Rate-limited per client IP.',
+        'Sessionless (REQ-032). The club comes from its public slug, the campaign from the share link. While the campaign takes orders and the address belongs to an active guardian of a child in its groups, an e-mail with a personal link to `/club/o/{token}` is sent (valid until the end of the orders deadline); otherwise nothing is sent. Always 202 with the same body and no sooner than one second. Rate-limited per client IP (429); at most 3 links per hour per address within a club, beyond which nothing is sent and the answer stays the same.',
       requestBody: { contentType: 'application/json', schema: orderLinkRequestSchema },
       responses: [{ status: 202, description: 'Accepted', schema: z.object({ status: z.literal('accepted') }) }],
       errors: [

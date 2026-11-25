@@ -18,6 +18,7 @@ import { DECLARATION_STATUSES, DECLARED_VALUES } from '../../../lib/policy'
 import { readDeclarationLink } from '../../../services/declaration-links'
 import { activitiesErrors } from '../../errors'
 import { attendanceView, attendanceViewSchema, errorSchema } from '../../shared'
+import { enforceSessionlessLimits, tokenLimit } from '@/modules/foundation'
 
 /** Per client IP (S8.6, V-10); disabled under integration tests. */
 export const metadata = {
@@ -38,6 +39,10 @@ function noStore(response: Response): Response {
 export async function GET(_request: Request, context: RouteContext): Promise<Response> {
   try {
     const { token } = await context.params
+    const limited = await enforceSessionlessLimits(_request, [
+      tokenLimit('activities_declaration_link_token_read', token ?? '', 'read'),
+    ])
+    if (limited) return limited
     const container = await createRequestContainer()
     const page = await readDeclarationLink(container, token ?? '')
     if (!page) {
@@ -53,6 +58,10 @@ export async function GET(_request: Request, context: RouteContext): Promise<Res
 export async function POST(request: Request, context: RouteContext): Promise<Response> {
   try {
     const { token } = await context.params
+    const limited = await enforceSessionlessLimits(request, [
+      tokenLimit('activities_declaration_link_token_write', token ?? '', 'write'),
+    ])
+    if (limited) return limited
     const body: unknown = await request.json().catch(() => ({}))
     const parsed = declarationLinkDeclareSchema.safeParse(body)
     if (!parsed.success) {

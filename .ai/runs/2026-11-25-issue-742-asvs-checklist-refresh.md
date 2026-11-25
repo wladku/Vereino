@@ -29,6 +29,15 @@
    cross-club part closed), V6.8/V7.6/V10 rewritten for Google sign-in (#610), V12.3/V13.3/V16.4 for Railway Pro
    (D-039), level 3-only sections marked outside level 2, new open items A-6 (ENG-Q-11) and A-7 (#747).
 7. Updated the compliance pack index (`docs/compliance/README.md`).
+8. Follow-up run (`om-auto-fix-pr 748`, same day): PR #748 conflicted with `main` after #738 (PR #751) landed the
+   sessionless rate limits and its own edits of `asvs-checklist.md`. Merged `main` in (no rebase, no force-push) and
+   kept the PR's section map, folding #738 in: V2.4 control and evidence from #738 (state stays partial, owner #739:
+   per-client counters need the measured proxy depth, no edge limiting); V6.1–V6.3, V15.1–V15.3 reworded; main's
+   *Sessionless route inventory* kept as is; main's open item "A-6" (proxy depth) renumbered **A-8** because the PR
+   already used A-6 (ENG-Q-11) and A-7 (#747), owner #739 (an edge proxy changes the depth). Requirement rows that
+   named the now-closed #738 moved to #739 (V2.4.1, V4.1.3, V6.3.1, V15.3.4) or #741 (V15.1.3, V15.2.2, costly
+   authenticated functions); V6.1.1 is now met (the inventory documents the sign-in and reset limits and the lockout
+   trade-off). Summary: met 48, partial 63, gap 20, to verify 59, n/a 63.
 
 ## Decisions
 
