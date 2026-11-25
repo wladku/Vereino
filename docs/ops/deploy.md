@@ -9,8 +9,8 @@ One production instance serves every club, and one deploy updates every club at 
 club together: [Production release](#production-release) is the process that keeps that risk small, and its
 [checklist](#production-release-checklist) is what a maintainer runs for each release.
 
-Not covered yet: security headers and the CSP decision (E18-S02), nightly off-site backups and the restore drill
-(E18-S03), uptime monitoring and alerts (E18-S04).
+Security headers (E18-S02), nightly off-site backups and the restore drill (E18-S03, [`backups.md`](backups.md)) and
+uptime monitoring and alerts (E18-S04, [`monitoring.md`](monitoring.md)) have their own runbooks.
 
 ## Environments
 
@@ -18,12 +18,13 @@ Not covered yet: security headers and the CSP decision (E18-S02), nightly off-si
 |---|---|---|---|
 | local | a developer machine (`yarn dev`), the integration test runner (`yarn test:integration:vereino`) | by hand | throwaway |
 | sandbox | the owner's machine (`vereino-sandbox-env/sandbox.mjs`), outside Railway | `node sandbox.mjs upgrade` | synthetic |
-| `staging` | Railway project (Hobby plan, EU West), environment `staging` | every commit on `main`, automatically | synthetic only |
+| `staging` | Railway project (Pro plan, EU West; D-039), environment `staging` | every commit on `main`, automatically | synthetic only |
 | `production` | the same Railway project, environment `production` | a maintainer deploys a release tag by hand, inside the release window; never automatic | the real data of every club, plus the maintainers' demo club (synthetic) |
 
 Each Railway environment has four services: **app** (`railway.toml`), **worker** (`railway.worker.toml`), **PostgreSQL**
-and **Redis** (Railway templates). The owner runs and pays for the project (ENG-Q-03). The Hobby plan has no
-point-in-time recovery: recovery rests on the nightly off-site dump (RPO ≤ 24 h; E18-S03).
+and **Redis** (Railway templates). The owner runs and pays for the project (ENG-Q-03) on the Pro plan (D-039, superseding
+Hobby). Volume backups and point-in-time recovery are turned on if Pro offers them; until a PITR restore is drilled,
+recovery rests on the nightly off-site dump (RPO ≤ 24 h; E18-S03).
 
 ### Redis
 

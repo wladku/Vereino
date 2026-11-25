@@ -12,7 +12,8 @@ ENG-Q-05 assumed Railway alerts on log lines. Railway's documentation (`docs.rai
 
 - **No alert on a log match.** Logs can be searched (plain substrings, `@attribute:value`, `@httpStatus:500..599`,
   `AND` / `OR` / `-`), but no feature turns a search into a notification.
-- **Monitors** (CPU, RAM, disk, egress thresholds, e-mail and in-app) **require the Pro plan**; ENG-Q-03 chose Hobby.
+- **Monitors** (CPU, RAM, disk, egress thresholds, e-mail and in-app) **require the Pro plan**; ENG-Q-03 chose Hobby, and D-039 moves the project to Pro, so they become
+  available once the plan is upgraded. Until they are set up, the Hobby arrangement below stays in force.
 - **Project webhooks** send deployment status changes (e.g. `Deployment.failed`) and volume usage alerts; Slack and
   Discord are supported through Railway's webhook muxers. The plan requirement is not stated.
 - **No log drain setting.** Logs are kept 7 days on Hobby (30 on Pro).
