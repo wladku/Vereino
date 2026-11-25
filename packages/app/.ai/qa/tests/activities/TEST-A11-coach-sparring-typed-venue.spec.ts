@@ -30,7 +30,10 @@ test.use({ timezoneId: 'Europe/Warsaw' })
 
 const VENUE = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
 
-test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for a team, is refused for a class group, another coach’s team, both or neither location and a series venue, and edits and cancels only the own one-off event', async ({
+// Quarantined: in CI runs that share no PR, the first `signedInStaff` call answers 400 `invalid_format` (email) from
+// POST /api/people/persons/:id/account. Un-fixme once the cause is fixed (#752).
+// quarantine: #752
+test.fixme('TEST-A11 a coach creates a typed-venue sparring and a club-place match for a team, is refused for a class group, another coach’s team, both or neither location and a series venue, and edits and cancels only the own one-off event', async ({
   request,
 }) => {
   const club = await createClub(request, 'test-a11')
