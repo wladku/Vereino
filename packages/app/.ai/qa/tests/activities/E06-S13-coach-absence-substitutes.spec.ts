@@ -109,10 +109,7 @@ async function training(
   return session
 }
 
-// Fails in CI runs that share no PR: the "Assign substitute" menu item (line ~265) detaches from the DOM while it
-// is clicked (the row menu re-renders), so the click times out. Un-fixme once the cause is fixed.
-// quarantine: #653
-test.fixme('E06-S13 a coach reports an absence, the coordinator assigns a free substitute, the substitution is kept; unsettled sessions are listed', async ({
+test('E06-S13 a coach reports an absence, the coordinator assigns a free substitute, the substitution is kept; unsettled sessions are listed', async ({
   page,
   request,
 }, testInfo) => {
@@ -256,14 +253,19 @@ test.fixme('E06-S13 a coach reports an absence, the coordinator assigns a free s
     await page.goto('/backend/activities/occurrences?perspective=unassigned')
     const row = page.getByRole('row').filter({ hasText: 'Trening Żaków' })
     await expect(row.getByTestId('occurrence-needs-coach')).toBeVisible()
-    // The platform row menu is a hover menu that closes on scroll and pointer leave: on a slow runner it closed while
-    // the item was scrolled into view (PR #652, shard 1). Open it again until the item's click lands.
+    // The platform row menu is a hover menu that closes on scroll and pointer leave (PR #652, shard 1), and its
+    // "Assign substitute" item appears only once the feature check has answered: open it again until the click lands.
+    // The list keeps its rows while it refetches, so the menu is no longer unmounted under the click (#653).
     const assignDialog = page.getByTestId('assign-coach-dialog')
+    const assignItem = page.getByRole('menuitem', {
+      name: uiText('activities.substitutions.assign.action', { exact: true }),
+    })
     await expect(async () => {
-      await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
-      await page
-        .getByRole('menuitem', { name: uiText('activities.substitutions.assign.action', { exact: true }) })
-        .click({ timeout: 5_000 })
+      if (await assignDialog.isVisible()) return
+      if (!(await assignItem.isVisible())) {
+        await row.getByRole('button', { name: uiText('ui.rowActions.openActions') }).click({ timeout: 5_000 })
+      }
+      await assignItem.click({ timeout: 5_000 })
       await expect(assignDialog).toBeVisible({ timeout: 5_000 })
     }).toPass({ timeout: 30_000 })
     const irena = assignDialog.getByTestId('assign-coach-option').and(page.locator('[data-busy="true"]'))
