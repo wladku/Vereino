@@ -11,7 +11,6 @@
 // - Jobs: `record_uses` (a closed session whose outline came from the library), `apply_level` (the club lowered its
 //   level, BR-O5), `strip_author` (the author withdrew the name consent).
 import { randomUUID } from 'node:crypto'
-import type { z } from 'zod'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
@@ -120,10 +119,10 @@ function outlineSpec<TSchema extends typeof publishSchema | typeof withdrawSchem
  * A command whose target is the caller (copy, rate, report): any grant matches its own person, so the scope check
  * needs a linked person — the rater key and an outline's author are that person.
  */
-async function authorizeSelf<TSchema extends typeof copySchema | typeof rateSchema | typeof reportSchema>(
+async function authorizeSelf(
   ctx: CommandRuntimeContext,
   em: EntityManager,
-  input: TSchema,
+  input: typeof copySchema | typeof rateSchema | typeof reportSchema,
   rawInput: unknown,
   sessionScope: Awaited<ReturnType<typeof prefetchSessionScope>>,
 ) {
@@ -145,7 +144,6 @@ async function authorizeSelf<TSchema extends typeof copySchema | typeof rateSche
   if (!personId) return foundationErrors.throw('scope_unlinked')
   return {
     authorized,
-    parsed: authorized.parsed as unknown as z.output<TSchema>,
     personId,
     club: { tenantId: authorized.tenantId, organizationId: authorized.organizationId },
   }
@@ -396,7 +394,8 @@ const copyCommand: CommandHandler<Record<string, unknown>, CopyResult> = {
     const sessionScope = await prefetchSessionScope(ctx)
     const box: { parts?: LibraryParts; viewer?: LibraryViewer } = {}
     const result = await inWriteTransaction(ctx, 'training.library.copy', async (em) => {
-      const { authorized, parsed, personId, club } = await authorizeSelf(ctx, em, copySchema, rawInput, sessionScope)
+      const { authorized, personId, club } = await authorizeSelf(ctx, em, copySchema, rawInput, sessionScope)
+      const parsed = copySchema.parse(authorized.parsed)
       const viewer: LibraryViewer = { kind: 'club', organizationId: club.organizationId, personId }
       const found = await library.snapshotOf(parsed.entryId, viewer, em)
       if (!found) return trainingErrors.throw('library_entry_not_found')
@@ -414,7 +413,7 @@ const copyCommand: CommandHandler<Record<string, unknown>, CopyResult> = {
         occurrenceId: null,
         sourceOutlineId: null,
         originEntryId: entry.id,
-        originCredit: originOf(entry.id, credit) as unknown as Record<string, unknown>,
+        originCredit: originOf(entry.id, credit),
         language: entry.language === 'en' ? 'en' : 'pl',
         topic: entry.topic,
         goal: entry.goal,
@@ -469,7 +468,8 @@ const rateCommand: CommandHandler<Record<string, unknown>, RateResult> = {
     await library.requireScope()
     const sessionScope = await prefetchSessionScope(ctx)
     return inWriteTransaction(ctx, 'training.library.rate', async (em) => {
-      const { authorized, parsed, personId, club } = await authorizeSelf(ctx, em, rateSchema, rawInput, sessionScope)
+      const { authorized, personId, club } = await authorizeSelf(ctx, em, rateSchema, rawInput, sessionScope)
+      const parsed = rateSchema.parse(authorized.parsed)
       const { entryId, stars } = parsed
       const entry = await library.rate(em, entryId, club, personId, stars)
       return {
@@ -503,7 +503,8 @@ const reportCommand: CommandHandler<Record<string, unknown>, ReportResult> = {
     await library.requireScope()
     const sessionScope = await prefetchSessionScope(ctx)
     return inWriteTransaction(ctx, 'training.library.report', async (em) => {
-      const { authorized, parsed, personId, club } = await authorizeSelf(ctx, em, reportSchema, rawInput, sessionScope)
+      const { authorized, personId, club } = await authorizeSelf(ctx, em, reportSchema, rawInput, sessionScope)
+      const parsed = reportSchema.parse(authorized.parsed)
       const { entryId, reason, note } = parsed
       const viewer: LibraryViewer = { kind: 'club', organizationId: club.organizationId, personId }
       const { hidden } = await library.report(em, entryId, { club, personId }, { reason, note }, viewer)

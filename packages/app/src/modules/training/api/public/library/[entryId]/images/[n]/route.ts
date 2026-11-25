@@ -19,10 +19,10 @@ export async function GET(
 ): Promise<Response> {
   try {
     const params = paramsSchema.safeParse(await context.params)
-    if (!params.success) return trainingErrors.throw('library_entry_not_found')
+    if (!params.success) return await trainingErrors.throw('library_entry_not_found')
     const container = await createRequestContainer()
     const file = await libraryOf({ container }).readImage(params.data.entryId, params.data.n, { kind: 'public' })
-    if (!file) return trainingErrors.throw('library_entry_not_found')
+    if (!file) return await trainingErrors.throw('library_entry_not_found')
     return imageResponse(file, true)
   } catch (error: unknown) {
     return errorResponse(error, 'training.public.library.image')

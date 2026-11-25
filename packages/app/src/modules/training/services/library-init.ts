@@ -33,7 +33,7 @@ export async function initLibraryTenant(
     const tenant = await em.findOne(Tenant, { id: ids.tenantId })
     const organization = ids.organizationId ? await em.findOne(Organization, { id: ids.organizationId }) : null
     if (tenant && organization) {
-      if (String(organization.tenant.id) !== tenant.id) {
+      if (organization.tenant.id !== tenant.id) {
         throw new Error('[internal] the configured library organization belongs to another tenant')
       }
       return { status: 'exists', tenantId: tenant.id, organizationId: organization.id, configured }
@@ -71,7 +71,7 @@ export async function initLibraryTenant(
     })
     tx.persist(organization)
     await tx.flush()
-    return { tenantId: String(tenant.id), organizationId: String(organization.id) }
+    return { tenantId: tenant.id, organizationId: organization.id }
   })
   // The library's own data-encryption key, as the platform gives every tenant (DD-O10a).
   if (isTenantDataEncryptionEnabled()) {

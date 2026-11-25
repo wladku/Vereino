@@ -223,8 +223,13 @@ export type TrainingLibrary = {
   /** Counts what `eraseClub` would delete (a dry run). */
   countClub(em: EntityManager, club: LibraryScope): Promise<{ table: string; rows: number }[]>
 
+  /** A guest's report from the public page (P-O1), in its own transaction. */
+  reportAsGuest(entryId: string, address: string, input: { reason: ReportReason; note: string | null }): Promise<void>
+
   // Operator (`library-moderate`)
-  moderation(em: EntityManager): Promise<LibraryEntry[]>
+  moderation(em?: EntityManager): Promise<LibraryEntry[]>
+  /** `moderate` in its own transaction (the CLI). */
+  moderateNow(entryId: string, action: Exclude<ModerationAction, 'list'>): Promise<LibraryEntry | null>
   moderate(em: EntityManager, entryId: string, action: Exclude<ModerationAction, 'list'>): Promise<LibraryEntry | null>
 }
 
@@ -587,7 +592,7 @@ export function createTrainingLibrary(
         if (!credit) continue
         const next = withoutAuthorName(credit, { own: own.has(row.id), adaptedFromEntryIds: own })
         if (JSON.stringify(next) === JSON.stringify(credit)) continue
-        row.credit = next as unknown as Record<string, unknown>
+        row.credit = next
         row.updatedAt = new Date()
         changed += 1
       }
@@ -656,9 +661,21 @@ export function createTrainingLibrary(
       ]
     },
 
+    async reportAsGuest(entryId, address, input) {
+      await requireScope()
+      await emOf().transactional(async (tx) => {
+        await this.report(tx, entryId, { address }, input, { kind: 'public' })
+      })
+    },
+
+    async moderateNow(entryId, action) {
+      await requireScope()
+      return emOf().transactional((tx) => this.moderate(tx, entryId, action))
+    },
+
     async moderation(em) {
       const scope = await requireScope()
-      return em.find(
+      return emOf(em).find(
         LibraryEntry,
         { ...scope, deletedAt: null, $or: [{ status: 'hidden_reported' }, { reportCount: { $gt: 0 } }] },
         { orderBy: { reportCount: 'desc', publishedAt: 'desc' } },

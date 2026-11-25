@@ -21,7 +21,7 @@ export async function GET(request: Request, context: { params: Promise<{ entryId
     const viewer = ctx ? await clubViewer(ctx) : null
     if (!ctx || !viewer) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const view = await libraryOf(ctx).view(params.data.entryId, viewer)
-    if (!view) return trainingErrors.throw('library_entry_not_found')
+    if (!view) return await trainingErrors.throw('library_entry_not_found')
     return Response.json(view, { headers: { 'Cache-Control': 'private, no-store' } })
   } catch (error: unknown) {
     return errorResponse(error, 'training.library.read')

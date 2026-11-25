@@ -153,6 +153,11 @@ export type Outline = {
   locked: boolean
   fileName: string
   clubName: string | null
+  /** The library entry the outline is shared as (#685), or null. */
+  publication: { entryId: string; visibility: 'clubs' | 'public' } | null
+  /** The first author of an outline copied from the library. */
+  origin: { entryId: string | null; clubName: string; authorName: string | null } | null
+  library: { enabled: boolean; maxVisibility: 'club' | 'clubs' | 'public'; termsAccepted: boolean }
   createdAt: string
   updatedAt: string
 }

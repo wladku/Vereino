@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals'
 import { stripImageMetadata } from '../image-metadata'
 
 const bytes = (...values: number[]) => Uint8Array.from(values)
-const text = (value: string) => [...value].map((char) => char.charCodeAt(0))
+const text = (value: string) => Array.from(value, (char) => char.charCodeAt(0))
 
 const segment = (marker: number, payload: number[]) => {
   const length = payload.length + 2

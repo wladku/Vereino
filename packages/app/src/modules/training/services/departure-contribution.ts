@@ -18,16 +18,10 @@ export const TRAINING_DEPARTURE_CONTRIBUTOR = 'people.departure.training'
 export function createDepartureContribution(container: AwilixContainer): DepartureContributor {
   const library = () => container.resolve<TrainingLibrary>(TRAINING_LIBRARY)
   return {
-    async preview() {
-      return { items: [], warnings: [], blockers: [] }
-    },
-    async apply() {
-      return { snapshot: null, changes: [] }
-    },
-    async undo() {
-      return []
-    },
-    async afterCommit() {},
+    preview: () => Promise.resolve({ items: [], warnings: [], blockers: [] }),
+    apply: () => Promise.resolve({ snapshot: null, changes: [] }),
+    undo: () => Promise.resolve([]),
+    afterCommit: () => Promise.resolve(),
     // A mistaken person wrote no outline, ever (*Mistaken person*).
     async hasHistory(em, subject) {
       return (

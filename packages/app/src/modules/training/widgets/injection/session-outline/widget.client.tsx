@@ -2,8 +2,8 @@
 // The "Outline" card of `/club/occurrences/[id]` (training outlines spec M-O6, J-O03, J-O04; REQ-O07, REQ-O08; #683):
 // on opening, `POST /api/training/outlines/ensure-copy` answers the session's outline — making the session's own copy
 // of its activity's series outline when it has none yet (an explicit, idempotent write; never a write inside a GET).
-// None → "Add outline": write a new one for the session, or copy one of "my outlines" into it (the library arrives
-// with phase 4). Present → the read view with its parts and exercises, "Edit" (unless locked 72 hours after the
+// None → "Add outline": write a new one for the session, copy one of "my outlines" into it, or pick one from the
+// shared library (phase 4, #685). Present → the read view with its parts and exercises, "Edit" (unless locked 72 hours after the
 // session's end, BR-O3) and "PDF". States: loading, error with retry, none, locked, forbidden (renders nothing).
 import * as React from 'react'
 import Link from 'next/link'
@@ -27,6 +27,7 @@ import {
   useOutlines,
   type OutlineLoad,
 } from '../../../components/club/club-client'
+import { libraryHref } from '../../../components/club/library-client'
 
 export type SessionOutlineContext = {
   occurrence?: { id: string; activityId?: string; status?: string }
@@ -164,6 +165,11 @@ export default function SessionOutlineWidget({
             data-testid="training-widget-from-own"
           >
             {t('training.widget.fromOwn')}
+          </Button>
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={libraryHref({ occurrenceId })} data-testid="training-widget-from-library">
+              {t('training.widget.fromLibrary')}
+            </Link>
           </Button>
         </div>
         {picking ? <FromMyOutlines occurrenceId={occurrenceId} onAttached={refresh} /> : null}

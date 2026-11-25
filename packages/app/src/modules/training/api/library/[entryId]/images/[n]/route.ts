@@ -24,7 +24,7 @@ export async function GET(
     const viewer = ctx ? await clubViewer(ctx) : null
     if (!ctx || !viewer) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const file = await libraryOf(ctx).readImage(params.data.entryId, params.data.n, viewer)
-    if (!file) return trainingErrors.throw('library_entry_not_found')
+    if (!file) return await trainingErrors.throw('library_entry_not_found')
     return imageResponse(file, false)
   } catch (error: unknown) {
     return errorResponse(error, 'training.library.image')

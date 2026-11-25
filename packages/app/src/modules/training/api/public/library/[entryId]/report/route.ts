@@ -2,7 +2,6 @@
 // anyone may report a public entry, once per client address (kept only as an HMAC), rate-limited. A public report does
 // not count towards hiding the entry (that takes reports from three clubs); the operator sees it.
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { errorResponse } from '@/modules/foundation'
@@ -28,7 +27,7 @@ const paramsSchema = z.object({ entryId: z.uuid() })
 export async function POST(request: Request, context: { params: Promise<{ entryId: string }> }): Promise<Response> {
   try {
     const params = paramsSchema.safeParse(await context.params)
-    if (!params.success) return trainingErrors.throw('library_entry_not_found')
+    if (!params.success) return await trainingErrors.throw('library_entry_not_found')
     const body: unknown = await request.json().catch(() => ({}))
     const parsed = reportSchema.safeParse({
       ...(body && typeof body === 'object' ? body : {}),
@@ -39,16 +38,7 @@ export async function POST(request: Request, context: { params: Promise<{ entryI
     const library = libraryOf({ container })
     await library.requireScope()
     const address = await clientAddress(request)
-    const em = container.resolve<EntityManager>('em').fork()
-    await em.transactional((tx) =>
-      library.report(
-        tx,
-        parsed.data.entryId,
-        { address },
-        { reason: parsed.data.reason, note: parsed.data.note },
-        { kind: 'public' },
-      ),
-    )
+    await library.reportAsGuest(parsed.data.entryId, address, { reason: parsed.data.reason, note: parsed.data.note })
     return Response.json({ ok: true }, { status: 201 })
   } catch (error: unknown) {
     return errorResponse(error, 'training.public.library.report')

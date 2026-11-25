@@ -17,10 +17,10 @@ const paramsSchema = z.object({ entryId: z.uuid() })
 export async function GET(_request: Request, context: { params: Promise<{ entryId: string }> }): Promise<Response> {
   try {
     const params = paramsSchema.safeParse(await context.params)
-    if (!params.success) return trainingErrors.throw('library_entry_not_found')
+    if (!params.success) return await trainingErrors.throw('library_entry_not_found')
     const container = await createRequestContainer()
     const view = await libraryOf({ container }).view(params.data.entryId, { kind: 'public' })
-    if (!view) return trainingErrors.throw('library_entry_not_found')
+    if (!view) return await trainingErrors.throw('library_entry_not_found')
     return Response.json(view, { headers: { 'Cache-Control': 'public, s-maxage=60' } })
   } catch (error: unknown) {
     return errorResponse(error, 'training.public.library.read')

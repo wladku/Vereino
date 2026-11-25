@@ -5,7 +5,6 @@
 // - `training library-moderate restore --entry <id>`: lists a hidden entry again (its reports are settled).
 // - `training library-moderate remove --entry <id>`: removes an entry from the library for good.
 import { parseArgs } from 'node:util'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { ModuleCli } from '@open-mercato/shared/modules/registry'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { TRAINING_LIBRARY, type TrainingLibrary } from './services/library'
@@ -43,9 +42,8 @@ const libraryModerate: ModuleCli = {
     const container = await createRequestContainer()
     const library = container.resolve<TrainingLibrary>(TRAINING_LIBRARY)
     if (!library.config()) fail('The library is not configured (VEREINO_LIBRARY_*)')
-    const em = container.resolve<EntityManager>('em').fork()
     if (action === 'list') {
-      const rows = await library.moderation(em)
+      const rows = await library.moderation()
       const entries = rows.map((row) => ({
         id: row.id,
         topic: row.topic,
@@ -59,7 +57,7 @@ const libraryModerate: ModuleCli = {
     }
     if (action === 'restore' || action === 'remove') {
       if (!entry || !UUID.test(entry)) fail('--entry must be an entry id')
-      const row = await em.transactional((tx) => library.moderate(tx, entry, action))
+      const row = await library.moderateNow(entry, action)
       if (!row) fail(`Unknown entry ${entry}`)
       process.stdout.write(`${JSON.stringify({ id: row.id, status: row.status, reportCount: row.reportCount })}\n`)
       return
