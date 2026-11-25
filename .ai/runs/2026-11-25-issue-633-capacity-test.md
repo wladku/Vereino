@@ -43,12 +43,15 @@
 ## Commands and results
 
 - `yarn verify` — all 17 steps passed (after fixing `secrets:check`: random per-run seed password, allow-listed test
-  fakes); re-run before the PR (see the PR body).
+  fakes).
 - `yarn test:integration:vereino --filter TEST-M08-club-limits` — 1 passed (2.5 min).
 - Re-run of the dispatch tests touched by pacing (`--no-build`): TEST-M02-dispatch, TEST-M03-secrets,
   TEST-M04-templates, TEST-M01-audience, TEST-M04-club-email-links, TEST-M05-composer, TEST-M07-session-cancellation,
   TEST-A13, TEST-A15, J-003, ISSUE-628, E06-S01-people-list — all exit 0.
-- Declaration/check-off tests after `d321cb55`: see the PR body.
+- Declaration/check-off tests after `d321cb55` (one build, then `--no-build`): TEST-009-coach-attendance-checkoff,
+  TEST-009-declarations-and-policies, TEST-011-declaration-scope, TEST-F02-admin-guardian-declares-absence,
+  E06-S16-today-declarations, TEST-014-member-declaration-ui, E03-S04-coach-attendance-ui — all exit 0.
+- Final `yarn verify`: all 22 steps passed; `yarn guard`: no blocking findings.
 - Capacity numbers: `docs/ops/capacity.md`.
 
 ## Problems and mistakes during the run
