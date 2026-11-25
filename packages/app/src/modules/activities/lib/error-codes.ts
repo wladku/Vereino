@@ -15,6 +15,8 @@ export const errorCodes = [
   // and only while its end is in the future.
   { code: 'occurrence_not_cancelled', status: 409, messageKey: 'activities.errors.occurrence_not_cancelled' },
   { code: 'occurrence_already_ended', status: 409, messageKey: 'activities.errors.occurrence_already_ended' },
+  // Reopening a done session (foundation II AC-G02, #588): only a done session.
+  { code: 'occurrence_not_done', status: 409, messageKey: 'activities.errors.occurrence_not_done' },
   // The club setting `coach_may_cancel` is off and the caller cancels only as a coach (#199, club spec DD-37).
   { code: 'coach_cancel_disabled', status: 403, messageKey: 'activities.errors.coach_cancel_disabled' },
   { code: 'activity_has_sessions', status: 409, messageKey: 'activities.errors.activity_has_sessions' },
@@ -80,6 +82,10 @@ export const errorCodes = [
   { code: 'calendar_range_invalid', status: 400, messageKey: 'activities.errors.calendar_range_invalid' },
   // The coach units report (#96): a month other than `YYYY-MM`.
   { code: 'report_month_invalid', status: 400, messageKey: 'activities.errors.report_month_invalid' },
+  // The PZPN exports (training outlines spec REQ-O10, #684): a period other than two dates at most a year apart, and a
+  // team that is unknown or outside the caller's reach (the same 404, so another club's group stays invisible).
+  { code: 'report_period_invalid', status: 400, messageKey: 'activities.errors.report_period_invalid' },
+  { code: 'report_group_not_found', status: 404, messageKey: 'activities.errors.report_group_not_found' },
   // Actual attendance (#33; club spec glossary *Actual attendance*).
   { code: 'attendance_not_started', status: 409, messageKey: 'activities.errors.attendance_not_started' },
   { code: 'attendance_person_not_listed', status: 422, messageKey: 'activities.errors.attendance_person_not_listed' },

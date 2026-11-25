@@ -271,6 +271,238 @@ export async function dueDeliveries(
   }))
 }
 
+// --- Per-club job state (many-clubs spec DD-M04…DD-M07, BR-M2; #629) ---
+
+/** The trusted club a job-state row belongs to. */
+export type ClubJobScope = { tenantId: string; organizationId: string }
+
+/** A claimed row: ids, scope and the due time only (DD-M07 (a): no personal data leaves the statement). */
+export type ClaimedClubJob = ClubJobScope & { jobKey: string; nextDueAt: Date }
+
+/**
+ * DD-M07 (a), approved by the owner on 2026-11-23 (Q-M05; recorded in `AGENTS.md`): the one system-scope statement of
+ * the job sweep. It claims at most `limit` due rows of one job type whose lease is free, in one statement, by setting
+ * `lease_until` (BR-M2's enqueue lease), and returns only ids, scope, key and due time. `SKIP LOCKED` lets two sweeps
+ * run side by side without claiming a row twice. Every further query narrows to the returned club.
+ */
+export async function claimDueClubJobs(
+  em: EntityManager,
+  jobKey: string,
+  now: Date,
+  leaseUntil: Date,
+  limit: number,
+): Promise<ClaimedClubJob[]> {
+  const rows = await em.execute<
+    Array<{ tenant_id: string; organization_id: string; job_key: string; next_due_at: Date | string }>
+  >(
+    `with due as (
+       select id from foundation_club_jobs
+       where job_key = ? and next_due_at <= ? and (lease_until is null or lease_until < ?)
+       order by next_due_at limit ? for update skip locked
+     )
+     update foundation_club_jobs j set lease_until = ?, updated_at = ?
+     from due where j.id = due.id
+     returning j.tenant_id, j.organization_id, j.job_key, j.next_due_at`,
+    [jobKey, now, now, limit, leaseUntil, now],
+  )
+  return rows.map((row) => ({
+    tenantId: row.tenant_id,
+    organizationId: row.organization_id,
+    jobKey: row.job_key,
+    nextDueAt: new Date(row.next_due_at),
+  }))
+}
+
+/** Creates the club's row for a job type when it has none (an idempotent upsert); returns true when it was created. */
+export async function insertClubJob(
+  em: EntityManager,
+  scope: ClubJobScope,
+  jobKey: string,
+  nextDueAt: Date,
+): Promise<boolean> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    `insert into foundation_club_jobs (tenant_id, organization_id, job_key, next_due_at, created_at, updated_at)
+     values (?, ?, ?, ?, now(), now())
+     on conflict (tenant_id, organization_id, job_key) do nothing
+     returning id`,
+    [scope.tenantId, scope.organizationId, jobKey, nextDueAt],
+  )
+  return rows.length > 0
+}
+
+/**
+ * A run starts (BR-M2): only the run the sweep enqueued for this due time and this lease may start — a copy enqueued
+ * by an earlier pass whose lease was taken over, or one of a due time already finished, matches nothing and is
+ * skipped. The lease is extended to the job's timeout. Returns true when this run may go ahead. Both sides compare at
+ * millisecond precision: the claim travels as JS dates, while a row written by SQL (`now()`) holds microseconds.
+ */
+export async function startClubJobRun(
+  em: EntityManager,
+  scope: ClubJobScope,
+  jobKey: string,
+  claim: { dueAt: Date; leaseUntil: Date },
+  runLeaseUntil: Date,
+  now: Date,
+): Promise<boolean> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    `update foundation_club_jobs set lease_until = ?, last_started_at = ?, updated_at = ?
+     where tenant_id = ? and organization_id = ? and job_key = ?
+       and date_trunc('milliseconds', next_due_at) = ? and date_trunc('milliseconds', lease_until) = ?
+     returning id`,
+    [runLeaseUntil, now, now, scope.tenantId, scope.organizationId, jobKey, claim.dueAt, claim.leaseUntil],
+  )
+  return rows.length > 0
+}
+
+/**
+ * A started run ends: the next due time is stored, the lease cleared and the error code set (null on success) — only
+ * while the run still holds its lease, so a run that outlived its timeout and was taken over changes nothing.
+ */
+export async function finishClubJobRun(
+  em: EntityManager,
+  scope: ClubJobScope,
+  jobKey: string,
+  runLeaseUntil: Date,
+  outcome: { nextDueAt: Date; error: string | null },
+  now: Date,
+): Promise<boolean> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    `update foundation_club_jobs set next_due_at = ?, lease_until = null, last_finished_at = ?, last_error = ?,
+       updated_at = ?
+     where tenant_id = ? and organization_id = ? and job_key = ? and date_trunc('milliseconds', lease_until) = ?
+     returning id`,
+    [outcome.nextDueAt, now, outcome.error, now, scope.tenantId, scope.organizationId, jobKey, runLeaseUntil],
+  )
+  return rows.length > 0
+}
+
+/** Moves the club's next run of a job type earlier, never later (`wake`, DD-M06). Returns true when a row moved. */
+export async function wakeClubJob(em: EntityManager, scope: ClubJobScope, jobKey: string, at: Date): Promise<boolean> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    `update foundation_club_jobs set next_due_at = ?, updated_at = now()
+     where tenant_id = ? and organization_id = ? and job_key = ? and (next_due_at is null or next_due_at > ?)
+     returning id`,
+    [at, scope.tenantId, scope.organizationId, jobKey, at],
+  )
+  return rows.length > 0
+}
+
+/** Sets the club's next due time of a job type unless a run holds the lease (a time-zone change, DD-M05). */
+export async function rescheduleClubJob(
+  em: EntityManager,
+  scope: ClubJobScope,
+  jobKey: string,
+  nextDueAt: Date,
+  now: Date,
+): Promise<boolean> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    `update foundation_club_jobs set next_due_at = ?, updated_at = ?
+     where tenant_id = ? and organization_id = ? and job_key = ? and (lease_until is null or lease_until < ?)
+     returning id`,
+    [nextDueAt, now, scope.tenantId, scope.organizationId, jobKey, now],
+  )
+  return rows.length > 0
+}
+
+/** The club's job-state rows (its own scope). */
+export async function clubJobsOf(
+  em: EntityManager,
+  scope: ClubJobScope,
+): Promise<Array<{ jobKey: string; nextDueAt: Date | null; leaseUntil: Date | null; lastError: string | null }>> {
+  const rows = await em.execute<
+    Array<{ job_key: string; next_due_at: Date | null; lease_until: Date | null; last_error: string | null }>
+  >(
+    `select job_key, next_due_at, lease_until, last_error from foundation_club_jobs
+     where tenant_id = ? and organization_id = ? order by job_key`,
+    [scope.tenantId, scope.organizationId],
+  )
+  return rows.map((row) => ({
+    jobKey: row.job_key,
+    nextDueAt: row.next_due_at ? new Date(row.next_due_at) : null,
+    leaseUntil: row.lease_until ? new Date(row.lease_until) : null,
+    lastError: row.last_error,
+  }))
+}
+
+/** Deletes the club's job-state rows (`removeClub`, a club deleted in phase 4). */
+export async function deleteClubJobs(em: EntityManager, scope: ClubJobScope): Promise<number> {
+  const rows = await em.execute<Array<{ id: string }>>(
+    'delete from foundation_club_jobs where tenant_id = ? and organization_id = ? returning id',
+    [scope.tenantId, scope.organizationId],
+  )
+  return rows.length
+}
+
+// Operator CLI reads across clubs (`club-jobs status`, `retire-club-schedules`, `restore-club-schedules`; spec *API*
+// table). Shell only, never reached from a request; they return ids, scope, keys and counts — no personal data.
+
+/** Per job type: clubs, due now, leased, failing (`club-jobs status`). */
+export async function clubJobCounts(
+  em: EntityManager,
+  now: Date,
+): Promise<Array<{ jobKey: string; clubs: number; due: number; leased: number; failing: number }>> {
+  const rows = await em.execute<
+    Array<{ job_key: string; clubs: string; due: string; leased: string; failing: string }>
+  >(
+    `select job_key, count(*) as clubs,
+       count(*) filter (where next_due_at <= ? and (lease_until is null or lease_until < ?)) as due,
+       count(*) filter (where lease_until >= ?) as leased,
+       count(*) filter (where last_error is not null) as failing
+     from foundation_club_jobs group by job_key order by job_key`,
+    [now, now, now],
+  )
+  return rows.map((row) => ({
+    jobKey: row.job_key,
+    clubs: Number(row.clubs),
+    due: Number(row.due),
+    leased: Number(row.leased),
+    failing: Number(row.failing),
+  }))
+}
+
+/** The clubs with a job-state row for a job type, or with any row when `jobKey` is null (`restore-club-schedules`). */
+export async function clubsWithJobState(em: EntityManager, jobKey: string | null): Promise<ClubJobScope[]> {
+  const rows = await em.execute<Array<{ tenant_id: string; organization_id: string }>>(
+    `select distinct tenant_id, organization_id from foundation_club_jobs
+     where (?::text is null or job_key = ?) order by tenant_id, organization_id`,
+    [jobKey, jobKey],
+  )
+  return rows.map((row) => ({ tenantId: row.tenant_id, organizationId: row.organization_id }))
+}
+
+/**
+ * The per-club schedules of the old setup for a worker id (`scheduled_jobs` rows the platform scheduler owns, written
+ * by `registerModuleSchedule` with `name` = the worker id), with their scope (`retire-club-schedules`).
+ */
+export async function perClubSchedules(
+  em: EntityManager,
+  workerId: string,
+): Promise<Array<ClubJobScope & { scheduleId: string }>> {
+  const rows = await em.execute<Array<{ id: string; tenant_id: string; organization_id: string }>>(
+    `select id, tenant_id, organization_id from scheduled_jobs
+     where name = ? and scope_type = 'organization' and source_type = 'module' and deleted_at is null
+       and tenant_id is not null and organization_id is not null
+     order by tenant_id, organization_id`,
+    [workerId],
+  )
+  return rows.map((row) => ({ scheduleId: row.id, tenantId: row.tenant_id, organizationId: row.organization_id }))
+}
+
+/**
+ * DD-M07 (b), approved by the owner on 2026-11-23 (Q-M05; recorded in `AGENTS.md`): the one system-scope read of the
+ * dispatch sweep — the clubs with queued deliveries that are due with a free lease, ids and scope only (never
+ * recipients or content). Every further query runs in the returned club's scope (`sweepDispatches`).
+ */
+export async function clubsWithDueDeliveries(em: EntityManager, limit: number): Promise<ClubJobScope[]> {
+  const rows = await em.execute<Array<{ tenant_id: string; organization_id: string }>>(
+    `select distinct tenant_id, organization_id from foundation_deliveries
+     where status = 'queued' and next_attempt_at <= now() and ${LEASE_FREE}
+     limit ?`,
+    [limit],
+  )
+  return rows.map((row) => ({ tenantId: row.tenant_id, organizationId: row.organization_id }))
+}
+
 /**
  * The value stored by the pre-deploy role-ACL sync wrapper (DD-M11, #673) in the platform's instance-scoped module
  * config, read from the row and not through `moduleConfigService.getValue`, whose cache may still hold a value the

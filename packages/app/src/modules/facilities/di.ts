@@ -2,7 +2,12 @@ import { asFunction, asValue } from 'awilix'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
-import { OCCUPANCY_PROVIDER_TOKEN, registerEmailTemplate } from '@/modules/foundation'
+import {
+  OCCUPANCY_PROVIDER_TOKEN,
+  declareClubJobs,
+  registerEmailTemplate,
+  registerClubDataContributor,
+} from '@/modules/foundation'
 import {
   banRequestTemplate,
   maintenanceDuePlannerTemplate,
@@ -16,12 +21,15 @@ import {
   rescheduleTemplate,
 } from './emails/templates'
 import notificationTypes from './notifications'
+import { FACILITIES_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { FACILITIES_DEPARTURE_CONTRIBUTOR, createDepartureContribution } from './services/departure-contribution'
 import { FACILITIES_OCCUPANCY_SERVICE, createOccupancyService } from './services/occupancy'
 import { FACILITIES_MAINTAINER_SCOPE_PROVIDER, createMaintainerScopeProvider } from './services/maintenance'
 import { createPublicPlacesBlock } from './services/public-schedule'
 import { FACILITIES_RENTAL_LINKS, createRentalLinkService } from './services/rental-links'
 import { FACILITIES_REQUEST_LINKS, createRequestLinkService } from './services/requests'
+import { FACILITIES_CLUB_JOBS } from './lib/club-jobs'
+import { FACILITIES_CLUB_TABLES } from './lib/club-tables'
 
 /** The club page block of the public places (club spec DD-28; #124), read by `club_core` with `hasRegistration`. */
 export const FACILITIES_PUBLIC_PLACES = 'facilities.publicPlaces' as const
@@ -44,6 +52,9 @@ const requestLinkService = createRequestLinkService()
 const rentalLinkService = createRentalLinkService()
 
 export function register(container: AppContainer) {
+  // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
+  declareClubJobs(FACILITIES_CLUB_JOBS)
+  registerClubDataContributor(container, 'facilities', FACILITIES_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   for (const template of requestEmailTemplates) registerEmailTemplate(container, template)
   registerEmailTemplate(container, rentalSummaryTemplate)
@@ -68,6 +79,9 @@ export function register(container: AppContainer) {
     // with `hasRegistration` — a leaving person's place maintainer rows are removed, with the undo, the maintainer
     // events and the role sync after the commit.
     [FACILITIES_DEPARTURE_CONTRIBUTOR]: asFunction(() => createDepartureContribution(container)).scoped(),
+    // `people.dataExport.facilities` (person data export spec DD-X01, #527): the subject's rentals, entry bans,
+    // internal bookings, maintainer rows and reported incidents for the art. 15/20 file, staff actions as counts.
+    [FACILITIES_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     // #128 (DD-36): the places a person maintains, read by `people` for the scope grant and the derived role.
     [FACILITIES_MAINTAINER_SCOPE_PROVIDER]: asValue(createMaintainerScopeProvider()),
   })

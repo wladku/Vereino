@@ -28,7 +28,7 @@ set but no code enforces yet; each gap has an issue.
 | R9 | **Personal-link tokens**: declaration links, order links, rental links (`activities_declaration_tokens`, `payments_order_links`, `facilities_rental_links` — SHA-256 hashes with `expires_at`) | **deleted 30 days after use or expiry** (S9.5) | the link is dead; keeping it has no purpose | **Jobs `activities:purge-declaration-links`, `payments:purge-order-links` and `facilities:purge-rental-links`** (once a day per club): hard delete of the rows that expired, were used (rental links are single-use) or were deleted 30 days ago or earlier (`DEAD_LINK_RETENTION_DAYS = 30`, `foundation/lib/token-link.ts`; `TokenLinkService.purgeDead`). Lifetimes: 31 days, 120 days, until the rental starts. Closed open item R-D (#525) |
 | R10 | **Messages** (`communication_threads`, `communication_thread_messages`, participants, reads) | no period set; proposal: as R3 | art. 6(1)(b) | **Manual — no period decided.** Erasure does not touch message bodies (people life-cycle spec Q-L21). Open item R-C |
 | R11 | **Orders**: contact e-mail and phone, print name, notes (`payments_orders`) | contact and print data: as R3; the order's charge: R1 | art. 6(1)(b); R1 for the money | **Erasure** (`people.persons.anonymize`, #528) clears contact e-mail, phone, notes and print name of the person's orders; no job clears them otherwise (as R3) |
-| R12 | **Safety and operations logs**: contact access log (`activities_contact_access_log`, ids only), facility logs (`facilities_logs`), incidents and photos (`facilities_incidents`, `facilities_incident_photos`), entry bans (`facilities_entry_bans`) | no period set; proposal: 3 years (limitation of most civil claims), entry bans until they end + 12 months | art. 6(1)(f) — safety, liability (S9.2) | **Manual — no period decided.** Open item R-C |
+| R12 | **Safety and operations logs**: contact access log (`activities_contact_access_log`, ids only), person data export log (`people_data_export_log`, ids only, #527), facility logs (`facilities_logs`), incidents and photos (`facilities_incidents`, `facilities_incident_photos`), entry bans (`facilities_entry_bans`) | no period set; proposal: 3 years (limitation of most civil claims), entry bans until they end + 12 months | art. 6(1)(f) — safety, liability (S9.2) | **Manual — no period decided.** Open item R-C |
 | R13 | **Departure requests** (`people_departure_requests`) | no period set; note and decline reason are cleared on erasure | art. 6(1)(b), 6(1)(c) where it carries an erasure request (proof of art. 17) | **Manual — no period decided.** Open item R-C |
 | R14 | **Staff contracts** (`club_core_contracts`, coach rates in `terms`) | as R1 when the contract is the basis of payments; otherwise until the contract ends + 3 years | art. 6(1)(b), 6(1)(c) | **Manual — no period decided.** Open item R-C |
 | R15 | **Audit log snapshots** (`action_logs`, platform `audit_logs`): person snapshots from create, update and consent commands hold names, birth date, e-mail, phone | no period set | art. 6(1)(f) — accountability, art. 5(2) | **Manual — gap.** Anonymisation does not purge earlier snapshots (people life-cycle spec V-L03, pending). Open item R-F |
@@ -36,6 +36,20 @@ set but no code enforces yet; each gap has an issue.
 | R17 | **Backups** (encrypted `pg_dump` at the backup provider) | 30 daily and 12 monthly copies | art. 32(1)(c) — restore after an incident | **Job: the backup cron service** prunes older copies (`scripts/backup-dump.mjs`, [`backups.md`](../ops/backups.md)). Erased or anonymised data **persist in backups until the copy expires — up to about 13 months** through the monthly copies (S15.7 assumed 30 days); a restore must re-apply anonymisations done after the dump (open item R-G) |
 | R18 | **Stripe-side payment data** | Stripe's own retention | Stripe is an independent controller ([`processors.md`](processors.md) P-3) | **Stripe** — not under the club's control |
 | R19 | **Queue and cache** (Redis) | transient; jobs are re-derived from PostgreSQL (S15.8) | — | **Redis/BullMQ** job removal; holds ids, not personal data |
+
+## A club that leaves the instance
+
+When a club ends its agreement, every period above ends for the instance at once (many clubs spec phase 4, REQ-M06;
+`docs/ops/clubs.md` → *A club leaves*; #632). The host is the club's processor, so at the end of the service it
+returns the data and deletes it (art. 28(3)(g) GDPR):
+
+| Step | What happens | Enforced by |
+|---|---|---|
+| Notice | The deletion date is set 30 days after the club's notice (owner's decision Q-M06); a shorter period is refused | `club_core offboard-club` |
+| Return | During the notice the club receives one archive with all its data, decrypted, including the **accounting records of R1**, which the club itself keeps for the legal period from then on (*ustawa o rachunkowości* art. 74 binds the club, not the host) | `club_core export-club`; the audit log records the export |
+| Deletion | After the date every row of the club in every table (Vereino and platform), the sessions and tokens of its users, its attachment files, schedules and cache entries are deleted in one run. **No accounting row is kept on the instance**: the retention of R1 and R2 is the club's duty once it holds the archive | `club_core delete-club`; it refuses before the date and while any table with a `tenant_id` is not covered |
+| What stays | One audit entry of the deletion (tables and row counts, no personal data) and the slug's tombstone (the slug, the time zone and the notice dates; contact data cleared) | the tombstone is removed by `delete-club` 90 days after the deletion (BR-M4) |
+| Backups | The club's rows stay in the backup copies until they expire (R17, at most about 13 months); the encryption key is derived from the master secret and cannot be destroyed until a key store holds the keys (Q-M07) | the backup cron service |
 
 ## Open items
 

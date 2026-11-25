@@ -1,16 +1,13 @@
 // `people:retention-sweep` (club spec REQ-041, amendment B, *Events, Jobs* row; #471): the daily former participants'
-// retention sweep, registered per organization with `registerModuleSchedule` (`services/club-setup.ts`) — at setup for
-// a new club, for an existing one by `mercato people retention-sweep --register-schedule` after the owner confirmed the
-// dry run. The scheduler injects the registration's `tenantId` and `organizationId`; the worker re-validates them and
-// dispatches the job command with a session-less job context (acting role `system`).
-import { z } from 'zod'
-import type { QueuedJob, WorkerMeta } from '@open-mercato/queue'
+// retention sweep, set up per club with `setUpClubJob` (`services/club-setup.ts`) — at setup for a new club, for an
+// existing one by `mercato people retention-sweep --register-schedule` after the owner confirmed the dry run. The club
+// job sweep (or a per-club schedule of the old setup, #629) passes the club's `tenantId` and `organizationId`;
+// `clubJobWorker` hands the handler only a scope the sweep's claim or the club's registration proves (AC-G05, #591),
+// and the worker dispatches the job command with a session-less job context (acting role `system`).
+import type { WorkerMeta } from '@open-mercato/queue'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
-import { createLogger } from '@open-mercato/shared/lib/logger'
-import { jobCommandContext } from '@/modules/foundation'
-
-const logger = createLogger('people').child({ component: 'retention-sweep' })
+import { clubJobWorker, jobCommandContext, type TrustedScope } from '@/modules/foundation'
 
 export const metadata: WorkerMeta = {
   queue: 'people-retention-sweep',
@@ -18,18 +15,15 @@ export const metadata: WorkerMeta = {
   concurrency: 1,
 }
 
-const payloadSchema = z.object({ tenantId: z.uuid(), organizationId: z.uuid() })
-
-export default async function handle(job: QueuedJob<Record<string, unknown>>): Promise<void> {
-  const parsed = payloadSchema.safeParse(job.payload)
-  if (!parsed.success) {
-    logger.warn('people:retention-sweep received a payload without a valid scope; skipped')
-    return
-  }
+async function handle(scope: TrustedScope): Promise<void> {
   const container = await createRequestContainer()
   const commandBus = container.resolve<CommandBus>('commandBus')
   await commandBus.execute('people.persons.retention_sweep', {
     input: {},
-    ctx: jobCommandContext(container, parsed.data),
+    ctx: jobCommandContext(container, scope),
   })
 }
+
+/** Run by the club job sweep with its claim, or by a per-club schedule of the old setup (#629); `clubJobWorker` hands
+ * the handler a trusted scope only (AC-G05, #591). */
+export default clubJobWorker('people:retention-sweep', handle)

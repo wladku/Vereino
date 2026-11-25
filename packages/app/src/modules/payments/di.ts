@@ -2,7 +2,12 @@ import { asFunction, asValue } from 'awilix'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { registerNotificationTypes } from '@open-mercato/core/modules/notifications/lib/notification-type-registry'
 import { registerGatewayAdapter, registerWebhookHandler } from '@open-mercato/shared/modules/payment_gateways/types'
-import { createTokenLinkService, registerEmailTemplate } from '@/modules/foundation'
+import {
+  createTokenLinkService,
+  declareClubJobs,
+  registerEmailTemplate,
+  registerClubDataContributor,
+} from '@/modules/foundation'
 import { OrderLink } from './data/entities'
 import {
   cashReceivedTemplate,
@@ -14,11 +19,14 @@ import {
 import { ORDER_LINK_TTL_MS } from './lib/orders'
 import notificationTypes from './notifications'
 import { PAYMENTS_CHARGE_SERVICE, createChargeService } from './services/charge-service'
+import { PAYMENTS_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { PAYMENTS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { PAYMENTS_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
 import { TEST_GATEWAY_PROVIDER, readTestGatewaySessionId, testGatewayAdapter } from './services/test-gateway'
+import { PAYMENTS_CLUB_JOBS } from './lib/club-jobs'
+import { PAYMENTS_CLUB_TABLES } from './lib/club-tables'
 
 /**
  * The online checkout's gateway provider (DD-42): the club's Stripe account, or — only in the ephemeral integration
@@ -57,6 +65,9 @@ const orderLinks = createTokenLinkService(OrderLink, {
 const chargeService = createChargeService()
 
 export function register(container: AppContainer) {
+  // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
+  declareClubJobs(PAYMENTS_CLUB_JOBS)
+  registerClubDataContributor(container, 'payments', PAYMENTS_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, cashReceivedTemplate)
   registerEmailTemplate(container, orderReminderTemplate)
@@ -73,6 +84,11 @@ export function register(container: AppContainer) {
     // `hasRegistration` — cash a leaving person holds blocks the departure, open charges warn; `retentionHoldUntil`
     // for the erasure (phase L6). Stateless: the caller's EntityManager.
     [PAYMENTS_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
+    // `people.dataExport.payments` (person data export spec DD-X01, #527): the data export contributor `people` reads
+    // with `hasRegistration` — charges, payments, checkouts, payer codes, orders, matched transfers and order links of
+    // the subject, other persons redacted, staff actions counted. Read only, in the caller's EntityManager; the other
+    // persons' names through `people.personDirectory`.
+    [PAYMENTS_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
   })
   // The gateway registries live on `globalThis`, so registering again for every container replaces the same entry.

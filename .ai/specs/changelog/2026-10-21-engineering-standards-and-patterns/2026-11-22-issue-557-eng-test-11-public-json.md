@@ -1,0 +1,1 @@
+| 2026-11-22 | Issue #557 (follow-up of #463/#530): ENG-TEST-11 gains a case that calls the sessionless public club JSON route `GET /api/club_core/public/{slug}` without a session and asserts `Cache-Control` keeps `public, s-maxage=60` (S8.6) without `no-store`, and that the same route with a session cookie gets `no-store` (S8.4). Test only, no product change. |

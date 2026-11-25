@@ -7,6 +7,7 @@ import type { ClubCorePlacesService } from './services/places'
 import { CLUB_CORE_PLACES_SERVICE } from './di'
 import { parseCreateClubOptions } from './lib/club-onboarding'
 import { createClub, CreateClubIncompleteError } from './services/club-onboarding'
+import { runOffboardingCli, OFFBOARDING_COMMANDS } from './services/offboarding-cli'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
   const options = Object.fromEntries(names.map((name) => [name, { type: 'string' as const }]))
@@ -106,6 +107,11 @@ const createClubCommand: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [checkBookablePlace, createClubCommand]
+const offboardingCommands: ModuleCli[] = OFFBOARDING_COMMANDS.map((command) => ({
+  command,
+  run: (argv: string[]) => runOffboardingCli(command, argv),
+}))
+
+const commands: ModuleCli[] = [checkBookablePlace, createClubCommand, ...offboardingCommands]
 
 export default commands

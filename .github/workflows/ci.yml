@@ -1,8 +1,9 @@
 # Required checks for main (engineering standards S14.1-S14.3): gate (build, lint, typecheck, unit tests with
 # 100 % coverage), integration (aggregates the Playwright shards, each on an ephemeral app with Testcontainers
-# PostgreSQL), browser-smoke (the same ephemeral app driven by agent-browser), pr-title, DCO (app).
-# perf stays advisory until the first member page exists (S7.6). Third-party actions are pinned by
-# commit SHA with the release tag in a comment (S14.2); Renovate updates them from phase E2.
+# PostgreSQL), browser-smoke (the same ephemeral app driven by agent-browser). pr-title runs on every PR but is
+# advisory, and DCO is not required (ENG-AC-02, owner decision on #576). perf stays advisory until the first
+# member page exists (S7.6). Third-party actions are pinned by commit SHA with the release tag in a comment (S14.2);
+# Renovate updates them from phase E2.
 name: CI
 
 on:

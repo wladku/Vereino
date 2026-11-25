@@ -65,6 +65,7 @@ Rules:
 - **Who marked it.** A changed row records `marked_by_person_id` and `marked_as_role` (the session's assigned coach from another group marks as `coach`); an unchanged row keeps its marker. A row created by the check-off has `declared = unknown`, `source = staff`.
 - **Version.** Every save sends the session's `updatedAt` (400 `attendance_version_required` without it) and moves it; a save with an older one answers 409, and the page refreshes the list while keeping the coach's selections.
 - **Undo.** Reverts only the marks of the last save (the declaration fields stay, whatever the expiry job did meanwhile) and removes the rows it created; refused (409) after a later save, and for a save that closed the session — reopening is an administrator command with a reason.
+- **Reopen (#588, foundation II AC-G02).** `POST /api/activities/occurrences/{id}/reopen` runs `activities.occurrences.reopen`: the club administrator only (403 for a coordinator or a coach) puts a done session back to `planned` with a reason of 3–500 characters, kept in the audit log, and the session's lock token. The attendance and the score recorded on it stay; the check-off opens again until the session is closed once more, and until then the session is not counted in the reports that read done sessions (the coach units report, the place reports). Its place tree and coach must still be free (409 with the list); another status answers 409 `occurrence_not_done`. `activities.occurrence.updated` goes out without a `change`, so the members get no notice. Undoable while the session is still planned: the undo closes it again. The record offers "Reopen session" on a done session (`mayReopen`).
 - **Series edits.** A session with checked-off attendance is pinned: a series edit no longer moves or removes it. Declarations alone do not pin a future session.
 - **The page (#99, E06-S17).** "All declared present" marks every person with a final "yes" and no mark as present (`lib/attendance-sheet.ts`). Closing sends every unmarked person as `absent`, so the actual attendance is always complete (R11); the confirmation says how many, whether the session is still running and to whom the unit is credited. Ctrl/Cmd+Enter starts the close. A closed save shows "Session closed — {n} present" (present and late) and returns to `/club`. An empty list links a coordinator or the club administrator to the group roster. On a phone the actions stay in a sticky bar above the bottom navigation.
 
@@ -108,7 +109,7 @@ Club spec REQ-017, AC-017, TEST-017; foundation P-10 (token links), P-19 (`Token
 
 ## Deferred
 
-`reopen` of a cancelled or done session, the coach units report and settlement (#96), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), account creation from a personal link (out of #105's scope), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
+The coach units report and settlement (#96), `is_away`, scores and `notes` (step 7), `external_fixture_id` and the fixture import (REQ-039), account creation from a personal link (out of #105's scope), the place delete/deactivate rule about sessions (`club_core` needs an `activities` usage contract).
 
 ## Types per group kind, opponent and coach picker (#93)
 
@@ -190,6 +191,13 @@ E10-S08 (groups and activities parity spec phase 8, REQ-A10, TEST-A16, AC-A12; J
 - `unsettledCount` counts the month's planned sessions that ended 24 h ago or more (the B-15 "Unsettled" predicate) in the same reach.
 - `/backend/activities/reports/coach-units` (B-16) and `/club/coach/units` (More → My units for a coach context, no amounts).
 - `activities_activities.is_away` (activity form "Away trip") also feeds the `away_trip` declaration policy, which until now always resolved as not away.
+
+## PZPN exports (E24-S04, #684)
+
+- `GET /api/activities/reports/pzpn-schedule` and `pzpn-attendance` `?groupId&from&to[&format=csv]` (`services/pzpn-export.ts`, columns and values in `lib/pzpn-export.ts`; training outlines spec REQ-O10, DD-O06, DD-O09): a team's sessions whose start falls in `from`…`to` (club zone, ≤ 366 days) as PZPN's "Harmonogram" and "Lista obecności". UTF-8 CSV with a BOM, headers in the user's language, the locale's separator; event types and statuses always Polish. The attendance lists every session that was not cancelled × the group's participants on its day and anyone with an attendance row.
+- Reach: `activities.reports.view` — the administrator any team, a coordinator their sections' teams; `activities.reports.view_own` — a coach the groups they coach. Any other team answers 404 `report_group_not_found`, like an unknown one; no feature → 403.
+- The name column takes the outline topic from the optional DI service `trainingOutlineTopics` (`topicsFor(scope, occurrenceIds)`), which `training` registers (E24-S03); until then the activity name.
+- `/club/reports/pzpn` (M-O9): team, period (the current month), "Schedule (CSV)" and "Attendance (CSV)"; linked from the club group page with the team preselected.
 
 ## Group usage and the group's activities (#266)
 

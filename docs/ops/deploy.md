@@ -63,6 +63,8 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `OM_ENABLE_ENTERPRISE_MODULES=false` | no effect since the enterprise package was removed (ADR-023, #466); keep it false so a reinstalled package stays off |
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_INIT_ADMIN_PASSWORD` | only for the one-time initialisation below; remove it afterwards |
+| `VEREINO_CLUB_DOMAIN` | optional; the club domain of an instance with many clubs (see *Club addresses* below). Unset: one club per instance |
+| `VEREINO_HOME_CLUB_SLUG` | **deprecated**; the public slug of the one club of an instance without `VEREINO_CLUB_DOMAIN`, which `/` leads a guest to. Ignored once `VEREINO_CLUB_DOMAIN` is set; kept as the single-club fallback |
 
 Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST`, `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
@@ -162,7 +164,8 @@ step after the deploy.
 7. [ ] Deploy the tag to production: app, wait until healthy, then the worker from the same commit.
 8. [ ] `node scripts/smoke.mjs <production-url>` passes; no new error fingerprint in the logs for 15 minutes.
 9. [ ] The release notes are walked in the production demo club.
-10. [ ] The per-club setup commands the release notes name are run for every club, every `schedules` entry `true`.
+10. [ ] The per-club setup commands the release notes name are run for every club, every `schedules` entry `true`;
+    `yarn mercato foundation club-jobs status` shows no `failing` club.
 11. [ ] New club-setting switches are on in the demo club only; the plan for chosen clubs is in the release issue.
 12. [ ] Next morning: the 06:00 and 09:00 jobs ran for every club (worker logs, `monitoring.md` checks).
 
@@ -232,22 +235,82 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
    `VEREINO_SMOKE_PASSWORD` (a user without club data; never a real person's account) and is skipped without them.
 2. Run the per-club setup steps below when the release notes name one.
 
-### Per-club schedules
+### Per-club jobs: one sweep per job type
 
-A module's `setup.ts` `seedDefaults` registers the scheduled jobs of a club when the club is set up. A club that
-existed before the release that added a schedule, or that was created without `seedDefaults` (for example through the
-API), has no such schedule until the module's idempotent club setup runs for it. Run it once per club after the
-release; a second run registers nothing twice.
+Every club runs the same scheduled jobs in its own time zone. Since #629 (many-clubs spec phase 1, DD-M04) they run
+on **one sweep schedule per job type**, whatever the number of clubs: the sweep wakes every 5 minutes, finds the
+clubs whose run is due in `foundation_club_jobs` and enqueues one job per club on the module's own queue. A daily job
+runs at its local time plus a stable offset of 0–20 minutes per club (the clubs do not all start at once); an interval
+job keeps a stable slot inside its interval. A club's time-zone change moves its daily jobs at once. A failed run of
+one club is logged (`"Club job run failed; retried later"`), stored as an error code and retried after 15 minutes;
+the other clubs are not affected.
 
-| Module | Command | Registers | Since |
-|---|---|---|---|
-| `activities` | `yarn mercato activities set-up-club --tenant <id> --org <id>` | occurrence generation, guardian confirmation expiry, declaration reminders, unassigned-session warnings, dead declaration-link purge (daily) | #192, #525 |
-| `payments` | `yarn mercato payments set-up-club --tenant <id> --org <id>` | charge generation (06:00), overdue reminders (09:00), checkout reconciliation and order-campaign closing (every 15 minutes), dead order-link purge (daily), invariant check (03:00) | #301, #405, #525, #531 |
-| `facilities` | `yarn mercato facilities set-up-club --tenant <id> --org <id>` | rental lifecycle and request expiry (every 15 minutes), maintenance reminders (06:00), dead rental-link purge (daily) | #122, #125, #128, #221, #525 |
-| `people` | `yarn mercato people retention-sweep --tenant <id> --org <id> --dry-run`; when the club confirms the counts, `yarn mercato people retention-sweep --tenant <id> --org <id> --register-schedule` | former participants' retention sweep (03:00, club spec REQ-041): the first real run anonymises everyone who left the club `former_participant_retention_months` ago or earlier (default 12), so it runs only after the dry run; it prints `scheduleRegistered: true` | #471 |
+| Module | Job type | When (club's local time) |
+|---|---|---|
+| `foundation` | `foundation:dispatch-sweep` | every 2 minutes, one system-wide sweep over the clubs with queued e-mail (not per club) |
+| `people` | `people:life-cycle`, `people:sync-role-expiry`, `people:retention-sweep`, `people:purge-import-rows` | 01:30, 02:00, 03:00, 04:00 |
+| `activities` | `activities:generate-occurrences`, `activities:send-declaration-reminders` | 03:00, 18:00 |
+| `activities` | `activities:expire-guardian-confirmations`, `activities:warn-unassigned-sessions`, `activities:purge-declaration-links` | every 15 minutes, 15 minutes, daily |
+| `facilities` | `facilities:maintenance-reminders` | 06:00 |
+| `facilities` | `facilities:rental-lifecycle`, `facilities:expire-requests`, `facilities:purge-rental-links` | every 15 minutes, 15 minutes, daily |
+| `payments` | `payments:verify-invariants`, `payments:generate-charges`, `payments:overdue-reminders` | 03:00, 06:00, 09:00 |
+| `payments` | `payments:reconcile-checkouts`, `payments:close-order-campaigns`, `payments:purge-order-links` | every 15 minutes, 15 minutes, daily |
 
-The commands print what they registered; every entry under `schedules` must be `true`. A later change of the club's time zone
-re-registers the time-zoned schedules on its own (`activities:reregister-schedule`, `payments:reregister-schedules`).
+A club's setup (`seedDefaults`, or the idempotent `yarn mercato <module> set-up-club --tenant <id> --org <id>` of
+`activities`, `payments` and `facilities`, and `people bootstrap-admin`) creates its job state; it prints a
+`schedules` entry per job, which must be `true`. `people:life-cycle` is set up for an existing club only by
+`yarn mercato people life-cycle --register-schedule` after the confirmed dry run. The same holds for the former
+participants' retention sweep (club spec REQ-041; #471): its first real run anonymises everyone who left the club
+`former_participant_retention_months` ago or earlier (default 12), so run
+`yarn mercato people retention-sweep --tenant <id> --org <id> --dry-run` first and, when the club confirms the counts,
+`yarn mercato people retention-sweep --tenant <id> --org <id> --register-schedule` (it prints
+`scheduleRegistered: true`).
+
+**Moving an instance onto the sweeps (once, after the release with #629; Ask First on staging and production).**
+Until then each job type runs per club on its old schedules. Per job type, or for all of them:
+
+```bash
+yarn mercato foundation retire-club-schedules --dry-run            # counts only
+yarn mercato foundation retire-club-schedules --job payments:generate-charges
+yarn mercato foundation retire-club-schedules                       # every job type
+yarn mercato foundation club-jobs status                            # sweep: true, perClubSchedules: 0, failing: 0
+```
+
+The command creates the job state of every club that has the old schedule, registers the job type's sweep and then
+removes the per-club schedules; it is idempotent. Afterwards `scheduled_jobs` holds 20 system-scope rows and none per
+club, and a club set up later gets no per-club schedule. Rollback per job type (it re-registers the per-club schedule
+for every club with job state and removes the sweep):
+
+```bash
+yarn mercato foundation restore-club-schedules --job payments:generate-charges
+```
+
+**Operator tools.** `yarn mercato foundation club-jobs status [--job <key>]` prints per job type whether its sweep
+runs, the per-club schedules left and the clubs, due, leased and failing counts. `yarn mercato foundation club-jobs
+sweep [--job <key>]` runs one sweep now. One club's job still runs by hand without the sweep, as before, for example
+`yarn mercato payments run-job --job generate-charges --tenant <id> --org <id>`.
+
+## Club addresses
+
+With `VEREINO_CLUB_DOMAIN` set (many clubs spec phase 3, DD-M02; #631), every club is reached at
+`https://<public slug>.<club domain>`, from the public slug in its settings:
+
+- **Before setting it:** a wildcard DNS record `*.<club domain>` (and the bare domain) points at the app service, with
+  a certificate for both (owner action, D12; on Railway a wildcard custom domain plus the delegated `_acme-challenge`
+  record). Keep `APP_URL` on its own host (for example `app.<club domain>`); it stays the instance's address.
+- **What changes:** `/` on a club's address opens that club (its public page while published, else its sign-in page);
+  its sign-in page signs in to that club only; `/p/<slug>` pages opened anywhere else move to the club's address, so
+  printed links and QR codes keep working; links in Vereino e-mails point at the recipient's club address and the
+  sender's display name is "<club> via Vereino" in front of `NOTIFICATIONS_EMAIL_FROM`'s address. The bare domain and
+  `APP_URL`'s host show a neutral landing page and the maintainers' sign-in; any other host answers 404. A session of
+  one club opened on another club's address is sent back to its own club's address.
+- **Still on `APP_URL` (owner's decision of 2026-11-23 on #631, option (c)):** the platform's password reset (`/reset`
+  on a club's address moves to `APP_URL`), the platform's own notification e-mails and the account invitations, which
+  link to the reset page. A later decision moves them (an upstream change or an override).
+- **Check after setting it:** open `https://<slug>.<club domain>/` of two clubs, the bare domain and an unknown label
+  (404); send a test announcement and check its link and sender.
+- **Rollback:** while one club exists, unset the variable. With several clubs, unsetting it strands every club but the
+  one in `VEREINO_HOME_CLUB_SLUG` and breaks e-mailed links; fix forward instead.
 
 ## Rollback
 
