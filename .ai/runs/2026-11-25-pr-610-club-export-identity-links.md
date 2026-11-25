@@ -40,8 +40,11 @@
   not installed the PR's new dependency); after `yarn install --immutable`:
 - `yarn test:integration:vereino --filter TEST-M07`: 2 passed (1.4m).
 - `yarn test:integration:vereino --filter TEST-M11`: 1 passed (48.7s).
+- `yarn typecheck`: exit 0.
+- `yarn guard`: no blocking finding; one warning, `AGENTS.md [agent-rules] agent rule file changed`, from the PR's own
+  D-027 line (not this run's change).
+- Pushed 1566741a with `git push origin HEAD:feat/issue-566-social-sign-in-google`.
 
 ## Open problems / next steps
 
-- Push and let CI (`integration (shard 2/6)`) confirm on the PR.
-- `yarn typecheck`: passed. `yarn guard`: no findings.
+- CI (`integration (shard 2/6)`) must confirm on the PR; this run does not wait for it.
