@@ -5,13 +5,19 @@ import {
   LEDGER_TITLE,
   MAX_ENTRIES,
   QUARANTINE_LABELS,
+  STORM_LABELS,
+  STORM_THRESHOLD,
   WINDOW_MS,
+  headsToCompare,
+  offMainCommits,
   parseLedger,
   planLedger,
-  quarantinedTestId,
+  quarantinedTestIds,
   renderLedger,
   renderQuarantine,
+  renderStorm,
   runSubject,
+  splitStorms,
   testIdOf,
   unexpectedFailures,
   unrelated,
@@ -102,6 +108,7 @@ describe('runSubject', () => {
     pull_requests: [{ number: 7 }],
     html_url: 'https://ci/7',
     created_at: '2026-11-18T19:00:00Z',
+    head_sha: 'h7',
     ...overrides,
   })
 
@@ -111,6 +118,7 @@ describe('runSubject', () => {
     assert.deepEqual(runSubject(run(), REPO), {
       url: 'https://ci/7',
       at: '2026-11-18T19:00:00Z',
+      head: 'h7',
       prs: [7],
       onMain: false,
     })
@@ -120,6 +128,7 @@ describe('runSubject', () => {
     assert.deepEqual(runSubject(run({ event: 'push', head_branch: 'main', pull_requests: [] }), REPO), {
       url: 'https://ci/7',
       at: '2026-11-18T19:00:00Z',
+      head: 'h7',
       prs: [],
       onMain: true,
     })
@@ -162,12 +171,63 @@ describe('parseLedger and renderLedger', () => {
   })
 })
 
+describe('offMainCommits', () => {
+  const commits = new Map([['h1', new Set(['a'])]])
+
+  it('is empty for a run on main and the compared set for a known head', () => {
+    assert.deepEqual(offMainCommits(entry({ onMain: true, prs: [] }), commits), new Set())
+    assert.deepEqual(offMainCommits(entry({ head: 'h1' }), commits), new Set(['a']))
+  })
+
+  it('is unknown without a head, with a malformed head or with an uncompared head', () => {
+    assert.equal(offMainCommits(entry(), commits), null)
+    assert.equal(offMainCommits(entry({ head: 1 }), commits), null)
+    assert.equal(offMainCommits(entry({ head: 'h9' }), commits), null)
+  })
+})
+
 describe('unrelated', () => {
-  it('is true when the runs share no PR and false for the same run or a shared PR', () => {
-    assert.equal(unrelated(entry(), entry({ url: 'https://ci/2', prs: [2] })), true)
-    assert.equal(unrelated(entry(), entry({ url: 'https://ci/2', prs: [], onMain: true })), true)
-    assert.equal(unrelated(entry(), entry({ url: 'https://ci/2', prs: [1, 3] })), false)
-    assert.equal(unrelated(entry(), entry()), false)
+  // #746 and #750: different PRs, but #750 merged #746's branch, so both heads carry the commit `b746`.
+  const commits = new Map([
+    ['h1', new Set(['a1'])],
+    ['h2', new Set(['a2'])],
+    ['h746', new Set(['b746'])],
+    ['h750', new Set(['b746', 'b750'])],
+  ])
+  const run = (pr, head) => entry({ url: `https://ci/${pr}`, prs: [pr], head })
+
+  it('is true when the runs share no PR and no commit off main', () => {
+    assert.equal(unrelated(run(1, 'h1'), run(2, 'h2'), commits), true)
+    assert.equal(unrelated(run(1, 'h1'), entry({ url: 'https://ci/m', prs: [], onMain: true }), commits), true)
+    assert.equal(
+      unrelated(entry({ onMain: true, prs: [] }), entry({ url: 'https://ci/m', prs: [], onMain: true })),
+      true,
+    )
+  })
+
+  it('is false for the same run, a shared PR or a shared commit off main', () => {
+    assert.equal(unrelated(run(1, 'h1'), entry({ url: 'https://ci/2', prs: [1, 3], head: 'h2' }), commits), false)
+    assert.equal(unrelated(run(1, 'h1'), run(1, 'h1'), commits), false)
+    assert.equal(unrelated(run(746, 'h746'), run(750, 'h750'), commits), false)
+  })
+
+  it('is false when the commits of either PR run are unknown', () => {
+    assert.equal(unrelated(entry(), entry({ url: 'https://ci/2', prs: [2] })), false)
+    assert.equal(unrelated(run(1, 'h1'), run(2, 'h-gone'), commits), false)
+    assert.equal(unrelated(run(1, 'h-gone'), run(2, 'h2'), commits), false)
+  })
+})
+
+describe('headsToCompare', () => {
+  it('names the heads of PR runs once, the subject first, and skips main runs and entries without a head', () => {
+    const entries = [
+      entry({ head: 'h1' }),
+      entry({ head: 'h1', url: 'https://ci/9' }),
+      entry(),
+      entry({ onMain: true, head: 'hm' }),
+    ]
+    assert.deepEqual(headsToCompare(entries, subject({ head: 'h2' })), ['h2', 'h1'])
+    assert.deepEqual(headsToCompare([], subject({ onMain: true, head: 'hm' })), [])
   })
 })
 
@@ -175,16 +235,27 @@ describe('planLedger', () => {
   const plan = (overrides = {}) =>
     planLedger({ entries: [], failures: [failure], subject: subject(), now: NOW, quarantined: new Set(), ...overrides })
 
-  it('records a first failure without a quarantine', () => {
+  const independent = new Map([
+    ['h1', new Set(['a1'])],
+    ['h2', new Set(['a2'])],
+  ])
+
+  it('records a first failure without a quarantine, with the head when the run has one', () => {
     const result = plan()
     assert.deepEqual(result.quarantines, [])
+    assert.deepEqual(result.storms, [])
     assert.deepEqual(result.entries, [
       { ...failure, prs: [2], onMain: false, url: 'https://ci/2', at: '2026-11-18T19:30:00Z' },
     ])
+    assert.equal(plan({ subject: subject({ head: 'h2' }) }).entries[0].head, 'h2')
   })
 
   it('quarantines a test that failed in an unrelated run within the window', () => {
-    const result = plan({ entries: [entry()] })
+    const result = plan({
+      entries: [entry({ head: 'h1' })],
+      subject: subject({ head: 'h2' }),
+      branchCommits: independent,
+    })
     assert.deepEqual(result.quarantines, [
       { testId: 'TEST-L03', file: L03, evidence: ['https://ci/2', 'https://ci/1'] },
     ])
@@ -192,6 +263,18 @@ describe('planLedger', () => {
       result.entries.map((item) => item.url),
       ['https://ci/2', 'https://ci/1'],
     )
+  })
+
+  it('does not quarantine on runs whose heads share a commit off main or whose commits are unknown', () => {
+    const shared = new Map([
+      ['h1', new Set(['b746'])],
+      ['h2', new Set(['b746', 'b750'])],
+    ])
+    assert.deepEqual(
+      plan({ entries: [entry({ head: 'h1' })], subject: subject({ head: 'h2' }), branchCommits: shared }).quarantines,
+      [],
+    )
+    assert.deepEqual(plan({ entries: [entry()] }).quarantines, [])
   })
 
   it('does not quarantine on a run of the same PR, on another test, or outside the window', () => {
@@ -209,7 +292,28 @@ describe('planLedger', () => {
   })
 
   it('skips a test that already has an open quarantine issue', () => {
-    assert.deepEqual(plan({ entries: [entry()], quarantined: new Set(['TEST-L03']) }).quarantines, [])
+    const options = { subject: subject({ head: 'h2' }), branchCommits: independent }
+    assert.deepEqual(
+      plan({ entries: [entry({ head: 'h1' })], quarantined: new Set(['TEST-L03']), ...options }).quarantines,
+      [],
+    )
+  })
+
+  it('turns more than STORM_THRESHOLD quarantines from the same runs into one storm', () => {
+    const ids = Array.from({ length: STORM_THRESHOLD + 1 }, (_, index) => `TEST-S0${index}`)
+    const failures = ids.map((testId) => ({ testId, file: L03 }))
+    const entries = ids.map((testId) => entry({ testId, head: 'h1' }))
+    const result = plan({ entries, failures, subject: subject({ head: 'h2' }), branchCommits: independent })
+    assert.deepEqual(result.quarantines, [])
+    assert.deepEqual(result.storms, [{ tests: failures, evidence: ['https://ci/2', 'https://ci/1'] }])
+    const few = plan({
+      entries: entries.slice(1),
+      failures: failures.slice(1),
+      subject: subject({ head: 'h2' }),
+      branchCommits: independent,
+    })
+    assert.equal(few.quarantines.length, STORM_THRESHOLD)
+    assert.deepEqual(few.storms, [])
   })
 
   it('records a replayed run only once and proves nothing with a run older than the window', () => {
@@ -233,19 +337,60 @@ describe('planLedger', () => {
   })
 })
 
-describe('renderQuarantine and quarantinedTestId', () => {
+describe('splitStorms', () => {
+  const quarantine = (testId, evidence) => ({ testId, file: L03, evidence })
+
+  it('groups by the runs listed in any order and keeps smaller groups as single quarantines', () => {
+    const storm = ['T-1', 'T-2', 'T-3', 'T-4'].map((testId, index) =>
+      quarantine(testId, index % 2 ? ['https://ci/1', 'https://ci/2'] : ['https://ci/2', 'https://ci/1']),
+    )
+    const alone = quarantine('T-9', ['https://ci/2', 'https://ci/3'])
+    const result = splitStorms([...storm, alone])
+    assert.deepEqual(result.quarantines, [alone])
+    assert.deepEqual(result.storms, [
+      { tests: storm.map(({ testId, file }) => ({ testId, file })), evidence: ['https://ci/2', 'https://ci/1'] },
+    ])
+  })
+
+  it('keeps exactly STORM_THRESHOLD quarantines from the same runs as they are', () => {
+    const three = ['T-1', 'T-2', 'T-3'].map((testId) => quarantine(testId, ['https://ci/main']))
+    assert.deepEqual(splitStorms(three), { quarantines: three, storms: [] })
+    assert.deepEqual(splitStorms([]), { quarantines: [], storms: [] })
+  })
+})
+
+describe('renderStorm', () => {
+  it('writes one triage issue without cezar that names every test and run and carries every marker', () => {
+    const tests = [
+      { testId: 'TEST-L03', file: L03 },
+      { testId: 'ADMIN-LISTS-LOAD-ONCE', file: LISTS },
+    ]
+    const issue = renderStorm({ tests, evidence: ['https://ci/2', 'https://ci/1'] })
+    assert.equal(issue.title, 'test: 2 integration tests fail in the same CI runs, triage before any quarantine')
+    assert.deepEqual(issue.labels, STORM_LABELS)
+    assert.equal(issue.labels.includes('cezar'), false)
+    assert.match(issue.body, /- https:\/\/ci\/1/)
+    assert.match(
+      issue.body,
+      /- `ADMIN-LISTS-LOAD-ONCE` \(`packages\/app\/\.ai\/qa\/tests\/platform\/ADMIN-LISTS-LOAD-ONCE\.spec\.ts`\)/,
+    )
+    assert.deepEqual(quarantinedTestIds(issue.body), ['TEST-L03', 'ADMIN-LISTS-LOAD-ONCE'])
+  })
+})
+
+describe('renderQuarantine and quarantinedTestIds', () => {
   it('writes a generated issue whose marker names the test', () => {
     const issue = renderQuarantine({ testId: 'TEST-L03', file: L03, evidence: ['https://ci/2', 'https://ci/1'] })
     assert.equal(issue.title, 'test: quarantine TEST-L03, it fails in CI runs that share no PR')
     assert.deepEqual(issue.labels, QUARANTINE_LABELS)
     assert.match(issue.body, /- https:\/\/ci\/1/)
     assert.match(issue.body, /packages\/app\/\.ai\/qa\/tests\/people\/TEST-L03-departure\.spec\.ts/)
-    assert.equal(quarantinedTestId(issue.body), 'TEST-L03')
+    assert.deepEqual(quarantinedTestIds(issue.body), ['TEST-L03'])
   })
 
   it('finds no test id in another body', () => {
-    assert.equal(quarantinedTestId('plain text'), null)
-    assert.equal(quarantinedTestId(undefined), null)
+    assert.deepEqual(quarantinedTestIds('plain text'), [])
+    assert.deepEqual(quarantinedTestIds(undefined), [])
   })
 
   it('exposes the ledger issue constants', () => {
