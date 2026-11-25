@@ -21,10 +21,12 @@ import {
   applyConsentChanges,
   holdsOwnConsents,
   parseStoredConsents,
+  subjectOnlyChanges,
   type ConsentKind,
   type StoredConsents,
 } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
+import { emitMedicalUpdated } from '../services/medical'
 import {
   actorPersonId,
   assertNotAnonymized,
@@ -54,6 +56,8 @@ export type OwnConsentsResult = {
   before: OwnConsentsSnapshot
   /** The consents given or withdrawn by this call. */
   changed: ConsentKind[]
+  /** The `medical` consent was withdrawn and the medical certificate date cleared with it (BR-O1, #682). */
+  medicalCleared?: boolean
 }
 
 function snapshotOf(person: Person): OwnConsentsSnapshot {
@@ -146,13 +150,22 @@ const setOwnConsentsCommand: CommandHandler<Record<string, unknown>, OwnConsents
         now,
         actorPersonId(authorized.scope),
       )
+      // BR-O1 (#682): only the person gives or withdraws the `medical` consent, never the club's staff.
+      if (authorized.actingRole !== 'self' && subjectOnlyChanges(applied.changed).length > 0) {
+        await peopleErrors.throw('medical_consent_subject_only')
+      }
       if (applied.changed.length > 0) {
         person.consents = applied.consents
         person.updatedAt = now
       }
-      return { person, actingRole: authorized.actingRole, before, changed: applied.changed }
+      // Withdrawing the `medical` consent clears the date it held (BR-O1, #682).
+      const medicalCleared =
+        applied.changed.includes('medical') && !applied.consents.medical?.granted && !!person.medicalValidUntil
+      if (medicalCleared) person.medicalValidUntil = null
+      return { person, actingRole: authorized.actingRole, before, changed: applied.changed, medicalCleared }
     })
-    if (result.changed.length > 0) await emitPersonUpdated(ctx, result.person, false)
+    if (result.medicalCleared) await emitMedicalUpdated(ctx, result.person)
+    else if (result.changed.length > 0) await emitPersonUpdated(ctx, result.person, false)
     return result
   },
   async buildLog({ result }) {
@@ -165,7 +178,11 @@ const setOwnConsentsCommand: CommandHandler<Record<string, unknown>, OwnConsents
       organizationId: result.person.organizationId,
       snapshotBefore: result.before,
       snapshotAfter: snapshotOf(result.person),
-      context: { actingRole: result.actingRole, consentsChanged: result.changed },
+      context: {
+        actingRole: result.actingRole,
+        consentsChanged: result.changed,
+        ...(result.medicalCleared ? { medical: 'cleared' } : {}),
+      },
     }
   },
   async authorizeReplay({ ctx, logEntry }) {

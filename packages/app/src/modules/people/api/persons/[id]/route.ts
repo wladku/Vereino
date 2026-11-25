@@ -22,6 +22,7 @@ import {
 } from '@/modules/foundation'
 import { visibleName } from '../../../lib/erasure-rules'
 import { formerMemberLabel } from '../../../services/former-member'
+import { staffMedicalBlock } from '../../../services/medical'
 import { findPerson, ownConsentsForStaff } from '../../../services/people-read'
 import {
   PEOPLE_READ_OPTIONS,
@@ -48,16 +49,23 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!ctx?.auth || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const person = await findPerson(ctx.container, scope, id)
     if (!person) return Response.json({ error: 'Not found' }, { status: 404 })
+    const grants = await scopeContract.resolve(ctx)
     const actingRole = await assertInScope(
-      await scopeContract.resolve(ctx),
+      grants,
       PERSON_READ_KINDS,
       { id: person.id, tenantId: person.tenantId, organizationId: person.organizationId, personId: person.id },
       PEOPLE_READ_OPTIONS,
     )
     const formerMember = await formerMemberLabel()
-    // An anonymised person reads "Former member"; a name kept under the hold only with `people.manage` (#308).
-    if (isBasicRead(actingRole)) return Response.json(personBasicView(person, visibleName(person, formerMember, false)))
     const rbac = ctx.container.resolve<RbacService>('rbacService')
+    // #682 (M-O4): the medical certificate block for a staff writer (`people.medical.manage`) — the club administrator,
+    // or a coordinator for a member of their own sections only (the coordinator's read is club-wide); never for an
+    // anonymised person.
+    const medical = await staffMedicalBlock(ctx, scope, person, actingRole, grants)
+    // An anonymised person reads "Former member"; a name kept under the hold only with `people.manage` (#308).
+    if (isBasicRead(actingRole)) {
+      return Response.json({ ...personBasicView(person, visibleName(person, formerMember, false)), ...medical })
+    }
     const [withPesel, canManage, account] = await Promise.all([
       rbac.userHasAllFeatures(ctx.auth.sub, ['people.pesel.view'], scope),
       rbac.userHasAllFeatures(ctx.auth.sub, ['people.manage'], scope),
@@ -68,6 +76,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     return Response.json({
       ...personView(person, { withPesel, account, name, withHold: canManage }),
       ...(own ? { holdsOwnConsents: own.holdsOwnConsents, ownConsents: own.consents } : {}),
+      ...medical,
     })
   } catch (error: unknown) {
     return errorResponse(error, 'people.persons.detail')
@@ -94,7 +103,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read one person',
       description:
-        "Returns the person when it is in the caller's record scope: a coordinator gets the basic data only (`access: 'basic'`, no e-mail, phone, notes or PESEL); `pesel` only with `people.pesel.view`. The full view carries `accountEmail`, the login e-mail of the person's account, and `account { state, email, invitedAt, lastSignInAt }` (state `none`, `invited`, `active` or `blocked`, read from the platform user). With `people.manage` it also carries `holdsOwnConsents` (18 or more with a known birth date) and `ownConsents` (an adult participant's own consents with the date and the author's name, #309).",
+        "Returns the person when it is in the caller's record scope: a coordinator gets the basic data only (`access: 'basic'`, no e-mail, phone, notes or PESEL); `pesel` only with `people.pesel.view`. The full view carries `accountEmail`, the login e-mail of the person's account, and `account { state, email, invitedAt, lastSignInAt }` (state `none`, `invited`, `active` or `blocked`, read from the platform user). With `people.manage` it also carries `holdsOwnConsents` (18 or more with a known birth date) and `ownConsents` (an adult participant's own consents with the date and the author's name, #309). With `people.medical.manage` (the club administrator, a coordinator) it carries `medical { validUntil, status, state, consentInForce, updatedAt }`, the sports medical certificate date (#682).",
       responses: [{ status: 200, description: 'The person', schema: personViewSchema }],
       errors: [
         { status: 403, description: 'scope_denied', schema: errorSchema },

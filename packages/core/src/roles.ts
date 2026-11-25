@@ -68,6 +68,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       // 2026-11-19, #377): the coordinator creates it, editing and deleting it stay `club_core.manage`.
       'club_core.places.add_external',
       'people.view',
+      // The medical certificate date of the own sections' members: status and date, and the write (Q-O01; #682).
+      'people.medical.view',
+      'people.medical.manage',
       // The platform does not expand `dependsOn` at check time (`aclDependencies.ts` only reports missing
       // dependencies), so `groups.manage` does not imply `groups.view`: the coordinator gets both (#30).
       'groups.view',
@@ -102,6 +105,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'people.self',
       // Social sign-in (#566): own identities follow `people.self`.
       'foundation.identity.self',
+      // The medical certificate status and date of the own groups' players, no write (REQ-O02; #682).
+      'people.medical.view',
       'communication.view',
       'groups.view',
       'activities.coach',

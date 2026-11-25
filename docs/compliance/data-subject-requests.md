@@ -30,7 +30,8 @@ helps it (art. 28(3)(e)). Code paths are under `packages/app/src/modules/`. It i
 The club administrator exports one person's data in one file: the person record › *Details* › **Data requests** ›
 **Export personal data** (`GET /api/people/persons/{id}/data-export`, feature `people.persons.export`; person data
 export spec, #527). The file is a JSON document (`vereino.person-data-export`, version 1) with the person's rows from
-every table of [`ropa.md`](ropa.md) that refers to them, encrypted values decrypted. Every export is recorded in
+every table of [`ropa.md`](ropa.md) that refers to them, encrypted values decrypted — including the medical certificate
+date (`medicalValidUntil` in the people subject record) and the `medical` consent (A15, #682). Every export is recorded in
 `people_data_export_log` (who, when, which person, why) before any data is read.
 
 1. Check the requester's identity (§1), then download the export from the person record.
@@ -66,7 +67,8 @@ every table of [`ropa.md`](ropa.md) that refers to them, encrypted values decryp
    (409 `anonymize_blocked`) until: the last day has passed, the account is closed, no active guardianship remains,
    no open charges or cash held, and a recorded request exists (`people/lib/erasure-rules.ts`). It cannot be undone.
 3. **What it erases** (`people/services/erasure.ts`): phone, e-mail, notes, PESEL and its hash, external id and hash,
-   photo (files released), birth date, language, consents, ward consents on guardianships, departure-request notes,
+   photo (files released), birth date, language, the medical certificate date (`medical_valid_until`, #682), consents
+   (including `medical`), ward consents on guardianships (including `medical`), departure-request notes,
    matched import rows; in the same transaction (#528) the contact e-mail, phone and notes of the orders the person
    placed and the print name and notes of orders for them (`payments_orders`), a typed payer label on charges naming
    them (`payments_charges.payer_label`), the person and account ids, address hash and secret parameters of their
@@ -97,7 +99,9 @@ processing under art. 6(1)(f) — safety logs, contact access log, published con
 
 As easy as giving it: the person switches off the three profile consents in the member area (`PUT /api/people/me`);
 a guardian changes a ward's image and trip consents (`people_guardianships.consents`). Only the current state is
-stored, history is in the audit log; the club removes any published name or image the same day.
+stored, history is in the audit log; the club removes any published name or image the same day. Withdrawing the
+`medical` consent (the adult, or any guardian of a ward) clears the medical certificate date at once
+([`retention.md`](retention.md) R20, #682).
 
 ## 3. Open items
 

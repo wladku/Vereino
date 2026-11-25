@@ -35,6 +35,13 @@ const events = [
     category: 'lifecycle',
   },
   { id: 'people.person.departed', label: 'Person left the club', entity: 'person', category: 'lifecycle' },
+  // Training outlines and medical expiry spec (#682): the medical certificate date was set, changed or cleared (ids only).
+  {
+    id: 'people.person.medical_updated',
+    label: 'Medical certificate date updated',
+    entity: 'person',
+    category: 'crud',
+  },
   // People life-cycle spec phase L8 (REQ-L06, DD-L08; #310): the daily job ended a ward's guardianships on the 18th
   // birthday. Payload `{ id, tenantId, organizationId, birthday }` (ids and the date of the change only); `activities`
   // makes the person's `pending_guardian` declarations of sessions from that day final.

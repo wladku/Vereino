@@ -70,6 +70,7 @@ export class Person extends ScopedEntityBase {
     | 'photoAttachmentId'
     | 'anonymizedAt'
     | 'erasureHoldUntil'
+    | 'medicalValidUntil'
 
   @Property({ name: 'first_name', type: 'text' })
   firstName!: string
@@ -165,6 +166,14 @@ export class Person extends ScopedEntityBase {
    */
   @Property({ name: 'erasure_hold_until', type: 'date', nullable: true })
   erasureHoldUntil?: string | null
+
+  /**
+   * The date until which the sports medical certificate is valid (training outlines and medical expiry spec DD-O01,
+   * REQ-O01; #682): `YYYY-MM-DD` inside an encrypted text (health data, GDPR Art. 9), stored only while a `medical`
+   * consent is in force (BR-O1). No hash: it is never filtered in SQL; the status is computed in memory (DD-O02).
+   */
+  @Property({ name: 'medical_valid_until', type: 'text', nullable: true })
+  medicalValidUntil?: string | null
 }
 
 /**
@@ -503,6 +512,8 @@ export type ImportRowResult = {
  * `people_data_export_log`, DD-X04; #527): who exported, in which role, which person, and why — ids only, never a
  * value exported. Append-only: written by `auditedRead` and committed before any data is read; the `foundation` guard
  * refuses an update or a delete (409 `append_only`). A row means an export was started, not that it was delivered.
+ * It also records a coordinator's or coach's read of the medical certificate status (purpose `medical_status_read`,
+ * DPIA D-14; #682), ids only.
  */
 @Entity({ tableName: 'people_data_export_log' })
 @Index({

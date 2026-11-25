@@ -27,8 +27,8 @@ a DPIA is carried out.
 
 - **Nature.** A web application for one club: membership register, guardianships and consents, groups and session
   attendance, messages and e-mail notices, fees and payments (manual, bank import, online through Stripe), orders,
-  place rentals for outside renters, facility logs and incidents. The activities A1–A14 and their tables are in
-  [`ropa.md`](ropa.md).
+  place rentals for outside renters, facility logs and incidents, the validity date of sports medical certificates
+  (art. 9 data, with explicit consent; #682). The activities A1–A15 and their tables are in [`ropa.md`](ropa.md).
 - **Scope.** The pilot club: its members, wards, guardians, staff and outside renters — in the order of hundreds of
   people, one organization. No profiling, no automated decisions with legal effect, no monitoring of public places,
   no biometric, genetic or location data.
@@ -43,8 +43,8 @@ a DPIA is carried out.
 
 | Question | Answer |
 |---|---|
-| Lawful basis | art. 6(1)(b) for core processing, 6(1)(c) for accounting, 6(1)(f) for safety logs, 6(1)(a) only for optional processing (S9.2; [`ropa.md`](ropa.md)) |
-| Minimisation | a field exists only if a club spec requirement needs it; PESEL optional; public pages show no participant or guardian names; no personal data in logs, events, URLs or errors (S9.4) |
+| Lawful basis | art. 6(1)(b) for core processing, 6(1)(c) for accounting, 6(1)(f) for safety logs, 6(1)(a) only for optional processing, art. 9(2)(a) explicit consent for the medical certificate date (S9.2; [`ropa.md`](ropa.md) A15) |
+| Minimisation | a field exists only if a club spec requirement needs it; PESEL optional; of a medical certificate only the "valid until" date; public pages show no participant or guardian names; no personal data in logs, events, URLs or errors (S9.4) |
 | Accuracy | members correct their contacts themselves (`PUT /api/people/me`); staff correct the rest ([`data-subject-requests.md`](data-subject-requests.md)) |
 | Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3; R9 enforced since #525) |
 | Information | privacy notices in Polish and English and a short version for children (E19-S03, #469) |
@@ -72,6 +72,7 @@ open measures are listed in §5.
 | D-11 | Transfer to US vendors' staff (Railway, Resend) without a confirmed mechanism | medium | medium | EU regions chosen | medium until P-1a and P-2a are confirmed |
 | D-12 | A child's name or image is published without permission | low | high | public pages show no participant names (S9.4); image and name publication only with recorded consent (S9.2) | low |
 | D-13 | A person cannot get a copy of their data (no export) or the request is missed | medium | low | procedure ([`data-subject-requests.md`](data-subject-requests.md)) and the logged person data export (#527) | low |
+| D-14 | A coach sees health-related data of players (medical certificate validity); exposed if a staff account is taken over (#682) | medium | medium | only a "valid until" date, no scan, result, doctor or diagnosis; encrypted with the club's tenant key; coaches see status and date only for their own groups, and every coach read is logged through `auditedRead`; stored only with explicit consent of the adult or a guardian, cleared on withdrawal, erasure, or 12 months after the date passed (R20) | low — legal basis to be confirmed by the lawyer before the production release (Q-O06); account takeover as D-4 |
 
 ## 4. Measures (art. 35(7)(d))
 

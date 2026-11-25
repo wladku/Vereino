@@ -1163,5 +1163,14 @@
   "activities.reports.pzpn.attendance.columns.status": "Status",
   "activities.errors.report_period_invalid": "Choose a period of at most a year that ends on or after its first day.",
   "activities.errors.report_group_not_found": "Team not found.",
-  "activities.club.pzpn.chooseTeam": "Choose a team"
+  "activities.club.pzpn.chooseTeam": "Choose a team",
+  "activities.club.medical.missing": "Medical: missing",
+  "activities.club.medical.unknown": "Medical: unknown",
+  "activities.club.medical.expired": "Medical expired {date}",
+  "activities.club.medical.expiring": "Medical until {date} (expires soon)",
+  "activities.club.medical.valid": "Medical until {date}",
+  "activities.club.medical.filter": "Medical: not valid",
+  "activities.club.medical.filterEmpty": "Everyone here has a valid medical certificate.",
+  "activities.club.medical.squad.title": "Squad",
+  "activities.club.medical.squad.warning": "{count} players without a valid medical certificate: {names}"
 }
