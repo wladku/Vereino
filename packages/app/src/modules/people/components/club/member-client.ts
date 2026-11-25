@@ -24,7 +24,23 @@ export type WardConsent = {
   byName: string | null
   byRole: 'club_admin' | 'coordinator' | 'coach' | 'staff' | null
 }
-export type WardConsents = Record<WardConsentKind, WardConsent>
+/** The `medical` consent (#682) rides along with the three; only the medical certificate block shows it. */
+export type WardConsents = Record<WardConsentKind, WardConsent> & { medical?: WardConsent }
+
+/** The sports medical certificate block (M-O4, #682) as `GET /api/people/me` returns it. */
+export type MemberMedical = {
+  validUntil: string | null
+  status: 'red' | 'orange' | 'green'
+  state: 'missing' | 'unknown' | 'expired' | 'expiring' | 'valid'
+  consentInForce: boolean
+  /** The person's lock token for `PUT /api/people/persons/{id}/medical`. */
+  updatedAt: string | null
+}
+
+/** `PUT` the date (or null) of a person's medical certificate (#682). */
+export function medicalApi(personId: string): string {
+  return `/api/people/persons/${encodeURIComponent(personId)}/medical`
+}
 
 export type MemberPerson = {
   id: string
@@ -61,6 +77,8 @@ export type MemberWard = {
   }
   /** The ward card's life-cycle lines (#310); absent from an older response. */
   notices?: WardNotice[]
+  /** The ward's medical certificate block (#682); absent from an older response. */
+  medical?: MemberMedical
 }
 
 /** A ward card line (people life-cycle spec M-10, #310). */
@@ -103,6 +121,8 @@ export type MemberProfile = {
   consentTexts?: ConsentTexts
   /** The member's own life-cycle card (#310); null or absent when there is none. */
   notice?: OwnNotice | null
+  /** The adult member's own medical certificate block (#682); null for a minor. */
+  medical?: MemberMedical | null
 }
 
 /** The keys of the club's consent texts (`club_core` `CONSENT_TEXT_KEYS`). */
@@ -110,6 +130,7 @@ export type ConsentTextKey =
   | 'regulations'
   | 'image'
   | 'trips'
+  | 'medical'
   | 'share_contact_with_coaches'
   | 'share_presence_with_guardians'
   | 'publish_name_consent'

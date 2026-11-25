@@ -21,6 +21,7 @@ import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState 
 import { InjectionSpot, useInjectionWidgets } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
+import { MedicalPanel } from './MedicalPanel'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { StatusTag, useClubToday } from '@vereino/ui'
@@ -211,6 +212,9 @@ export function PersonRecord({ id }: { id: string }) {
           ) : (
             <ReadOnlyDetails person={person} t={t} />
           )}
+          {person.medical ? (
+            <MedicalPanel key={person.medical.updatedAt ?? person.id} person={person} onChanged={refetch} />
+          ) : null}
           {features['people.persons.export'] && person.access === 'full' ? (
             <DataExportPanel personId={person.id} />
           ) : null}

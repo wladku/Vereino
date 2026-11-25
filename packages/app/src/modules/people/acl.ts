@@ -23,6 +23,17 @@ export const features = [
     module: 'people',
     dependsOn: ['people.view'],
   },
+  // Training outlines and medical expiry spec REQ-O01, REQ-O02, Q-O01 (#682): the medical certificate status and date
+  // of persons in the reader's scope (coach: own groups; coordinator: own sections), and setting the date as staff
+  // (coordinator for own sections, the club administrator through `people.*`). Neither feature lets staff give the
+  // `medical` consent: only the person or a guardian does (BR-O1).
+  { id: 'people.medical.view', title: 'View medical certificate status', module: 'people' },
+  {
+    id: 'people.medical.manage',
+    title: 'Set medical certificate dates',
+    module: 'people',
+    dependsOn: ['people.medical.view'],
+  },
 ]
 
 export default features

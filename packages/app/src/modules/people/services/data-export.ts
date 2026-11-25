@@ -134,6 +134,8 @@ export async function subjectRecord(
     shareContactWithCoachesAt: iso(person.shareContactWithCoachesAt),
     sharePresenceWithGuardiansAt: iso(person.sharePresenceWithGuardiansAt),
     publishNameConsentAt: iso(person.publishNameConsentAt),
+    // The sports medical certificate's expiry date (REQ-O04, ropa A15; #682).
+    medicalValidUntil: person.medicalValidUntil ?? null,
     photo: person.photoAttachmentId ? { attachmentId: person.photoAttachmentId } : null,
     leftOn: person.leftOn ?? null,
     anonymizedAt: iso(person.anonymizedAt),

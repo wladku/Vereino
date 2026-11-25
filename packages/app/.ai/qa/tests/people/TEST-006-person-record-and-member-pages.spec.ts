@@ -215,15 +215,17 @@ test('TEST-006 the member pages: Today, profile and ward with loading, error, em
     await profileReady()
     Object.assign(violations, await scanInSchemes(page, testInfo, '/club/profile', profileReady))
     const current = (await getMe(request, token)).body?.person.updatedAt
+    // By its id: the medical consent switch of #682 on the same page names the coaches too.
+    const shareContactSwitch = () => page.locator('#club-consent-share-contact')
     const elsewhere = await putMe(request, token, { phone: '+48 600 700 800' }, current)
     expect(elsewhere.status, JSON.stringify(elsewhere.body)).toBe(200)
-    await page.getByRole('switch', { name: /coaches|trenerom/ }).click()
+    await shareContactSwitch().click()
     await page.getByRole('button', { name: uiText('people.club.profile.actions.save') }).click()
     await expect(page.getByText(CONFLICT).first()).toBeVisible()
     expect((await getMe(request, token)).body?.person.consents.shareContactWithCoaches.granted).toBe(false)
     // After a reload the form starts from the stored values and the save goes through.
     await page.reload()
-    await page.getByRole('switch', { name: /coaches|trenerom/ }).click()
+    await shareContactSwitch().click()
     await page.getByRole('button', { name: uiText('people.club.profile.actions.save') }).click()
     await expect(page.getByText(/profile has been saved|Profil został zapisany/)).toBeVisible()
     await expect(page.getByText(/^Given on |^Udzielona /).first()).toBeVisible()

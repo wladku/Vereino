@@ -16,6 +16,8 @@ export const personPhone = encryptedField({ entityId: PERSON_ENTITY_ID, field: '
 export const personNotes = encryptedField({ entityId: PERSON_ENTITY_ID, field: 'notes' })
 /** The import's identifier for a person without a PESEL (#28), with the `external_id_hash` lookup sibling. */
 export const personExternalId = encryptedField({ entityId: PERSON_ENTITY_ID, field: 'external_id', hash: true })
+/** The sports medical certificate's expiry date (health data, GDPR Art. 9; #682): encrypted, no hash (DD-O01). */
+export const personMedicalValidUntil = encryptedField({ entityId: PERSON_ENTITY_ID, field: 'medical_valid_until' })
 
 export const PERSON_IMPORT_ROW_ENTITY_ID = 'people:person_import_row'
 /** The staged row's values (names, PESEL, contacts) of a bulk import (club spec → `people_import_rows`, #28). */
@@ -40,6 +42,7 @@ export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
       personNotes.mapEntry,
       personPesel.mapEntry,
       personExternalId.mapEntry,
+      personMedicalValidUntil.mapEntry,
     ],
   },
   { entityId: PERSON_IMPORT_ROW_ENTITY_ID, fields: [importRowRaw.mapEntry] },

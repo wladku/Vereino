@@ -5,8 +5,11 @@ import {
   GUARDIAN_RELATIONS,
   applyConsentChanges,
   calendarDateInZone,
+  SUBJECT_ONLY_CONSENT_KINDS,
   consentsView,
   effectiveConsents,
+  subjectOnlyChanges,
+  withdraws,
   firstOverlapping,
   givenToEarlierWording,
   holdsOwnConsents,
@@ -384,6 +387,9 @@ describe('people error codes', () => {
       ['confirmation_mismatch', 422],
       ['person_in_use', 409],
       ['person_anonymized', 409],
+      ['medical_consent_missing', 409],
+      ['medical_consent_subject_only', 403],
+      ['medical_status_too_many', 400],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })
@@ -461,7 +467,7 @@ describe('firstOverlapping', () => {
 describe('guardianship vocabularies', () => {
   it('lists the relations and the consent kinds of the club spec', () => {
     expect(GUARDIAN_RELATIONS).toEqual(['parent', 'grandparent', 'legal_guardian', 'other'])
-    expect(CONSENT_KINDS).toEqual(['regulations', 'image', 'trips'])
+    expect(CONSENT_KINDS).toEqual(['regulations', 'image', 'trips', 'medical'])
   })
 })
 
@@ -489,7 +495,23 @@ describe('parseStoredConsents and consentsView', () => {
       regulations: { granted: false, at: null, byPersonId: null },
       image: { granted: true, at, byPersonId: 'p1' },
       trips: { granted: false, at: null, byPersonId: null },
+      medical: { granted: false, at: null, byPersonId: null },
     })
+  })
+})
+
+describe('subject-only consents (BR-O1, #682)', () => {
+  it('names the medical consent only when a change gave or withdrew it', () => {
+    expect(SUBJECT_ONLY_CONSENT_KINDS).toEqual(['medical'])
+    expect(subjectOnlyChanges([])).toEqual([])
+    expect(subjectOnlyChanges(['image'])).toEqual([])
+    expect(subjectOnlyChanges(['trips', 'medical'])).toEqual(['medical'])
+  })
+  it('tells an explicit withdrawal apart from a grant or no change', () => {
+    expect(withdraws(undefined, 'medical')).toBe(false)
+    expect(withdraws({ medical: true }, 'medical')).toBe(false)
+    expect(withdraws({}, 'medical')).toBe(false)
+    expect(withdraws({ medical: false }, 'medical')).toBe(true)
   })
 })
 
@@ -533,14 +555,24 @@ describe('effectiveConsents (REQ-L10)', () => {
   it('takes the adult’s own decision when there is one', () => {
     const own = { image: entry(false, '2026-11-02T10:00:00.000Z') }
     const guardian = { image: entry(true, '2026-11-05T10:00:00.000Z'), trips: entry(true, '2026-11-01T10:00:00.000Z') }
-    expect(effectiveConsents(own, [guardian])).toEqual({ regulations: false, image: false, trips: true })
+    expect(effectiveConsents(own, [guardian])).toEqual({
+      regulations: false,
+      image: false,
+      trips: true,
+      medical: false,
+    })
   })
   it('takes the most recent decision among the active guardianships', () => {
     const first = { regulations: entry(true, '2026-11-01T10:00:00.000Z') }
     const second = { regulations: entry(false, '2026-11-03T10:00:00.000Z'), image: entry(true, '2026-11-01T00:00:00Z') }
-    expect(effectiveConsents(null, [second, first])).toEqual({ regulations: false, image: true, trips: false })
+    expect(effectiveConsents(null, [second, first])).toEqual({
+      regulations: false,
+      image: true,
+      trips: false,
+      medical: false,
+    })
     expect(effectiveConsents(null, [first, second]).regulations).toBe(false)
-    expect(effectiveConsents(null, [])).toEqual({ regulations: false, image: false, trips: false })
+    expect(effectiveConsents(null, [])).toEqual({ regulations: false, image: false, trips: false, medical: false })
   })
 })
 

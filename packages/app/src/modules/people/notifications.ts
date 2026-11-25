@@ -76,6 +76,9 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     'user-check',
     attentionList('account_age'),
   ),
+  // Training outlines and medical expiry spec REQ-O03 (#682): the medical certificate a month before and on the date.
+  ...lifeCycleType('people.medical_expiring', 'medicalExpiring', 'stethoscope', '/club/profile'),
+  ...lifeCycleType('people.medical_expired', 'medicalExpired', 'stethoscope', '/club/profile'),
 ]
 
 export default notificationTypes

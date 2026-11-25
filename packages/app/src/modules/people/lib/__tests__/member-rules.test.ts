@@ -206,6 +206,7 @@ describe('consentAuthorIds', () => {
     regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: regulations },
     image: { granted: false, at: null, byPersonId: image },
     trips: { granted: true, at: '2026-10-02T08:00:00.000Z', byPersonId: trips },
+    medical: { granted: false, at: null, byPersonId: null },
   })
 
   it('lists each author once, in first-seen order, and skips consents never set', () => {
@@ -233,6 +234,7 @@ describe('withConsentAuthors', () => {
       regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'kasia' },
       image: { granted: false, at: '2026-10-03T08:00:00.000Z', byPersonId: 'admin' },
       trips: { granted: false, at: null, byPersonId: null },
+      medical: { granted: false, at: null, byPersonId: null },
     }
     const authors = {
       family: new Set(['kasia', 'ola']),
@@ -243,6 +245,7 @@ describe('withConsentAuthors', () => {
       regulations: { ...view.regulations, byName: 'Kasia Nowak', byRole: null },
       image: { ...view.image, byName: null, byRole: 'club_admin' },
       trips: { ...view.trips, byName: null, byRole: null },
+      medical: { ...view.medical, byName: null, byRole: null },
     })
   })
 
@@ -251,6 +254,7 @@ describe('withConsentAuthors', () => {
       regulations: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'gone' },
       image: { granted: true, at: '2026-10-01T08:00:00.000Z', byPersonId: 'former-coach' },
       trips: { granted: false, at: null, byPersonId: null },
+      medical: { granted: false, at: null, byPersonId: null },
     }
     const authors = { family: new Set(['gone']), names: new Map(), roles: new Map() }
     expect(withConsentAuthors(view, authors)).toMatchObject({

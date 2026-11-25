@@ -208,6 +208,41 @@ const retentionSweep: ModuleCli = {
   },
 }
 
+/**
+ * `people medical-reminders --tenant <id> --org <id> [--today YYYY-MM-DD] [--dry-run]`: one run of the daily medical
+ * certificate job (#682) — what the club job sweep runs at 07:00. Prints the job's result as JSON (counts only).
+ */
+const medicalReminders: ModuleCli = {
+  command: 'medical-reminders',
+  async run(argv) {
+    const { values } = parseArgs({
+      args: argv,
+      options: {
+        tenant: { type: 'string' },
+        org: { type: 'string' },
+        today: { type: 'string' },
+        'dry-run': { type: 'boolean' },
+      },
+      strict: false,
+      allowPositionals: true,
+    })
+    const tenant = typeof values.tenant === 'string' ? values.tenant : undefined
+    const org = typeof values.org === 'string' ? values.org : undefined
+    const today = typeof values.today === 'string' ? values.today : undefined
+    if (!tenant || !org) {
+      process.stderr.write(
+        'Usage: mercato people medical-reminders --tenant <tenantId> --org <organizationId> [--today YYYY-MM-DD] [--dry-run]\n',
+      )
+      throw new Error('[internal] people medical-reminders: invalid options')
+    }
+    await runJobCommand(
+      'people.persons.medical_reminders',
+      { tenantId: tenant, organizationId: org },
+      { ...(today ? { today } : {}), ...(values['dry-run'] === true ? { dryRun: true } : {}) },
+    )
+  },
+}
+
 const commands: ModuleCli[] = [
   syncRoleExpiry,
   bootstrapAdmin,
@@ -215,6 +250,7 @@ const commands: ModuleCli[] = [
   purgeImportRows,
   lifeCycle,
   retentionSweep,
+  medicalReminders,
 ]
 
 export default commands
