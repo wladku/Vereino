@@ -3,7 +3,7 @@
 - **Date:** 2026-10-31
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue 34` → feature route → `om-auto-implement-spec` → `om-auto-create-pr` (plain engine)
 - **Trigger:** the product owner chose "story by story" for epic #22 (E03) and, with PR #62 (#33) still open, to stack #34 on it ("Stack on #62")
-- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 step 10, the guardian-contacts part (REQ-037, DD-39, Q-045; TEST-052; the API row `GET /api/activities/occurrences/{id}/guardian-contacts`; *Data Models* `ContactAccessLog`) on `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` P-27 `auditedRead` and P-28 `AppendOnlyEntityBase` + the `append_only` guard (DD-G06, DD-G11, J-G03, TEST-G05); issue #34; branch `feat/issue-34-guardian-contacts` from `feat/issue-33-coach-attendance-checkoff` (`e36424a`) in the worktree `C:\Users\wkuc\vereino-issue-34`; the PR targets that branch until #62 merges
+- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 step 10, the guardian-contacts part (REQ-037, DD-39, Q-045; TEST-052; the API row `GET /api/activities/occurrences/{id}/guardian-contacts`; *Data Models* `ContactAccessLog`) on `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` P-27 `auditedRead` and P-28 `AppendOnlyEntityBase` + the `append_only` guard (DD-G06, DD-G11, J-G03, TEST-G05); issue #34; branch `feat/issue-34-guardian-contacts` from `feat/issue-33-coach-attendance-checkoff` (`e36424a`) in the worktree `C:\Users\wkuc\vereino-issue-34`; the PR targets that branch until #62 merges
 - **Status:** complete
 
 Source doc: .ai/specs/2026-10-20-vereino-club-management.md

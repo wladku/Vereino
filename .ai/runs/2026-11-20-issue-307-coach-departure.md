@@ -1,7 +1,7 @@
 # Run: issue #307 — a leaving coach's sessions handed over or freed (E13-S05, phase L5)
 
 - **Trigger:** Cezar `vereino-issue` workflow, label `cezar` on #307 (2026-11-19T22:32Z); skill `om-auto-fix-issue` with the repo-local override.
-- **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, phase L5 (REQ-L04, TEST-L06, AC-L05, J-L03). Ready; the four DI contracts approved on #255 (2026-11-16). Dependencies #306 and #118 merged.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, phase L5 (REQ-L04, TEST-L06, AC-L05, J-L03). Ready; the four DI contracts approved on #255 (2026-11-16). Dependencies #306 and #118 merged.
 - **Branch:** `feat/issue-307-coach-departure-handover` (worktree created by Cezar for this run). Claim: assignee, `in-progress`, 🤖 comment on #307.
 
 ## Steps

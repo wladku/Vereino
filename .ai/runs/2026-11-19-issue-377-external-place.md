@@ -2,7 +2,7 @@
 
 - **Trigger:** Cezar queued `om-auto-fix-issue 377` after the `cezar` label (2026-11-19T19:00Z), task 8be7bd55.
 - **Issue:** #377 (epic #375), feature route; dependency E13-S03 (#305) closed; readiness cleared by the owner on 2026-11-19 (Q-T20 approved, PR #418 merged).
-- **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, phase 2 (REQ-T06; TEST-T07, TEST-T15 club_core part, TEST-T16 external-place route; DD-T08; Q-T10).
+- **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, phase 2 (REQ-T06; TEST-T07, TEST-T15 club_core part, TEST-T16 external-place route; DD-T08; Q-T10).
 - **Branch:** `feat/issue-377-coordinator-adds-external-place` (Cezar worktree).
 
 ## Goal

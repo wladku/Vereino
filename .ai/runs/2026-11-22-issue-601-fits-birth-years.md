@@ -1,7 +1,7 @@
 # Run log — issue #601: the "Fits" filter preselects children by the category's birth years (AC-L16)
 
 - **Trigger:** Cezar run d8be545c (`om-auto-fix-issue 601`), queued by the `cezar` label.
-- **Issue:** #601 (epic #565). **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` — REQ-L15, REQ-L16, DD-L17, Q-L25, AC-L16.
+- **Issue:** #601 (epic #565). **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` — REQ-L15, REQ-L16, DD-L17, Q-L25, AC-L16.
 - **Branch:** `fix/issue-601-fits-age-filter-birth-years`, worktree `.ai/cezar/worktrees/d8be545c-…`.
 - **Route:** `direct` (bug: code deviates from an accepted criterion); areas `module-data` (groups) + `backend-ui` (the move dialog's chip).
 

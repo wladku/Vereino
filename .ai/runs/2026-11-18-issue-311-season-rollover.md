@@ -1,6 +1,6 @@
 # Run log — issue #311, phase L9 "New season" (season rollover)
 
-- **Goal and trigger:** cezar queued `om-auto-fix-issue` on #311 (label `cezar`, 2026-11-18 22:00 UTC). Feature route: implement phase L9 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (Ready for implementation; the DI contracts `groups.season.<module>`, the event `groups.season.rolled_over` and the two routes approved by the owner on #255, 2026-11-16, Ask First items 6–8; no migration).
+- **Goal and trigger:** cezar queued `om-auto-fix-issue` on #311 (label `cezar`, 2026-11-18 22:00 UTC). Feature route: implement phase L9 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (Ready for implementation; the DI contracts `groups.season.<module>`, the event `groups.season.rolled_over` and the two routes approved by the owner on #255, 2026-11-16, Ask First items 6–8; no migration).
 - **Spec / issue / branch:** spec above; issue #311 (E13-S09, epic #255); branch `feat/issue-311-season-rollover-preview`.
 
 ## Steps

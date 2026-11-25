@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 275`, issue labelled `cezar`). Build phase 1 of the facilities
   parity spec: the attendant's place pickers are empty because they read `/api/club_core/options/places`.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 1 (parts of REQ-R01, REQ-R12,
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 1 (parts of REQ-R01, REQ-R12,
   REQ-R13, REQ-R14; TEST-R02, TEST-R12 list part); #275 (epic #253); `feat/issue-275-facilities-pickers-source`.
 - **Approval:** the issue asked to confirm the contract changes before building. The owner approved them on #253
   (comment 6910005145, Ask First items 3–5: the `club_core` DI additions, the `activities` contract, the `facilities`

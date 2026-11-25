@@ -1,7 +1,7 @@
 # Run: issue #384 — age categories carry their PZPN birth years (E13-S12, phase L12)
 
 - **Goal and trigger:** Cezar run (task 2cf6ea69) started by the `cezar` label on #384; `om-auto-fix-issue` with the vereino override, feature route.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` phase L12 (REQ-L16, DD-L17, J-L10, TEST-L23, AC-L16, Q-L25, Q-L26) · #384 (epic #255) · `feat/issue-384-age-category-birth-years`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` phase L12 (REQ-L16, DD-L17, J-L10, TEST-L23, AC-L16, Q-L25, Q-L26) · #384 (epic #255) · `feat/issue-384-age-category-birth-years`.
 - **Readiness:** the spec is `Ready for implementation`; Ask First item 15 (migration E, the routes, `age_range_inverted`) approved by the owner on 2026-11-19 and recorded by PR #418 (on `main`); phase L12 depends on nothing.
 
 ## Steps

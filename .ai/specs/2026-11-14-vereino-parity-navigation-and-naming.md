@@ -1,7 +1,7 @@
 # Vereino — parity II: navigation, shells and naming
 
 **Date**: 2026-11-14
-**Status**: In progress — approved by the product owner on 2026-11-15 ([owner decisions on #251](https://github.com/wladku/Vereino/issues/251#issuecomment-6891956957)); left: the rest of phase 1 (`overrides.nav.groupOrder`, the shared `groups.nav.group` key, the other groups' order and labels), AC-N01, AC-N11, AC-N16 and the two generic criteria without evidence (close-out #452)
+**Status**: In progress — approved by the product owner on 2026-11-15 ([owner decisions on #251](https://github.com/wladku/Vereino/issues/251#issuecomment-6891956957)); every phase built and every other acceptance criterion ticked (close-out IV #719); left: AC-N11, only its native-reader review of the Polish wording (glossary rules 1–5) recorded on a pull request (#603, the owner's reviewer); `glossary:check` and TEST-N10 are done (#319, #513)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -887,7 +887,7 @@ Order against the other four specs: phases 1 to 3 come first, because specs A, R
 - [x] **AC-N15** — No member or public page shows a text loading message; each shows a skeleton and, when empty, a sentence with a next action. — evidence: #333; `TEST-N16-member-skeletons-empty-states`, `packages/ui/src/__tests__/member-skeleton.test.mjs`
 - [x] **AC-N16** — `docs/ux-concept/README.md` §1, §3.1 and §3.2 agree with this spec and D-029 to D-031. — verified by reading (#568): README §1, §3.1 and §3.2 match *Menu structure*, the device column and D-029…D-031; facts all of them miss (treasurer hold lifted, Club events item) filed as #604
 - [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — evidence: #513 (browser evidence pl/en, light/dark, 1440/375 px, no console errors), `TEST-N03-pages-with-tabs` (keyboard), #502 (visible focus); loading/empty/conflict states do not apply to navigation
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — open until #602
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — evidence: the close-out (#452, #568) left only #602 open for this criterion; #602 (PR #636) `TEST-N01-club-sidebar-group` (the sidebar in pl and en, Dashboard first, no Finanse for a coordinator), with the `yarn verify` gate of each merged PR
 
 ## Final Compliance Report
 

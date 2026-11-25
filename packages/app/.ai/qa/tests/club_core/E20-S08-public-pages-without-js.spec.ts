@@ -76,7 +76,7 @@ test('E20-S08 public club pages show their content without JavaScript and carry 
     })
     const eventSlug = await makePublic(request, admin, cup)
     await publish(request, admin, slug, ['description_schedule', 'events', 'places_calendar'], {
-      publicDescription: 'Klub sportowy z Liszek: piłka nożna dla dzieci i dorosłych.',
+      publicDescription: 'Klub sportowy z Zielonego Lasu: piłka nożna dla dzieci i dorosłych.',
     })
     const clubPage = await publicGet(request, `/api/club_core/public/${slug}`)
     expect(clubPage.status, JSON.stringify(clubPage.body)).toBe(200)
@@ -97,8 +97,8 @@ test('E20-S08 public club pages show their content without JavaScript and carry 
           id: 'P-01',
           path: `/p/${slug}`,
           title: `${clubName} — ${text('club_core.public.pageTitle')}`,
-          visible: [clubName, 'Klub sportowy z Liszek', 'Akademia piłkarska'],
-          description: 'Klub sportowy z Liszek: piłka nożna dla dzieci i dorosłych.',
+          visible: [clubName, 'Klub sportowy z Zielonego Lasu', 'Akademia piłkarska'],
+          description: 'Klub sportowy z Zielonego Lasu: piłka nożna dla dzieci i dorosłych.',
         },
         {
           id: 'P-02',

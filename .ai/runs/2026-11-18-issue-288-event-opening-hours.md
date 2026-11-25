@@ -1,7 +1,7 @@
 # Run — issue #288: a one-off group event refused outside opening hours (E11-S14)
 
 - **Goal and trigger:** cezar task d5a9ff40 (`om-auto-fix-issue 288`), unattended. Refuse `POST /api/activities/events` with a 409 and `opening: [{ from, to }]` when an event with a `placeId` lies outside the place's opening windows (REQ-R19, TEST-R19, AC-R15).
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` (phase 14, DD-R15); #288 (epic #253); `feat/issue-288-group-event-outside-opening-hours`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (phase 14, DD-R15); #288 (epic #253); `feat/issue-288-group-event-outside-opening-hours`.
 - **Approval:** the spec is `Ready for implementation`, and the owner approved the narrowing on 2026-11-16 (#253). The owner told the run in the cockpit to proceed on reasonable assumptions for the code name (below). No migration, no new dependency.
 
 ## Steps
@@ -33,7 +33,7 @@
 - `packages/app/src/modules/activities/lib/member-event.ts`, `lib/__tests__/member-event.test.ts`, `components/client-helpers.ts`, `components/club/ClubEventPage.tsx`
 - `packages/app/src/modules/facilities/components/slot/ClubBodies.tsx`
 - `packages/app/.ai/qa/tests/facilities/TEST-R19-event-opening-hours.spec.ts` (new)
-- `BACKWARD_COMPATIBILITY.md` (§2 narrowed guarantee), `.ai/specs/2026-11-14-vereino-parity-facilities.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-facilities/2026-11-18-issue-288-phase-14.md`
+- `BACKWARD_COMPATIBILITY.md` (§2 narrowed guarantee), `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-facilities/2026-11-18-issue-288-phase-14.md`
 - this log
 
 ## Commands and results

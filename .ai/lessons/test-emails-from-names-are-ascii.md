@@ -7,7 +7,7 @@ topics: ["integration-tests", "fixtures", "e-mail", "diacritics"]
 
 # Build a test e-mail address from a person's name only through testEmailFor
 
-**Context**: PR #746 renamed the people in the integration test data to fictional Polish names (`Wojtek` → `Rafał`). The helper `createStaff` in `packages/app/.ai/qa/tests/_fixtures/club.ts` built the account address as `${firstName.toLowerCase()}-<suffix>@example.org`, so it became `rafał-…@example.org`. The account API rejects that address (`400 Invalid email address`, ASCII-only pattern). Integration shards 1, 2, 3, 5 and 6 went red on #746 and on #750, which was stacked on it: 12 specs failed at `create account`.
+**Context**: PR #746 renamed the people in the integration test data to fictional Polish names (the coordinator became `Rafał`). The helper `createStaff` in `packages/app/.ai/qa/tests/_fixtures/club.ts` built the account address as `${firstName.toLowerCase()}-<suffix>@example.org`, so it became `rafał-…@example.org`. The account API rejects that address (`400 Invalid email address`, ASCII-only pattern). Integration shards 1, 2, 3, 5 and 6 went red on #746 and on #750, which was stacked on it: 12 specs failed at `create account`.
 
 **Problem**: A rename of test data looks harmless and passes typecheck and unit tests. The broken address only shows up in the integration run, 30 minutes later. `ł` does not decompose under NFD, so `normalize('NFD')` alone does not fix it.
 

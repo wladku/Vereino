@@ -11,7 +11,7 @@ Not a flake: 20 tests failed on both attempts, every one at the same assertion:
 Error: create account {"error":"Validation failed","details":[{"origin":"string","code":"invalid_format","format":"email", … "message":"Invalid email address"}]}
 ```
 
-The PR renamed the coach `Wojtek` to `Rafał` in the test data. The fixture `createStaff` (`packages/app/.ai/qa/tests/_fixtures/club.ts`) built the account e-mail as `${firstName.toLowerCase()}-<suffix>@example.org`, so it produced `rafał-…@example.org`, which the account API's ASCII-only e-mail validator rejects. Failed ids: E08-S03, TEST-026, TEST-033, TEST-036, TEST-R02, TEST-R04, TEST-R05, TEST-R11, TEST-R12, TEST-R18, TEST-R19, TEST-T01, TEST-T02, TEST-T04, TEST-T11, TEST-A11, TEST-046 (2 tests), TEST-C12, TEST-L06.
+The PR renamed the coach to the fictional `Rafał` in the test data. The fixture `createStaff` (`packages/app/.ai/qa/tests/_fixtures/club.ts`) built the account e-mail as `${firstName.toLowerCase()}-<suffix>@example.org`, so it produced `rafał-…@example.org`, which the account API's ASCII-only e-mail validator rejects. Failed ids: E08-S03, TEST-026, TEST-033, TEST-036, TEST-R02, TEST-R04, TEST-R05, TEST-R11, TEST-R12, TEST-R18, TEST-R19, TEST-T01, TEST-T02, TEST-T04, TEST-T11, TEST-A11, TEST-046 (2 tests), TEST-C12, TEST-L06.
 
 ## Steps
 
