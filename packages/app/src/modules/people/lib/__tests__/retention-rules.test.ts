@@ -4,6 +4,7 @@ import {
   OPEN_END,
   RETENTION_SWEEP_REASON,
   emptyRetentionSweepCounts,
+  isRetentionRefusal,
   latestEnd,
   monthsBefore,
   retentionKeepReasons,
@@ -110,5 +111,22 @@ describe('retention sweep rule (REQ-041, #471)', () => {
 
   it('starts the counts at zero', () => {
     expect(emptyRetentionSweepCounts()).toEqual({ candidates: 0, anonymized: 0, kept: 0, failed: 0 })
+  })
+
+  it('treats a 409 anonymize_blocked as the rule refusing the person, anything else as a failure (#564)', () => {
+    expect(
+      isRetentionRefusal({
+        status: 409,
+        body: { code: 'anonymize_blocked', reasons: [{ code: 'already_anonymized' }] },
+      }),
+    ).toBe(true)
+    expect(isRetentionRefusal({ status: 409, body: { code: 'record_conflict' } })).toBe(false)
+    expect(isRetentionRefusal({ status: 500, body: { code: 'anonymize_blocked' } })).toBe(false)
+    expect(isRetentionRefusal({ status: 409, body: null })).toBe(false)
+    expect(isRetentionRefusal({ status: 409, body: 'anonymize_blocked' })).toBe(false)
+    expect(isRetentionRefusal({ status: 409 })).toBe(false)
+    expect(isRetentionRefusal(new Error('connection lost'))).toBe(false)
+    expect(isRetentionRefusal('anonymize_blocked')).toBe(false)
+    expect(isRetentionRefusal(null)).toBe(false)
   })
 })

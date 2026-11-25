@@ -1,6 +1,6 @@
 # Run: issue #304 — E13-S02 role dates, guardianship start, external id, material title, own-message edit
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 304`, label `cezar`): build phase L2 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L12 without the photo and the contract attachment; TEST-L13; AC-L13 in part).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 304`, label `cezar`): build phase L2 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L12 without the photo and the contract attachment; TEST-L13; AC-L13 in part).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #255); issue #304; branch `feat/issue-304-admin-role-dates-guardianship`.
 
 ## Steps

@@ -11,6 +11,7 @@ import { errorResponse } from '@/modules/foundation'
 import { rentalCancelPreviewSchema } from '../../../../../data/validators'
 import { cancelPreview } from '../../../../../services/rental-links'
 import { publicClubSchema, publicErrorSchema } from '../../../../public-shared'
+import { enforceSessionlessLimits, tokenLimit } from '@/modules/foundation'
 
 export const metadata = {
   POST: {
@@ -26,6 +27,10 @@ export async function POST(request: Request): Promise<Response> {
     const body: unknown = await request.json().catch(() => null)
     const parsed = rentalCancelPreviewSchema.safeParse(body)
     if (!parsed.success) return Response.json({ error: 'Validation failed' }, { status: 400, headers: NO_STORE })
+    const limited = await enforceSessionlessLimits(request, [
+      tokenLimit('facilities_rental_cancel_token_read', parsed.data.token, 'read'),
+    ])
+    if (limited) return limited
     const container = await createRequestContainer()
     return Response.json(await cancelPreview(container, parsed.data.token), { headers: NO_STORE })
   } catch (error: unknown) {

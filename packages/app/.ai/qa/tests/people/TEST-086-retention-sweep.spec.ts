@@ -9,6 +9,7 @@ import {
   createClub,
   createPerson,
   mercato,
+  mercatoAsync,
   uniqueSuffix,
   type Club,
 } from '../_fixtures/club'
@@ -29,6 +30,9 @@ import { uiTextIn } from '../_fixtures/ui-text'
 // and a second run changes nothing. A period outside 1–120 answers 422 on the field. Departures 13 months back cannot be
 // recorded through the API (the last day is today or later), so the test dates them in SQL, as a departure that long
 // ago would have left them: `left_on` and the membership's end.
+// Follow-ups (#564): a fifth former person, E, has an open erasure request; the sweep anonymises them and closes the
+// request as done in the same transaction. The real run is two overlapping runs (the CLI next to the schedule): each
+// person is anonymised once and neither run counts a failure. `--today` is refused without `--dry-run`.
 test.describe.configure({ timeout: 420_000 })
 
 type SweepResult = {
@@ -39,16 +43,22 @@ type SweepResult = {
   counts: { candidates: number; anonymized: number; kept: number; failed: number }
 }
 
+function sweepArgs(club: Club, extra: string[] = []): string[] {
+  return ['people', 'retention-sweep', '--tenant', club.tenant.tenantId, '--org', club.tenant.organizationId, ...extra]
+}
+
 function sweep(club: Club, dryRun = false): SweepResult {
-  return mercato([
-    'people',
-    'retention-sweep',
-    '--tenant',
-    club.tenant.tenantId,
-    '--org',
-    club.tenant.organizationId,
-    ...(dryRun ? ['--dry-run'] : []),
-  ]) as SweepResult
+  return mercato(sweepArgs(club, dryRun ? ['--dry-run'] : [])) as SweepResult
+}
+
+async function erasureRequestRow(club: Club, requestId: string) {
+  return withClient(async (client) => {
+    const rows = await client.query<{ status: string; decided_at: string | null }>(
+      'select status, decided_at::text from people_departure_requests where tenant_id = $1 and id = $2',
+      [club.tenant.tenantId, requestId],
+    )
+    return rows.rows[0]
+  })
 }
 
 /** Dates a departure in the past: the person's `left_on` (and nothing else). */
@@ -162,7 +172,14 @@ test('TEST-086 former participants are anonymised after the club retention perio
       birthDate: birthDateTurning(28),
       email: `dorota-${suffix}@example.org`,
     })
-    for (const personId of [former, debtor]) {
+    // E: left as long ago, nothing else, and an open erasure request (#564).
+    const asked = await createPerson(request, admin, {
+      firstName: 'Ewa',
+      lastName: `Wnioskująca${suffix}`,
+      birthDate: birthDateTurning(35),
+      email: `ewa-${suffix}@example.org`,
+    })
+    for (const personId of [former, debtor, asked]) {
       await addMembership(request, admin, {
         groupId: group,
         personId,
@@ -205,9 +222,15 @@ test('TEST-086 former participants are anonymised after the club retention perio
     )
     expect(paid.status, JSON.stringify(paid.body)).toBe(201)
     await addCharge(request, admin, debtor, 8_000)
-    await leftOn(club, [former, debtor, guardian], thirteenMonthsAgo)
+    await leftOn(club, [former, debtor, guardian, asked], thirteenMonthsAgo)
     await leftOn(club, [recent], sixMonthsAgo)
-    const everyone = [former, debtor, guardian, recent]
+    const erasure = await call<{ id?: string }>(request, 'POST', '/api/people/departure-requests', admin, {
+      data: { subjectPersonId: asked, requesterKind: 'self', erasure: true, note: 'Letter of 1 November' },
+    })
+    expect(erasure.status, JSON.stringify(erasure.body)).toBe(201)
+    const erasureId = String(erasure.body?.id)
+    expect(await erasureRequestRow(club, erasureId)).toMatchObject({ status: 'open', decided_at: null })
+    const everyone = [former, debtor, guardian, recent, asked]
     const before = await personRows(club, everyone)
     const paymentsBefore = await paymentRows(club, paidCharge)
     expect(paymentsBefore).toHaveLength(1)
@@ -256,26 +279,32 @@ test('TEST-086 former participants are anonymised after the club retention perio
     expect(longer).toMatchObject({ months: 24, counts: { candidates: 0, anonymized: 0, kept: 0, failed: 0 } })
     expect(await personRows(club, everyone)).toEqual(before)
 
-    // Back at 12 months: a dry run counts and changes nothing, then the sweep anonymises only A.
+    // `--today` previews another day only in a dry run: a real run on another day is refused (#564).
+    expect(() => mercato(sweepArgs(club, ['--today', calendarDate(200)]))).toThrow(/exited 1/)
+
+    // Back at 12 months: a dry run counts and changes nothing, then the sweep anonymises only A and E.
     const reset = await updateClubSettings(request, club.adminToken, { formerParticipantRetentionMonths: 12 })
     expect(reset.status, JSON.stringify(reset.body)).toBe(200)
     const dry = sweep(club, true)
     expect(dry).toMatchObject({
       dryRun: true,
       months: 12,
-      counts: { candidates: 3, anonymized: 1, kept: 2, failed: 0 },
+      counts: { candidates: 4, anonymized: 2, kept: 2, failed: 0 },
     })
     expect(await personRows(club, everyone)).toEqual(before)
 
-    const first = sweep(club)
-    expect(first).toMatchObject({
-      dryRun: false,
-      months: 12,
-      counts: { candidates: 3, anonymized: 1, kept: 2, failed: 0 },
-    })
+    // Two overlapping runs (the CLI next to the 03:00 schedule): a person the other run took first is not a failure.
+    const runs = (await Promise.all([mercatoAsync(sweepArgs(club)), mercatoAsync(sweepArgs(club))])) as SweepResult[]
+    for (const run of runs) expect(run).toMatchObject({ dryRun: false, months: 12, counts: { failed: 0 } })
+    expect(runs.reduce((sum, run) => sum + run.counts.anonymized, 0)).toBe(2)
     const after = await personRows(club, everyone)
-    expect(after.get(former)).toMatchObject({ email: null, phone: null, birth_date: null })
-    expect(after.get(former)?.anonymized_at).not.toBeNull()
+    for (const personId of [former, asked]) {
+      expect(after.get(personId)).toMatchObject({ email: null, birth_date: null })
+      expect(after.get(personId)?.anonymized_at).not.toBeNull()
+    }
+    expect(after.get(former)?.phone).toBeNull()
+    // E's erasure request is answered by the sweep, in the same transaction as the anonymisation (#564).
+    expect(await erasureRequestRow(club, erasureId)).toMatchObject({ status: 'done', decided_at: expect.any(String) })
     for (const personId of [debtor, guardian, recent]) expect(after.get(personId)).toEqual(before.get(personId))
     // The payment stays exactly as it was and still points to the anonymised person.
     expect(await paymentRows(club, paidCharge)).toEqual(paymentsBefore)
@@ -296,6 +325,14 @@ test('TEST-086 former participants are anonymised after the club retention perio
     expect(kept.map((entry) => entry.category)).toContain('accounting_records')
     expect(kept.map((entry) => entry.category)).not.toContain('erasure_request_and_decision')
     expect(JSON.stringify(entries[0].context)).not.toContain(`adam-${suffix}@example.org`)
+    const askedEntries = (await actionLogEntries(request, club.adminToken, asked)).filter(
+      (entry) => entry.commandId === 'people.persons.anonymize',
+    )
+    expect(askedEntries).toHaveLength(1)
+    expect(askedEntries[0].context).toMatchObject({ reason: 'retention_sweep', requestId: erasureId })
+    expect(
+      ((askedEntries[0].context?.keptData ?? []) as { category: string }[]).map((entry) => entry.category),
+    ).toContain('erasure_request_and_decision')
 
     // A second run changes nothing: A is no longer a candidate.
     const second = sweep(club)

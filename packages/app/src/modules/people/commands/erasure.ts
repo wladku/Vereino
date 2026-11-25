@@ -18,7 +18,8 @@
 // #471): the input `{ id, reason: 'retention_sweep' }` is accepted only from a job context (`system_job` grant of the
 // registration's organization), never from a session, and replaces the request and the typed name by the retention
 // rule (`lib/retention-rules.ts`) checked again in the transaction — 409 `anonymize_blocked` with its reasons when the
-// person no longer qualifies. Everything else is the same erasure; the audit entry names the reason.
+// person no longer qualifies. Everything else is the same erasure; the audit entry names the reason. The person's open
+// erasure requests are closed as `done` in the same transaction, and the entry names the oldest one (#564).
 //
 // `people.persons.delete` — a person created by mistake, with no history in `people` or in any contributor
 // (`hasHistory`), is soft-deleted; `people.person.deleted` is emitted for the first time. 409 `person_in_use` with the
@@ -60,6 +61,7 @@ import {
   eraseContributorData,
   erasePersonData,
   erasureRequest,
+  openErasureRequests,
   modulesWithHistory,
   ownHistory,
   paymentNotices,
@@ -98,7 +100,7 @@ export type AnonymizeCommandResult = {
   organizationId: string
   /** Why the person was anonymised: on a recorded request, or by the retention sweep (#471). */
   reason: AnonymizeReason
-  /** The recorded erasure request; null for the retention sweep. */
+  /** The recorded erasure request; for the retention sweep the oldest open one it closed, else null. */
   requestId: string | null
   anonymizedAt: string
   erasureHoldUntil: CalendarDate | null
@@ -165,6 +167,8 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       }
       const input = authorized.parsed as { requestId?: string; confirmLastName?: string }
       const request = input.requestId ? await erasureRequest(em, scope, person.id, input.requestId) : null
+      // The sweep answers the person's open erasure requests too, so none stays open for an anonymised person (#564).
+      const sweepRequests = sweep ? await openErasureRequests(em, scope, person.id) : []
       const activeGuardianships = await activeGuardianshipCount(em, scope, person.id, today)
       const notices = await paymentNotices(em, ctx.container, scope, person.id, today)
       const reasons = anonymizeBlockers(
@@ -186,17 +190,26 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       const photoIds = await photoFileIds(ctx.container, scope, person.id, person.photoAttachmentId ?? null)
       const counts = await erasePersonData(em, scope, person, keepNameUntil, now)
       const audit = erasureAudit([
-        peopleErasurePart(counts, keepNameUntil, !sweep),
+        peopleErasurePart(counts, keepNameUntil, !sweep || sweepRequests.length > 0),
         ...(await eraseContributorData(em, ctx.container, scope, person.id)),
       ])
       // `anonymizeBlockers` refused a missing request above (`request_missing`) unless the sweep anonymises.
       if (!sweep && !request) throw new Error('[internal] anonymisation without a recorded request')
-      if (request?.status === 'open') {
-        request.status = 'done'
-        request.decidedAt = now
-        request.updatedAt = now
+      for (const answered of request ? [request] : sweepRequests) {
+        if (answered.status !== 'open') continue
+        answered.status = 'done'
+        answered.decidedAt = now
+        answered.updatedAt = now
       }
-      return { person, request, keepNameUntil, counts, audit, photoIds, actingRole: authorized.actingRole }
+      return {
+        person,
+        request: request ?? sweepRequests[0] ?? null,
+        keepNameUntil,
+        counts,
+        audit,
+        photoIds,
+        actingRole: authorized.actingRole,
+      }
     })
     const { person } = result
     const scope = { tenantId: person.tenantId, organizationId: person.organizationId }

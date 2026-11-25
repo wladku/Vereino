@@ -1,7 +1,7 @@
 # Vereino foundation II — scheduling, attendance and roster primitives, with E03 (#22) as the consumer
 
 **Date**: 2026-10-27
-**Status**: In progress — approved by the product owner on 2026-10-27 (PR #43); left: AC-G02 (no `reopen` command), AC-G03 (failing-provider case untested), AC-G05 (forged-scope refusal untested, no TEST-G06), AC-G07 (deferred P-22 `CsvExport` and P-11 import pipeline not built), AC-G08 (no test or gate step) and the integration-coverage criterion (close-out #452)
+**Status**: Implemented — approved by the product owner on 2026-10-27 (PR #43); both phases built (#56, #61, #62, #64, #165) and every acceptance criterion ticked from evidence on `main` (close-out IV #719: AC-G02 by #588 and #589, AC-G03 by #590, AC-G05 by #591; the deferred P-22 `CsvExport` and P-11 import pipeline stay designs, AC-G07)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -266,7 +266,7 @@ Validation: `yarn verify`; `yarn test:integration:vereino --filter TEST-G…`; 1
 - **Tests:** TEST-G01, TEST-G03 (session part), TEST-G04, TEST-G06; TEST-G02 with #31
 - **Validation:** as above
 - **Exit gate:** the four primitives at 100 % unit coverage with the DST cases green; #31's acceptance criteria then pass through P-24/P-25/P-26/P-12 only.
-- **Implementation status (close-out #452, 2026-11-20):** Done (#56, with #31). Left inside the phase: the integration probes of TEST-G03 (session part: the expire race reporting `skipped`) and TEST-G04 (a throwing provider), and TEST-G06 (forged scope refused by the worker); the zone-change re-registration and one registration per organization are proven only for other modules (`TEST-C14-scheduled-jobs`, `ISSUE-221-facilities-set-up-club`). The administrator's `reopen` command is not built.
+- **Implementation status (close-out #452, 2026-11-20):** Done (#56, with #31). Left inside the phase: the integration probes of TEST-G03 (session part: the expire race reporting `skipped`) and TEST-G04 (a throwing provider), and TEST-G06 (forged scope refused by the worker); the zone-change re-registration and one registration per organization are proven only for other modules (`TEST-C14-scheduled-jobs`, `ISSUE-221-facilities-set-up-club`). The administrator's `reopen` command is not built. Closed since (close-out IV #719): TEST-G03's expire race `TEST-G03-expiry-race-skipped` (#589, PR #619), TEST-G04's throwing provider `TEST-G04-occupancy-provider-failure` (#590, PR #618), TEST-G06 `TEST-G06-scheduled-job-dispatch` (#591, PR #692), and `reopen` as `activities.occurrences.reopen` (#588, PR #694; `ISSUE-588-reopen-done-session`).
 
 ### Phase B — Calendars and audited reads (consumer evidence: #32, #33, #34)
 
@@ -331,7 +331,7 @@ Deferred by design (REQ-G07, DD-G11): P-22 with the phase 5 rented-hours report,
 - [x] **AC-G07** — No CSV export or import pipeline code exists in the repository until its first in-scope consumer's PR; the designs stay in this spec. — verified by reading (#568): no shared CSV pipeline was built ahead of a consumer; every CSV path landed with its consumer story (first #28, then #202, #220, #227, #229); the P-22 design stays in this spec
 - [x] **AC-G08** — The club spec reads `Ready for implementation` for phases 1–2 with V-6, V-8, V-14 recorded, DD-11 superseded, and the facilities spec reads DD-20 superseded in part. — verified by reading (#568): club spec DD-11 superseded (DD-11 row), V-6, V-8, V-14 recorded (validation table), phases 1–2 readiness verdict recorded (the phases have since moved on to In progress/Done); `implemented/2026-10-27-vereino-facilities.md` DD-20 amended by DD-G05
 - [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — evidence: #56, #61, #62, #64, #165; `E03-S02-activities-pages`, `TEST-014-member-declaration-ui`, `E03-S04-coach-attendance-ui`, `TEST-052-guardian-contacts`, `E06-S12-sessions-list-perspectives`
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — open until #589, #590, #591
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — evidence: #589 (PR #619) `TEST-G03-expiry-race-skipped`, #590 (PR #618) `TEST-G04-occupancy-provider-failure`, #591 (PR #692) `TEST-G06-scheduled-job-dispatch`, #588 (PR #694) `ISSUE-588-reopen-done-session`; with `TEST-007-series-and-generation`, `TEST-012-conflicts-and-cancellation`, `TEST-027-rental-occupancy`, `TEST-052-guardian-contacts`, `TEST-014-member-declaration-ui` and the `yarn verify` gate of each merged PR
 
 ## Final Compliance Report
 

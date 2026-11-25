@@ -4,6 +4,10 @@
 # advisory, and DCO is not required (ENG-AC-02, owner decision on #576). perf stays advisory until the first
 # member page exists (S7.6). Third-party actions are pinned by commit SHA with the release tag in a comment (S14.2);
 # Renovate updates them from phase E2.
+# Docs-only PRs (#777, SDLC.md "Validation gate"): on `pull_request` events the `changes` job classifies the PR with
+# `scripts/ci-changes.mjs`; when it changes documentation only, the integration shards, the browser-smoke work,
+# image-smoke and perf are skipped, `integration` and `browser-smoke` still report success, and `gate` runs in full.
+# `push` events (to `main` and `merge-train/**`) always run everything.
 name: CI
 
 on:
@@ -21,6 +25,33 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # `code=true|false`: whether the PR changes anything but documentation. Pushes always give `true`. The PR merge
+  # commit's first parent is the base branch tip, so `HEAD^1...HEAD` is exactly what the PR changes against it. A
+  # failure here fails `integration` and `browser-smoke` (they never count a failed classification as docs-only).
+  changes:
+    name: changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      code: ${{ steps.classify.outputs.code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - id: classify
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = pull_request ]; then
+            node scripts/ci-changes.mjs HEAD^1 HEAD
+          else
+            echo "push event: the full suite runs"
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          fi
+
   gate:
     name: gate
     runs-on: ubuntu-latest
@@ -68,6 +99,8 @@ jobs:
   # train merges one PR per CI run, so the shard time bounds how many PRs reach main per hour.
   integration-shard:
     name: integration (shard ${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
@@ -101,38 +134,61 @@ jobs:
 
   integration:
     name: integration
-    needs: integration-shard
+    needs: [changes, integration-shard]
     if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every shard passed
+      - name: Every shard passed, or a docs-only PR skipped them
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE: ${{ needs.changes.outputs.code }}
           SHARDS_RESULT: ${{ needs.integration-shard.result }}
         run: |
-          echo "integration shards: $SHARDS_RESULT"
+          echo "changes: $CHANGES_RESULT (code=$CODE); integration shards: $SHARDS_RESULT"
+          if [ "$CHANGES_RESULT" = success ] && [ "$CODE" = false ] && [ "$SHARDS_RESULT" = skipped ]; then
+            echo "Docs-only PR: the shards were skipped (#777)"
+            exit 0
+          fi
           test "$SHARDS_RESULT" = success
 
+  # On a docs-only PR the job still runs and reports success, but every step after the first is skipped (#777). It runs
+  # when `changes` failed too, and then fails, so a broken classification never reads as a skipped, passing check.
   browser-smoke:
     name: browser-smoke
+    needs: changes
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
+      CODE: ${{ needs.changes.outputs.code }}
       # agent-browser native release, pinned and verified by checksum (S16.1, S14.2).
       AGENT_BROWSER_VERSION: v0.38.2
       AGENT_BROWSER_SHA256: a54b765192db774666f0513fa8b545a298753b6f29e73bcdf4a1e78f18e7c0e1
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: corepack enable
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - name: Code changed, or a docs-only PR
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+        run: |
+          echo "changes: $CHANGES_RESULT (code=$CODE)"
+          test "$CHANGES_RESULT" = success
+          if [ "$CODE" = false ]; then echo "Docs-only PR: the browser smoke is skipped (#777)"; fi
+      - if: ${{ env.CODE == 'true' }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - if: ${{ env.CODE == 'true' }}
+        run: corepack enable
+      - if: ${{ env.CODE == 'true' }}
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
           cache: yarn
           cache-dependency-path: yarn.lock
       - name: Install dependencies
+        if: ${{ env.CODE == 'true' }}
         # The npm registry sometimes answers Yarn's hardened-mode metadata requests with 409; retry once.
         run: yarn install --immutable || (sleep 20 && yarn install --immutable)
       - name: Install agent-browser
+        if: ${{ env.CODE == 'true' }}
         run: |
           BIN="$RUNNER_TEMP/agent-browser"
           curl -fsSL --retry 3 -o "$BIN" \
@@ -144,6 +200,7 @@ jobs:
           "$BIN" doctor --json > /dev/null
           echo "AGENT_BROWSER_BIN=$BIN" >> "$GITHUB_ENV"
       - name: Start the ephemeral app (Testcontainers PostgreSQL)
+        if: ${{ env.CODE == 'true' }}
         run: |
           nohup yarn test:integration:vereino:start > ephemeral-app.log 2>&1 &
           for attempt in $(seq 1 120); do
@@ -153,12 +210,13 @@ jobs:
           tail -n 100 ephemeral-app.log
           exit 1
       - name: Sign in through agent-browser
+        if: ${{ env.CODE == 'true' }}
         working-directory: packages/app
         env:
           BASE_URL: http://127.0.0.1:5001
         run: node .ai/qa/agent-browser/login-smoke.mjs
       - name: Upload screenshots and app log
-        if: ${{ !cancelled() }}
+        if: ${{ !cancelled() && env.CODE == 'true' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: browser-smoke
@@ -173,6 +231,8 @@ jobs:
   # The integration suite runs a workspace build, not this image, so only this job sees a broken runner stage.
   image-smoke:
     name: image-smoke
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -184,6 +244,8 @@ jobs:
 
   perf:
     name: perf
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     continue-on-error: true

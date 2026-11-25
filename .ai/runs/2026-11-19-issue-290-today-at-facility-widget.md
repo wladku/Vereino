@@ -1,7 +1,7 @@
 # Run: issue #290 — dashboard widget "Today at the facility" (E11-S16)
 
 - **Goal and trigger:** Cezar run (task b6089fa6) started by the `cezar` label on #290; `om-auto-fix-issue` with the vereino override.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 16 (REQ-R20, TEST-R20, AC-R16; README B-01, widget 8 of the navigation spec's role table) · #290 (epic #253) · `feat/issue-290-today-facility-entries-widget`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 16 (REQ-R20, TEST-R20, AC-R16; README B-01, widget 8 of the navigation spec's role table) · #290 (epic #253) · `feat/issue-290-today-facility-entries-widget`.
 - **Readiness:** the spec is `Ready for implementation` (owner approval of 2026-11-16 on #253, which also answered Q-R24: the widget follows the navigation spec's role table); #275, #260 and #276 are closed, so the `?place=&date=` click target exists. No migration, module, dependency or contract change.
 
 ## Steps

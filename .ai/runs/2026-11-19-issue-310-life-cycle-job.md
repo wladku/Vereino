@@ -1,7 +1,7 @@
 # Run: issue #310 — the 18th birthday and the account age (people life-cycle phase L8)
 
 - **Trigger:** Cezar run `add212b9` (`om-auto-fix-issue 310`, label `cezar` added 2026-11-19).
-- **Issue / spec / branch:** [#310](https://github.com/wladku/Vereino/issues/310) (E13-S08); `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` phase L8 (REQ-L06, REQ-L07; TEST-L09, TEST-L10, TEST-L19); branch `feat/issue-310-ward-guardianship-handover`.
+- **Issue / spec / branch:** [#310](https://github.com/wladku/Vereino/issues/310) (E13-S08); `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` phase L8 (REQ-L06, REQ-L07; TEST-L09, TEST-L10, TEST-L19); branch `feat/issue-310-ward-guardianship-handover`.
 - **Readiness:** the issue text still said "spec Draft", but the spec is `Ready for implementation` since 2026-11-16: Q-L02 answered, Q-L03/Q-L04/Q-L12/Q-L13 confirmed, the contract changes (event, CLI, schedule, routes) and item 11 (the first run on existing data) approved on #255. No migration in L8 (it uses migration C of L7). L4 (#306) and L7 (#309) have landed; L6 (#308) has not, so step 5 stays unregistered (gap c9).
 
 ## Steps

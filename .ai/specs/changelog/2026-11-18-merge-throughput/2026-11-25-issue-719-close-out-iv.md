@@ -1,0 +1,1 @@
+| 2026-11-25 | Close-out IV (#719): status In progress — phases 1–3 built (PR #399, PR #402, #449 PR #458); REQ-MT05 and the fix-run half of REQ-MT06 live in the Cezar picker and configuration (ops, outside the repository); MT-AC-01 and MT-AC-04 have no recorded evidence yet |

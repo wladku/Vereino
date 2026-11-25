@@ -1,0 +1,1 @@
+| 2026-11-25 | Close-out IV (#719): status line records phases 1–2 built (#450, #451) and phase 3's code and docs landed (#698 PR #699); left: the owner's switch-on (`docs/ops/batch-train-switch-on.md`), which proves BT-AC-01…BT-AC-03 |

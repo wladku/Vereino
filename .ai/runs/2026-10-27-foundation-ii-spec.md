@@ -3,7 +3,7 @@
 - **Date:** 2026-10-27
 - **Agent / tool:** Claude Code (Fable 5.1), `om-spec-writing` (interactive) with five read-only subagents (V-8b schedule family, V-6/V-F06/V-F07 platform seams, V-14 web check, then two fresh-context reviews: contradictions and scope, anti-patterns and platform fit); then `om-open-pr`
 - **Trigger:** product owner — "Chcę stworzyć specyfikację na podstawie issue #22 … żeby powstał nie tylko sam feature, ale też framework pod spodem …", then the gate answers ("Przyjmij rekomendacje Q1–Q8 … oraz domyślne Q9–Q10")
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`; issue #22 (E03) with stories #30–#34 as consumers; branch `docs/foundation-ii-spec` stacked on `docs/foundation-spec` (PR #40), because both amend the club spec
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md`; issue #22 (E03) with stories #30–#34 as consumers; branch `docs/foundation-ii-spec` stacked on `docs/foundation-spec` (PR #40), because both amend the club spec
 - **Status:** completed — the spec is Draft, blocked only on the owner's approval on the PR; the club spec's phase 2 marked ready in the same PR
 
 ## Goal
@@ -30,7 +30,7 @@ Design the second slice of the foundation — recurrence, forward-only statuses,
 
 ## Files changed
 
-- `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` — new
+- `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` — new
 - `.ai/specs/2026-10-20-vereino-club-management.md` — phase 2 readiness: status line, *Phase readiness* row, step 1, V-6/V-8/V-14 results, DD-11 and DD-20 notes, `activities:flag-unsettled` → list predicate, `activities_contact_access_log` row, REQ-039 re-scope, verdict, Changelog
 - `.ai/runs/2026-10-27-foundation-ii-spec.md` — this log
 

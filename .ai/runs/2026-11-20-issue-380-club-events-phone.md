@@ -2,7 +2,7 @@
 
 - **Date:** 2026-11-20
 - **Trigger:** Cezar run of `om-auto-fix-issue 380` (label `cezar` added to the issue), unattended.
-- **Issue:** #380 (epic #375); **spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, phase 5 (REQ-T12, TEST-T12, TEST-T15 `member-nav.ts` part).
+- **Issue:** #380 (epic #375); **spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, phase 5 (REQ-T12, TEST-T12, TEST-T15 `member-nav.ts` part).
 - **Branch:** `feat/issue-380-section-coordinator-club-event` (Cezar worktree).
 
 ## Goal

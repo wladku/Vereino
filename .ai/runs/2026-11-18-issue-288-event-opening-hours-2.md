@@ -2,7 +2,7 @@
 
 - **Trigger:** cezar task 240cea24, `om-auto-fix-pr 363`: the required check `integration (shard 2/3)` concluded FAILURE on head `d84e03cb`.
 - **Issue / PR / branch:** #288 / #363 / `feat/issue-288-group-event-outside-opening-hours` (worked on a detached HEAD, pushed with `git push origin HEAD:<branch>`).
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` (REQ-R19, DD-R15).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (REQ-R19, DD-R15).
 
 ## Steps
 

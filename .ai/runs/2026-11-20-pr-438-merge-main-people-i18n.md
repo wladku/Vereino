@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (om-auto-fix-pr) — PR #438 (issue #380, E14-S05 club events on the phone) was `CONFLICTING` and labelled `merge-train-conflict`; merge `main` in, no force-push, never merge.
 - **Branch:** `feat/issue-380-section-coordinator-club-event`, worked on a detached HEAD at its origin tip `e6690ba4`, pushed with `git push origin HEAD:feat/issue-380-section-coordinator-club-event`.
-- **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md` — unchanged by this run.
+- **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md` — unchanged by this run.
 
 ## Steps
 

@@ -5,6 +5,8 @@ set -euo pipefail
 
 export CACHE_STRATEGY="${CACHE_STRATEGY:-redis}"
 export CACHE_REDIS_URL="${CACHE_REDIS_URL:-${REDIS_URL:-}}"
+# Rate-limit counters in Redis, shared by instances and kept across deploys (#738); the limiter reads REDIS_URL.
+export RATE_LIMIT_STRATEGY="${RATE_LIMIT_STRATEGY:-redis}"
 export QUEUE_STRATEGY=async
 export NEXT_PUBLIC_QUEUE_STRATEGY=async
 export AUTO_SPAWN_WORKERS=false

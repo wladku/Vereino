@@ -1,7 +1,7 @@
 # Run: PR #354 — merge train failed on `integration (shard 2/3)`: real failure or flake
 
 - **Goal and trigger:** cezar task (`om-auto-fix-pr 354`): PR #354 (E11-S08, issue #282) carries `merge-train-failed` because the required check `integration (shard 2/3)` concluded FAILURE; decide whether it is real or a flake, fix it, bring `main` in, push without rewriting history, never merge.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` (phase 8); issue #282; branch `feat/issue-282-facility-attendant-phone-rentals`, worked on a detached HEAD at its origin tip `db98172d` and pushed with `git push origin HEAD:feat/issue-282-facility-attendant-phone-rentals`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (phase 8); issue #282; branch `feat/issue-282-facility-attendant-phone-rentals`, worked on a detached HEAD at its origin tip `db98172d` and pushed with `git push origin HEAD:feat/issue-282-facility-attendant-phone-rentals`.
 
 ## Steps
 

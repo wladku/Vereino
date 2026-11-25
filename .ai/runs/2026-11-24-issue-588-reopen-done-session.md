@@ -1,7 +1,7 @@
 # Run: reopen a done session — administrator command (#588)
 
 - **Goal and trigger:** Cezar run of `om-auto-fix-issue 588` (issue labelled `cezar`). The issue asked whether the administrator's `reopen` of a done session (foundation II spec AC-G02) is still wanted; the owner decided on 2026-11-24 (issue comment): keep it, modelled on `activities.occurrences.restore` (#268) — administrator only, reason 3–500 characters, audit entry, events, `done → planned`, integration test; attendance and scores stay.
-- **Issue / spec / branch:** #588; `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` (AC-G02); `feat/issue-588-reopen-done-session` (renamed from the Cezar task branch).
+- **Issue / spec / branch:** #588; `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` (AC-G02); `feat/issue-588-reopen-done-session` (renamed from the Cezar task branch).
 
 ## Steps
 
@@ -26,7 +26,7 @@
 - `packages/app/src/modules/activities/components/RestoreOccurrenceDialog.tsx`, `OccurrenceRecord.tsx`, `client-helpers.ts`
 - `packages/app/src/modules/activities/data/validators.ts`, `lib/error-codes.ts`, `lib/activities-rules.ts` (comment), `i18n/en.json`, `i18n/pl.json`, `README.md`
 - `packages/app/.ai/qa/tests/activities/ISSUE-588-reopen-done-session.spec.ts` (new), `_fixtures/activities.ts`, `_fixtures/isolation/inventory/activities.json`
-- `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/changelog/2026-10-27-vereino-foundation-scheduling-primitives/2026-11-24-issue-588-reopen-done-session.md`
+- `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/changelog/2026-10-27-vereino-foundation-scheduling-primitives/2026-11-24-issue-588-reopen-done-session.md`
 
 ## Commands and results
 

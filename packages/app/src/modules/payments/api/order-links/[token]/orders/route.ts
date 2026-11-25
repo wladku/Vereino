@@ -17,6 +17,7 @@ import {
   sessionlessContext,
 } from '../../../order-routes'
 import { errorSchema } from '../../../shared'
+import { enforceSessionlessLimits, tokenLimit } from '@/modules/foundation'
 
 /** Per client IP (S8.6, V-10); disabled under integration tests. */
 export const metadata = {
@@ -26,6 +27,10 @@ export const metadata = {
 export async function POST(request: Request, context: { params: Promise<{ token?: string }> }): Promise<Response> {
   try {
     const { token } = await context.params
+    const limited = await enforceSessionlessLimits(request, [
+      tokenLimit('payments_order_link_token_write', token ?? '', 'write'),
+    ])
+    if (limited) return limited
     const parsed = orderLinkWriteSchema.safeParse(await request.json().catch(() => ({})))
     if (!parsed.success) {
       return noStore(Response.json({ error: 'Validation failed', details: parsed.error.issues }, { status: 400 }))

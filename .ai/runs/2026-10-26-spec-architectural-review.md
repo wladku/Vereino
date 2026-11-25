@@ -61,7 +61,7 @@ The full report with lines and fixes was given to the owner in the session (2026
 - `.ai/specs/2026-10-21-engineering-standards-and-patterns.md`, `BACKWARD_COMPATIBILITY.md` — references to the payments specification.
 - `.ai/runs/2026-10-26-spec-architectural-review.md` — this log.
 
-Not touched: `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, an untracked file another session is writing in this checkout.
+Not touched: `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md`, an untracked file another session is writing in this checkout.
 
 ## Open problems
 

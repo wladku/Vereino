@@ -3,7 +3,7 @@
 - **Trigger:** cezar task c9fbfee0 (`om-auto-fix-issue 526`, label `cezar`), unattended.
 - **Issue:** [#526](https://github.com/wladku/Vereino/issues/526). Owner decision of 2026-11-22 (issue comment): option (a), the hold reads `accounting_retention_years` (default 6), `retention.md` R2 agrees with R1, close R-A, no migration.
 - **Branch:** `feat/issue-526-name-hold-retention`.
-- **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (DD-L07, Q-L01); club spec Q-053.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (DD-L07, Q-L01); club spec Q-053.
 
 ## Steps
 

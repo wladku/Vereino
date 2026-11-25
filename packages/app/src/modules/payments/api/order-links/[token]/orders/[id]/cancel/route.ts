@@ -13,6 +13,7 @@ import {
   sessionlessContext,
 } from '../../../../../order-routes'
 import { errorSchema } from '../../../../../shared'
+import { enforceSessionlessLimits, tokenLimit } from '@/modules/foundation'
 
 /** Per client IP (S8.6, V-10); disabled under integration tests. */
 export const metadata = {
@@ -25,6 +26,10 @@ export async function POST(
 ): Promise<Response> {
   try {
     const { token, id } = await context.params
+    const limited = await enforceSessionlessLimits(request, [
+      tokenLimit('payments_order_link_token_write', token ?? '', 'write'),
+    ])
+    if (limited) return limited
     const parsedId = z.uuid().safeParse(id)
     if (!parsedId.success) return noStore(Response.json({ error: 'Not found' }, { status: 404 }))
     const ctx = sessionlessContext(await createRequestContainer(), request)

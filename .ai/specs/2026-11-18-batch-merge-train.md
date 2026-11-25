@@ -1,7 +1,7 @@
 # Batch merge train: one green run lands several PRs
 
 **Date**: 2026-11-18
-**Status**: In progress — approved by the owner on 2026-11-18
+**Status**: In progress — approved by the owner on 2026-11-18; phases 1–2 built (#450 PR #518, #451 PR #544, rehearsal `.ai/runs/2026-11-21-issue-451-batch-train-phase-2.md`) and phase 3's code and docs landed (#698 PR #699); left: phase 3's owner switch-on (token scopes, ruleset, `MERGE_TRAIN_BATCH_SIZE` 2 then 4; `docs/ops/batch-train-switch-on.md`), which BT-AC-01…BT-AC-03 prove live (close-out IV #719)
 
 > Related: `.ai/specs/2026-11-18-merge-throughput.md` (faster CI, failure ledger, QA rule; this spec was split out of it on review); engineering standards S14.1 and ADR-015; `SDLC.md` → "Validation gate"; `.github/workflows/merge-train.yml`, `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs` (100 % unit-tested in `packages/app/scripts/__tests__/merge-train-plan.test.mjs`); ruleset 26707580 "main: merge only when up to date and green"; `docs/ops/github-settings.md`. Identifiers: decisions `BT-D01…`, requirements `REQ-BT01…`, tests `BT-TEST-01…`, acceptance `BT-AC-01…`.
 
