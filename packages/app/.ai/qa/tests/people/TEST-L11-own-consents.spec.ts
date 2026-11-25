@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type TestInfo } from '@playwright/test'
 import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { setRoleAclFeatures } from '@open-mercato/core/helpers/integration/authFixtures'
 import {
   addParticipants,
   familyFor,
@@ -33,7 +34,8 @@ import { uiText } from '../_fixtures/ui-text'
 // consent and refuses a coordinator. The phone profile M-10 at 375 px, in Polish and English, light and dark (axe):
 // "My consents" with the effect lines, giving at once, a withdrawal that asks for confirmation; a minor has no section.
 // TEST-L20 — the two consent routes fail closed for a member without `people.manage`, a person outside the
-// organization and another organization's administrator.
+// organization and another organization's administrator. TEST-F05 (foundation spec, AC-F05; #720): the audit entries of
+// a grant, a withdrawal and a second grant carry the consent dates before and after each change.
 test.describe.configure({ timeout: 420_000 })
 
 type ConsentEntry = { granted: boolean; at: string | null; byPersonId: string | null }
@@ -67,6 +69,30 @@ async function lockOf(request: APIRequestContext, token: string): Promise<string
   const me = await getMe(request, token)
   expect(me.status, JSON.stringify(me.body)).toBe(200)
   return String(me.body?.person?.updatedAt)
+}
+
+type StoredConsentEntry = { granted: boolean; at: string; by_person_id: string | null }
+type ConsentAuditEntry = {
+  commandId?: string
+  context?: { consentsChanged?: string[] } | null
+  snapshotBefore?: { consents?: Record<string, StoredConsentEntry> } | null
+  snapshotAfter?: { consents?: Record<string, StoredConsentEntry> } | null
+}
+
+/** The `people.persons.set_own_consents` audit entries of a person, with their snapshots. */
+async function consentAuditEntries(
+  request: APIRequestContext,
+  token: string,
+  personId: string,
+): Promise<ConsentAuditEntry[]> {
+  const result = await call<{ items?: ConsentAuditEntry[] }>(
+    request,
+    'GET',
+    `/api/audit_logs/audit-logs/actions?resourceId=${personId}&pageSize=100`,
+    token,
+  )
+  expect(result.status, `GET actions ${JSON.stringify(result.body)}`).toBe(200)
+  return (result.body?.items ?? []).filter((entry) => entry.commandId === 'people.persons.set_own_consents')
 }
 
 function flagsOf(list: AttendanceList, personId: string) {
@@ -222,6 +248,40 @@ test('TEST-L11 an adult participant gives and withdraws own consents; the coach 
     expect(regive.status).toBe(200)
     const again = (await readAttendanceList(request, family.coach.token, session.id)).body as AttendanceList
     expect(flagsOf(again, adultId)).toEqual({ image: true, trips: false })
+
+    // TEST-F05 (AC-F05): grant, withdraw, grant again — each audit entry carries the dates before and after the change,
+    // so the grant and withdrawal dates stay in the audit log after the row changes again.
+    const grantedAt = String(given.body?.consents?.image.at)
+    const withdrawnAt = String(withdrawn.body?.consents?.image.at)
+    const regrantedAt = String(regive.body?.consents?.image.at)
+    expect(new Set([grantedAt, withdrawnAt, regrantedAt]).size).toBe(3)
+    // The adult made these changes; the fixture's administrator role reads only its own actions
+    // (`audit_logs.view_self`), so it is given the tenant-wide audit read for this check.
+    await setRoleAclFeatures(request, club.superToken, {
+      roleId: club.tenant.roleId,
+      features: ['audit_logs.view_self', 'audit_logs.undo_self', 'audit_logs.view_tenant'],
+    })
+    const imageEntries = (await consentAuditEntries(request, admin, adultId)).filter((entry) =>
+      entry.context?.consentsChanged?.includes('image'),
+    )
+    const imageDates = imageEntries.map((entry) => ({
+      before: entry.snapshotBefore?.consents?.image ?? null,
+      after: entry.snapshotAfter?.consents?.image ?? null,
+    }))
+    expect(imageDates).toHaveLength(3)
+    expect(imageDates).toEqual(
+      expect.arrayContaining([
+        { before: null, after: { granted: true, at: grantedAt, by_person_id: adultId } },
+        {
+          before: { granted: true, at: grantedAt, by_person_id: adultId },
+          after: { granted: false, at: withdrawnAt, by_person_id: adultId },
+        },
+        {
+          before: { granted: false, at: withdrawnAt, by_person_id: adultId },
+          after: { granted: true, at: regrantedAt, by_person_id: adultId },
+        },
+      ]),
+    )
     for (const token of [family.academyCoordinator.token, admin]) {
       const list = await readAttendanceList(request, token, session.id)
       expect(list.status).toBe(200)
