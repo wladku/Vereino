@@ -1,6 +1,6 @@
 // Error codes owned by `payments` (engineering standards S6.7; payments spec *API, Command, and Error Contracts* →
 // `/api/payments/fees`, `/discount-rules`, `/charges/generate`, `/settings`; issue #108; the charge payments,
-// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115; the guardian orders and personal links of issue #116; "My groups' payments" of issue #117; the cash handovers of issue #118). Thrown through
+// cancellation and reversal of issue #109; "Accept cash" of issue #114; the order campaigns of issue #115; the guardian orders and personal links of issue #116; "My groups' payments" of issue #117; the cash handovers of issue #118 and their confirmation of issue #791). Thrown through
 // `api/errors.ts`. An inverted validity answers the foundation's `validity_inverted`; a stale lock token the
 // platform's `optimistic_lock_conflict`.
 import type { ErrorCodeTable } from '@vereino/core'
@@ -96,6 +96,14 @@ export const errorCodes = [
   },
   { code: 'cash_already_settled', status: 409, messageKey: 'payments.errors.cash_already_settled' },
   { code: 'cash_payment_reversed', status: 409, messageKey: 'payments.errors.cash_payment_reversed' },
+  // The two-sided cash handover (D-042, #791).
+  {
+    code: 'cash_handover_payment_pending',
+    status: 409,
+    messageKey: 'payments.errors.cash_handover_payment_pending',
+  },
+  { code: 'cash_handover_not_pending', status: 409, messageKey: 'payments.errors.cash_handover_not_pending' },
+  { code: 'cash_handover_not_found', status: 404, messageKey: 'payments.errors.cash_handover_not_found' },
   // The rental charge service `payments.chargeService` (payments parity spec Contract 5, #291).
   { code: 'charge_payer_required', status: 422, messageKey: 'payments.errors.charge_payer_required' },
   { code: 'charge_amount_invalid', status: 422, messageKey: 'payments.errors.charge_amount_invalid' },

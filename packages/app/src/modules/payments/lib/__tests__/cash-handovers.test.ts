@@ -1,11 +1,17 @@
 import { describe, expect, it } from '@jest/globals'
 import {
+  CASH_HANDOVER_STATUSES,
   MAX_HANDOVER_PAYMENTS,
+  MAX_REJECTION_REASON,
+  confirmRefusal,
   custodyByCollector,
+  handoverConfirmerIds,
+  handoverDecisionRefusal,
   handoverPrefix,
   handoverRefusal,
   handoverSequence,
   nextHandoverNumber,
+  pendingSummary,
   type HandoverCandidate,
   type HeldPayment,
 } from '../cash-handovers'
@@ -39,6 +45,7 @@ const candidate = (id: string, extra: Partial<HandoverCandidate> = {}): Handover
   collectedByPersonId: 'rafal',
   reversesPaymentId: null,
   cashHandoverId: null,
+  pendingCashHandoverId: null,
   reversed: false,
   ...extra,
 })
@@ -69,6 +76,60 @@ describe('handoverRefusal', () => {
 
   it('refuses a reversed payment', () => {
     expect(refuse([candidate('a'), candidate('b', { reversed: true })])).toBe('cash_payment_reversed')
+  })
+
+  it('refuses a payment of a pending handover after a settled one, before a reversed one (D-042)', () => {
+    expect(refuse([candidate('a', { pendingCashHandoverId: 'h2', reversed: true })])).toBe(
+      'cash_handover_payment_pending',
+    )
+    expect(refuse([candidate('a', { cashHandoverId: 'h1' }), candidate('b', { pendingCashHandoverId: 'h2' })])).toBe(
+      'cash_already_settled',
+    )
+  })
+})
+
+describe('the two-sided handover (D-042, DD-31a)', () => {
+  it('names the states and caps a rejection reason', () => {
+    expect(CASH_HANDOVER_STATUSES).toEqual(['pending', 'confirmed', 'rejected', 'withdrawn'])
+    expect(MAX_REJECTION_REASON).toBe(500)
+  })
+
+  it('decides only a pending handover', () => {
+    expect(handoverDecisionRefusal('pending')).toBeNull()
+    expect(handoverDecisionRefusal('confirmed')).toBe('cash_handover_not_pending')
+    expect(handoverDecisionRefusal('rejected')).toBe('cash_handover_not_pending')
+    expect(handoverDecisionRefusal('withdrawn')).toBe('cash_handover_not_pending')
+  })
+
+  it('tells each administrator and treasurer once, never the collector', () => {
+    expect(
+      handoverConfirmerIds({ admins: ['zofia', 'rafal', 'iwona'], treasurers: ['iwona', 'adam'], collectorPersonId: 'rafal' }),
+    ).toEqual(['adam', 'iwona', 'zofia'])
+    expect(handoverConfirmerIds({ admins: [], treasurers: [], collectorPersonId: 'rafal' })).toEqual([])
+  })
+
+  const reserved = (id: string, extra: Partial<HandoverCandidate> = {}) =>
+    candidate(id, { pendingCashHandoverId: 'h1', ...extra })
+  const confirm = (payments: HandoverCandidate[], paymentIds = payments.map((row) => row.id)) =>
+    confirmRefusal({ handoverId: 'h1', paymentIds, payments })
+
+  it('confirms the payments the handover reserves', () => {
+    expect(confirm([reserved('a'), reserved('b')])).toBeNull()
+  })
+
+  it('refuses a payment the handover no longer reserves as settled', () => {
+    expect(confirm([reserved('a')], ['a', 'missing'])).toBe('cash_already_settled')
+    expect(confirm([reserved('a', { pendingCashHandoverId: 'h2' })])).toBe('cash_already_settled')
+    expect(confirm([reserved('a', { cashHandoverId: 'h0' })])).toBe('cash_already_settled')
+  })
+
+  it('refuses a payment reversed while the handover waited', () => {
+    expect(confirm([reserved('a'), reserved('b', { reversed: true })])).toBe('cash_payment_reversed')
+  })
+
+  it('counts and sums the pending handovers', () => {
+    expect(pendingSummary([])).toEqual({ count: 0, total: 0 })
+    expect(pendingSummary([{ amount: 5000 }, { amount: 3500 }])).toEqual({ count: 2, total: 8500 })
   })
 })
 

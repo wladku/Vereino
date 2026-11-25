@@ -11,7 +11,9 @@ import { createModuleEvents } from '@open-mercato/shared/modules/events'
  * A guardian's order (#116) emits `payments.order.submitted|updated|cancelled` with its campaign and `order` charge;
  * a kit handed over at the pitch (#117) emits `payments.order.handed_over`. A payer assigned to a charge without one
  * (#295), by hand or from a guardianship, emits `payments.charge.payer_assigned` with the charge and the payer. A
- * deleted bank import (#294) emits `payments.bank_import.deleted` with its id and counts.
+ * deleted bank import (#294) emits `payments.bank_import.deleted` with its id and counts. A cash handover (#118, D-042
+ * #791) emits `payments.cash_handover.created` when the club settles cash without the collector's step, and
+ * `payments.cash_handover.sent|withdrawn|confirmed|rejected` along the two-sided handover.
  */
 const events = [
   { id: 'payments.fee.created', label: 'Fee schedule created', entity: 'fee', category: 'crud' },
@@ -52,6 +54,12 @@ const events = [
   { id: 'payments.order.cancelled', label: 'Kit order cancelled', entity: 'order', category: 'custom' },
   { id: 'payments.order.handed_over', label: 'Kit handed over', entity: 'order', category: 'custom' },
   { id: 'payments.bank_import.completed', label: 'Bank statement imported', entity: 'bank_import', category: 'custom' },
+  // The cash handover (#118; its two-sided confirmation D-042, #791): ids only.
+  { id: 'payments.cash_handover.created', label: 'Cash settled without the collector', entity: 'cash_handover', category: 'custom' },
+  { id: 'payments.cash_handover.sent', label: 'Cash handover sent', entity: 'cash_handover', category: 'custom' },
+  { id: 'payments.cash_handover.withdrawn', label: 'Cash handover withdrawn', entity: 'cash_handover', category: 'custom' },
+  { id: 'payments.cash_handover.confirmed', label: 'Cash handover confirmed', entity: 'cash_handover', category: 'custom' },
+  { id: 'payments.cash_handover.rejected', label: 'Cash handover rejected', entity: 'cash_handover', category: 'custom' },
   {
     id: 'payments.bank_import.deleted',
     label: 'Bank statement import deleted',

@@ -2,8 +2,10 @@
 // `/backend/payments/cash-custody`; REQ-033, TEST-046; issue #118 E07-S11):
 // - `POST` accepts the selected cash payments of one collector under one `RG/YYYY/MM/NNN` number; the payments leave
 //   the collector's "Cash with you". 409 `cash_already_settled` when a payment is already in a handover;
-// - `GET` is the handover history, newest first.
-// The club administrator's and the treasurer's (`payments.cash.settle`; DD-33, #245).
+// - `GET` is the handover history, newest first; `?status=pending` is the confirmers' queue, oldest sent first, with
+//   each handover's receipts (D-042, #791).
+// The club administrator's and the treasurer's (`payments.cash.settle`; DD-33, #245). A payment of a pending handover
+// answers 409 `cash_handover_payment_pending`: the confirmer confirms that handover instead.
 import { z } from 'zod'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
@@ -17,14 +19,13 @@ import {
 import type { CashHandoverResult } from '../../commands/cash-handovers'
 import { cashHandoverAcceptSchema, cashHandoverListQuerySchema } from '../../data/validators'
 import { cashHandoverHistory } from '../../services/cash-handovers'
+import { handoverRowSchema } from '../cash-handover-routes'
 import { PAYMENTS_READ_KINDS, errorSchema } from '../shared'
 
 export const metadata = {
   GET: { requireAuth: true, requireFeatures: ['payments.cash.settle'] },
   POST: { requireAuth: true, requireFeatures: ['payments.cash.settle'] },
 }
-
-const personSchema = z.object({ firstName: z.string(), lastName: z.string() }).nullable()
 
 const acceptResponseSchema = z.object({
   ok: z.literal(true),
@@ -37,19 +38,7 @@ const acceptResponseSchema = z.object({
 })
 
 const historyResponseSchema = z.object({
-  items: z.array(
-    z.object({
-      id: z.uuid(),
-      number: z.string(),
-      collectorPersonId: z.uuid(),
-      collector: personSchema,
-      receivedBy: personSchema,
-      amount: z.number().int().describe('Grosz'),
-      paymentCount: z.number().int(),
-      receiptNumbers: z.array(z.string()).describe('The `KP` receipts the handover settled'),
-      createdAt: z.string(),
-    }),
-  ),
+  items: z.array(handoverRowSchema),
   total: z.number().int(),
   page: z.number().int(),
   pageSize: z.number().int(),
@@ -94,7 +83,7 @@ export async function GET(request: Request): Promise<Response> {
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
     })
-    return Response.json(await cashHandoverHistory(ctx.container, scope, query.page, query.pageSize))
+    return Response.json(await cashHandoverHistory(ctx.container, scope, query.page, query.pageSize, query.status))
   } catch (error: unknown) {
     return errorResponse(error, 'payments.cash_handovers.list')
   }
@@ -126,7 +115,8 @@ export const openApi: OpenApiRouteDoc = {
         { status: 403, description: 'scope_denied', schema: errorSchema },
         {
           status: 409,
-          description: '`cash_already_settled` (a payment is already in a handover), `cash_payment_reversed`',
+          description:
+            '`cash_already_settled` (a payment is already in a handover), `cash_handover_payment_pending` (a payment of a pending handover), `cash_payment_reversed`',
           schema: errorSchema,
         },
         {

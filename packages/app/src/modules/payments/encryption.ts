@@ -1,6 +1,6 @@
 // At-rest encryption of `payments` (payments spec *Data Models* → `payments_charges.description|payer_label`,
 // `payments_payments.reference`, `payments_orders.contact_email|contact_phone|notes`,
-// `payments_bank_transactions.counterparty_name|counterparty_account|title`; foundation spec P-09). None has an
+// `payments_bank_transactions.counterparty_name|counterparty_account|title`, `payments_cash_handovers.rejection_reason`; foundation spec P-09). None has an
 // equality lookup (a statement transfer is found again by its `tx_hash` fingerprint), so none carries a hash sibling,
 // and no `payments` entity is sent to a search index.
 import type { ModuleEncryptionMap } from '@open-mercato/shared/modules/encryption'
@@ -35,6 +35,11 @@ export const bankCounterpartyAccount = encryptedField({
 })
 export const bankTitle = encryptedField({ entityId: BANK_TRANSACTION_ENTITY_ID, field: 'title' })
 
+export const CASH_HANDOVER_ENTITY_ID = 'payments:cash_handover'
+
+/** Why a cash handover was rejected: a free-text difference that may name a payer or a child (D-042, #791). */
+export const cashHandoverRejectionReason = encryptedField({ entityId: CASH_HANDOVER_ENTITY_ID, field: 'rejection_reason' })
+
 export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   {
     entityId: BANK_TRANSACTION_ENTITY_ID,
@@ -42,6 +47,7 @@ export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   },
   { entityId: CHARGE_ENTITY_ID, fields: [chargeDescription.mapEntry, chargePayerLabel.mapEntry] },
   { entityId: PAYMENT_ENTITY_ID, fields: [paymentReference.mapEntry] },
+  { entityId: CASH_HANDOVER_ENTITY_ID, fields: [cashHandoverRejectionReason.mapEntry] },
   {
     entityId: ORDER_ENTITY_ID,
     fields: [orderContactEmail.mapEntry, orderContactPhone.mapEntry, orderNotes.mapEntry],
