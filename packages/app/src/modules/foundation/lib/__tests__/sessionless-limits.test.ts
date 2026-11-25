@@ -7,6 +7,7 @@ import {
   SIGN_IN_EMAIL_LIMIT,
   accountEmailLimit,
   emailFromBody,
+  emailFromUrlEncoded,
   forwardedEntryCount,
   hashKeyPart,
   linkRequestEmailLimit,
@@ -68,6 +69,18 @@ describe('emailFromBody', () => {
     expect(emailFromBody({})).toBeNull()
     expect(emailFromBody({ email: '  ' })).toBeNull()
     expect(emailFromBody({ email: 42 })).toBeNull()
+  })
+})
+
+describe('emailFromUrlEncoded', () => {
+  it('reads the first email field, as the platform handlers do', () => {
+    expect(emailFromUrlEncoded('email=ann%40example.org&password=x')).toBe('ann@example.org')
+    expect(emailFromUrlEncoded('email=victim%40example.org&email=decoy%40example.org')).toBe('victim@example.org')
+  })
+
+  it('answers null without a usable email field', () => {
+    expect(emailFromUrlEncoded('password=x')).toBeNull()
+    expect(emailFromUrlEncoded('email=')).toBeNull()
   })
 })
 

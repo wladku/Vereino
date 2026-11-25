@@ -81,6 +81,10 @@ is counted by the API dispatcher from the route's `metadata.rateLimit` and keyed
 is 429 with `Retry-After`, except where the route always answers a uniform 202: there the work is skipped silently.
 Refusals are logged with the limiter key prefix only — no address, token or e-mail.
 
+Accepted trade-off: a per-account counter can be spent by anyone who knows the address, so a stranger can hold one
+account's sign-in for at most 15 minutes (10 attempts) and its password-reset e-mails for an hour (3 requests). That is
+the price of stopping guesses spread across many clients; a successful sign-in clears the counter.
+
 | Route family | Routes | Per client | Per subject |
 |---|---|---|---|
 | Sign-in (platform `auth`, `src/app/api/auth/login/route.ts`) | `POST /api/auth/login` | platform: 20 / min per client, 5 / min per client and address | 10 / 15 min per account from any client (cleared by a successful sign-in) |

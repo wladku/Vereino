@@ -77,6 +77,14 @@ export function emailFromBody(body: unknown): string | null {
 }
 
 /**
+ * The e-mail of a url-encoded sign-in or reset body: the *first* `email` field, as the platform handlers read it
+ * (`URLSearchParams.get`), so a repeated field cannot point the limit at another account than the one checked.
+ */
+export function emailFromUrlEncoded(body: string): string | null {
+  return emailFromBody({ email: new URLSearchParams(body).get('email') })
+}
+
+/**
  * True when an integration run asks for real limits on this request: the platform's opt-in for auth limits
  * (`OM_TEST_MODE=1`, `OM_TEST_AUTH_RATE_LIMIT_MODE=opt-in`, header `x-om-test-rate-limit: on`). Integration runs
  * otherwise switch the platform limiter off (`OM_INTEGRATION_TEST`), so no route could answer 429 in a test.

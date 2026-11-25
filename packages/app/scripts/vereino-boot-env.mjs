@@ -86,6 +86,10 @@ export const RATE_LIMIT_RULES = [
     problem: 'OM_INTEGRATION_TEST must not be set on Railway (it switches rate limits off)',
     when: (env) => onRailway(env) && isTrue(env.OM_INTEGRATION_TEST),
   },
+  {
+    problem: 'OM_TEST_MODE must not be set on Railway (it captures e-mail and lets a request pick the test limiter)',
+    when: (env) => onRailway(env) && (env.OM_TEST_MODE ?? '').trim() !== '',
+  },
 ]
 
 /**

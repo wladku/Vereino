@@ -170,18 +170,23 @@ test('Railway refuses the memory strategy, disabled limits and the integration-t
       RATE_LIMIT_STRATEGY: undefined,
       RATE_LIMIT_ENABLED: 'false',
       OM_INTEGRATION_TEST: 'true',
+      OM_TEST_MODE: '1',
     }),
     [
       'RATE_LIMIT_STRATEGY must be redis on Railway (shared counters that survive a deploy)',
       'RATE_LIMIT_ENABLED must not be false on Railway',
       'OM_INTEGRATION_TEST must not be set on Railway (it switches rate limits off)',
+      'OM_TEST_MODE must not be set on Railway (it captures e-mail and lets a request pick the test limiter)',
     ],
   )
   assert.deepEqual(findBootEnvProblems({ ...RAILWAY, RATE_LIMIT_ENABLED: 'true', OM_INTEGRATION_TEST: 'false' }), [])
 })
 
 test('outside Railway the rate-limit settings stay free (local runs, the integration runner)', () => {
-  assert.deepEqual(findBootEnvProblems({ ...PRODUCTION, RATE_LIMIT_ENABLED: 'false', OM_INTEGRATION_TEST: 'true' }), [])
+  assert.deepEqual(
+    findBootEnvProblems({ ...PRODUCTION, RATE_LIMIT_ENABLED: 'false', OM_INTEGRATION_TEST: 'true', OM_TEST_MODE: '1' }),
+    [],
+  )
   assert.deepEqual(findBootEnvWarnings(PRODUCTION), [])
 })
 
@@ -196,4 +201,16 @@ test('an unset or zero proxy depth on Railway is a warning, not a stop', () => {
 
 test('every rate-limit rule names its problem', () => {
   for (const rule of RATE_LIMIT_RULES) assert.ok(rule.problem.length > 0)
+})
+
+test('every Railway script that runs the boot check sets the rate-limit store default first', async () => {
+  const { readFile } = await import('node:fs/promises')
+  const root = new URL('../../../../scripts/', import.meta.url)
+  for (const name of ['railway-start.sh', 'railway-worker.sh', 'railway-predeploy.sh']) {
+    const script = await readFile(new URL(name, root), 'utf8')
+    const defaultAt = script.indexOf('export RATE_LIMIT_STRATEGY="${RATE_LIMIT_STRATEGY:-redis}"')
+    const checkAt = script.indexOf('node ./packages/app/scripts/vereino-boot-env.mjs')
+    assert.ok(checkAt > 0, `${name} runs the boot check`)
+    assert.ok(defaultAt > 0 && defaultAt < checkAt, `${name} sets the default before the boot check`)
+  }
 })

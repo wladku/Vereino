@@ -72,7 +72,7 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `RATE_LIMIT_TRUST_PROXY_DEPTH` | the number of proxies in front of the app, **measured** per environment (see *Rate limits* below). Unset or `0` behind Railway's proxy, every client shares one counter: one client can block sign-in for everyone. The app starts but warns at boot |
 | `RATE_LIMIT_ENABLED` | leave unset (on). On Railway `false` refuses to start |
 
-Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST` (it switches rate limits off; on Railway the boot check refuses it), `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
+Never set in staging or production: `OM_TEST_MODE` (on Railway the boot check refuses it), `OM_INTEGRATION_TEST` (it switches rate limits off; on Railway the boot check refuses it), `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
 table in the same pull request.
 

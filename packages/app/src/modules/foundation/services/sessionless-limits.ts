@@ -14,6 +14,7 @@ import { createLogger } from '@open-mercato/shared/lib/logger'
 import {
   accountEmailLimit,
   emailFromBody,
+  emailFromUrlEncoded,
   forwardedEntryCount,
   retryAfterSeconds,
   testLimiterRequested,
@@ -121,7 +122,7 @@ async function emailFromForm(request: Request): Promise<string | null> {
   try {
     const type = (request.headers.get('content-type') ?? '').split(';')[0].trim().toLowerCase()
     if (type === 'application/x-www-form-urlencoded') {
-      return emailFromBody(Object.fromEntries(new URLSearchParams(await request.text())))
+      return emailFromUrlEncoded(await request.text())
     }
     if (type === 'application/json') return emailFromBody(await request.json())
     const form = await request.formData()

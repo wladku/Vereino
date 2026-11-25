@@ -101,6 +101,23 @@
     the base commit `d3ff9dff` without this change (detached checkout, same runner), so it is pre-existing on this
     machine and not caused by #738. The request route it fails on is unchanged here.
 
+## Security review (S8.12)
+
+An independent review agent read the diff (`git diff d3ff9dff..HEAD`) and found:
+
+1. **High, fixed.** `scripts/railway-predeploy.sh` runs the boot check without the `RATE_LIMIT_STRATEGY=redis`
+   default, so the first Railway deploy would have been refused. The default is now set there too, and a
+   `test:scripts` case checks that all three Railway scripts set it before the boot check.
+2. **High, fixed.** A repeated `email` field (`email=victim&email=decoy`) moved the per-account key to the decoy while
+   the platform checked the victim: the wrapper used `Object.fromEntries` (last value), the platform `get` (first
+   value). Now `emailFromUrlEncoded` reads the first value; covered by a unit test and by the ISSUE-738 sign-in case.
+3. **Medium, accepted and documented.** Anyone can spend an account's counter (sign-in lockout of at most 15 minutes,
+   reset e-mails for an hour). This is recorded as an accepted trade-off under the ASVS route inventory.
+4. **Low, fixed.** The boot check now refuses `OM_TEST_MODE` on Railway, which would let a request pick the test
+   limiter.
+5. **Low, pre-existing, not changed.** The order-link request sends its e-mail inside the request; a slow send could
+   exceed the 1 s floor.
+
 ## Open problems / next steps
 
 - **Staging acceptance (owner or a run with Railway access, after merge)** — ASVS open item A-6:

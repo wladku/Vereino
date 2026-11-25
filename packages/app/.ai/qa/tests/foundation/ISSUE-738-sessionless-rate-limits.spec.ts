@@ -55,6 +55,16 @@ test.describe('ISSUE-738 sessionless rate limits', () => {
     const { attempt, response } = await firstRefusal(12, () => signIn(request, email))
     expect(attempt).toBe(11)
     expectRefusal(response)
+    // A repeated `email` field cannot point the counter at another key: the platform checks the first address.
+    const decoyed = await request.post('/api/auth/login', {
+      data: new URLSearchParams([
+        ['email', email],
+        ['email', uniqueEmail('decoy')],
+        ['password', randomBytes(12).toString('hex')],
+      ]).toString(),
+      headers: { ...LIMITED, 'content-type': 'application/x-www-form-urlencoded' },
+    })
+    expectRefusal(decoyed)
     // Another account is still answered by the platform: the counter is per account.
     const other = await signIn(request, uniqueEmail('signin-other'))
     expect(other.status()).not.toBe(429)
