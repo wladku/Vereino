@@ -13,7 +13,9 @@ import { enforceTenantSelection, normalizeTenantId } from '@open-mercato/core/mo
 import { runWithCacheTenant } from '@open-mercato/cache'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { RateLimitConfig } from '@open-mercato/shared/lib/ratelimit/types'
-import { getCachedRateLimiterService } from '@open-mercato/core/bootstrap'
+// Vereino local patch (#738): the limiter comes from the foundation, which hands an integration run that opts in
+// (`x-om-test-rate-limit: on`) an enabled limiter, and logs an unresolved client address behind a proxy.
+import { noteClientAddress, sessionlessRateLimiter } from '@/modules/foundation'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FALLBACK, RATE_LIMIT_FALLBACK_KEY } from '@open-mercato/shared/lib/ratelimit/helpers'
 import { getGlobalEventBus } from '@open-mercato/shared/modules/events'
 import { applicationLifecycleEvents, type ApplicationLifecycleEventId } from '@open-mercato/shared/lib/runtime/events'
@@ -416,9 +418,10 @@ async function handleRequest(
   }
 
   if (methodMetadata?.rateLimit) {
-    const rateLimiterService = getCachedRateLimiterService()
+    const rateLimiterService = await sessionlessRateLimiter(req)
     if (rateLimiterService) {
       const clientIp = getClientIp(req, rateLimiterService.trustProxyDepth)
+      noteClientAddress(req, clientIp, rateLimiterService.trustProxyDepth)
       const rateLimitError = await checkRateLimit(
         rateLimiterService,
         methodMetadata.rateLimit,

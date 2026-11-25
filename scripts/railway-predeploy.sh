@@ -6,6 +6,8 @@
 # `yarn initialize`: an empty or wrong database URL fails here instead of setting up a new database.
 set -euo pipefail
 
+# Same rate-limit store default as the start scripts, so the boot check sees what the app will run with (#738).
+export RATE_LIMIT_STRATEGY="${RATE_LIMIT_STRATEGY:-redis}"
 node ./packages/app/scripts/vereino-boot-env.mjs
 yarn db:migrate
 yarn mercato foundation sync-role-acls-if-changed

@@ -9,6 +9,11 @@
 // - `foundation retire-club-schedules [--job <key>] [--dry-run]`: moves a job type (every type without `--job`) from
 //   its per-club schedules onto its sweep; idempotent.
 // - `foundation restore-club-schedules [--job <key>]`: the rollback of a job type (every type without `--job`).
+//
+// `foundation licence-status [--now <ISO instant>]` (enterprise package spec DD-E05, *Users, Permissions, and Scope*;
+// #649): read-only; prints one JSON line with this instance's id, per valid licence key its `lid`, tenant, features,
+// their state and the expiry, and the rejected keys by `lid` (or position) and reason — never a key. Without keys it
+// prints `"message":"no licence keys installed"`.
 import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import path from 'node:path'
@@ -24,6 +29,7 @@ import {
   storedRoleAclHash,
 } from './lib/role-acl-defaults'
 import { readInstanceModuleConfigValue } from './data/queries'
+import { buildLicenceRegistry, licenceStatusReport } from './lib/licence-verify'
 import {
   clubJobDeclarations,
   clubJobsStatus,
@@ -55,6 +61,7 @@ const USAGE = {
   'retire-club-schedules':
     'Usage: mercato foundation retire-club-schedules [--job <key>] [--dry-run] [--now <ISO instant>]',
   'restore-club-schedules': 'Usage: mercato foundation restore-club-schedules [--job <key>]',
+  'licence-status': 'Usage: mercato foundation licence-status [--now <ISO instant>]',
 } as const
 
 /**
@@ -63,7 +70,7 @@ const USAGE = {
  */
 function fail(command: keyof typeof USAGE, message: string): never {
   process.stderr.write(`${message}\n${USAGE[command]}\n`)
-  throw new Error('[internal] foundation club job command: invalid options')
+  throw new Error('[internal] foundation command: invalid options')
 }
 
 /**
@@ -126,6 +133,18 @@ const restore: ModuleCli = {
     const results = []
     for (const key of keys) results.push(await restoreClubSchedules(container, key))
     process.stdout.write(`${JSON.stringify({ jobs: results })}\n`)
+  },
+}
+
+const licenceStatus: ModuleCli = {
+  command: 'licence-status',
+  run(argv) {
+    const { now, badNow } = readOptions(argv)
+    if (badNow) fail('licence-status', '--now must be an ISO instant')
+    // Built afresh, not the process registry: the command reports what this environment holds right now.
+    const registry = buildLicenceRegistry({ env: process.env, readFile: (file) => readFileSync(file, 'utf8') })
+    process.stdout.write(`${JSON.stringify(licenceStatusReport(registry, now ?? new Date()))}\n`)
+    return Promise.resolve()
   },
 }
 
@@ -196,6 +215,6 @@ const syncRoleAclsIfChanged: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleAclsIfChanged, clubJobs, retire, restore]
+const commands: ModuleCli[] = [syncRoleAclsIfChanged, clubJobs, retire, restore, licenceStatus]
 
 export default commands

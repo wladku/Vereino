@@ -238,5 +238,5 @@ export function withConsentAuthors(view: ConsentsView, authors: ConsentAuthors):
     if (authors.family.has(author)) return { ...consent, byName: authors.names.get(author) ?? null, byRole: null }
     return { ...consent, byName: null, byRole: authors.roles.get(author) ?? 'staff' }
   }
-  return { regulations: entry('regulations'), image: entry('image'), trips: entry('trips') }
+  return { regulations: entry('regulations'), image: entry('image'), trips: entry('trips'), medical: entry('medical') }
 }

@@ -12,6 +12,7 @@ import { createDispatchService } from './services/dispatch'
 import { EMAIL_SENDER_TOKEN, defaultEmailSender } from './services/email-sender'
 import { clubText, defineEmailTemplate, registerEmailTemplate, resolveEmailTemplate } from './services/email-templates'
 import { encryptedField } from './services/encrypted-field'
+import { enterpriseFeatures, licenceRegistry } from './services/enterprise-features'
 import { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
 import { OCCUPANCY_PROVIDER_TOKEN } from './services/occupancy'
 import { parseRecurrence } from './services/recurrence'
@@ -69,6 +70,12 @@ export const FOUNDATION_DISPATCH = 'foundationDispatch' as const
 export const FOUNDATION_EMAIL_TEMPLATES = 'foundationEmailTemplates' as const
 export const FOUNDATION_EMAIL_SENDER = EMAIL_SENDER_TOKEN
 
+/**
+ * Enterprise package spec DD-E06 (#649): the licence gate `stateOf`, `statusOf`, `isEnabled`, `assertAvailable`,
+ * `assertWritable` that Enterprise modules ask; always registered, every feature `off` without keys.
+ */
+export const FOUNDATION_ENTERPRISE_FEATURES = 'enterpriseFeatures' as const
+
 /** The request container's `em` when the platform registered it before the module registrars (CLI contexts may not). */
 function containerEm(container: AppContainer): EntityManager | null {
   try {
@@ -101,7 +108,10 @@ export function register(container: AppContainer) {
       resolveEmailTemplate,
       clubText,
     }),
+    [FOUNDATION_ENTERPRISE_FEATURES]: asValue(enterpriseFeatures),
   })
+  // DD-E05: the installed licence keys are read and verified once per process; the first registration logs the result.
+  licenceRegistry()
   // The default sender; a later registration (a test harness, a staging allowlist) replaces it.
   if (!container.hasRegistration(EMAIL_SENDER_TOKEN)) {
     container.register({ [EMAIL_SENDER_TOKEN]: asValue(defaultEmailSender) })

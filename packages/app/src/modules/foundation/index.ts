@@ -5,7 +5,7 @@ export const metadata: ModuleInfo = {
   title: 'Vereino foundation',
   version: '0.1.0',
   description:
-    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, the audience, dispatch and e-mail template primitives, and the token-link service.',
+    'Shared Vereino primitives: scoped command authorization, scope contract, role sync, accounts, encrypted fields, module schedules, localized rendering, error codes, recurrence parsing, status transitions, the occupancy contract, the audience, dispatch and e-mail template primitives, the token-link service, and social sign-in.',
   author: 'Vereino',
   license: 'AGPL-3.0-only',
 }
@@ -67,6 +67,11 @@ export {
   type PlainEncryptedFieldDeclaration,
 } from './services/encrypted-field'
 export { errors, type ErrorDetails, type ModuleErrors } from './services/errors'
+export {
+  enterpriseFeatures,
+  type EnterpriseFeatureScope,
+  type EnterpriseFeatures,
+} from './services/enterprise-features'
 export { assertSupportedLocale, localeForPerson, renderLocalized } from './services/localized'
 export {
   OCCUPANCY_PROVIDER_TOKEN,
@@ -101,6 +106,24 @@ export {
   type PublicRouteHandler,
   type PublicRouteLoadInput,
 } from './services/public-route-load'
+export {
+  PASSWORD_RESET_EMAIL_LIMIT,
+  SIGN_IN_EMAIL_LIMIT,
+  accountEmailLimit,
+  emailFromBody,
+  linkRequestEmailLimit,
+  tokenLimit,
+  type SessionlessLimit,
+  type SessionlessLimitConfig,
+} from './lib/sessionless-limits'
+export {
+  enforceSessionlessLimits,
+  noteClientAddress,
+  sessionlessRateLimiter,
+  sessionlessSubjectAllowed,
+  withAccountEmailLimit,
+} from './services/sessionless-limits'
+export { watchRateLimitStore } from './services/rate-limit-store-watch'
 export {
   desiredRoles,
   rolesForAssignments,

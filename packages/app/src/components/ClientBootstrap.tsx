@@ -162,6 +162,10 @@ export function groupsForProfile(profile: ClientBootstrapProfile): ClientRegistr
       return ['translations', 'injection']
     case 'checkout':
       return ['translations', 'injection', 'payments']
+    case 'login':
+      // Vereino (#566): the platform's `auth.login:form` spot carries the social sign-in buttons of `foundation`;
+      // without the injection registry the spot renders nothing on `/login`.
+      return ['translations', 'injection']
     case 'message':
       return ['messages']
     default:

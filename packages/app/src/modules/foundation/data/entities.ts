@@ -177,6 +177,47 @@ export class Delivery extends ScopedEntityBase {
   secretParams?: string | null
 }
 
+/** Providers a social sign-in can link (social sign-in spec DD-S05: Google in phase 1, Facebook in phase 2). */
+export type IdentityProviderId = 'google' | 'facebook'
+
+/**
+ * `vereino_identity_links` (social sign-in spec *Data Models*, DD-S02, DD-S03; #566): one (`provider`, `subject`) bound
+ * to one platform user (`user_id`, a scalar id of `auth:user`). Created only by `foundation.identity.link`; hard-deleted
+ * on unlink (DD-S06) and when the user is deleted. The unique (`provider`, `subject`) index serves the one system-scope
+ * read of the sign-in callback (DD-35 list, D-027). `email_at_link` is encrypted and only displayed.
+ */
+@Entity({ tableName: 'vereino_identity_links' })
+@Index({
+  name: 'vereino_identity_links_provider_subject_unique',
+  expression:
+    'create unique index "vereino_identity_links_provider_subject_unique" on "vereino_identity_links" ("provider", "subject")',
+})
+@Index({
+  name: 'vereino_identity_links_org_user_provider_unique',
+  expression:
+    'create unique index "vereino_identity_links_org_user_provider_unique" on "vereino_identity_links" ("organization_id", "user_id", "provider")',
+})
+@Index({ name: 'vereino_identity_links_org_user_idx', properties: ['organizationId', 'userId'] })
+export class IdentityLink extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'emailAtLink' | 'lastSignedInAt'
+
+  @Property({ name: 'user_id', type: 'uuid' })
+  userId!: string
+
+  @Property({ name: 'provider', type: 'text' })
+  provider!: IdentityProviderId
+
+  @Property({ name: 'subject', type: 'text' })
+  subject!: string
+
+  /** The e-mail the provider reported when the link was made (encrypted, display only; Facebook may report none). */
+  @Property({ name: 'email_at_link', type: 'text', nullable: true })
+  emailAtLink?: string | null
+
+  @Property({ name: 'last_signed_in_at', type: Date, nullable: true })
+  lastSignedInAt?: Date | null
+}
+
 /**
  * `foundation_club_jobs` (many-clubs spec *Data Models*, DD-M04; #629): one row per club and job type — when the job
  * is next due, the enqueue or run lease, and the last run's times and error code. A job row, not a user record: no

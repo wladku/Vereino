@@ -134,6 +134,9 @@ describe('carriedOverConsents', () => {
     const ending = [{ image: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA } }]
     expect(carriedOverConsents(own, ending)).toEqual({ consents: own, copied: [] })
     expect(carriedOverConsents({}, [])).toEqual({ consents: {}, copied: [] })
+    // The medical consent is never carried over: the adult gives their own (BR-O1, #682).
+    const medical = [{ medical: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA } }]
+    expect(carriedOverConsents({}, medical)).toEqual({ consents: {}, copied: [] })
   })
 })
 

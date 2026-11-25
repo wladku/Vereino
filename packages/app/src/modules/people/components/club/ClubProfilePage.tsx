@@ -16,6 +16,7 @@
 // (`OwnConsentsSection`), and every consent shows the club's own wording when the club changed it, with "given to an
 // earlier wording" for a consent given before the change (DD-L11). Phase L8 (#310): a card before and after the
 // member's own 18th birthday, and each ward's lines "May have an own account" and "Turns 18 on {date}" (`WardNotices`).
+// Social sign-in (#566): below the password, `foundation`'s "Connected accounts" on the `vereino:club:profile:sign-in` spot.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -39,12 +40,14 @@ import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
 import { ConsentList, EarlierWording, useConsentLabel } from './ConsentList'
 import { OwnLifeCycleNotice, WardNotices } from './LifeCycleNotices'
+import { MedicalSection } from './MedicalSection'
 import { OwnConsentsSection } from './OwnConsentsSection'
 import {
   CHANGE_PASSWORD_HREF,
   CLUB_LEAVE_HREF,
   MEMBER_PROFILE_API,
   MEMBER_PROFILE_QUERY_KEY,
+  OWN_CONSENTS_API,
   formatCalendarDate,
   formatInstant,
   fullName,
@@ -490,9 +493,26 @@ export function ClubProfilePage() {
           <OwnLifeCycleNotice profile={profile} />
           <ProfileForm key={profile.person.updatedAt ?? profile.person.id} profile={profile} />
           <OwnConsentsSection profile={profile} />
+          {profile.medical ? (
+            <MedicalSection
+              key={profile.medical.updatedAt ?? profile.person.id}
+              personId={profile.person.id}
+              medical={profile.medical}
+              consent={profile.ownConsents?.medical}
+              consentTarget={{
+                url: OWN_CONSENTS_API,
+                method: 'PUT',
+                body: (granted) => ({ changes: { medical: granted } }),
+                lockToken: profile.person.updatedAt,
+              }}
+              timeZone={profile.club.timezone}
+              texts={profile.consentTexts}
+            />
+          ) : null}
           <WardsSection profile={profile} />
           <GuardiansSection profile={profile} />
           <PasswordSection />
+          <InjectionSpot spotId="vereino:club:profile:sign-in" context={{}} />
           <LeaveSection profile={profile} />
         </div>
       )}

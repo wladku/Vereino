@@ -89,6 +89,7 @@ export const consentChangesSchema = z
     regulations: z.boolean().optional(),
     image: z.boolean().optional(),
     trips: z.boolean().optional(),
+    medical: z.boolean().optional(),
   } satisfies Record<ConsentKind, z.ZodOptional<z.ZodBoolean>>)
   .strict()
 
@@ -131,6 +132,17 @@ export const ownConsentsSchema = z
   .object({
     id: z.uuid().optional(),
     changes: consentChangesSchema,
+  })
+  .strict()
+
+/**
+ * `people.persons.medical.set` (#682): the sports medical certificate's "valid until" date, null to clear it. The
+ * person's lock token travels in the platform optimistic-lock header.
+ */
+export const medicalSetSchema = z
+  .object({
+    id: z.uuid(),
+    validUntil: calendarDateSchema.nullable(),
   })
   .strict()
 
@@ -189,6 +201,11 @@ export const syncRolesJobSchema = z.object({ today: calendarDateSchema.optional(
  * to run as (default: today in the club zone) and `dryRun`, which counts what a run would do and changes nothing (only the audit entry of the run is written).
  */
 export const lifeCycleJobSchema = z
+  .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })
+  .strict()
+
+/** Input of the daily `people:medical-reminders` job (#682): the club's date for a test or a catch-up run, a dry run. */
+export const medicalRemindersJobSchema = z
   .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })
   .strict()
 

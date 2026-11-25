@@ -138,7 +138,8 @@ export type ErasureCounts = PeopleErasureCounts
 
 /**
  * Erases the person's data at once (*Security → Erasure*): phone, e-mail, notes, PESEL and its hash, external id and
- * its hash, the photo pointer, birth date, locale, the three `…_at` consents and the own consents; the name too when
+ * its hash, the photo pointer, birth date, locale, the three `…_at` consents, the medical certificate date (#682) and
+ * the own consents; the name too when
  * no hold keeps it (`keepNameUntil` null). Also the consents on the guardianships where the person is the ward (ended
  * ones included), the notes and decline reasons of their departure requests, and the source data of staged import
  * rows that matched them. Ids and dates stay everywhere. Runs in the caller's transaction.
@@ -163,6 +164,8 @@ export async function erasePersonData(
   person.shareContactWithCoachesAt = null
   person.sharePresenceWithGuardiansAt = null
   person.publishNameConsentAt = null
+  // The medical certificate date (health data, #682): cleared with the consents that held it.
+  person.medicalValidUntil = null
   person.consents = {}
   if (!keepNameUntil) {
     person.firstName = ''

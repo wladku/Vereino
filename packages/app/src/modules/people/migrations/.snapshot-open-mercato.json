@@ -1797,6 +1797,23 @@
           "enumItems": [],
           "mappedType": "date"
         },
+        "medical_valid_until": {
+          "name": "medical_valid_until",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "notes": {
           "name": "notes",
           "type": "text",

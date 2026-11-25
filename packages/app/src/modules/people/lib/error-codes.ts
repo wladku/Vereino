@@ -98,6 +98,11 @@ export const errorCodes = [
   { code: 'confirmation_mismatch', status: 422, messageKey: 'people.errors.confirmation_mismatch' },
   { code: 'person_in_use', status: 409, messageKey: 'people.errors.person_in_use' },
   { code: 'person_anonymized', status: 409, messageKey: 'people.errors.person_anonymized' },
+  // The medical certificate date (training outlines and medical expiry spec BR-O1; #682): a date written while no
+  // `medical` consent is in force, and a `medical` consent given or withdrawn by staff (only the person or a guardian).
+  { code: 'medical_consent_missing', status: 409, messageKey: 'people.errors.medical_consent_missing' },
+  { code: 'medical_consent_subject_only', status: 403, messageKey: 'people.errors.medical_consent_subject_only' },
+  { code: 'medical_status_too_many', status: 400, messageKey: 'people.errors.medical_status_too_many' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

@@ -14,7 +14,9 @@
 // E06-S13 (#95): the assigned coach reports an absence here before the session starts; "Needs a coach" marks a
 // session without one. E10-S07 (#272, REQ-A14): the quick fill follows the declaration kind — a training fills the
 // expected participants — and says why when nothing is left to fill; the list opens 30 minutes before the start
-// (DD-A13) and says when.
+// (DD-A13) and says when. Training outlines and medical expiry spec M-O2 (#682): for a reader holding
+// `people.medical.view` each person carries the medical certificate chip, and "Medical: not valid" narrows the list to
+// the red ones (the marks of the hidden rows stay as they are).
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -32,9 +34,12 @@ import {
   formatClockTime,
   formatDayHeading,
   formatTimeRange,
+  isMedicalNotValid,
+  MedicalStatusTag,
   MemberSkeleton,
   Notice,
   StatusTag,
+  type MedicalStatusItem,
 } from '@vereino/ui'
 import {
   closesEarly,
@@ -52,6 +57,7 @@ import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { CancelSessionDialog } from './CoachSessionBlock'
 import { GuardianContacts } from './GuardianContacts'
 import { ReportAbsence } from './ReportAbsence'
+import { useMedicalLabels, useMedicalStatuses } from './useMedicalStatuses'
 import {
   ACTUAL_VALUES,
   ATTENDANCE_LIST_QUERY_KEY,
@@ -89,14 +95,18 @@ function AttendanceRowItem({
   selected,
   busy,
   onSelect,
+  medical,
 }: {
   row: AttendanceRow
   editable: boolean
   selected: ActualValue | null
   busy: boolean
   onSelect: (personId: string, actual: ActualValue | null) => void
+  /** The person's medical status, when the reader may see it (M-O2). */
+  medical: MedicalStatusItem | null
 }) {
   const t = useT()
+  const { labels: medicalLabels, formatDate: medicalDate } = useMedicalLabels()
   const name = rowName(row, t('activities.common.empty'))
   const groupId = `attendance-${row.personId}`
   return (
@@ -111,6 +121,16 @@ function AttendanceRowItem({
           </StatusTag>
         </span>
       </div>
+      {medical ? (
+        <MedicalStatusTag
+          item={medical}
+          labels={medicalLabels}
+          formatDate={medicalDate}
+          personId={row.personId}
+          className="self-start"
+          data-testid="club-attendance-medical"
+        />
+      ) : null}
       {!row.onRoster ? <p className="text-muted-foreground text-sm">{t('activities.club.attendance.guest')}</p> : null}
       {editable ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -232,6 +252,17 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
   const changed = sheetEntries(list.rows, current, false)
   const toFill = editable ? quickFill(list.declarationKind, list.rows, current) : []
   const fillsExpected = list.declarationKind === 'absence_only'
+  // M-O2: the medical statuses of the listed people; the filter shows only once a status came back.
+  const medicalStatuses = useMedicalStatuses(list.rows.map((row) => row.personId))
+  const [notValidOnly, setNotValidOnly] = React.useState(false)
+  const medicalFilterShown = medicalStatuses.size > 0
+  const filtering = medicalFilterShown && notValidOnly
+  const shownRows = filtering
+    ? list.rows.filter((row) => {
+        const item = medicalStatuses.get(row.personId)
+        return item ? isMedicalNotValid(item.status) : false
+      })
+    : list.rows
 
   const succeed = (message: string) => {
     setAnnouncement(message)
@@ -462,20 +493,46 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
             ) : null}
           </div>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {list.rows.map((row) => (
-              <AttendanceRowItem
-                key={row.personId}
-                row={row}
-                editable={editable}
-                selected={current(row)}
-                busy={busy}
-                onSelect={(personId, actual) => {
-                  setSelections((previous) => new Map(previous).set(personId, actual))
-                }}
-              />
-            ))}
-          </ul>
+          <>
+            {medicalFilterShown ? (
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={notValidOnly ? 'default' : 'outline'}
+                  className="min-h-11 rounded-full"
+                  aria-pressed={notValidOnly}
+                  data-testid="club-attendance-medical-filter"
+                  onClick={() => {
+                    setNotValidOnly(!notValidOnly)
+                  }}
+                >
+                  {t('activities.club.medical.filter')}
+                </Button>
+              </div>
+            ) : null}
+            {shownRows.length === 0 ? (
+              <p className="text-muted-foreground text-sm" data-testid="club-attendance-medical-filter-empty">
+                {t('activities.club.medical.filterEmpty')}
+              </p>
+            ) : (
+              <ul className="flex flex-col gap-3">
+                {shownRows.map((row) => (
+                  <AttendanceRowItem
+                    key={row.personId}
+                    row={row}
+                    editable={editable}
+                    selected={current(row)}
+                    busy={busy}
+                    medical={medicalStatuses.get(row.personId) ?? null}
+                    onSelect={(personId, actual) => {
+                      setSelections((previous) => new Map(previous).set(personId, actual))
+                    }}
+                  />
+                ))}
+              </ul>
+            )}
+          </>
         )}
         <p className="sr-only" aria-live="polite" data-testid="club-attendance-announcement">
           {announcement}

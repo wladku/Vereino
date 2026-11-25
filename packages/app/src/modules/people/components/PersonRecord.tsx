@@ -21,6 +21,7 @@ import { AccessDeniedMessage, ErrorMessage, LoadingMessage, RecordNotFoundState 
 import { InjectionSpot, useInjectionWidgets } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
+import { MedicalPanel } from './MedicalPanel'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { StatusTag, useClubToday } from '@vereino/ui'
@@ -48,6 +49,8 @@ import { useGrantedFeatures } from './useGrantedFeatures'
 const GROUPS_SPOT_ID = 'vereino:people:person-record:groups'
 /** The injection spot of the "Charges" tab (`payments/widgets/injection-table.ts`). */
 const CHARGES_SPOT_ID = 'vereino:people:person-record:charges'
+/** The person's sign-in methods below the account (`foundation`'s social sign-in, #566), so `people` never imports it. */
+const SIGN_IN_SPOT_ID = 'vereino:people:person-record:sign-in'
 
 /** The tab of `?tab=` when it is shown, else Details (always shown). */
 function tabFrom(value: string | null, allowed: readonly PersonRecordTab[]): PersonRecordTab {
@@ -209,6 +212,9 @@ export function PersonRecord({ id }: { id: string }) {
           ) : (
             <ReadOnlyDetails person={person} t={t} />
           )}
+          {person.medical ? (
+            <MedicalPanel key={person.medical.updatedAt ?? person.id} person={person} onChanged={refetch} />
+          ) : null}
           {features['people.persons.export'] && person.access === 'full' ? (
             <DataExportPanel personId={person.id} />
           ) : null}
@@ -239,6 +245,7 @@ export function PersonRecord({ id }: { id: string }) {
         </TabsContent>
         <TabsContent value="account" className="pt-4">
           <AccountPanel person={person} canManage={canManageAccount} onChanged={refetch} />
+          <InjectionSpot spotId={SIGN_IN_SPOT_ID} context={{ personId: person.id }} />
         </TabsContent>
         {hasGroupsTab ? (
           <TabsContent value="groups" className="pt-4">

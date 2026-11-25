@@ -19,6 +19,7 @@ import { detectLocale, resolveSupportedLocalesForRequest } from '@open-mercato/s
 import { ageOn, isActiveAt, type ActingRole, type AssignableRole } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
+import { memberMedicalView, type MemberMedicalView } from './medical'
 import {
   consentAuthorIds,
   consentAuthorRole,
@@ -96,6 +97,8 @@ export type MemberWardView = {
   }
   /** M-10 ward card lines (#310): the club's account age reached without an account; the 18th birthday within 30 days. */
   notices: WardNotice[]
+  /** The ward's sports medical certificate date and status (M-O4, #682); the guardian sets both. */
+  medical?: MemberMedicalView
 }
 
 /** One active guardian of the member (E06-S22 #104): who they are and the consents they gave for the member. */
@@ -142,6 +145,11 @@ export type MemberProfile = {
   consentTexts: ClubConsentTexts
   /** The member's own card before and after their 18th birthday (#310); null otherwise or without a birth date. */
   notice: OwnNotice | null
+  /**
+   * The adult member's own sports medical certificate date and status (M-O4, #682); null for a minor, whose guardians
+   * enter it.
+   */
+  medical: MemberMedicalView | null
 }
 
 export function memberPersonView(person: Person): MemberPersonView {
@@ -350,6 +358,23 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
   const gate = ctx.container.resolve<PaymentsGate>(PEOPLE_PAYMENTS_GATE)
   const payments = await gate.check({ ...scope, userId })
   const ownConsents = holdsOwnConsents(person.birthDate, today) ? await loadOwnConsents(em, scope, person) : null
+  // M-O4 (#682): the medical certificate block — the adult's own, and each ward's for the guardian.
+  const medical = ownConsents ? await memberMedicalView(em, scope, person, today) : null
+  // An empty `$in` compiles to `in ()`, a syntax error: no wards, no read.
+  const wardPersons =
+    wards.length === 0
+      ? []
+      : await findWithDecryption(
+          em,
+          Person,
+          { id: { $in: wards.map((ward) => ward.personId) }, ...scope, deletedAt: null },
+          { fields: ['id', 'birthDate', 'consents', 'medicalValidUntil', 'updatedAt'] },
+          scope,
+        )
+  for (const ward of wards) {
+    const row = wardPersons.find((candidate) => candidate.id === ward.personId)
+    if (row) ward.medical = await memberMedicalView(em, scope, row, today)
+  }
   const contribution = membershipContribution(ctx.container)
   const isParticipant = contribution
     ? await contribution.isActiveParticipant(em, { ...scope, personId: person.id }, today)
@@ -374,6 +399,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     ownConsents,
     consentTexts: await clubConsentTexts(ctx.container, scope),
     notice: ownNotice(person.birthDate, today),
+    medical,
   }
 }
 

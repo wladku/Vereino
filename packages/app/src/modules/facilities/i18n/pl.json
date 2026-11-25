@@ -1386,5 +1386,6 @@
   "facilities.reports.owner.paymentsSource.mixed": "Źródło: należności wynajmów i rejestr wynajmów ({count} wynajmów)",
   "facilities.reports.owner.partiallyPaid": "{count} opłaconych częściowo, poza sumą",
   "facilities.nav.badge.waiting": "{count} oczekuje",
-  "facilities.places.nav.clubEvents": "Imprezy klubowe"
+  "facilities.places.nav.clubEvents": "Imprezy klubowe",
+  "facilities.places.nav.outlines": "Konspekty treningów"
 }

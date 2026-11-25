@@ -48,7 +48,11 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'communication.*',
       'payments.*',
       'facilities.*',
+      // Training outlines (training outlines spec, #683): every outline of the club.
+      'training.*',
       'dictionaries.*',
+      // Social sign-in (#566): the administrator lists and unlinks any person's sign-in identities.
+      'foundation.identity.manage',
       // The panel dashboard (README B-01) with the Vereino widgets the other features offer (#88).
       'dashboards.view',
     ],
@@ -64,6 +68,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       // 2026-11-19, #377): the coordinator creates it, editing and deleting it stay `club_core.manage`.
       'club_core.places.add_external',
       'people.view',
+      // The medical certificate date of the own sections' members: status and date, and the write (Q-O01; #682).
+      'people.medical.view',
+      'people.medical.manage',
       // The platform does not expand `dependsOn` at check time (`aclDependencies.ts` only reports missing
       // dependencies), so `groups.manage` does not imply `groups.view`: the coordinator gets both (#30).
       'groups.view',
@@ -80,6 +87,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'facilities.bookings.create',
       'payments.groups.view',
       'payments.groups.collect',
+      // Training outlines of the coordinator's sections (training outlines spec, #683).
+      'training.outlines.write',
       // The panel dashboard with the widgets of the coordinator's other features: "Sessions needing a coach" and
       // "Unsettled sessions" for the own sections (navigation spec REQ-N04, Q-N03 approved 2026-11-15; #260).
       'dashboards.view',
@@ -91,6 +100,10 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     authRole: 'vereino_coach',
     features: [
       'people.self',
+      // Social sign-in (#566): own identities follow `people.self`.
+      'foundation.identity.self',
+      // The medical certificate status and date of the own groups' players, no write (REQ-O02; #682).
+      'people.medical.view',
       'communication.view',
       'groups.view',
       'activities.coach',
@@ -101,6 +114,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'facilities.bookings.create',
       'payments.groups.view',
       'payments.groups.collect',
+      // Own outlines and those of the groups the coach runs (training outlines spec, #683).
+      'training.outlines.write',
     ],
     implies: ['member'],
     requiresScope: null,
@@ -141,7 +156,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
   },
   member: {
     authRole: 'vereino_member',
-    features: ['people.self', 'activities.attendance.declare', 'communication.view'],
+    // `foundation.identity.self` (#566): own social sign-in identities follow `people.self`.
+    features: ['people.self', 'foundation.identity.self', 'activities.attendance.declare', 'communication.view'],
     requiresScope: null,
   },
   payer: {

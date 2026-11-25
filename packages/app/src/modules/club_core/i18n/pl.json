@@ -828,5 +828,7 @@
   "club_core.offboarding.banner.started": "Eksport się rozpoczął. Gdy będzie gotowy, pobierzesz go z tego komunikatu.",
   "club_core.offboarding.banner.startError": "Nie udało się rozpocząć eksportu.",
   "club_core.offboarding.banner.loadError": "Nie udało się sprawdzić, czy klub kończy korzystanie z Vereino.",
-  "club_core.offboarding.banner.retry": "Spróbuj ponownie"
+  "club_core.offboarding.banner.retry": "Spróbuj ponownie",
+  "club_core.settings.consentTexts.medical": "Data ważności orzeczenia lekarskiego",
+  "club_core.settings.consentTexts.medical.builtIn": "Zgadzam się, aby klub przechowywał datę ważności orzeczenia lekarskiego o zdolności do uprawiania sportu, pokazywał jej status trenerom i przypominał mi przed jej upływem"
 }

@@ -29,6 +29,18 @@ export const errorCodes = [
   // Phase C P-10 (#157): `TokenLinkService.peek` and `redeem` refuse an expired link and a spent single-use link.
   { code: 'token_link_expired', status: 410, messageKey: 'foundation.errors.token_link_expired' },
   { code: 'token_link_used', status: 410, messageKey: 'foundation.errors.token_link_used' },
+  // Social sign-in (#566, spec *API, Command, and Error Contracts*): a provider without a client id, the state store
+  // unreachable on `start` (fail closed), a second link of the same provider for the same user, and removing the last
+  // sign-in method. The callback's failures are redirects with fingerprints, not codes.
+  { code: 'identity_provider_disabled', status: 404, messageKey: 'foundation.errors.identity_provider_disabled' },
+  { code: 'identity_unavailable', status: 503, messageKey: 'foundation.errors.identity_unavailable' },
+  { code: 'identity_already_linked', status: 409, messageKey: 'foundation.errors.identity_already_linked' },
+  { code: 'identity_last_method', status: 409, messageKey: 'foundation.errors.identity_last_method' },
+  // Enterprise package spec DD-E06, DD-E07 (#649): `enterpriseFeatures` answers them for an Enterprise feature no
+  // installed licence key enables for the tenant (404, like an unknown route) and for a write while the tenant's key
+  // expired past its grace period (409; reads keep working).
+  { code: 'enterprise_feature_disabled', status: 404, messageKey: 'foundation.errors.enterprise_feature_disabled' },
+  { code: 'enterprise_feature_read_only', status: 409, messageKey: 'foundation.errors.enterprise_feature_read_only' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

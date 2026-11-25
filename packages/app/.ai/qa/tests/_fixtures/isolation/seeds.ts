@@ -6,12 +6,15 @@ import { seedActivities } from './seed-activities'
 import { seedClubCore } from './seed-club_core'
 import { seedCommunication } from './seed-communication'
 import { seedFacilities } from './seed-facilities'
+import { seedFoundation } from './seed-foundation'
 import { seedGroups } from './seed-groups'
 import { seedPayments } from './seed-payments'
 import { seedPaymentsOrders } from './seed-payments-orders'
 import { seedPeople } from './seed-people'
+import { seedTraining } from './seed-training'
 
 export const MODULE_SEEDS: Record<string, ModuleSeed> = {
+  foundation: seedFoundation,
   club_core: seedClubCore,
   people: seedPeople,
   groups: seedGroups,
@@ -20,6 +23,7 @@ export const MODULE_SEEDS: Record<string, ModuleSeed> = {
   facilities: seedFacilities,
   payments: seedPayments,
   'payments-orders': seedPaymentsOrders,
+  training: seedTraining,
 }
 
 /** The seeds of the given modules (all when `modules` is null; `payments` includes `payments-orders`), in order. */
