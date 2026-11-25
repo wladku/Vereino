@@ -168,6 +168,20 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # The deployed image (#727): builds the Dockerfile's `runner` stage and runs it as Railway does — pre-deploy on an
+  # empty database, `yarn initialize`, the app with the Redis cache, the worker — then `scripts/smoke.mjs` against it.
+  # The integration suite runs a workspace build, not this image, so only this job sees a broken runner stage.
+  image-smoke:
+    name: image-smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: scripts/image-smoke.sh
+
   perf:
     name: perf
     runs-on: ubuntu-latest
