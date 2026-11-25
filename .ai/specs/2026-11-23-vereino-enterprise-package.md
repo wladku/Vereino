@@ -1,7 +1,7 @@
 # Vereino Enterprise: a private package switched on per tenant by a licence key
 
 **Date**: 2026-11-23
-**Status**: Ready for implementation (issue #649, epic E23 #646, decision D-035 point 2; owner decision of 2026-11-23 on PR #660: Q-E01…Q-E05 answered as recommended, the Ask First items of phases 1a and 1b approved.)
+**Status**: In progress (issue #649, epic E23 #646, decision D-035 point 2; owner decision of 2026-11-23 on PR #660: Q-E01…Q-E05 answered as recommended, the Ask First items of phases 1a and 1b approved.)
 
 ## TLDR
 
