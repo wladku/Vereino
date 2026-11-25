@@ -250,6 +250,17 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .seg button.on-no { background: var(--status-error-bg); color: var(--status-error-text); font-weight: 600; }
 .seg button.on { background: var(--primary); color: var(--primary-foreground); font-weight: 600; }
 .seg button:disabled { opacity: 0.5; cursor: not-allowed; }
+/* Day / Week / Month range switch (calendar range switch spec REQ-W02): views, arrows and the range label wrap at 375 px; 44 px targets. */
+.range-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 8px; }
+.range-bar .seg button { min-height: 44px; padding: 6px 12px; }
+/* The facility calendar's week in the panel: seven day axes side by side, scrolling inside their own row (DD-W06). */
+.week-axes { display: grid; grid-template-columns: repeat(7, minmax(120px, 1fr)); gap: 6px; overflow-x: auto; }
+.week-axes .day-head { margin-top: 0; }
+.week-axes .wk-col + .wk-col .tl-row { grid-template-columns: 0 1fr; }
+.week-axes .wk-col + .wk-col .tl-hour { visibility: hidden; padding: 0; }
+.week-axes .wk-col + .wk-col .tl-layer { left: 0; }
+/* P-04's week from 768 px: one row of seven day cells (REQ-W04); below it the days stay a list. */
+@media (min-width: 768px) { .week-cells { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; } .week-cells .slotlist li { grid-template-columns: 1fr; } }
 
 .badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 99px; padding: 1px 8px; font-size: 11.5px; font-weight: 550; border: 1px solid; white-space: nowrap; }
 .badge.neutral { background: var(--status-neutral-bg); color: var(--status-neutral-text); border-color: var(--status-neutral-border); }

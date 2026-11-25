@@ -67,7 +67,7 @@ A guest cannot look at one day of a pitch; staff cannot see a place's week; a co
 ## Proposed Solution
 
 1. `@vereino/ui` gains `calendar-range.ts` (pure range maths) and `calendar-range-switch.tsx` (the control). Modules pass the labels and a link builder, as `calendar-list.tsx` does.
-2. Each view reads `view` and `date` from the address, derives `{ from, to }` with the shared rules, and reads its existing API with that window. Without `view`, the view follows the screen width (DD-W03).
+2. Each view reads `range` and `date` from the address, derives `{ from, to }` with the shared rules, and reads its existing API with that window. Without `range`, the view follows the screen width (DD-W03).
 3. P-04's public read gains optional `from`/`to` next to `month` (REQ-W03).
 4. B-23 and M-11 render Week as seven day axes side by side from `lg` and as a list of days below; Month as a list of days (D-040).
 5. B-15 drives `ScheduleView` from the address and the shared control and hides the toolbar's own view buttons.
@@ -77,13 +77,13 @@ A guest cannot look at one day of a pitch; staff cannot see a place's week; a co
 | Id | Decision | Alternatives rejected |
 |---|---|---|
 | DD-W01 | One shared control in `@vereino/ui` with module-supplied labels (Q-W05) | One per module: four looks for one idea, the reason for #784 |
-| DD-W02 | The address carries `view` (`day`, `week`, `month`, plus a view's own extra tab) and `date` (any day inside the range, `YYYY-MM-DD`); arrows move by one day, week or month and keep `date` on the same weekday or day of month, clamped to the month's last day | `from`/`to` in the address: two values to keep consistent, and a link would not say which view it is |
-| DD-W03 | Without `view`, below `md` (768 px) the view is Day, from `md` up Week. A server-rendered page (P-04, #487) renders the Week read; on a phone the client shows Day from the same data (a day is inside its week), so no second request and no flash of an empty page | Reading `User-Agent`: unreliable; a cookie: the address is the memory |
+| DD-W02 | The address carries `range` (`day`, `week`, `month`, plus a view's own extra tab: `upcoming` on M-03, `agenda` on B-15) and `date` (any day inside the range, `YYYY-MM-DD`); arrows move by one day, week or month and keep `date` on the same weekday or day of month, clamped to the month's last day | `from`/`to` in the address: two values to keep consistent, and a link would not say which view it is; the name `view`: B-15 already uses `?view=` for its perspectives (Upcoming … Calendar, DD-A11) |
+| DD-W03 | Without `range`, below `md` (768 px) the view is Day, from `md` up Week. A server-rendered page (P-04, #487) renders the Week read; on a phone the client shows Day from the same data (a day is inside its week), so no second request and no flash of an empty page | Reading `User-Agent`: unreliable; a cookie: the address is the memory |
 | DD-W04 | A week starts on Monday in the club's time zone; a month is the calendar month; ranges are club-zone dates like every other calendar read | Locale-dependent first day: the clubs are in Poland and the axis and the grid both assume Monday |
 | DD-W05 | Week and Month on a phone are lists of days that have entries; days without entries are omitted (P-04 keeps its "Pokaż wcześniejsze dni" for the current month, Q-R17) | A grid at 375 px: unreadable (#100 Q1) |
 | DD-W06 | B-23 / M-11 Week from `lg` (1024 px): seven `DayAxis` columns sharing one hour scale, each headed by its day and opening a day on click of the header; the day chips stay for Day only | Seven stacked axes on a desktop: a scroll of 98 hours |
 | DD-W07 | P-04 reads `from`/`to` (≤ 31 days, inside the existing readable window: the previous month to twelve months ahead); `month` stays and wins when both are sent | Two month reads glued in the browser: two requests for every week that crosses a month |
-| DD-W08 | Existing links keep working: P-04 `?month=YYYY-MM` opens Month at that month; M-03 `?from=&to=` link ranges keep their behaviour (#493); B-23/M-11 `?date=` opens Day at that date when `view` is absent and the screen is a phone, Week containing it otherwise | Redirecting old links: QR codes on printed posters point at P-04 |
+| DD-W08 | Existing links keep working: P-04 `?month=YYYY-MM` opens Month at that month; M-03 `?from=&to=` link ranges keep their behaviour (#493); B-23/M-11 `?date=` opens Day at that date when `range` is absent and the screen is a phone, Week containing it otherwise | Redirecting old links: QR codes on printed posters point at P-04 |
 
 ## Domain Vocabulary and Business Rules
 
@@ -117,14 +117,14 @@ The switch never widens a read: each view asks its existing API for a window it 
 ## Architecture and Data Flow
 
 ```
-address ?view&date ──► parseCalendarRange(searchParams, isWide) ──► { view, anchor, from, to }
+address ?range&date ──► parseCalendarRange(searchParams, isWide) ──► { range, anchor, from, to }
                                      │                                   │
                        CalendarRangeSwitch (labels, hrefFor)      existing read with from/to
                                                                   (P-04: public schedule; M-03/B-15: /api/activities/calendar;
                                                                    B-23/M-11: /api/facilities/calendar?placeId)
 ```
 
-`calendar-range.ts` exports `parseCalendarRange`, `rangeOf(view, anchor)`, `shiftRange(view, anchor, ±1)`, `rangeLabelParts` and `clampToWindow`. All are pure and take club-zone `YYYY-MM-DD` strings. The window sizes fit every API: a month is ≤ 31 days (facilities calendar limit 31, activities calendar limit 62, public read limit 31 by DD-W07).
+`calendar-range.ts` exports `parseCalendarRange`, `rangeOf(range, anchor)`, `shiftRange(range, anchor, ±1)`, `rangeLabelParts` and `clampToWindow`. All are pure and take club-zone `YYYY-MM-DD` strings. The window sizes fit every API: a month is ≤ 31 days (facilities calendar limit 31, activities calendar limit 62, public read limit 31 by DD-W07).
 
 ## User Journeys
 
@@ -132,7 +132,7 @@ address ?view&date ──► parseCalendarRange(searchParams, isWide) ──► 
 
 1. Scans the poster's QR code: `/p/przyklad/places/boisko` opens on today (Day).
 2. Taps "Tydzień": the seven days of this week as a list; Saturday shows "09:00–13:00 Wolne — do rezerwacji".
-3. Taps "Później": next week; the address now holds `?view=week&date=…`, which they share with the other parent.
+3. Taps "Później": next week; the address now holds `?range=week&date=…`, which they share with the other parent.
 
 ### Journey J-W02 — The administrator plans next week's pitch (B-23, desktop)
 
@@ -153,7 +153,18 @@ address ?view&date ──► parseCalendarRange(searchParams, isWide) ──► 
 
 ### UI architecture
 
-`CalendarRangeSwitch` props: `view`, `anchor`, `labels` (`day`, `week`, `month`, `earlier`, `later`, `today`, `previous.{day,week,month}`, `next.{day,week,month}`, `groupLabel`), `hrefFor(view, anchor)`, optional `extraTabs: { id, label }[]`, optional `window: { min, max }`, `todayDate`. It renders, in one row that wraps at 375 px: the segmented views (`role="tablist"` is not used — links with `aria-current="page"`, as the route tabs do), then "Wcześniej", the range label, "Później" and "Dziś". Every target is ≥ 44 px high below `sm` (`min-h-11`). Navigation uses links (`replace` for arrows, `push` for a view change), so the back button returns to the previous view.
+Proposal visuals — screenshots of the updated mockup (the design authority, D-031), fictional example club:
+
+| Screen | Image |
+|---|---|
+| P-04 Week on a desktop (seven day cells) | [mockup-01-p04-week-desktop.jpg](assets/vereino-calendar-range-switch/mockup-01-p04-week-desktop.jpg) |
+| M-03 Day on the phone (Najbliższe · Dzień · Tydzień · Miesiąc) | [mockup-02-m03-day-phone.jpg](assets/vereino-calendar-range-switch/mockup-02-m03-day-phone.jpg) |
+| B-23 Week in the panel (seven day axes) | [mockup-03-b23-week-desktop.jpg](assets/vereino-calendar-range-switch/mockup-03-b23-week-desktop.jpg) |
+| B-15 Calendar, Week (Dzień · Tydzień · Miesiąc · Agenda) | [mockup-04-b15-calendar-week.jpg](assets/vereino-calendar-range-switch/mockup-04-b15-calendar-week.jpg) |
+
+The mockup routes: `#/p/przyklad/places/orlik-boisko?range=week&date=2026-11-18`, `#/club/calendar`, `#/backend/facilities/calendar?place=pl-boisko&range=week`, `#/club/places/pl-boisko?range=week`, `#/backend/activities/occurrences?view=calendar`. The mockup's shared helpers are `calRange`, `rangeDays`, `shiftAnchor`, `rangeLabel` and `rangeSwitch` in `app.ts`.
+
+`CalendarRangeSwitch` props: `range`, `anchor`, `labels` (`day`, `week`, `month`, `earlier`, `later`, `today`, `previous.{day,week,month}`, `next.{day,week,month}`, `groupLabel`), `hrefFor(range, anchor)`, optional `extraTabs: { id, label }[]`, optional `window: { min, max }`, `todayDate`. It renders, in one row that wraps at 375 px: the segmented views (`role="tablist"` is not used — links with `aria-current="page"`, as the route tabs do), then "Wcześniej", the range label, "Później" and "Dziś". Every target is ≥ 44 px high below `sm` (`min-h-11`). Navigation uses links (`replace` for arrows, `push` for a view change), so the back button returns to the previous view.
 
 ### P-04 `/p/[clubSlug]/places/[placeSlug]` (REQ-W04)
 
@@ -175,7 +186,7 @@ Tabs: **Najbliższe · Dzień · Tydzień · Miesiąc**. Day: the day's cards (`
 
 ### B-15 `/backend/activities/occurrences` "Calendar" (REQ-W07)
 
-Tabs: **Dzień · Tydzień · Miesiąc · Agenda** from the shared control above `ScheduleView`; `ScheduleView` receives `view` and `range` from the address and its own view buttons are hidden (its date arrows are replaced by the shared ones). The section filter joins the address (`section`).
+Tabs: **Dzień · Tydzień · Miesiąc · Agenda** from the shared control above `ScheduleView`; `ScheduleView` receives its `view` and `range` props from the address (`?view=calendar&range=…&date=…`) and its own view buttons are hidden (its date arrows are replaced by the shared ones). The section filter joins the address (`section`).
 
 ## Data Models
 
@@ -255,7 +266,7 @@ Each phase is one story under one epic; phase 1 first, phases 2–5 in any order
 
 ## Rollout, Migration, and Rollback
 
-No migration and no flag. Each phase ships on its own; rolling one back restores that view's old behaviour, and links with `view`/`date` then fall back to the view's previous default (unknown parameters are ignored).
+No migration and no flag. Each phase ships on its own; rolling one back restores that view's old behaviour, and links with `range`/`date` then fall back to the view's previous default (unknown parameters are ignored).
 
 ## Risks and Tradeoffs
 
