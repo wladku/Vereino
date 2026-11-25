@@ -10,35 +10,35 @@
 //   command `foundation.identity.link` inserts the link → `/club/profile?identity=linked`; any failure, including a
 //   subject bound to another user, → `/club/profile?identity=failed` with a fingerprint and nothing revealed.
 // No account is ever created and no e-mail is ever matched (DD-S02).
-import type { CommandBus } from '@open-mercato/shared/lib/commands'
-import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
+// A round trip started on a club's address (DD-S07, #700) comes back here too — the one redirect URI of every provider —
+// but its state cookie lives on the club's host: the marker's recorded club stands in for the cookie check, the code is
+// exchanged here, and the identity goes to the club's address through a one-minute single-use hand-off
+// (`../handoff/route.ts`), which checks that host's cookie and sets the session there. Its failures land on the club's
+// address too.
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { buildSafeRedirectResponse } from '@open-mercato/core/modules/auth/lib/requestRedirect'
 import type { NextResponse } from 'next/server'
-import type { IdentityCommandResult } from '../../../../commands/identity'
 import {
-  IdentityTimeoutError,
+  callbackBrowserAccepted,
+  handoffPath,
   isWellFormedState,
   loginOutcomePath,
   markerAccepted,
   profileOutcomePath,
   type IdentityProvider,
   type ProviderIdentity,
+  type StateClub,
   type StateMarker,
 } from '../../../../lib/identity'
-import { trustedScopeOf } from '../../../../services/authorize-scoped'
 import {
-  clearStateCookie,
   consumeStateMarker,
-  findLinkForSignIn,
-  issueSession,
   reportIdentityFailure,
   stateCookieOf,
   stateMatchesCookie,
+  storeHandoffMarker,
 } from '../../../../services/identity'
 import { exchangeCode, providerConfig } from '../../../../services/identity-providers'
-import { commandContextForRequest } from '../../../../services/route-context'
+import { failureReason, finish, link, signIn } from '../../round-trip'
 import { providerParamsSchema } from '../../shared'
 
 export const metadata = {
@@ -48,90 +48,64 @@ export const metadata = {
   },
 }
 
-function finish(request: Request, path: string): NextResponse {
-  const response = buildSafeRedirectResponse(request, path, 303)
-  response.headers.set('Cache-Control', 'no-store')
-  clearStateCookie(response)
-  return response
-}
-
-function failureReason(error: unknown): string {
-  if (error instanceof IdentityTimeoutError) return 'timeout'
-  if (error instanceof Error) return error.name
-  return 'unknown'
-}
-
-/** The consumed marker of this browser's round trip, or null (reported as `state_invalid`). */
-async function consumedMarker(request: Request, provider: IdentityProvider): Promise<StateMarker | null> {
+/**
+ * The consumed marker of this browser's round trip, with its state, or null (reported as `state_invalid`). Without a
+ * matching cookie only a round trip started on a club's address passes; its browser check is the hand-off's.
+ */
+async function consumedMarker(
+  request: Request,
+  provider: IdentityProvider,
+): Promise<{ marker: StateMarker; state: string } | null> {
   const state = new URL(request.url).searchParams.get('state')
-  if (!isWellFormedState(state) || !stateMatchesCookie(state, stateCookieOf(request))) {
+  if (!isWellFormedState(state)) {
     reportIdentityFailure('foundation.identity.state_invalid', { provider, reason: 'cookie_mismatch' })
     return null
   }
+  const cookieMatches = stateMatchesCookie(state, stateCookieOf(request))
   const marker = await consumeStateMarker(await createRequestContainer(), state)
   if (!marker || !markerAccepted(marker, provider, Date.now())) {
     reportIdentityFailure('foundation.identity.state_invalid', {
       provider,
-      reason: marker ? 'foreign_or_expired' : 'missing_or_used',
+      reason: marker ? 'foreign_or_expired' : cookieMatches ? 'missing_or_used' : 'cookie_mismatch',
     })
     return null
   }
-  return marker
+  if (!callbackBrowserAccepted(cookieMatches, marker)) {
+    reportIdentityFailure('foundation.identity.state_invalid', { provider, reason: 'cookie_mismatch' })
+    return null
+  }
+  return { marker, state }
 }
 
-async function signIn(request: Request, provider: IdentityProvider, identity: ProviderIdentity, marker: StateMarker) {
-  const container = await createRequestContainer()
-  const link = await findLinkForSignIn(container, provider, identity.subject)
-  const response = link ? await issueSession(container, request, link, marker.redirect) : null
-  if (!response) {
-    reportIdentityFailure('foundation.identity.not_linked', { provider, reason: link ? 'user_unavailable' : 'no_link' })
-    return finish(request, loginOutcomePath('unlinked'))
-  }
-  response.headers.set('Cache-Control', 'no-store')
-  clearStateCookie(response)
-  return response
-}
-
-async function link(request: Request, provider: IdentityProvider, identity: ProviderIdentity, marker: StateMarker) {
-  const purpose = marker.purpose
-  const ctx = await commandContextForRequest(request)
-  const scope = ctx ? trustedScopeOf(ctx) : null
-  if (
-    purpose.kind !== 'link' ||
-    !ctx?.auth ||
-    !scope ||
-    ctx.auth.sub !== purpose.userId ||
-    scope.tenantId !== purpose.tenantId ||
-    scope.organizationId !== purpose.organizationId
-  ) {
-    reportIdentityFailure('foundation.identity.state_invalid', { provider, reason: 'session_changed' })
-    return finish(request, loginOutcomePath('invalid'))
-  }
-  try {
-    await ctx.container
-      .resolve<CommandBus>('commandBus')
-      .execute<unknown, IdentityCommandResult>('foundation.identity.link', {
-        input: { provider, subject: identity.subject, email: identity.email },
-        ctx,
-      })
-    return finish(request, profileOutcomePath('linked', provider))
-  } catch (error: unknown) {
-    if (error instanceof Error && error.name === 'IdentitySubjectConflict') {
-      reportIdentityFailure('foundation.identity.subject_conflict', { provider, userId: purpose.userId })
-    } else {
-      const reason = isCrudHttpError(error) ? String(error.body.code ?? error.status) : failureReason(error)
-      reportIdentityFailure('foundation.identity.callback_failed', { provider, stage: 'link', reason })
-    }
-    return finish(request, profileOutcomePath('failed', provider))
-  }
+/** Hands a round trip started on a club's address back to it (DD-S07); a store failure ends there as `failed`. */
+async function handOff(
+  request: Request,
+  provider: IdentityProvider,
+  identity: ProviderIdentity,
+  marker: StateMarker & { club: StateClub },
+  state: string,
+  failed: string,
+): Promise<NextResponse> {
+  const token = await storeHandoffMarker(await createRequestContainer(), {
+    provider,
+    purpose: marker.purpose,
+    redirect: marker.redirect,
+    club: marker.club,
+    state,
+    identity,
+  })
+  if (!token) return finish(request, failed, marker.club)
+  return finish(request, handoffPath(provider, token), marker.club)
 }
 
 export async function GET(request: Request, context: { params: Promise<{ provider: string }> }): Promise<Response> {
   const params = providerParamsSchema.safeParse(await context.params)
   if (!params.success) return finish(request, loginOutcomePath('invalid'))
   const provider = params.data.provider
-  const marker = await consumedMarker(request, provider)
-  if (!marker) return finish(request, loginOutcomePath('invalid'))
+  const consumed = await consumedMarker(request, provider)
+  if (!consumed) return finish(request, loginOutcomePath('invalid'))
+  const { marker, state } = consumed
+  const club = marker.club
   const failed = marker.purpose.kind === 'link' ? profileOutcomePath('failed', provider) : loginOutcomePath('failed')
 
   const config = providerConfig(provider)
@@ -142,7 +116,7 @@ export async function GET(request: Request, context: { params: Promise<{ provide
       stage: 'authorize',
       reason: config ? 'no_code' : 'disabled',
     })
-    return finish(request, failed)
+    return finish(request, failed, club)
   }
   let identity: ProviderIdentity | null
   try {
@@ -153,12 +127,13 @@ export async function GET(request: Request, context: { params: Promise<{ provide
       stage: 'token',
       reason: failureReason(error),
     })
-    return finish(request, failed)
+    return finish(request, failed, club)
   }
   if (!identity) {
     reportIdentityFailure('foundation.identity.callback_failed', { provider, stage: 'token', reason: 'claims' })
-    return finish(request, failed)
+    return finish(request, failed, club)
   }
+  if (club) return handOff(request, provider, identity, { ...marker, club }, state, failed)
   return marker.purpose.kind === 'sign_in'
     ? signIn(request, provider, identity, marker)
     : link(request, provider, identity, marker)
@@ -171,11 +146,11 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Provider callback',
       description:
-        'Consumes the single-use state (it must match the HttpOnly cookie), exchanges the code with the PKCE verifier and checks the id token. A sign-in with a linked identity sets the platform session cookies and redirects to the landing path; every other sign-in outcome redirects to `/login?identity=unlinked|invalid|failed`, which all render one sentence. A link round trip redirects to `/club/profile?identity=linked|failed`. Never creates an account. Rate-limited per client IP.',
+        'Consumes the single-use state (it must match the HttpOnly cookie), exchanges the code with the PKCE verifier and checks the id token. A sign-in with a linked identity sets the platform session cookies and redirects to the landing path; every other sign-in outcome redirects to `/login?identity=unlinked|invalid|failed`, which all render one sentence. A link round trip redirects to `/club/profile?identity=linked|failed`. A round trip started on a club\'s address (DD-S07) redirects to that address\'s `handoff` route with a one-minute single-use token, and its failures land on that address. Never creates an account. Rate-limited per client IP.',
       responses: [
         {
           status: 303,
-          description: 'Redirect to the landing path, `/login` or `/club/profile`',
+          description: 'Redirect to the landing path, `/login`, `/club/profile` or the club address hand-off',
           mediaType: 'text/html',
         },
       ],

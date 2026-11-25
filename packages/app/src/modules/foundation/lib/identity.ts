@@ -6,6 +6,13 @@
 // from the provider's token endpoint over TLS in the back channel (it never passes through the browser), so — as OIDC
 // Core §3.1.3.7 allows — the TLS server validation stands in for the signature check, and `idTokenIdentity` checks
 // the issuer, the audience, the authorized party, the expiry and the subject itself.
+//
+// DD-S07 (one central callback host; #700): the provider always returns to `APP_URL`. A round trip started on a club's
+// address (`<slug>.<VEREINO_CLUB_DOMAIN>`) records that address and the club's tenant in the state marker; the callback
+// exchanges the code and hands the identity to the club's address through a short-lived single-use hand-off marker
+// (the DD-S04 cache pattern), where the session is set — the session cookie is host-only. The hand-off is refused on
+// any host other than the recorded one and in any browser other than the one that started the round trip.
+import { clubDomain } from '@vereino/core'
 
 /** Providers of the identity-link table (`IdentityLink.provider`). */
 export const IDENTITY_PROVIDERS = ['google', 'facebook'] as const
@@ -150,6 +157,9 @@ export function isWellFormedState(value: unknown): value is string {
 export type StatePurpose =
   { kind: 'sign_in' } | { kind: 'link'; userId: string; tenantId: string; organizationId: string }
 
+/** The club's address a round trip started on (DD-S07): its origin and its tenant. */
+export type StateClub = { origin: string; tenantId: string }
+
 export type StateMarker = {
   provider: IdentityProvider
   purpose: StatePurpose
@@ -157,6 +167,8 @@ export type StateMarker = {
   verifier: string
   /** The sanitized same-origin path to land on after a sign-in. */
   redirect: string
+  /** Set when `start` ran on a club's address: the callback hands the round trip back there (DD-S07). */
+  club?: StateClub
   expiresAt: number
 }
 
@@ -179,8 +191,8 @@ function parsePurpose(value: unknown): StatePurpose | null {
   return null
 }
 
-/** The marker read back from the cache, or null for anything `start` did not write. */
-export function parseStateMarker(value: unknown): StateMarker | null {
+/** A cached value as an object: parsed from JSON text, or taken as it is; null for anything else. */
+function cachedObject(value: unknown): Record<string, unknown> | null {
   let data: unknown = value
   if (typeof value === 'string') {
     try {
@@ -189,12 +201,28 @@ export function parseStateMarker(value: unknown): StateMarker | null {
       return null
     }
   }
-  if (typeof data !== 'object' || data === null) return null
-  const marker = data as Record<string, unknown>
+  return typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : null
+}
+
+/** The recorded club of a marker: absent (`undefined`), well formed, or malformed (`null`). */
+function parseClub(value: unknown): StateClub | null | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'object' || value === null) return null
+  const club = value as Record<string, unknown>
+  if (!isNonEmptyString(club.origin) || !isNonEmptyString(club.tenantId)) return null
+  return { origin: club.origin, tenantId: club.tenantId }
+}
+
+/** The marker read back from the cache, or null for anything `start` did not write. */
+export function parseStateMarker(value: unknown): StateMarker | null {
+  const marker = cachedObject(value)
+  if (!marker) return null
   const purpose = parsePurpose(marker.purpose)
+  const club = parseClub(marker.club)
   if (
     !isIdentityProvider(marker.provider) ||
     !purpose ||
+    club === null ||
     !isNonEmptyString(marker.verifier) ||
     !isNonEmptyString(marker.redirect) ||
     typeof marker.expiresAt !== 'number'
@@ -206,13 +234,136 @@ export function parseStateMarker(value: unknown): StateMarker | null {
     purpose,
     verifier: marker.verifier,
     redirect: marker.redirect,
+    ...(club ? { club } : {}),
     expiresAt: marker.expiresAt,
   }
 }
 
 /** True when the consumed marker belongs to this provider's callback and has not expired. */
-export function markerAccepted(marker: StateMarker, provider: IdentityProvider, nowMs: number): boolean {
+export function markerAccepted(
+  marker: { provider: IdentityProvider; expiresAt: number },
+  provider: IdentityProvider,
+  nowMs: number,
+): boolean {
   return marker.provider === provider && marker.expiresAt > nowMs
+}
+
+/**
+ * The browser check of the callback: the state cookie matches, or — for a round trip started on a club's address, whose
+ * state cookie lives on that host and never reaches `APP_URL` — the check is left to the hand-off, which compares the
+ * club host's cookie with the state (DD-S07).
+ */
+export function callbackBrowserAccepted(cookieMatches: boolean, marker: StateMarker): boolean {
+  return cookieMatches || marker.club !== undefined
+}
+
+type HostEnv = Readonly<Record<string, string | undefined>>
+
+/** `host` without its `:port`. */
+const withoutPort = (host: string): string => host.replace(/:\d+$/, '')
+
+/**
+ * The label of a club's address in a `Host` header (`<label>.<VEREINO_CLUB_DOMAIN>`, one DNS label), or null: no club
+ * domain configured, the host of `APP_URL`, the bare domain, `www.` or any other host. Only the shape is checked here;
+ * the club itself comes from the approved public slug lookup (`clubCorePublicSite.clubForHost`), which answers null for a
+ * reserved or unknown label. A domain written with a port is matched with the port; one without matches on any port —
+ * the same reading as `club_core`'s `requestHost`.
+ */
+export function clubLabelOfHost(hostHeader: string | null | undefined, env: HostEnv): string | null {
+  const domain = clubDomain(env)
+  const raw = (hostHeader ?? '').trim().toLowerCase()
+  if (!domain || raw === '') return null
+  let appHost: string | null = null
+  try {
+    appHost = new URL(env.APP_URL?.trim() ?? '').host.toLowerCase()
+  } catch {
+    appHost = null
+  }
+  if (raw === appHost) return null
+  const host = domain.includes(':') ? raw : withoutPort(raw)
+  if (!host.endsWith(`.${domain}`)) return null
+  const label = host.slice(0, -(domain.length + 1))
+  return label === '' || label === 'www' || label.includes('.') ? null : label
+}
+
+/**
+ * True when the `Host` header names the recorded club origin: the exact host and port when the origin has a port, the
+ * host on any port when it has none (a proxy may append the port it listens on).
+ */
+export function hostMatchesOrigin(hostHeader: string | null | undefined, origin: string): boolean {
+  const raw = (hostHeader ?? '').trim().toLowerCase()
+  if (raw === '') return false
+  let url: URL
+  try {
+    url = new URL(origin)
+  } catch {
+    return false
+  }
+  return url.port === '' ? withoutPort(raw) === url.hostname : raw === url.host
+}
+
+/** How long a hand-off marker lives (DD-S07): one redirect, so one minute is plenty. */
+export const HANDOFF_TTL_MS = 60 * 1000
+
+/** The key of a hand-off marker in the platform cache. */
+export function handoffMarkerKey(token: string): string {
+  return `foundation:identity:handoff:${token}`
+}
+
+/** The hand-off route on a club's address. */
+export function handoffPath(provider: IdentityProvider, token: string): string {
+  return `/api/foundation/identity/${provider}/handoff?token=${encodeURIComponent(token)}`
+}
+
+/**
+ * What the callback hands to the club's address (DD-S07): the round trip's purpose and landing path, the identity the
+ * provider confirmed, the club it started on and its state, which the hand-off compares with the club host's cookie.
+ */
+export type HandoffMarker = {
+  provider: IdentityProvider
+  purpose: StatePurpose
+  redirect: string
+  club: StateClub
+  state: string
+  identity: ProviderIdentity
+  expiresAt: number
+}
+
+/** The hand-off marker read back from the cache, or null for anything the callback did not write. */
+export function parseHandoffMarker(value: unknown): HandoffMarker | null {
+  const marker = cachedObject(value)
+  if (!marker) return null
+  const purpose = parsePurpose(marker.purpose)
+  const club = parseClub(marker.club)
+  const identity = marker.identity as Record<string, unknown> | null | undefined
+  if (
+    !isIdentityProvider(marker.provider) ||
+    !purpose ||
+    !club ||
+    !isWellFormedState(marker.state) ||
+    !isNonEmptyString(marker.redirect) ||
+    typeof identity !== 'object' ||
+    identity === null ||
+    !isNonEmptyString(identity.subject) ||
+    !(identity.email === null || typeof identity.email === 'string') ||
+    typeof marker.expiresAt !== 'number'
+  ) {
+    return null
+  }
+  return {
+    provider: marker.provider,
+    purpose,
+    redirect: marker.redirect,
+    club,
+    state: marker.state,
+    identity: { subject: identity.subject, email: identity.email },
+    expiresAt: marker.expiresAt,
+  }
+}
+
+/** The location of an outcome: the path on the club's address when the round trip started there, else the path. */
+export function outcomeLocation(club: StateClub | undefined, path: string): string {
+  return club ? `${club.origin}${path}` : path
 }
 
 /** The `/login` outcomes: one sentence for all three (no enumeration, REQ-S04). */
