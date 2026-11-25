@@ -278,6 +278,12 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | M-17 | `/club/orders/[campaignId]` | Order (form and summary) | `payments.orders.place`; without a session — entry via sign-in or link request | 4 |
 | M-18 | `/club/coach/payments` | My groups' payments | `payments.groups.view` (+ `payments.groups.collect`) | 4 |
 | M-19 | `/club/o/[token]` | Order from link | token | 4 |
+| M-20 | `/club/training/outlines` | Training outlines | coach, coordinator, administrator ([D-038](../../.ai/specs/research/decisions/D-038-training-outlines-shared-library-and-medical-expiry.md)) | E24 |
+| M-21 | `/club/training/outlines/[id]` (+ `/print`) | Training outline (PZPN layout, print / PDF) | coach, coordinator, administrator | E24 |
+| M-22 | `/club/reports/pzpn` | Export to PZPN (schedule / attendance CSV) | `groups.view` | E24 |
+| M-23 | `/club/groups`, `/club/groups/[id]` | Groups, Squad (with medical status) | `groups.view`; the coordinator writes the medical date | E10, E24 |
+| M-24 | `/club/coach/units` | My units | coach | 2 |
+| M-25 | `/club/club-events`, `/club/club-events/[id]` | Club events with parts | `activities.manage` (coordinator, administrator) | E14 |
 | B-01 | `/backend` | Dashboard | staff | 1–5 |
 | B-02 | `/backend/club/settings` | Club settings | `club_core.manage` | 1 |
 | B-03 | `/backend/club/publication` | Publication | `club_core.publication.manage` | 1 |
@@ -299,6 +305,7 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | B-31 | `/backend/payments/orders/create`, `…/[id]/edit` | Order form wizard | `payments.orders.manage` | 4 |
 | B-32 | `/backend/payments/orders/[id]` | Campaign: orders, summary, stages | `payments.orders.manage` | 4 |
 | B-33 | `/backend/payments/cash-custody` | Cash to settle | `payments.cash.settle` (treasurer, administrator) | 4 |
+| B-34 | `/backend/activities/club-events` | Club events | `activities.manage` | E14 |
 | B-23 | `/backend/facilities/calendar` | Facility calendar | `facilities.view` | 5 |
 | B-24 | `/backend/facilities/rentals` | Rentals | `facilities.rentals.manage` | 5 |
 | B-25 | `/backend/facilities/requests` | Requests awaiting approval | `facilities.rentals.approve` | 5 |
@@ -311,6 +318,7 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | P-04 | `/p/[clubSlug]/places/[placeSlug]` | Facility calendar + request | public | 5 |
 | P-05 | `/p/[clubSlug]/requests/verify/[token]` | Request confirmation | token | 5 |
 | P-06 | `/p/[clubSlug]/events` | Events | public | 2 |
+| P-07 | `/p/[clubSlug]/events/[eventSlug]` | Event page (club event with parts) | public, while the Events menu is on | E14 |
 
 Reading the "Roles (feature)" column: where two features are listed as `*.view` / `*.manage`, the list and the detail page open with `*.view`; the edit actions on them (save, add, deactivate, record payment) require `*.manage`. Spec surfaces that this concept folds into another screen: `/backend/activities/calendar` (section calendar) is the "Calendar" perspective of B-15; `/backend/groups/external-teams` and `/backend/groups/seasons` are tabs of B-11; `/backend/payments/overdue` is the "Overdue" perspective of B-21; `/backend/payments/discounts` is the Discounts tab of B-20; `/club/wards/[personId]` is a ward's detail page reached from the wards tab of M-10. Pages with tabs (one menu item, one route per tab; a tab change navigates to the tab's route): B-07 Institutions and contracts — Institutions, Contracts (`/backend/club/contracts`); B-18 Threads and cases — All, Cases (`/backend/communication/cases`); B-26 Zones and rates — Zones, Closures (`/backend/facilities/closures`), Rental rates (`/backend/facilities/rates`); B-27 Log and incidents — Log, Incidents (`/backend/facilities/incidents`), Bans (`/backend/facilities/bans`), Maintenance (`/backend/facilities/maintenance`); B-28 Municipality report — Municipality report, Rented hours (`/backend/facilities/reports/rented-hours`). `/backend/people/imports` opens from the "Import" button of B-09.
 
@@ -737,6 +745,15 @@ Common rules (they apply to every screen and are not repeated):
 - **States:** 410 — link expired or campaign completed (with "Sign in").
 - **API:** `GET /api/payments/order-links/{token}`; `POST /api/payments/order-links/{token}/orders`.
 
+#### M-20…M-25 Coach and coordinator on the phone (built on `main` by 2026-11-25)
+- **M-20/M-21 Training outlines ([D-038](../../.ai/specs/research/decisions/D-038-training-outlines-shared-library-and-medical-expiry.md)):** the coach's outlines in the PZPN layout (club, group and age category, coach, duration, goal, equipment; warm-up, main and final parts with minutes). An outline attaches to chosen sessions or is copied to the whole weekly series; a training session (M-04) shows an "Outline" card. "Print / PDF" opens the print layout. The shared library with ratings (D-038 phase 4) is not built and is not shown.
+- **M-22 Export to PZPN:** chips for the team, the month and the file (schedule or attendance), a preview of the rows and "Download CSV" (semicolon-separated, UTF-8 with BOM). Exports instead of an integration (D-038).
+- **M-23 Groups and squad:** the coach's groups and, for a coordinator, every group of the section; the squad shows each player's medical certificate status — green "valid until", orange 30 days or less, red expired, grey no date. Only the date is stored (no scans or results); the coordinator writes it, the coach only sees it. The same chip appears on the attendance list (M-05) and on the profile for the player and the guardian's wards (M-10).
+- **M-24 My units:** the coach's planned, given, taken and balance units and matches for a month, with the sessions behind them (the same figures as B-16).
+- **M-25 Club events ([D-032](../../.ai/specs/research/decisions/D-032-club-events-with-parts.md)):** a tournament or club day with parts (one per age group, with our team and the invited teams); "Add a part", "Show on the Events page". B-34 lists the same events in the panel.
+- **More (M-10) in the order of `main`'s member menu:** Profile, My units, Groups, Facilities and bookings, Today at the facility, Orders, My groups' payments, Accept cash, Club events, Training outlines, Admin panel (administrator, coordinator, treasurer, attendant — never a coach-only person), Leaving the club.
+- **Today (M-02):** at most three tiles (Calendar, Attendance, Messages); payments and kit orders follow under "Shortcuts" (#493).
+
 ### Public pages
 
 #### P-01 Club page — `/p/[clubSlug]`
@@ -786,6 +803,11 @@ Common rules (they apply to every screen and are not repeated):
 - **Validation:** n/a.
 - **API:** `GET /api/club_core/public/{clubSlug}/events?section=`.
 
+#### P-07 Event page — `/p/[clubSlug]/events/[eventSlug]`
+- **Goal:** a public page for one club event with parts (a tournament), linked from P-06.
+- **Features:** date, time span and venue; description; the schedule by part (age group, time, teams); files (rules, poster, schedule); club contact. Only while the event is published and the Events menu is on.
+- **API:** `GET /api/club_core/public/{clubSlug}/events/{eventSlug}`.
+
 ---
 
 ## 5. Clickable mockups
@@ -794,10 +816,14 @@ The file [`mockups/index.html`](mockups/index.html) opens directly in a browser.
 
 - **Persona** — sign in as: Kasia (guardian), Ola (participant, 14), Rafał (coach + academy coordinator), Anna (Basen instructor), Joanna (administrator with treasurer rights + Basen coordinator), Beata (treasurer — finance only), Tomek (facility attendant) or Guest (public page, also as a renter submitting a request).
 - **Screen state** — force *Normal*, *Loading*, *Empty*, *Error* on any screen (section 4: states).
-- **Flows** — a panel with walkthroughs F-01…F-14: steps with links to screens.
+- **Flows** — a panel with walkthroughs F-01…F-16: steps with links to screens (F-15: outline, attendance with medical status and the PZPN export; F-16: a tournament with parts on the public Events page).
 - **Screens** — an index of all M/B/P screens.
 - **Theme** — light / dark (the tokens mirror Open Mercato's `src/app/globals.css`).
 - **Language** — English / Polish (REQ-035). Interface texts come from `mockups/i18n/<code>.json`; club content (sections, groups, people, descriptions) stays in the club's language. A new language = a new catalog file with the same keys as `en.json`; `node build.mjs` refuses to build when keys differ. The default is the browser language.
+
+The second line of the bar shows the screen's address on the club's own subdomain (`przyklad.vereino.org/...`): every club runs on one shared instance under its own address ([D-034](../../.ai/specs/research/decisions/D-034-many-clubs-on-one-instance.md), [D-036](../../.ai/specs/research/decisions/D-036-domain-vereino-org-and-club-subdomains.md)). A person in two clubs has two accounts; there is no club switcher.
+
+**Single-file build:** `node mockups/build.mjs` and then `node mockups/build-artifact.mjs <out.html>` give one HTML file with the fictional club. `--club <map.json>` builds the same file for one club from a private name map (`{ "name", "replace": [[from, to], …] }`); maps and their output are never committed.
 
 Data is kept in browser memory — actions change the state (declaration, closing a session, substitute, booking, request → approval, payment, recording a payment, publication), and "Reset data" restores the initial state. The mockups do not call a real API; endpoint names are shown in the footer of each screen.
 
