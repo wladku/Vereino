@@ -36,6 +36,8 @@ export const errorCodes = [
   { code: 'identity_unavailable', status: 503, messageKey: 'foundation.errors.identity_unavailable' },
   { code: 'identity_already_linked', status: 409, messageKey: 'foundation.errors.identity_already_linked' },
   { code: 'identity_last_method', status: 409, messageKey: 'foundation.errors.identity_last_method' },
+  // Many-clubs spec DD-M10 (#633): one running import per club; a second one answers at once instead of waiting.
+  { code: 'import_running', status: 409, messageKey: 'foundation.errors.import_running' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

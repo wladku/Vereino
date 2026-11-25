@@ -147,6 +147,14 @@ export {
   type PagedDeliveries,
 } from './services/dispatch'
 export { bareAddressKey, type BareAddress } from './lib/dispatch-rules'
+export { holdClubImportSlot } from './services/club-limits'
+export {
+  CLUB_REQUEST_LIMIT_DEFAULTS,
+  clubRequestLimitKey,
+  readClubRequestLimit,
+  routeLimitKey,
+  type ClubRequestLimit,
+} from './lib/club-limits'
 export {
   personDeliveriesForExport,
   type PersonDeliveriesExport,

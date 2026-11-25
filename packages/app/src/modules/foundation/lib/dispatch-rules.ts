@@ -24,6 +24,36 @@ export const LEASE_SECONDS = 120
 /** E-mails per second per process, below Resend's default 10/s (S12.4). */
 export const EMAIL_SENDS_PER_SECOND = 8
 
+/**
+ * E-mails per second one club may take of the process's `EMAIL_SENDS_PER_SECOND` (many-clubs spec DD-M10, Q-M04;
+ * #633): a club's announcement to 2,000 guardians leaves at this pace, and every other club's mail goes out between.
+ */
+export const CLUB_EMAIL_SENDS_PER_SECOND = 2
+
+/**
+ * The send times of `count` new e-mails of one club (DD-M10, #633), as milliseconds from `now`: one every
+ * `1000 / perSecond` ms, after the club's mail already queued for later (`backlogUntil`, the latest due time of its
+ * queued e-mails, or null). A club without a backlog sends its first `perSecond` e-mails at once, so a single
+ * invitation never waits. The dispatch writes the times on the delivery rows and enqueues each job with its delay, so
+ * a large dispatch never fills the queue ahead of another club's mail.
+ */
+export function paceClubEmails(
+  count: number,
+  now: number,
+  backlogUntil: number | null,
+  perSecond: number = CLUB_EMAIL_SENDS_PER_SECOND,
+): number[] {
+  const step = Math.ceil(1000 / perSecond)
+  const backlogged = backlogUntil !== null && backlogUntil > now
+  const start = backlogged ? backlogUntil - now + step : 0
+  const burst = backlogged ? 0 : perSecond
+  const delays: number[] = []
+  for (let index = 0; index < count; index += 1) {
+    delays.push(index < burst ? 0 : start + (index - burst + (backlogged ? 0 : 1)) * step)
+  }
+  return delays
+}
+
 /** `notificationService.createBatch` takes at most this many users per call. */
 export const IN_APP_BATCH_SIZE = 1000
 

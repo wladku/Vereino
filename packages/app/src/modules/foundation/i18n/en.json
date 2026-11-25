@@ -27,6 +27,7 @@
   "foundation.errors.email_taken": "This e-mail address is already used by another account.",
   "foundation.errors.identity_already_linked": "This provider is already connected to your account.",
   "foundation.errors.identity_last_method": "This is the account's only sign-in method and cannot be removed.",
+  "foundation.errors.import_running": "Another import of this club is running. Try again when it has finished.",
   "foundation.errors.identity_provider_disabled": "This sign-in provider is not available.",
   "foundation.errors.identity_unavailable": "Sign-in is temporarily unavailable. Try again in a moment.",
   "foundation.errors.invalid_transition": "This change of status is not allowed.",

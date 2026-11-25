@@ -18,12 +18,17 @@ import { checkRateLimit, getClientIp, RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FAL
 import { getGlobalEventBus } from '@open-mercato/shared/modules/events'
 import { applicationLifecycleEvents, type ApplicationLifecycleEventId } from '@open-mercato/shared/lib/runtime/events'
 import { withModuleResourceUsage } from '@open-mercato/shared/lib/modules/resource-usage'
+import { clubRequestLimitKey, readClubRequestLimit, routeLimitKey } from '@/modules/foundation'
 
 // Ensure all package registrations are initialized for API routes.
 bootstrap()
 registerApiRouteManifests(apiRouteFacades)
 
 const warnedDeprecatedRequireRoles = new Set<string>()
+
+// Each club's budget of authenticated API requests (many-clubs spec DD-M10, Q-M04; #633): 600 per minute by default,
+// `VEREINO_CLUB_RATE_LIMIT_POINTS=0` switches it off. Counted per tenant (one club = one tenant, DD-M01).
+const clubRequestLimit = readClubRequestLimit(process.env)
 
 function warnDeprecatedRequireRoles(pathname: string, method: HttpMethod): void {
   const warnKey = `${method} ${pathname}`
@@ -422,7 +427,8 @@ async function handleRequest(
       const rateLimitError = await checkRateLimit(
         rateLimiterService,
         methodMetadata.rateLimit,
-        clientIp ?? RATE_LIMIT_FALLBACK_KEY,
+        // Per club on the club's public routes (DD-M10, #633): one club's visitors do not use up another's.
+        routeLimitKey(clientIp ?? RATE_LIMIT_FALLBACK_KEY, match.params),
         t(RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FALLBACK),
       )
       if (rateLimitError) {
@@ -432,6 +438,29 @@ async function handleRequest(
           clientIp,
           userId: auth?.sub ?? null,
           tenantId: auth?.tenantId ?? null,
+          durationMs: Date.now() - startedAt,
+        })
+        return rateLimitError
+      }
+    }
+  }
+
+  if (clubRequestLimit && auth?.tenantId) {
+    const rateLimiterService = getCachedRateLimiterService()
+    if (rateLimiterService) {
+      const rateLimitError = await checkRateLimit(
+        rateLimiterService,
+        clubRequestLimit,
+        clubRequestLimitKey(auth.tenantId),
+        t(RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FALLBACK),
+      )
+      if (rateLimitError) {
+        await emitLifecycleEvent(applicationLifecycleEvents.requestRateLimited, {
+          ...receivedPayload,
+          status: rateLimitError.status,
+          clientIp: null,
+          userId: auth.sub ?? null,
+          tenantId: auth.tenantId,
           durationMs: Date.now() - startedAt,
         })
         return rateLimitError

@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Recipient } from '@vereino/core'
 import {
+  CLUB_EMAIL_SENDS_PER_SECOND,
   DELIVERY_STATUSES,
   EMAIL_SENDS_PER_SECOND,
   FAILURE_CODES,
@@ -14,6 +15,7 @@ import {
   chunk,
   createSendRateLimiter,
   failureCodeFor,
+  paceClubEmails,
   planAddressDeliveries,
   planDeliveries,
   primaryReason,
@@ -256,5 +258,33 @@ describe('createSendRateLimiter', () => {
     await limiter.acquire()
     await limiter.acquire()
     expect(Date.now() - started).toBeGreaterThanOrEqual(5)
+  })
+})
+
+describe('paceClubEmails (many-clubs DD-M10, #633)', () => {
+  const now = 1_000_000
+
+  it('sends a club without a backlog its first e-mails at once, then two per second', () => {
+    expect(CLUB_EMAIL_SENDS_PER_SECOND).toBe(2)
+    expect(paceClubEmails(5, now, null)).toEqual([0, 0, 500, 1000, 1500])
+  })
+
+  it('treats a backlog in the past as none', () => {
+    expect(paceClubEmails(3, now, now - 10)).toEqual([0, 0, 500])
+    expect(paceClubEmails(1, now, now)).toEqual([0])
+  })
+
+  it('queues new mail after the club’s queued mail, without a burst', () => {
+    expect(paceClubEmails(3, now, now + 3000)).toEqual([3500, 4000, 4500])
+  })
+
+  it('takes another pace and answers nothing for no mail', () => {
+    expect(paceClubEmails(3, now, null, 1)).toEqual([0, 1000, 2000])
+    expect(paceClubEmails(0, now, null)).toEqual([])
+  })
+
+  it('spreads 5,000 e-mails over about 42 minutes', () => {
+    const delays = paceClubEmails(5000, now, null)
+    expect(delays[4999]).toBe(4998 * 500)
   })
 })

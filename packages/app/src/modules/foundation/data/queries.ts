@@ -10,6 +10,18 @@ export async function lockUserRoleSync(em: EntityManager, userId: string): Promi
   await em.execute('select pg_advisory_xact_lock(hashtextextended(?, 0))', [`foundation.role_sync:${userId}`])
 }
 
+/**
+ * Tries to take the club's import lock until the caller's transaction ends (many-clubs spec DD-M10, #633); false when
+ * another import of the club holds it. `key` is `clubImportLockKey(organizationId)`.
+ */
+export async function tryLockClubImport(em: EntityManager, key: string): Promise<boolean> {
+  const rows = await em.execute<Array<{ locked: boolean }>>(
+    'select pg_try_advisory_xact_lock(hashtextextended(?, 0)) as locked',
+    [key],
+  )
+  return rows[0]?.locked ?? false
+}
+
 /** The trusted tenant and organization every dispatch query is narrowed to (a job carries them; S4.6). */
 export type DispatchScope = { tenantId: string; organizationId: string }
 
@@ -249,6 +261,44 @@ export async function markPublished(em: EntityManager, scope: DispatchScope, dis
      where id = ? and tenant_id = ? and organization_id = ?`,
     [dispatchId, scope.tenantId, scope.organizationId],
   )
+}
+
+/**
+ * The club's e-mail backlog (many-clubs spec DD-M10, #633): the latest time one of its queued e-mails is due, when that
+ * is later than now (paced or retried mail), as epoch milliseconds; null when the club has no mail waiting.
+ */
+export async function clubEmailBacklogUntil(em: EntityManager, scope: DispatchScope): Promise<number | null> {
+  const rows = await em.execute<Array<{ until: Date | string | null }>>(
+    `select max(next_attempt_at) as until from foundation_deliveries
+     where tenant_id = ? and organization_id = ? and status = 'queued' and channel = 'email'
+       and next_attempt_at > now()`,
+    [scope.tenantId, scope.organizationId],
+  )
+  const until = rows[0]?.until
+  return until ? new Date(until).getTime() : null
+}
+
+/**
+ * Moves queued e-mail deliveries of the club with a free lease to their paced send time, `delayMs` from now (DD-M10,
+ * #633); rows with no delay keep theirs. The lease check compares with the same database clock.
+ */
+export async function paceEmailDeliveries(
+  em: EntityManager,
+  scope: DispatchScope,
+  rows: ReadonlyArray<{ id: string; delayMs: number }>,
+): Promise<void> {
+  const delayed = rows.filter((row) => row.delayMs > 0)
+  for (let index = 0; index < delayed.length; index += 500) {
+    const batch = delayed.slice(index, index + 500)
+    await em.execute(
+      `update foundation_deliveries d
+         set next_attempt_at = now() + (v.delay_ms * interval '1 millisecond'), updated_at = now()
+       from (values ${batch.map(() => '(?::uuid, ?::integer)').join(', ')}) as v(id, delay_ms)
+       where d.id = v.id and d.tenant_id = ? and d.organization_id = ? and d.status = 'queued'
+         and d.channel = 'email' and (d.lease_expires_at is null or d.lease_expires_at < now())`,
+      [...batch.flatMap((row) => [row.id, row.delayMs]), scope.tenantId, scope.organizationId],
+    )
+  }
 }
 
 /** The organization's queued deliveries that are due with a free lease — the sweeper's work (DD-M03). */
