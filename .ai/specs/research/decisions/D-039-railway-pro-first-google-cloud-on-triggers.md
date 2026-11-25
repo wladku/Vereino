@@ -2,7 +2,7 @@
 number: D-039
 date: 2026-11-25
 owner: Władek Kuć
-source: the owner's choice of 2026-11-25 in a Claude Code session ("Tak, zapisz"), after a comparison of Railway and Google Cloud for personal data of clubs, prompted by a note claiming Railway has no security features; Railway facts read by Claude from Railway's security, compliance, backup and pricing pages and its DPA the same day, then checked again the same day for the PITR window, the DPA's Exhibit A and the reach of workspace roles
+source: the owner's choice of 2026-11-25 in a Claude Code session ("Tak, zapisz"), after a comparison of Railway and Google Cloud for personal data of clubs, prompted by a note claiming Railway has no security features; Railway facts read by Claude from Railway's security, compliance, backup and pricing pages and its DPA the same day, then checked again the same day for the PITR window, the DPA's Exhibit A (read in full: end users' data are covered) and the reach of workspace roles
 status: confirmed (direction) / open (plan upgrade, DPA signature and backup settings, done by the owner)
 ---
 # D-039 Production starts on Railway Pro in EU West; Google Cloud in Warsaw on named triggers
@@ -13,7 +13,7 @@ D34 puts many clubs on one shared instance, and ENG-Q-03 runs that instance on R
 2. **Before the first real club data** the owner:
    - signs Railway's DPA (it is signed through DocuSign, not accepted with the terms) and links it in [`processors.md`](../../../../docs/compliance/processors.md) (P-1b);
    - records the transfer mechanism from that DPA (P-1a);
-   - asks Railway to cover the members of the clubs, minors included, in Exhibit A of the DPA, which names only Railway's customers and their employees as data subjects (P-1a);
+   - signs the standard DPA without changes: its Exhibit A covers the personal data a customer collects from its end users, so the members of the clubs, minors included, need no exception; a written confirmation from Railway is optional and does not hold anything up (P-1a);
    - turns on volume backups, and point-in-time recovery as soon as the production database exists: the PITR window starts with the first base backup after it is turned on, and Railway's documentation names no plan for it, so the owner confirms it in the dashboard;
    - requires two-factor sign-in for every member of the Railway workspace (Pro and above).
 3. **The nightly encrypted off-site dump stays** (`docs/ops/backups.md`, ENG-Q-04). It does not depend on Railway and remains the floor for recovery. The RPO and restore drill in the runbooks change only after a PITR restore has been drilled once.
@@ -45,7 +45,8 @@ D34 puts many clubs on one shared instance, and ENG-Q-03 runs that instance on R
 **Risks the owner accepts:**
 
 - Railway's primary processing and staff access happen in the United States; the DPA covers this with the SCCs or the Data Privacy Framework, recorded as P-1a;
-- Railway's DPA lists no special categories of data (GDPR art. 9) in its Exhibit A and names only its customers and their employees as data subjects, not the members of a customer's clubs; until Railway covers them, the DPA does not describe the data Vereino stores. Whether the medical certificate expiry date of D38 is health data is a question for the lawyer before that field holds real data;
+- Railway's DPA is a fixed self-service text: its Exhibit A lists "Customers and Customer employees" as data subjects, but its categories of personal data include "any Personal Data Customer collects from its end users", and its definition of personal data (section 1.10) covers anything provided in connection with the services. The detailed description of the club's data subjects, minors included, belongs in the club's processing agreement (P-0), which names Railway as a sub-processor;
+- the same Exhibit A lists no special categories of data (GDPR art. 9) — a description, not a prohibition. Children's data are not a special category; whether the medical certificate expiry date of D38 is health data is a question for the lawyer before that field holds real data;
 - on Pro every member of the Railway workspace, whatever the role, reaches every project and environment in it, production included; who is a member of the workspace that holds production is therefore an access decision for club data;
 - Railway has no ISO 27001 and no contractual SLA below its Enterprise plan;
 - the security of club data rests mostly on the application: isolation between clubs (E22-S02, #628), access control and the compliance pack in `docs/compliance/`. The choice of host does not change that.
