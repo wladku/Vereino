@@ -7,7 +7,7 @@
 
 1. Read the failed job log (run 44611493911): `TEST-T07` failed at line 111 —
    `expect(eventOptions.body?.places).toContainEqual({ id: hallId, label: HALL.name })`;
-   received `{ id, isExternal: true, label: "Hala sportowa w Liszkach" }`.
+   received `{ id, isExternal: true, label: "Hala sportowa w Zielonym Lesie" }`.
 2. Root cause: main (#426, activities events through the API) added `isExternal` to each place of
    `GET /api/activities/events/options`; the PR's test asserted the older exact shape. Test bug, not a product bug.
 3. Merged `origin/main` into the PR head (clean merge).

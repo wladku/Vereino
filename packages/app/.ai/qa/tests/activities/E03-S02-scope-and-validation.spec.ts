@@ -276,7 +276,7 @@ test('E03-S02 refused writes: unsupported rule, inverted times, match for a clas
     const match = await postActivity(request, coordinator, { ...base, groupId: classGroup, type: 'match' })
     expect(match.status, JSON.stringify(match.body)).toBe(422)
     expect(match.body?.code).toBe('activity_type_requires_team')
-    const complex = await createStructure(request, admin, 'places', { name: 'Orlik 2024', kind: 'complex' })
+    const complex = await createStructure(request, admin, 'places', { name: 'Orlik', kind: 'complex' })
     await createStructure(request, admin, 'places', { name: 'Boisko 1', kind: 'pitch', parentPlaceId: complex })
     const parent = await postActivity(request, coordinator, { ...base, placeId: complex })
     expect(parent.status, JSON.stringify(parent.body)).toBe(422)

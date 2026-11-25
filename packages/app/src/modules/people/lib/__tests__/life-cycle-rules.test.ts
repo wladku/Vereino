@@ -21,7 +21,7 @@ import {
 
 const PERSON = '11111111-1111-4111-8111-111111111111'
 const KASIA = '22222222-2222-4222-8222-222222222222'
-const ANETA = '33333333-3333-4333-8333-333333333333'
+const JOANNA = '33333333-3333-4333-8333-333333333333'
 
 function link(
   id: string,
@@ -115,14 +115,14 @@ describe('carriedOverConsents', () => {
       image: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA },
     }
     const second = {
-      image: { granted: false, at: '2026-03-01T08:00:00.000Z', by_person_id: ANETA },
+      image: { granted: false, at: '2026-03-01T08:00:00.000Z', by_person_id: JOANNA },
       trips: { granted: true, at: '2024-01-01T08:00:00.000Z', by_person_id: null },
     }
-    const older = { regulations: { granted: false, at: '2020-01-01T00:00:00.000Z', by_person_id: ANETA } }
+    const older = { regulations: { granted: false, at: '2020-01-01T00:00:00.000Z', by_person_id: JOANNA } }
     expect(carriedOverConsents({}, [first, second, older])).toEqual({
       consents: {
         regulations: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA },
-        image: { granted: false, at: '2026-03-01T08:00:00.000Z', by_person_id: ANETA },
+        image: { granted: false, at: '2026-03-01T08:00:00.000Z', by_person_id: JOANNA },
         trips: { granted: true, at: '2024-01-01T08:00:00.000Z', by_person_id: null },
       },
       copied: ['regulations', 'image', 'trips'],

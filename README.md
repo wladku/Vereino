@@ -24,7 +24,7 @@ Vereino (from German *Verein* — association, club) is being built for small, t
 
 **What we deliberately do not build in 1.0:** training diagrams, a medical module, scouting, individual statistics, Messenger/WhatsApp integration (replaced by the share-to-group text), push notifications (they return with a native app — in 1.0 the channels are in-app and e-mail), online payment for facility renters (requests are online, payment goes to the owner's account), a page editor (CMS), translation of club-entered content, volunteer duty sign-up for sessions (planned for 1.1), a guardians' contact list for coaches, several clubs on one instance (the architecture does not prevent it).
 
-Pilot: KS Gwiazda Ściejowice. Authors: Władek Kuć (product), Kacper Kuć (technology).
+Example club in the specs and mockups: KS Przykład Dolina (fictional). Authors: Władek Kuć (product), Kacper (technology).
 
 ## Architecture
 

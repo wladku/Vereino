@@ -266,50 +266,50 @@ GET /api/payments/dashboard?only=counts  <- spec N's menu counts (60 s)
 
 ### Journey J-C01 — Membership fees with the administrator as actor (replaces J-004)
 
-1. Aneta, the club administrator, sets "Żaki fee PLN 150 / month" and the rule "siblings −30%" on `/backend/payments/fees`. On the same page she leaves "Generate charges automatically" on, with day 1.
-2. On the 1st at 06:00 the job generates the month's charges: Ola the full rate of her group, Jaś PLN 105, payer Kasia, due on the 10th. The dashboard shows nothing to do. Aneta can still press "Generate period" for another month.
+1. Joanna, the club administrator, sets "Żaki fee PLN 150 / month" and the rule "siblings −30%" on `/backend/payments/fees`. On the same page she leaves "Generate charges automatically" on, with day 1.
+2. On the 1st at 06:00 the job generates the month's charges: Ola the full rate of her group, Jaś PLN 105, payer Kasia, due on the 10th. The dashboard shows nothing to do. Joanna can still press "Generate period" for another month.
 3. Kasia opens `/club/payments`. Both charges are ticked, the summary shows the charges, the fee line ("0 zł — paid by the club") and the total; she presses "Pay 255 zł", pays in the embedded form and sees "Paid".
-4. A family pays in cash: Aneta opens the charge on B-22 and presses "Accept cash". The dialog opens with that payer chosen; she ticks the charges, saves, and the parent gets the KP e-mail. A part payment leaves the charge "partially paid", and the parent can pay the rest online.
+4. A family pays in cash: Joanna opens the charge on B-22 and presses "Accept cash". The dialog opens with that payer chosen; she ticks the charges, saves, and the parent gets the KP e-mail. A part payment leaves the charge "partially paid", and the parent can pay the rest online.
 5. On the 11th the reminder job e-mails each payer of an overdue charge once, then every 7 days, four times at most.
-6. Failures: a declined payment leaves the charges open with a retry; a repeated webhook books once; a charge without a payer appears in "Charges without a payer" on the dashboard, and Aneta assigns the payer on B-22 (J-C05).
+6. Failures: a declined payment leaves the charges open with a retry; a repeated webhook books once; a charge without a payer appears in "Charges without a payer" on the dashboard, and Joanna assigns the payer on B-22 (J-C05).
 
 ### Journey J-C02 — Coach's cash (replaces J-010 steps 3–5)
 
-1. Steps 1–2 of J-010 stand: Wojtek opens `/club/coach/payments`, accepts PLN 255 for a fee and a kit through `POST /api/payments/group-charges/cash`, and reminds another payer. A link from the Today tile opens the page with his group and "To pay" chosen.
+1. Steps 1–2 of J-010 stand: Rafał opens `/club/coach/payments`, accepts PLN 255 for a fee and a kit through `POST /api/payments/group-charges/cash`, and reminds another payer. A link from the Today tile opens the page with his group and "To pay" chosen.
 2. "Cash with you" shows the total he holds with the KP list.
-3. Aneta receives the cash and confirms it on B-33 "Cash to settle". That page and the handover number are issue #118; until it lands the cash stays under "Cash with you" and Aneta reads who holds what in the "Cash payments" perspective of B-21.
+3. Joanna receives the cash and confirms it on B-33 "Cash to settle". That page and the handover number are issue #118; until it lands the cash stays under "Cash with you" and Joanna reads who holds what in the "Cash payments" perspective of B-21.
 4. Failures as in J-010 step 5, except the handover conflict, which belongs to #118.
 
 ### Journey J-C03 — A rental gets its charge
 
 1. The facility attendant enters a rental of Boisko piłkarskie for "KS Sąsiedzi" (J-005 of the facilities spec). In the same transaction `payments` writes a charge payable to the municipality.
-2. Aneta opens B-21, perspective "Rentals (municipality)": the charge shows the renter as payer and the badge "municipality" as payee. B-22 says "to the account of Gmina Przykładowo".
+2. Joanna opens B-21, perspective "Rentals (municipality)": the charge shows the renter as payer and the badge "municipality" as payee. B-22 says "to the account of Gmina Przykładowo".
 3. She records the transfer on B-22. The charge becomes `paid`; `facilities` confirms the rental from `payments.payment.recorded` (facilities parity spec).
 4. The renter cancels more than 24 hours ahead: the charge becomes `cancelled`. A late cancellation forfeits it. If money was already recorded, the charge stays and the rental's response carries `charge_paid`.
 5. Failure: the charge cannot be written (no payer of any kind) → 422, and no rental is saved.
 
 ### Journey J-C04 — Running the kit campaign from its record (completes J-009 steps 3–5)
 
-1. Aneta opens `/backend/payments/orders/{id}`. The tiles read "14 / 22 — children in the selected groups", "1 320 zł — of 1 680 zł · due 30.11", "0 / 14 — Sportex". The tabs read "Orders (14)", "Supplier summary", "No order (8)".
-2. A father pays at the office: she presses "Cash" in his row. The dialog opens with him chosen and only the kit charge ticked. After saving, the row shows "paid — cash — Aneta".
+1. Joanna opens `/backend/payments/orders/{id}`. The tiles read "14 / 22 — children in the selected groups", "1 320 zł — of 1 680 zł · due 30.11", "0 / 14 — Sportex". The tabs read "Orders (14)", "Supplier summary", "No order (8)".
+2. A father pays at the office: she presses "Cash" in his row. The dialog opens with him chosen and only the kit charge ticked. After saving, the row shows "paid — cash — Joanna".
 3. On "No order" she sees each child's guardians, "(no e-mail)" next to one and "no guardian" for another child, and presses "Remind everyone".
-4. After delivery she presses "Hand over" in a row. For an unpaid order the warning "Still to pay: 120 zł" must be confirmed; the row then shows "handed over — Aneta".
+4. After delivery she presses "Hand over" in a row. For an unpaid order the warning "Still to pay: 120 zł" must be confirmed; the row then shows "handed over — Joanna".
 5. She completes the campaign. Three kits are not handed over, so the dialog says "3 kits not marked as handed over" and asks again.
 6. Failures: Hand over before delivery → the button is absent, the API answers 409; a stale row → 409 with a reload.
 
 ### Journey J-C05 — A charge without a payer, a manual charge and a refund
 
-1. The dashboard widget "Charges without a payer" lists "Membership fee — Żaki · Period 2026-11 · Bartek". Aneta opens it. B-22 shows the warning "No payer" with "Assign payer" and a link to Bartek's guardianship tab.
+1. The dashboard widget "Charges without a payer" lists "Membership fee — Żaki · Period 2026-11 · Bartek". Joanna opens it. B-22 shows the warning "No payer" with "Assign payer" and a link to Bartek's guardianship tab.
 2. She picks his mother from the list of his guardians. The charge now appears on the mother's `/club/payments`. Had she instead marked the mother as primary payer on the person record, the charge would have been assigned by itself.
 3. On Bartek's person record, tab "Charges", she presses "Add charge": "Tournament fee", PLN 40, due in a week.
-4. A parent paid online while the coach took cash for the same charge. The "To refund" perspective appears on B-21 with one row. On B-22 Aneta presses "Refund" on the online payment, keeps the suggested amount, gives a reason and confirms; the row shows the refund and the perspective disappears.
+4. A parent paid online while the coach took cash for the same charge. The "To refund" perspective appears on B-21 with one row. On B-22 Joanna presses "Refund" on the online payment, keeps the suggested amount, gives a reason and confirms; the row shows the refund and the perspective disappears.
 5. Failures: refund above the refundable part → 422 on the field; the gateway refuses → 502, nothing booked, the dialog stays open with the message; assigning a person who is not a guardian → 422.
 
 ### Journey J-C06 — The guardian orders and collects a kit on the phone (completes J-009 steps 2–3)
 
 1. Kasia's Today page shows the tile "Order" with the campaign's name and deadline and "Jaś — not ordered". `/club/payments` shows the campaign card above her charges.
 2. She orders on `/club/orders/{id}`. The summary shows the order's time, the lines and "Pay online 120 zł"; the link opens `/club/payments` with only that charge ticked.
-3. After delivery `/club/orders` shows "ready for pickup from the coach". After the handover the order shows "Picked up — 12.12 17:40 · handed over by Wojtek Malinowski".
+3. After delivery `/club/orders` shows "ready for pickup from the coach". After the handover the order shows "Picked up — 12.12 17:40 · handed over by Rafał Malinowski".
 4. Tomasz, the other parent, is not the payer. His `/club/payments` says "Jaś: paid by Kasia" and offers no amounts.
 5. A grandmother without an account opens her personal link: `/club/o/{token}` says "Personal link: Halina Nowak — do not pass it on".
 

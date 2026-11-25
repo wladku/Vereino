@@ -733,7 +733,7 @@
   "club_core.picker.person.add": "Add a person",
   "club_core.externalPlace.title": "Add place",
   "club_core.externalPlace.description": "Add a venue that is missing from the list. It is marked as external and stays on the list for next time; only the administrator can change it later.",
-  "club_core.externalPlace.fields.name.help": "The name everyone knows the venue by, e.g. \"Hala sportowa w Liszkach\".",
+  "club_core.externalPlace.fields.name.help": "The name everyone knows the venue by, e.g. \"Hala sportowa w Zielonym Lesie\".",
   "club_core.externalPlace.fields.address.help": "The venue's address, not a private one: the public page links it to a map.",
   "club_core.externalPlace.fields.owner.help": "Optional: the institution that owns the venue.",
   "club_core.externalPlace.submit": "Add place",

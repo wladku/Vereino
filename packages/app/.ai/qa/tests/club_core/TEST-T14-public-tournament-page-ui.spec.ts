@@ -16,10 +16,10 @@ import { png, publish, putSectionPublic, upload, type PublicationBlock } from '.
 import { uiText } from '../_fixtures/ui-text'
 
 // Club events spec TEST-T14 (REQ-T09, REQ-T10, J-T04, exit gate of phase 6; #381): a guest at 375 px and on desktop,
-// in Polish and English, light and dark. On P-06 the club event "GWIAZDA CUP 2026" is one card with its poster, its
+// in Polish and English, light and dark. On P-06 the club event "PRZYKŁAD CUP 2026" is one card with its poster, its
 // date range, the place with a map link and "2 parts"; its name leads to the tournament page, which shows the poster,
 // the name, the dates, the place with the map link, the description, two days with their parts (our team with its
-// section, the guests), "Organised by LKS Gwiazda" and the funder's logo with its name as alternative text. A cancelled
+// section, the guests), "Organised by LKS Przykład" and the funder's logo with its name as alternative text. A cancelled
 // event shows the banner and its struck-through name without the reason; an unpublished event shows "This event is not
 // published" with the club page link. No blocking axe violation in any state, and no sideways scrolling at 320 px.
 test.describe.configure({ timeout: 600_000 })
@@ -53,14 +53,14 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
     await makeGroupPublic(request, admin, orlik)
     const { hall } = await examplePlaces(request, club)
     const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
-      data: { name: 'Wisła Liszki', clubName: 'LKS Wisła Liszki' },
+      data: { name: 'Wisła Brzezie', clubName: 'LKS Wisła Brzezie' },
     })
     expect(team.status, JSON.stringify(team.body)).toBe(201)
 
     const day1 = addDays(calendarDate(), 7)
     const day2 = addDays(day1, 7)
     const cup = await clubEventId(request, admin, {
-      name: 'GWIAZDA CUP 2026',
+      name: 'PRZYKŁAD CUP 2026',
       sectionId: academy,
       placeId: hall,
       description: 'Halowy turniej piłki nożnej dzieci i młodzieży.',
@@ -84,7 +84,7 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
     expect((await upload(request, admin, files, png([200, 40, 40], 64), { kind: 'poster' })).status).toBe(201)
     const logo = await upload(request, admin, files, png([40, 90, 200], 32), {
       kind: 'funder_logo',
-      funderName: 'Gmina Liszki',
+      funderName: 'Gmina Zielony Las',
     })
     expect(logo.status, JSON.stringify(logo.body)).toBe(201)
     await makePublic(request, admin, cup)
@@ -107,7 +107,7 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
       startsAt: zoneInstant(day2, '15:00'),
       endsAt: zoneInstant(day2, '16:00'),
     })
-    await publish(request, admin, slug, BLOCKS, { shortName: 'LKS Gwiazda' })
+    await publish(request, admin, slug, BLOCKS, { shortName: 'LKS Przykład' })
 
     page.setDefaultTimeout(30_000)
     await prepareForAccessibilityScan(page)
@@ -117,7 +117,7 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
       await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
     }
     const cupCard = page.locator('[data-testid="public-event"][data-kind="club_event"]', {
-      hasText: 'GWIAZDA CUP 2026',
+      hasText: 'PRZYKŁAD CUP 2026',
     })
 
     for (const viewport of [
@@ -136,7 +136,7 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
         await expect(cupCard.getByTestId('public-event-parts')).toContainText(
           uiText('club_core.public.events.parts.few', { params: { count: 2 } }),
         )
-        await expect(cupCard).toContainText('Hala sportowa w Liszkach')
+        await expect(cupCard).toContainText('Hala sportowa w Zielonym Lesie')
         await expect(cupCard.getByTestId('public-event-map')).toHaveAttribute('href', /openstreetmap\.org/)
         await expect(page.getByTestId('public-event')).toHaveCount(2)
         await expect(page.locator('[data-testid="public-event"][data-cancelled="true"] s')).toHaveText(
@@ -150,23 +150,23 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
 
         // The tournament page.
         await cupCard.getByTestId('public-event-link').click()
-        await expect(page).toHaveURL(new RegExp(`/p/${slug}/events/gwiazda-cup-2026$`))
-        await expect(page.getByTestId('public-club-event-name')).toHaveText('GWIAZDA CUP 2026')
+        await expect(page).toHaveURL(new RegExp(`/p/${slug}/events/przyklad-cup-2026$`))
+        await expect(page.getByTestId('public-club-event-name')).toHaveText('PRZYKŁAD CUP 2026')
         await expect(page.getByTestId('public-club-event-poster')).toBeVisible()
         await expect(page.getByTestId('public-club-event-poster')).toHaveAttribute(
           'alt',
-          uiText('club_core.public.clubEvent.posterAlt', { params: { name: 'GWIAZDA CUP 2026' } }),
+          uiText('club_core.public.clubEvent.posterAlt', { params: { name: 'PRZYKŁAD CUP 2026' } }),
         )
-        await expect(page.getByTestId('public-club-event-place')).toContainText('ul. Szkolna 50, Liszki')
+        await expect(page.getByTestId('public-club-event-place')).toContainText('ul. Szkolna 50, Zielony Las')
         await expect(page.getByTestId('public-club-event-map')).toHaveAttribute('href', /openstreetmap\.org/)
         await expect(page.getByTestId('public-club-event-day')).toHaveCount(2)
         await expect(page.getByTestId('public-club-event-part')).toHaveCount(2)
         await expect(page.getByTestId('public-club-event-our-team')).toContainText('Akademia piłkarska')
-        await expect(page.getByTestId('public-club-event-guests')).toContainText('Wisła Liszki (LKS Wisła Liszki)')
+        await expect(page.getByTestId('public-club-event-guests')).toContainText('Wisła Brzezie (LKS Wisła Brzezie)')
         await expect(page.getByTestId('public-club-event-organiser')).toContainText(
-          uiText('club_core.public.clubEvent.organisedBy', { params: { club: 'LKS Gwiazda' } }),
+          uiText('club_core.public.clubEvent.organisedBy', { params: { club: 'LKS Przykład' } }),
         )
-        await expect(page.getByTestId('public-club-event-funder')).toHaveAttribute('alt', 'Gmina Liszki')
+        await expect(page.getByTestId('public-club-event-funder')).toHaveAttribute('alt', 'Gmina Zielony Las')
         await expect(page.getByTestId('public-club-event-cancelled')).toHaveCount(0)
         await scan(`P-T1 ${label}`, async () => {
           await expect(page.getByTestId('public-club-event-part').first()).toBeVisible()
@@ -197,7 +197,7 @@ test('TEST-T14 a guest goes from P-06 to the tournament page at 375 px and on de
     }
 
     // Reflow at 320 px on the tournament page.
-    await page.goto(`/p/${slug}/events/gwiazda-cup-2026`)
+    await page.goto(`/p/${slug}/events/przyklad-cup-2026`)
     await expect(page.getByTestId('public-club-event-part').first()).toBeVisible()
     await expectNoPageOverflow(page)
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import { MAX_COACH_OPTIONS, coachOptions, foldForSearch } from '../coach-options'
 
-const wojtek = { id: 'p-1', firstName: 'Wojciech', lastName: 'Łukaszewski' }
+const rafal = { id: 'p-1', firstName: 'Wojciech', lastName: 'Łukaszewski' }
 const anna = { id: 'p-2', firstName: 'Anna', lastName: 'Nowak' }
 const adam = { id: 'p-3', firstName: 'Adam', lastName: 'Nowak' }
 const twin = { id: 'p-0', firstName: 'Adam', lastName: 'Nowak' }
@@ -16,7 +16,7 @@ describe('foldForSearch', () => {
 describe('coachOptions', () => {
   it('lists everyone by last name, then first name and id, for a blank search', () => {
     // Polish collation: "Ł" sorts right after "L", before "N".
-    expect(coachOptions([anna, wojtek, adam, twin], '  ')).toEqual([
+    expect(coachOptions([anna, rafal, adam, twin], '  ')).toEqual([
       { id: 'p-1', name: 'Wojciech Łukaszewski' },
       { id: 'p-0', name: 'Adam Nowak' },
       { id: 'p-3', name: 'Adam Nowak' },
@@ -27,9 +27,9 @@ describe('coachOptions', () => {
   })
 
   it('matches every word against the start of a name, ignoring case and diacritics', () => {
-    expect(coachOptions([anna, wojtek, adam], 'luk')).toEqual([{ id: 'p-1', name: 'Wojciech Łukaszewski' }])
-    expect(coachOptions([anna, wojtek, adam], 'nowak an')).toEqual([{ id: 'p-2', name: 'Anna Nowak' }])
-    expect(coachOptions([anna, wojtek, adam], 'owak')).toEqual([])
+    expect(coachOptions([anna, rafal, adam], 'luk')).toEqual([{ id: 'p-1', name: 'Wojciech Łukaszewski' }])
+    expect(coachOptions([anna, rafal, adam], 'nowak an')).toEqual([{ id: 'p-2', name: 'Anna Nowak' }])
+    expect(coachOptions([anna, rafal, adam], 'owak')).toEqual([])
   })
 
   it('stops at the limit', () => {

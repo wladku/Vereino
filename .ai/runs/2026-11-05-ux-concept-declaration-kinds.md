@@ -30,7 +30,7 @@ The README and the mockup show the control that the club setting `declaration_ki
 ## Commands and results
 
 - `node docs/ux-concept/mockups/build.mjs`: `i18n.js: en (English) 2058 keys, pl (Polski) 2058 keys`, `app.js` written.
-- Headless Chromium (Playwright from `packages/app`) at 375 px, en and pl, Kasia: M-02 shows "Report absence" on Jaś's training. A tap gives "absence reported" + "Undo" and the toast "Absence reported: Jaś will not come.". Undo gives the toast "Absence withdrawn: Jaś is expected.". M-04 for Ola's match shows "Attending / Not attending". M-04 for Jaś's training shows "Report absence". M-03 shows "Report absence" on trainings. M-05 as Wojtek shows "4 expected · 1 absence reported". Console errors: none.
+- Headless Chromium (Playwright from `packages/app`) at 375 px, en and pl, Kasia: M-02 shows "Report absence" on Jaś's training. A tap gives "absence reported" + "Undo" and the toast "Absence reported: Jaś will not come.". Undo gives the toast "Absence withdrawn: Jaś is expected.". M-04 for Ola's match shows "Attending / Not attending". M-04 for Jaś's training shows "Report absence". M-03 shows "Report absence" on trainings. M-05 as Rafał shows "4 expected · 1 absence reported". Console errors: none.
 - `yarn verify`: all 13 steps passed (Jest 30 suites, 334 tests; build green).
 
 ## Lessons

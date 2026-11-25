@@ -66,7 +66,7 @@ UI text lives only in the i18n catalogs; every Vereino module ships `i18n/en.jso
 
 ## Review and governance
 
-Vereino has two maintainers with equal merge rights: Władek Kuć (product owner, [@wladku](https://github.com/wladku)) and Kacper Kuć (technology). When they disagree, the product owner decides. Paths listed in [`.github/CODEOWNERS`](.github/CODEOWNERS) — payments, people, migrations, access control, encryption, setup, CI, deployment, `SECURITY.md` and the compliance documents — need the approval of a maintainer who is not the author (S1.5). A maintainer may merge an own pull request outside those paths after the required checks pass.
+Vereino has two maintainers with equal merge rights: Władek Kuć (product owner, [@wladku](https://github.com/wladku)) and Kacper (technology). When they disagree, the product owner decides. Paths listed in [`.github/CODEOWNERS`](.github/CODEOWNERS) — payments, people, migrations, access control, encryption, setup, CI, deployment, `SECURITY.md` and the compliance documents — need the approval of a maintainer who is not the author (S1.5). A maintainer may merge an own pull request outside those paths after the required checks pass.
 
 ## Pinned and overridden dependencies
 

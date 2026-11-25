@@ -10,7 +10,7 @@ import { uiText } from '../_fixtures/ui-text'
 
 // Club events spec TEST-T13 (REQ-T03, AC-T04, J-T03, J-T06; M-02, M-03, M-04; #382): on a phone at 375 px, in both
 // locales, light and dark. While the club event is not public its part's card on Today shows the line
-// "GWIAZDA CUP 2026" without a link; once public, Today, the calendar and the session page link the line to the
+// "PRZYKŁAD CUP 2026" without a link; once public, Today, the calendar and the session page link the line to the
 // public page and the session page lists the visiting teams; the Trampkarz part of the same event shows nowhere. After
 // the deadline the controls close with "Deadline passed". The group's coach opens the part's session page: Attendance
 // list and Message the group are there, Edit and Cancel are not.
@@ -18,7 +18,7 @@ test.describe.configure({ timeout: 600_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
-const EVENT = 'GWIAZDA CUP 2026'
+const EVENT = 'PRZYKŁAD CUP 2026'
 
 test('TEST-T13 the part of a club event on the family’s phone: the event line with its public link, the visiting teams, the deadline; the coach runs it without Edit and Cancel', async ({
   page,
@@ -83,9 +83,9 @@ test('TEST-T13 the part of a club event on the family’s phone: the event line 
         )
         const teams = page.getByTestId('club-session-invited-teams')
         await expect(teams.getByRole('listitem'), label).toHaveText([
-          'Wisła Liszki',
-          'Orzeł Kryspinów',
-          'CIS Czernichów',
+          'Wisła Brzezie',
+          'Orzeł Brzozów',
+          'UKS Sąsiedni',
         ])
         await expect(
           page.getByText(uiText('activities.club.session.visitingTeams', { exact: true })),

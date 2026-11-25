@@ -125,7 +125,7 @@ test('TEST-036 public request routes: 422/403/404/410 per the contract, the ban 
     }
 
     // The queue and the decisions need `facilities.rentals.approve`: a coach gets 403.
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     const coachQueue = await call(request, 'GET', '/api/facilities/rentals/requests', coach.token)
     expect(coachQueue.status).toBe(403)
     const coachApproval = await decide(

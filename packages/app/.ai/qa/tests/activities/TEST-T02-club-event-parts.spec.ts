@@ -7,8 +7,8 @@ import { create as createStructure } from '../_fixtures/club-structure'
 import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 
-// Club events spec TEST-T02 and the API half of TEST-T03 (REQ-T02, REQ-T03, REQ-T04, DD-T01…DD-T04; #376): Wojtek adds
-// the nine parts of the "GWIAZDA CUP 2026" poster at the external hall — eight with the academy's groups, the seniors
+// Club events spec TEST-T02 and the API half of TEST-T03 (REQ-T02, REQ-T03, REQ-T04, DD-T01…DD-T04; #376): Rafał adds
+// the nine parts of the "PRZYKŁAD CUP 2026" poster at the external hall — eight with the academy's groups, the seniors
 // open. Each of the eight is a one-off activity with `clubEventId`, no rule, the title as its name, the visiting teams
 // as its invited teams, not away, with one session at the hall; the open part keeps its own times and has no session.
 // A group of another section answers 422 `club_event_part_outside_section`, a match for a class group 422
@@ -18,7 +18,7 @@ import { createGuardianship } from '../_fixtures/people'
 test.describe.configure({ timeout: 600_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const EVENT = 'GWIAZDA CUP 2026'
+const EVENT = 'PRZYKŁAD CUP 2026'
 
 test('TEST-T02 the nine parts of the poster become eight group sessions at the hall and one open part; Kasia sees only her child’s part', async ({
   request,
@@ -50,9 +50,9 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     const { hall } = await examplePlaces(request, club)
     const teams: string[] = []
     for (const [name, clubName] of [
-      ['Wisła Liszki', 'Wisła Liszki'],
-      ['Orzeł Kryspinów', 'Orzeł Kryspinów'],
-      ['CIS Czernichów', 'CIS Czernichów'],
+      ['Wisła Brzezie', 'Wisła Brzezie'],
+      ['Orzeł Brzozów', 'Orzeł Brzozów'],
+      ['UKS Sąsiedni', 'UKS Sąsiedni'],
     ] as const) {
       const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
         data: { name, clubName },
@@ -60,8 +60,8 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
       expect(team.status, JSON.stringify(team.body)).toBe(201)
       teams.push(String(team.body?.id))
     }
-    const wojtek = await signedInStaff(request, club, {
-      firstName: 'Wojtek',
+    const rafal = await signedInStaff(request, club, {
+      firstName: 'Rafał',
       lastName: 'Malinowski',
       role: 'coordinator',
       sectionId: academy,
@@ -70,7 +70,7 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     const since = addDays(calendarDate(), -30)
     await addMembership(request, admin, {
       groupId: groups['Orlik młodszy'],
-      personId: wojtek.personId,
+      personId: rafal.personId,
       role: 'coach',
       validFrom: since,
     })
@@ -111,7 +111,7 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     const kasia = await memberAccount(request, club, kasiaPerson, 'kasia-t02')
     const ola = await memberAccount(request, club, olaPerson, 'ola-t02')
 
-    const eventId = await clubEventId(request, wojtek.token, {
+    const eventId = await clubEventId(request, rafal.token, {
       name: EVENT,
       sectionId: academy,
       placeId: hall,
@@ -138,14 +138,14 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
       ]
     const created: Record<string, { id: string; activityId: string | null; occurrenceId: string | null }> = {}
     for (const entry of poster) {
-      created[entry.title] = await partIds(request, wojtek.token, eventId, {
+      created[entry.title] = await partIds(request, rafal.token, eventId, {
         title: entry.title,
         categoryLabel: entry.group ?? 'Seniorzy (16+)',
         type: entry.type ?? 'tournament',
         groupId: entry.group ? groups[entry.group] : null,
         startsAt: zoneInstant(entry.day, entry.from),
         endsAt: zoneInstant(entry.day, entry.to),
-        ...(entry.group === 'Orlik młodszy' ? { coachPersonId: wojtek.personId, visitingTeamIds: teams } : {}),
+        ...(entry.group === 'Orlik młodszy' ? { coachPersonId: rafal.personId, visitingTeamIds: teams } : {}),
       })
     }
 
@@ -168,8 +168,8 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     expect(session.body).toMatchObject({
       placeId: hall,
       startAt: zoneInstant(sat1, '09:00'),
-      coachPersonId: wojtek.personId,
-      invitedTeamNames: ['Wisła Liszki', 'Orzeł Kryspinów', 'CIS Czernichów'],
+      coachPersonId: rafal.personId,
+      invitedTeamNames: ['Wisła Brzezie', 'Orzeł Brzozów', 'UKS Sąsiedni'],
       clubEvent: { id: eventId, name: EVENT, publicPath: null },
     })
     const seniors = created['Turniej Drużyn – Seniorzy (16+)']
@@ -177,7 +177,7 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     for (const entry of poster.filter((item) => item.group)) {
       expect(created[entry.title]?.occurrenceId, entry.title).toBeTruthy()
     }
-    const record = await readClubEvent(request, wojtek.token, eventId)
+    const record = await readClubEvent(request, rafal.token, eventId)
     expect(record.status, JSON.stringify(record.body)).toBe(200)
     expect(record.body).toMatchObject({ partsCount: 9, dateFrom: sat1, dateTo: sun2 })
     const parts = record.body?.parts ?? []
@@ -194,13 +194,13 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
       status: 'planned',
     })
     expect(parts.find((part) => part.id === orlik.id)?.visitingTeams.map((team) => team.clubName)).toEqual([
-      'Wisła Liszki',
-      'Orzeł Kryspinów',
-      'CIS Czernichów',
+      'Wisła Brzezie',
+      'Orzeł Brzozów',
+      'UKS Sąsiedni',
     ])
 
     // --- The refusals ---
-    const outside = await addPart(request, wojtek.token, eventId, {
+    const outside = await addPart(request, rafal.token, eventId, {
       title: 'Turniej Fitness',
       groupId: foreignGroup,
       startsAt: zoneInstant(sun2, '16:00'),
@@ -208,7 +208,7 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     })
     expect(outside.status, JSON.stringify(outside.body)).toBe(422)
     expect(outside.body?.code).toBe('club_event_part_outside_section')
-    const classMatch = await addPart(request, wojtek.token, eventId, {
+    const classMatch = await addPart(request, rafal.token, eventId, {
       title: 'Mecz gimnastyków',
       type: 'match',
       groupId: gymnastics,
@@ -236,20 +236,20 @@ test('TEST-T02 the nine parts of the poster become eight group sessions at the h
     const coachItem = await readCalendarItem(request, marek.token, trampkarz.occurrenceId, 'as=coach')
     expect(coachItem.status, JSON.stringify(coachItem.body)).toBe(200)
     expect(coachItem.body).toMatchObject({ mayEdit: false, mayCancel: false })
-    // Wojtek coordinates the section: as the coach of his part he still may move and cancel it.
-    const wojtekItem = await readCalendarItem(request, wojtek.token, orlik.occurrenceId, 'as=coach')
-    expect(wojtekItem.body).toMatchObject({ mayEdit: true, mayCancel: true })
+    // Rafał coordinates the section: as the coach of his part he still may move and cancel it.
+    const rafalItem = await readCalendarItem(request, rafal.token, orlik.occurrenceId, 'as=coach')
+    expect(rafalItem.body).toMatchObject({ mayEdit: true, mayCancel: true })
 
     // --- The 41st part: 422 club_event_parts_limit (31 more open parts, then one more) ---
     for (let index = 0; index < 31; index += 1) {
-      await partIds(request, wojtek.token, eventId, {
+      await partIds(request, rafal.token, eventId, {
         title: `Część dodatkowa ${String(index + 1)}`,
         groupId: null,
         startsAt: zoneInstant(sat2, '15:00'),
         endsAt: zoneInstant(sat2, '16:00'),
       })
     }
-    const limit = await addPart(request, wojtek.token, eventId, {
+    const limit = await addPart(request, rafal.token, eventId, {
       title: 'Część 41',
       groupId: null,
       startsAt: zoneInstant(sat2, '16:00'),

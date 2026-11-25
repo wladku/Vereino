@@ -10,7 +10,7 @@ import { createGuardianship } from '../_fixtures/people'
 import { uiText } from '../_fixtures/ui-text'
 
 // Club events spec TEST-T11 without the files steps (phase 3, REQ-T11, REQ-T04 UI, AC-T11 in part, AC-T03 in the
-// panel; #378). The administrator opens B-T1 (empty, "New club event"), creates "GWIAZDA CUP 2026" with a new external
+// panel; #378). The administrator opens B-T1 (empty, "New club event"), creates "PRZYKŁAD CUP 2026" with a new external
 // hall from the Add place dialog, adds a part with a visiting team added in place (Add team), copies it to the next day
 // with another group, and sees both under their day headings with the team and the coach. Move shows the place
 // read-only and saves the new time; Remove of a part Kasia declared for answers 409 `club_event_part_in_use` and the
@@ -20,7 +20,7 @@ import { uiText } from '../_fixtures/ui-text'
 test.describe.configure({ timeout: 900_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const EVENT = 'GWIAZDA CUP 2026'
+const EVENT = 'PRZYKŁAD CUP 2026'
 const OPEN_ACTIONS = uiText('ui.rowActions.openActions')
 
 /** Picks an option of a select inside a `CrudForm` field (native, or a combobox), retrying until it is offered. */
@@ -71,12 +71,12 @@ test('TEST-T11 the administrator lists, creates and works a club event in the pa
     const orlik = await createGroup(request, admin, { sectionId: academy, name: 'Orlik młodszy', kind: 'team' })
     await createGroup(request, admin, { sectionId: academy, name: 'Żak młodszy', kind: 'team' })
     const since = addDays(calendarDate(), -30)
-    const wojtek = await signedInStaff(request, club, {
-      firstName: 'Wojtek',
+    const rafal = await signedInStaff(request, club, {
+      firstName: 'Rafał',
       lastName: 'Malinowski',
       role: 'coach',
     })
-    await addMembership(request, admin, { groupId: orlik, personId: wojtek.personId, role: 'coach', validFrom: since })
+    await addMembership(request, admin, { groupId: orlik, personId: rafal.personId, role: 'coach', validFrom: since })
     const jas = await createPerson(request, admin, {
       firstName: 'Jaś',
       lastName: 'Nowak',
@@ -127,11 +127,11 @@ test('TEST-T11 the administrator lists, creates and works a club event in the pa
     await page.getByTestId('club-event-add-place').click()
     const placeDialog = page.getByTestId('add-external-place-dialog')
     await expect(placeDialog).toBeVisible()
-    await placeDialog.getByTestId('add-external-place-name').fill('Hala sportowa w Liszkach')
-    await placeDialog.getByTestId('add-external-place-address').fill('ul. Szkolna 50, Liszki')
+    await placeDialog.getByTestId('add-external-place-name').fill('Hala sportowa w Zielonym Lesie')
+    await placeDialog.getByTestId('add-external-place-address').fill('ul. Szkolna 50, Zielony Las')
     await placeDialog.getByTestId('add-external-place-submit').click()
     await expect(placeDialog).toBeHidden()
-    await expect(page.getByTestId('club-event-place')).toContainText('Hala sportowa w Liszkach')
+    await expect(page.getByTestId('club-event-place')).toContainText('Hala sportowa w Zielonym Lesie')
     await fill(page, 'gatheringMinutesBefore', '30')
     const created = page.waitForResponse(
       (response) => response.url().endsWith('/api/activities/club-events') && response.request().method() === 'POST',
@@ -159,43 +159,43 @@ test('TEST-T11 the administrator lists, creates and works a club event in the pa
     await fill(partDialog, 'endTime', '14:00')
     await pick(page, 'groupId', 'Orlik młodszy (Akademia piłkarska)')
     await fill(partDialog, 'categoryLabel', 'Orlik młodszy')
-    await pick(page, 'coachPersonId', 'Wojtek Malinowski')
+    await pick(page, 'coachPersonId', 'Rafał Malinowski')
     await partDialog.getByTestId('club-event-part-add-team').click()
     const teamDialog = page.getByTestId('club-event-part-team-create')
     // The dialog's form mounts with the dialog; a value typed in its first frame may be reset, so fill until it holds.
     const teamName = teamDialog.locator('input[name="name"]')
     await expect(async () => {
-      await teamName.fill('Wisła Liszki')
-      await expect(teamName).toHaveValue('Wisła Liszki', { timeout: 1_000 })
+      await teamName.fill('Wisła Brzezie')
+      await expect(teamName).toHaveValue('Wisła Brzezie', { timeout: 1_000 })
     }).toPass({ timeout: 15_000 })
-    await teamDialog.locator('input[name="clubName"]').fill('LKS Wisła Liszki')
+    await teamDialog.locator('input[name="clubName"]').fill('LKS Wisła Brzezie')
     await teamDialog.getByRole('button', { name: uiText('activities.clubEvents.part.teams.submit') }).click()
     await expect(teamDialog).toBeHidden()
-    await expect(partDialog.getByTestId('club-event-part-team')).toContainText('Wisła Liszki')
+    await expect(partDialog.getByTestId('club-event-part-team')).toContainText('Wisła Brzezie')
     await partDialog.getByRole('button', { name: uiText('activities.clubEvents.part.submitCreate') }).click()
     await expect(partDialog).toBeHidden()
     const orlikRow = page.getByRole('row').filter({ hasText: 'Turniej Orlika Młodszego' })
-    await expect(orlikRow).toContainText('Wisła Liszki')
-    await expect(orlikRow).toContainText('Wojtek Malinowski')
+    await expect(orlikRow).toContainText('Wisła Brzezie')
+    await expect(orlikRow).toContainText('Rafał Malinowski')
 
     // --- Copy: the day and the group chosen again ---
     await partAction(page, 'Turniej Orlika Młodszego', uiText('activities.clubEvents.part.actions.copy'))
     await expect(page).toHaveURL(/copyOf=/)
     await expect(partDialog).toBeVisible()
     await expect(partDialog.locator('[data-crud-field-id="title"] input')).toHaveValue('Turniej Orlika Młodszego')
-    await expect(partDialog.getByTestId('club-event-part-team')).toContainText('Wisła Liszki')
+    await expect(partDialog.getByTestId('club-event-part-team')).toContainText('Wisła Brzezie')
     await fill(partDialog, 'title', 'Turniej Żaka Młodszego')
     await fill(partDialog, 'date', sun)
     await pick(page, 'groupId', 'Żak młodszy (Akademia piłkarska)')
     await partDialog.getByRole('button', { name: uiText('activities.clubEvents.part.submitCreate') }).click()
     await expect(partDialog).toBeHidden()
     await expect(page.getByTestId('club-event-part-day')).toHaveCount(2)
-    await expect(page.getByRole('row').filter({ hasText: 'Turniej Żaka Młodszego' })).toContainText('Wisła Liszki')
+    await expect(page.getByRole('row').filter({ hasText: 'Turniej Żaka Młodszego' })).toContainText('Wisła Brzezie')
 
     // --- Move: the place is read-only, the new time saves ---
     await partAction(page, 'Turniej Orlika Młodszego', uiText('activities.clubEvents.part.actions.move'))
     const moveDialog = page.getByTestId('occurrence-move-dialog')
-    await expect(moveDialog.getByTestId('occurrence-move-place-locked')).toHaveText('Hala sportowa w Liszkach')
+    await expect(moveDialog.getByTestId('occurrence-move-place-locked')).toHaveText('Hala sportowa w Zielonym Lesie')
     await fill(moveDialog, 'startTime', '10:00')
     await fill(moveDialog, 'endTime', '15:00')
     const moved = page.waitForResponse(

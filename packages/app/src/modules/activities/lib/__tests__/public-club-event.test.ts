@@ -37,16 +37,16 @@ const groupPart = (activityId: string, title: string, overrides: Partial<PublicC
 })
 
 const input = (overrides: Partial<PublicClubEventInput> = {}): PublicClubEventInput => ({
-  event: { name: 'GWIAZDA CUP 2026', slug: 'gwiazda-cup-2026', status: 'planned', description: 'Halowy turniej' },
-  place: { name: 'Hala w Liszkach', address: 'ul. Szkolna 50, Liszki', geoLat: null, geoLng: null },
+  event: { name: 'PRZYKŁAD CUP 2026', slug: 'przyklad-cup-2026', status: 'planned', description: 'Halowy turniej' },
+  place: { name: 'Hala w Zielonym Lesie', address: 'ul. Szkolna 50, Zielony Las', geoLat: null, geoLng: null },
   parts: [],
   sessions: new Map(),
   groups,
   publicGroupIds,
   sectionSlugs,
   teams: new Map([
-    ['t1', { name: 'Wisła Liszki', clubName: 'LKS Wisła' }],
-    ['t2', { name: 'CIS Czernichów' }],
+    ['t1', { name: 'Wisła Brzezie', clubName: 'LKS Wisła' }],
+    ['t2', { name: 'UKS Sąsiedni' }],
   ]),
   files: [],
   timeZone: ZONE,
@@ -132,28 +132,28 @@ describe('publicClubEventView', () => {
           ],
         ]),
         files: [
-          { id: 'logo-2', kind: 'funder_logo', funderName: 'Gmina Liszki', position: 1, createdAt: new Date(2) },
+          { id: 'logo-2', kind: 'funder_logo', funderName: 'Gmina Zielony Las', position: 1, createdAt: new Date(2) },
           { id: 'poster', kind: 'poster', funderName: null, position: 0, createdAt: new Date(3) },
           { id: 'logo-1', kind: 'funder_logo', funderName: null, position: 0, createdAt: new Date(1) },
         ],
       }),
     )
     expect(view).toEqual({
-      name: 'GWIAZDA CUP 2026',
-      slug: 'gwiazda-cup-2026',
+      name: 'PRZYKŁAD CUP 2026',
+      slug: 'przyklad-cup-2026',
       status: 'planned',
       dateFrom: '2026-11-21',
       dateTo: '2026-11-28',
       description: 'Halowy turniej',
       place: {
-        name: 'Hala w Liszkach',
-        address: 'ul. Szkolna 50, Liszki',
-        mapUrl: 'https://www.openstreetmap.org/search?query=Hala%20w%20Liszkach%2C%20ul.%20Szkolna%2050%2C%20Liszki',
+        name: 'Hala w Zielonym Lesie',
+        address: 'ul. Szkolna 50, Zielony Las',
+        mapUrl: 'https://www.openstreetmap.org/search?query=Hala%20w%20Zielonym%20Lesie%2C%20ul.%20Szkolna%2050%2C%20Zielony%20Las',
       },
       posterFileId: 'poster',
       funders: [
         { name: '', fileId: 'logo-1' },
-        { name: 'Gmina Liszki', fileId: 'logo-2' },
+        { name: 'Gmina Zielony Las', fileId: 'logo-2' },
       ],
       days: [
         {
@@ -182,8 +182,8 @@ describe('publicClubEventView', () => {
               cancelled: true,
               ourTeam: { club: true },
               visitingTeams: [
-                { name: 'Wisła Liszki', clubName: 'LKS Wisła' },
-                { name: 'CIS Czernichów', clubName: null },
+                { name: 'Wisła Brzezie', clubName: 'LKS Wisła' },
+                { name: 'UKS Sąsiedni', clubName: null },
               ],
             }),
           ],

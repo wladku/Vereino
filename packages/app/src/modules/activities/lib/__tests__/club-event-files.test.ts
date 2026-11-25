@@ -48,9 +48,9 @@ describe('club event files (DD-T10, REQ-T08)', () => {
   })
 
   it('requires a funder name of 2–120 characters for a logo, none for a poster', () => {
-    expect(funderNameOf('poster', 'Gmina Liszki')).toEqual({ valid: true, name: null })
+    expect(funderNameOf('poster', 'Gmina Zielony Las')).toEqual({ valid: true, name: null })
     expect(funderNameOf('poster', undefined)).toEqual({ valid: true, name: null })
-    expect(funderNameOf('funder_logo', '  Gmina Liszki  ')).toEqual({ valid: true, name: 'Gmina Liszki' })
+    expect(funderNameOf('funder_logo', '  Gmina Zielony Las  ')).toEqual({ valid: true, name: 'Gmina Zielony Las' })
     expect(funderNameOf('funder_logo', 'ab')).toEqual({ valid: true, name: 'ab' })
     expect(funderNameOf('funder_logo', 'a'.repeat(120))).toEqual({ valid: true, name: 'a'.repeat(120) })
     expect(funderNameOf('funder_logo', 'a'.repeat(121))).toEqual({ valid: false })

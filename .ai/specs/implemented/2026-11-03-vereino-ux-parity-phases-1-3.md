@@ -190,20 +190,20 @@ Place files        -> POST/DELETE /api/club_core/places/{id}/files -> readChecke
 
 ### Journey J-U01 — An administrator finds the Basen children without an account
 
-1. Aneta opens `/backend/people/persons` and chooses the perspective **Children**, then the filter Section = Basen.
+1. Joanna opens `/backend/people/persons` and chooses the perspective **Children**, then the filter Section = Basen.
 2. The URL becomes `?view=children&sectionId=…`. The list shows the Basen children with their age, groups and guardians.
 3. She adds "Without account" (`hasAccount=false`) and sends the link to the coordinator, who sees the same rows with basic fields.
 4. If `groups` is disabled, the section and group filters are not offered; a hand-made URL with `sectionId` answers 400 `people_filter_unavailable`, and the page shows "This filter needs the groups module".
 
 ### Journey J-U02 — An administrator tries to deactivate a section that still has groups
 
-1. Aneta chooses **Deactivate** on the Basen row in `/backend/club/sections` and confirms.
+1. Joanna chooses **Deactivate** on the Basen row in `/backend/club/sections` and confirms.
 2. The command finds two active groups and answers 409 `section_has_active_groups`. The dialog lists "Basen — początkujący" and "Basen — zaawansowani" with links to the groups, and the section stays active.
 3. She deactivates both groups (`/backend/groups/groups/{id}`), retries, and the section becomes inactive. The list shows the "inactive" status and Groups = 0.
 
 ### Journey J-U03 — An administrator records the Orlik regulations and photos
 
-1. Aneta filters `/backend/club/places` by kind "pitch". The list shows "↳ Boisko piłkarskie" under "Orlik" with the owner "Gmina Przykładowo".
+1. Joanna filters `/backend/club/places` by kind "pitch". The list shows "↳ Boisko piłkarskie" under "Orlik" with the owner "Gmina Przykładowo".
 2. On the place form she pastes the regulations text, uploads the PDF and two photos.
 3. An SVG renamed `.png` answers 422 `place_file_format_unsupported` on the field; a stale save answers 409 with the shared conflict dialog.
 
@@ -244,7 +244,7 @@ The closest installed references: `activities/components/ActivitiesTable.tsx` (D
 │ Person ↗          Age  Roles                 Groups        Account Guardians │
 │ Kowalski Jan       9   —                     Żaki, Basen   no      Kowalska Kasia │
 │ Kowalska Kasia    38   [Guardian]            —             yes     —       │
-│ Nowak Wojtek      41   [Coach][Coordinator]  Żaki (coach)  yes     —       │
+│ Nowak Rafał      41   [Coach][Coordinator]  Żaki (coach)  yes     —       │
 ├──────────────────────────────────────────────────────────────────────┤
 │ ‹ 1 2 3 ›                                              25 per page   │
 └──────────────────────────────────────────────────────────────────────┘
@@ -267,7 +267,7 @@ The closest installed references: `activities/components/ActivitiesTable.tsx` (D
 │ Sections                                            [Add section]  │
 ├────────────────────────────────────────────────────────────────────┤
 │ Logo  Section   Coordinators   Groups  Public  Status   [⋯]          │
-│ [B]   Basen     Aneta K.            2  yes     active   Edit · Deactivate │
+│ [B]   Basen     Joanna K.            2  yes     active   Edit · Deactivate │
 │ [S]   Szachy    ⚠ no coordinator    0  no      inactive Edit · Activate   │
 └────────────────────────────────────────────────────────────────────┘
 Section page: [Details] [Coordinators] [Public page]   (?tab=details|coordinators|public)

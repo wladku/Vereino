@@ -15,7 +15,7 @@ import {
 const draft: EventDraft = {
   groupId: 'g-1',
   type: 'tournament',
-  name: '  Turniej o Puchar Gwiazdy ',
+  name: '  Turniej o Puchar Przykładu ',
   placeId: 'p-1',
   date: '2026-11-14',
   startTime: '09:00',
@@ -131,7 +131,7 @@ describe('eventRequestBody', () => {
     expect(eventRequestBody(draft, 'Europe/Warsaw')).toEqual({
       groupId: 'g-1',
       type: 'tournament',
-      name: 'Turniej o Puchar Gwiazdy',
+      name: 'Turniej o Puchar Przykładu',
       placeId: 'p-1',
       startsAt: '2026-11-14T08:00:00.000Z',
       endsAt: '2026-11-14T11:00:00.000Z',
@@ -211,8 +211,8 @@ describe('the typed venue, opponent and gathering time of the phone form (REQ-A0
     type: 'sparring',
     placeId: '',
     venueMode: 'venue',
-    venueName: ' Stadion Wisły Liszki ',
-    venueAddress: ' ul. Sportowa 1, Liszki ',
+    venueName: ' Stadion Wisły Brzezie ',
+    venueAddress: ' ul. Sportowa 1, Zielony Las ',
     opponentExternalTeamId: 't-9',
     isAway: true,
     gatheringTime: '08:30',
@@ -224,7 +224,7 @@ describe('the typed venue, opponent and gathering time of the phone form (REQ-A0
     const body = eventRequestBody(away, 'Europe/Warsaw')
     expect(body).toMatchObject({
       type: 'sparring',
-      venue: { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' },
+      venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' },
       opponentExternalTeamId: 't-9',
       isAway: true,
       gatheringMinutesBefore: 30,

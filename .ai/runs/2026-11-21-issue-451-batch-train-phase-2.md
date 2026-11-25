@@ -117,30 +117,30 @@ merged #3; tree check passed: main 700dd1a, batch prefix 3 700dd1a
 no batch: no PR is green on its own head
 exit 0
 === train run 19:43:26Z scenario 2: build
-file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88
+file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88
   if (result.status >= 300) throw new Error(`${method} ${path} → ${result.status} ${JSON.stringify(result.body)}`)
                                   ^
 
 Error: GET /repos/wladku/vereino-merge-train-rehearsal/rules/branches/main → 403 {"message":"Upgrade to GitHub Pro or make this repository public to enable this feature.","documentation_url":"https://docs.github.com/rest/repos/rules#get-rules-for-a-branch","status":"403"}
-    at ok (file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88:35)
+    at ok (file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88:35)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async rulesetChecks (file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:93:17)
-    at async main (file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:416:20)
-    at async file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:448:1
+    at async rulesetChecks (file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:93:17)
+    at async main (file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:416:20)
+    at async file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:448:1
 
 Node.js v24.22.3
 exit 1
 === train run 19:43:28Z scenario 2: judge
-file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88
+file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88
   if (result.status >= 300) throw new Error(`${method} ${path} → ${result.status} ${JSON.stringify(result.body)}`)
                                   ^
 
 Error: GET /repos/wladku/vereino-merge-train-rehearsal/rules/branches/main → 403 {"message":"Upgrade to GitHub Pro or make this repository public to enable this feature.","documentation_url":"https://docs.github.com/rest/repos/rules#get-rules-for-a-branch","status":"403"}
-    at ok (file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88:35)
+    at ok (file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:88:35)
     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
-    at async rulesetChecks (file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:93:17)
-    at async main (file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:416:20)
-    at async file:///home/wkuc/.cezar/tmp/agent/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:448:1
+    at async rulesetChecks (file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:93:17)
+    at async main (file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:416:20)
+    at async file://<build-server>/5b98d7992112d2db/a6049026-9757-46a8-a098-3bebf23dd439/rehearsal/scripts/merge-train.mjs:448:1
 
 Node.js v24.22.3
 exit 1

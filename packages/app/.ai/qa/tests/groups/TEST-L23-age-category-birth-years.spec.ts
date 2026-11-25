@@ -227,7 +227,7 @@ test('TEST-L23 the age categories carry their PZPN birth years and a team propos
     ).toHaveCount(0)
 
     // B-11 as the club administrator, desktop and 375 px, light and dark: edit a range in its row; the season choice.
-    const staffAdmin = await signedInStaff(request, club, { firstName: 'Aneta', lastName: 'Admin', role: 'club_admin' })
+    const staffAdmin = await signedInStaff(request, club, { firstName: 'Joanna', lastName: 'Admin', role: 'club_admin' })
     await page.goto('about:blank')
     await page.context().clearCookies()
     await signInBrowser(page, request, club, staffAdmin.userId, staffAdmin.email)

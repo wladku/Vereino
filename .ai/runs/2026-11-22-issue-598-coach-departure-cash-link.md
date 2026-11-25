@@ -13,12 +13,12 @@
 
 ## Decisions
 
-- The name is matched by surname only: the blocker renders `Odchodzi Wojtek` (surname first), the first run failed on `'Wojtek Odchodzi'`.
+- The name is matched by surname only: the blocker renders `Odchodzi Rafał` (surname first), the first run failed on `'Rafał Odchodzi'`.
 - The amount is matched with `/150[.,]00/` so the step holds in either locale.
 
 ## Commands and results
 
-- `yarn test:integration:vereino --filter TEST-L06`, first run: failed — `Expected substring: "Wojtek Odchodzi"`, `Received string: "BlocksOdchodzi Wojtek: holds PLN 150.00 in cash that is not settled Open Cash to settle"`.
+- `yarn test:integration:vereino --filter TEST-L06`, first run: failed — `Expected substring: "Rafał Odchodzi"`, `Received string: "BlocksOdchodzi Rafał: holds PLN 150.00 in cash that is not settled Open Cash to settle"`.
 - `yarn test:integration:vereino --filter TEST-L06`, after the fix: 1 passed (50.0 s).
 - `yarn spec-changelogs:check`: valid. `yarn qa-texts:check`: 0 problems.
 - `yarn verify`: see the PR body.

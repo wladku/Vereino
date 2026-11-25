@@ -103,7 +103,7 @@ test('TEST-022 closures: a closure on the complex marks the sessions on its pitc
   try {
     const admin = club.adminToken
     const { pitch, zaki, coordinator } = await scheduleFor(request, club)
-    const complex = await createStructure(request, admin, 'places', { name: 'Orlik 2024', kind: 'complex' })
+    const complex = await createStructure(request, admin, 'places', { name: 'Orlik', kind: 'complex' })
     const placeResult = await call<{ items?: Array<{ id: string; updatedAt: string }> }>(
       request,
       'GET',

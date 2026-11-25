@@ -35,7 +35,7 @@ export function isClubEventSlug(slug: string): boolean {
 
 /**
  * The slug proposed from a name (DD-T13): letters without diacritics, lower case, every other run of characters one
- * hyphen, at most 80 characters without a trailing hyphen — "GWIAZDA CUP 2026" → `gwiazda-cup-2026`. Null when the
+ * hyphen, at most 80 characters without a trailing hyphen — "PRZYKŁAD CUP 2026" → `przyklad-cup-2026`. Null when the
  * name leaves fewer than 3 characters, so the caller asks for a slug.
  */
 export function proposeClubEventSlug(name: string): string | null {

@@ -22,7 +22,7 @@ The product brief, the UX concept and the club management spec name the same def
 ## Decisions
 
 - The validator range (13–18 vs 1–18) stays with #87: its Q1 is answered on that ticket (13–18, comment of 2026-11-04) and implemented in PR #161. The spec's data model still says 1–18; #161 owns that change.
-- The mockup's sample club (`minAge: 13`, still named Gwiazda) is left as is: its 13 matches the example club's value.
+- The mockup's sample club (`minAge: 13`, still named Przykład) is left as is: its 13 matches the example club's value.
 
 ## Commands and results
 

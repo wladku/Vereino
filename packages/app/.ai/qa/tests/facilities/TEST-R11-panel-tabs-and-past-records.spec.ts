@@ -71,7 +71,7 @@ test('TEST-R11 panel tabs: zones, a past log entry, an incident, a ban from its 
     expect(twice.status, JSON.stringify(twice.body)).toBe(409)
     expect(twice.body?.code).toBe('rental_conflict')
     // Negative: a coach's past booking, and the administrator's 100 days back.
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
       personId: coach.personId,

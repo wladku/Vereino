@@ -79,7 +79,7 @@ test('TEST-R04 slot dialog: rental, collision, non-bookable zone, group event ov
     )
     expect(earlier.status, JSON.stringify(earlier.body)).toBe(201)
 
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
       personId: coach.personId,
@@ -206,7 +206,7 @@ test('TEST-R04 slot dialog: rental, collision, non-bookable zone, group event ov
     await dialog.getByTestId('facilities-slot-name').fill('Tu')
     await dialog.getByTestId('facilities-slot-submit').click()
     await expect(dialog.getByText(uiText('facilities.slot.errors.name', { exact: true }))).toBeVisible()
-    await dialog.getByTestId('facilities-slot-name').fill('Turniej o Puchar Gwiazdy')
+    await dialog.getByTestId('facilities-slot-name').fill('Turniej o Puchar Przykładu')
     await dialog.getByTestId('facilities-slot-submit').click()
     await expect(dialog).toBeHidden()
     await expect(
@@ -234,7 +234,7 @@ test('TEST-R04 slot dialog: rental, collision, non-bookable zone, group event ov
     expect(kinds).toEqual(
       expect.arrayContaining([
         ['rental', 'KS Sąsiedzi'],
-        ['session', 'Turniej o Puchar Gwiazdy'],
+        ['session', 'Turniej o Puchar Przykładu'],
         ['booking', 'Szkolenie instruktorów'],
       ]),
     )

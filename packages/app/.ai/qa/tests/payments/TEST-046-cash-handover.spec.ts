@@ -10,7 +10,7 @@ import { chargeOf, createFee, generate, listCharges, periodFromNow, type CodedBo
 import { uiText } from '../_fixtures/ui-text'
 
 // TEST-046 (payments spec phase 4 step 10 — REQ-033, REQ-034, J-010 steps 3–5; issues #118 E07-S11 and #245 E07-S11b,
-// B-33, flow F-14). The first test is the administrator half (#118), the second the treasurer's (#245). Coach Wojtek takes PLN 535 in cash in three payments (three KP receipts);
+// B-33, flow F-14). The first test is the administrator half (#118), the second the treasurer's (#245). Coach Rafał takes PLN 535 in cash in three payments (three KP receipts);
 // B-33 lists him with the receipts, the oldest day and the total; the administrator accepts the handover in the
 // browser ("I confirm receipt of the cash"): the toast names RG/YYYY/MM/001, his "Cash with you" drops to 0, the
 // history lists the number and B-33 says "All accepted cash is with the treasurer". Accepting the same payments again
@@ -89,19 +89,19 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     const charges = await listCharges(request, admin, `&period=${period}`)
     const [olaFee, elaFee, ulaFee, izaFee] = children.map((child) => chargeOf(charges, child, fee))
 
-    const wojtek = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
-    await addMembership(request, admin, { groupId: zaki, personId: wojtek.personId, role: 'coach', validFrom: since })
+    const rafal = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
+    await addMembership(request, admin, { groupId: zaki, personId: rafal.personId, role: 'coach', validFrom: since })
 
     // Nothing to settle yet; the coach has no access to B-33.
     const empty = await custody(request, admin)
     expect(empty.status, JSON.stringify(empty.body)).toBe(200)
     expect(empty.body).toEqual({ items: [], total: 0 })
-    expect((await custody(request, wojtek.token)).status).toBe(403)
-    expect((await accept(request, wojtek.token, { collectorPersonId: wojtek.personId, paymentIds: [] })).status).toBe(
+    expect((await custody(request, rafal.token)).status).toBe(403)
+    expect((await accept(request, rafal.token, { collectorPersonId: rafal.personId, paymentIds: [] })).status).toBe(
       403,
     )
 
-    // Wojtek takes PLN 200 + 200 + 135 in three acceptances: three KP receipts, PLN 535 with him.
+    // Rafał takes PLN 200 + 200 + 135 in three acceptances: three KP receipts, PLN 535 with him.
     const receipts: string[] = []
     for (const [charge, amount] of [
       [olaFee, 20000],
@@ -112,7 +112,7 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
         request,
         'POST',
         '/api/payments/group-charges/cash',
-        wojtek.token,
+        rafal.token,
         {
           data: { groupId: zaki, participantPersonId: charge.personId, chargeIds: [charge.id], amount, paidOn: today },
         },
@@ -120,7 +120,7 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
       expect(taken.status, JSON.stringify(taken.body)).toBe(201)
       receipts.push(String(taken.body?.receiptNumber))
     }
-    const held = await call<Held>(request, 'GET', '/api/payments/group-charges', wojtek.token)
+    const held = await call<Held>(request, 'GET', '/api/payments/group-charges', rafal.token)
     expect(held.body?.cash).toMatchObject({ total: 53500, paymentCount: 3 })
 
     // Cash the administrator accepts goes straight to the club: no collector, nothing to settle.
@@ -140,14 +140,14 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     )
     expect(directRow.rows).toEqual([{ collected_by_person_id: null, recorded_by_person_id: club.adminPersonId }])
 
-    // B-33: Wojtek with his three receipts, the oldest day and the total.
+    // B-33: Rafał with his three receipts, the oldest day and the total.
     const listed = await custody(request, admin)
     expect(listed.body?.total).toBe(53500)
     expect(listed.body?.items).toHaveLength(1)
     const [row] = listed.body?.items ?? []
     expect(row).toMatchObject({
-      collectorPersonId: wojtek.personId,
-      collector: { firstName: 'Wojtek', lastName: 'Trener' },
+      collectorPersonId: rafal.personId,
+      collector: { firstName: 'Rafał', lastName: 'Trener' },
       oldestPaidOn: today,
       total: 53500,
     })
@@ -165,7 +165,7 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     club.adminToken = await getAuthToken(request, club.tenant.email, adminPassword)
     await page.setViewportSize({ width: 1280, height: 800 })
     await page.goto('/backend/payments/cash-custody')
-    await expect(page.getByTestId('custody-person')).toHaveText('Wojtek Trener')
+    await expect(page.getByTestId('custody-person')).toHaveText('Rafał Trener')
     for (const receipt of receipts) await expect(page.getByTestId('custody-receipts')).toContainText(receipt)
     await page.getByTestId('custody-accept').click()
     await expect(page.getByTestId('handover-payment')).toHaveCount(3)
@@ -181,7 +181,7 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     await expect(page.getByTestId('custody-empty')).toHaveText(uiText('payments.cashCustody.empty', { exact: true }))
     await expect(page.getByTestId('handover-number')).toHaveText([number])
 
-    // Stored: the handover with the amount and the payments; Wojtek's "Cash with you" drops to 0.
+    // Stored: the handover with the amount and the payments; Rafał's "Cash with you" drops to 0.
     const stored = await withClient((client) =>
       client.query<{ number: string; amount: number; collector_person_id: string; settled: string }>(
         `select h.number, h.amount, h.collector_person_id,
@@ -190,8 +190,8 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
         [club.tenant.organizationId],
       ),
     )
-    expect(stored.rows).toEqual([{ number, amount: 53500, collector_person_id: wojtek.personId, settled: '3' }])
-    const afterHandover = await call<Held>(request, 'GET', '/api/payments/group-charges', wojtek.token)
+    expect(stored.rows).toEqual([{ number, amount: 53500, collector_person_id: rafal.personId, settled: '3' }])
+    const afterHandover = await call<Held>(request, 'GET', '/api/payments/group-charges', rafal.token)
     expect(afterHandover.body?.cash).toMatchObject({ total: 0, paymentCount: 0 })
     expect(await custody(request, club.adminToken)).toMatchObject({ status: 200, body: { items: [], total: 0 } })
     const history = await call<CodedBody & { items?: { number: string; amount: number; paymentCount: number }[] }>(
@@ -203,7 +203,7 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     expect(history.body?.items).toEqual([expect.objectContaining({ number, amount: 53500, paymentCount: 3 })])
 
     // A payment already settled → 409.
-    const again = await accept(request, club.adminToken, { collectorPersonId: wojtek.personId, paymentIds })
+    const again = await accept(request, club.adminToken, { collectorPersonId: rafal.personId, paymentIds })
     expect(again.status, JSON.stringify(again.body)).toBe(409)
     expect(again.body?.code).toBe('cash_already_settled')
 
@@ -265,8 +265,8 @@ test('TEST-046 treasurer: a finance-only role, menu and dashboard; handovers as 
       await addMembership(request, admin, { groupId: zaki, personId: child, role: 'participant', validFrom: since })
       children.push(child)
     }
-    const wojtek = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
-    await addMembership(request, admin, { groupId: zaki, personId: wojtek.personId, role: 'coach', validFrom: since })
+    const rafal = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
+    await addMembership(request, admin, { groupId: zaki, personId: rafal.personId, role: 'coach', validFrom: since })
     const beata = await signedInStaff(request, club, { firstName: 'Beata', lastName: 'Skarbnik', role: 'treasurer' })
     let treasurer = beata.token
 
@@ -325,7 +325,7 @@ test('TEST-046 treasurer: a finance-only role, menu and dashboard; handovers as 
     ])
     const charged = await call<Lookup>(request, 'GET', '/api/payments/lookups?kind=persons', treasurer)
     expect(charged.body?.items?.map((item) => item.id)).toEqual(expect.arrayContaining([parent, ...children]))
-    expect((await call(request, 'GET', '/api/payments/lookups?kind=groups', wojtek.token)).status).toBe(403)
+    expect((await call(request, 'GET', '/api/payments/lookups?kind=groups', rafal.token)).status).toBe(403)
     const settings = await call<CodedBody & { coachFeeAccess?: string }>(
       request,
       'PUT',
@@ -335,10 +335,10 @@ test('TEST-046 treasurer: a finance-only role, menu and dashboard; handovers as 
     )
     expect(settings.status, JSON.stringify(settings.body)).toBe(200)
 
-    // Wojtek takes PLN 200 twice: two KP receipts held by him.
+    // Rafał takes PLN 200 twice: two KP receipts held by him.
     const taken: string[] = []
     for (const charge of [olaFee, elaFee]) {
-      const result = await call<CodedBody>(request, 'POST', '/api/payments/group-charges/cash', wojtek.token, {
+      const result = await call<CodedBody>(request, 'POST', '/api/payments/group-charges/cash', rafal.token, {
         data: {
           groupId: zaki,
           participantPersonId: charge.personId,
@@ -351,17 +351,17 @@ test('TEST-046 treasurer: a finance-only role, menu and dashboard; handovers as 
     }
     const listed = await custody(request, treasurer)
     expect(listed.status, JSON.stringify(listed.body)).toBe(200)
-    expect(listed.body?.items).toEqual([expect.objectContaining({ collectorPersonId: wojtek.personId, total: 40000 })])
+    expect(listed.body?.items).toEqual([expect.objectContaining({ collectorPersonId: rafal.personId, total: 40000 })])
     for (const payment of listed.body?.items?.[0]?.payments ?? []) taken.push(payment.paymentId)
     expect(taken).toHaveLength(2)
 
     // The treasurer settles part of it, then the rest: two handovers received by the treasurer; a repeat → 409.
-    const first = await accept(request, treasurer, { collectorPersonId: wojtek.personId, paymentIds: [taken[0]] })
+    const first = await accept(request, treasurer, { collectorPersonId: rafal.personId, paymentIds: [taken[0]] })
     expect(first.status, JSON.stringify(first.body)).toBe(201)
     expect(first.body?.number).toMatch(RG)
-    const second = await accept(request, treasurer, { collectorPersonId: wojtek.personId, paymentIds: [taken[1]] })
+    const second = await accept(request, treasurer, { collectorPersonId: rafal.personId, paymentIds: [taken[1]] })
     expect(second.status, JSON.stringify(second.body)).toBe(201)
-    const again = await accept(request, treasurer, { collectorPersonId: wojtek.personId, paymentIds: [taken[0]] })
+    const again = await accept(request, treasurer, { collectorPersonId: rafal.personId, paymentIds: [taken[0]] })
     expect(again.status, JSON.stringify(again.body)).toBe(409)
     expect(again.body?.code).toBe('cash_already_settled')
     const stored = await withClient((client) =>

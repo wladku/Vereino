@@ -25,7 +25,7 @@ import { uiText } from '../_fixtures/ui-text'
 
 // TEST-C12 (payments parity spec phase 9, REQ-C11, AC-C11, J-C06 steps 1–3 and 5; issue #299 E12-S09), at 375 px in
 // both locales and both colour schemes. Kasia guards Jaś and Ada (Żaki) and pays for them; Halina Nowak, without an
-// account, also guards Jaś; Wojtek Malinowski coaches Żaki.
+// account, also guards Jaś; Rafał Malinowski coaches Żaki.
 // - Reads: each order of the form adds `submittedAt`, `handedOverAt` and `handedOverBy`; the personal link adds
 //   `guardian`.
 // - While the campaign takes orders, Today shows the "Order" tile with "Jaś: ordered — …" and "Ada: not ordered";
@@ -34,7 +34,7 @@ import { uiText } from '../_fixtures/ui-text'
 //   notes; "Pay online {amount}" opens M-08 with the kit charge only ticked.
 // - Once the campaign is closed the tile is gone (negative case) and M-16 says "closed on". After the delivery M-16
 //   and M-17 say "ready for pickup from the coach"; after the coach's handover M-17 says "Picked up — {time} · handed
-//   over by Wojtek Malinowski" and M-16 marks Jaś "picked up".
+//   over by Rafał Malinowski" and M-16 marks Jaś "picked up".
 // - M-19 names Halina Nowak above the form; an expired link answers 410 and shows "This link has expired".
 // Each locale pass sets the club's default locale with the cookie and asserts `<html lang>` after every navigation:
 // the member shell rewrites a cookie that disagrees with the member's resolved locale, and the `uiText()` patterns
@@ -139,7 +139,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
     expect(account.status, JSON.stringify(account.body)).toBe(201)
     const kasiaUserId = String(account.body?.userId)
     club.extraUserIds.push(kasiaUserId)
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Malinowski', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Malinowski', role: 'coach' })
     await addMembership(request, admin, { groupId: zaki, personId: coach.personId, role: 'coach', validFrom: since })
 
     const created = await postCampaign(request, admin, {
@@ -337,7 +337,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
       const picked = page.getByTestId('order-picked-up')
       await expect(picked, locale).toContainText(uiText('payments.orders.club.summary.pickedUp'))
       await expect(picked, locale).toContainText(
-        uiText('payments.orders.club.summary.handedBy', { params: { by: 'Wojtek Malinowski' } }),
+        uiText('payments.orders.club.summary.handedBy', { params: { by: 'Rafał Malinowski' } }),
       )
       await expect(picked).toContainText(/\d{1,2}:\d{2}/)
       await expect(page.getByTestId('order-ready')).toHaveCount(0)
@@ -365,7 +365,7 @@ test('TEST-C12 a guardian follows a kit order on the phone: stage, deadlines, pi
         uiText('payments.orders.link.personalLink', { params: { name: 'Halina Nowak' } }),
       )
       await expect(notice, locale).toContainText(uiText('payments.orders.link.personalLinkText'))
-      await expect(page.getByTestId('order-picked-up'), locale).toContainText('Wojtek Malinowski')
+      await expect(page.getByTestId('order-picked-up'), locale).toContainText('Rafał Malinowski')
       await expectNoPageOverflow(page)
     }
     await switchLocale('en')

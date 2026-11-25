@@ -82,7 +82,7 @@ export const seedClubCore: ModuleSeed = async ({ request, seeded, api, admin }) 
   refs.externalPlace =
     (
       await api<{ id: string }>('POST', '/api/club_core/places/external', {
-        data: { name: 'Hala gminna', address: 'ul. Szkolna 50, Liszki', kind: 'hall' },
+        data: { name: 'Hala gminna', address: 'ul. Szkolna 50, Zielony Las', kind: 'hall' },
         status: 201,
       })
     ).body?.id ?? ''

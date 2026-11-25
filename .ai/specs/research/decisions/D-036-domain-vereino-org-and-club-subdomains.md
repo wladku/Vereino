@@ -7,18 +7,18 @@ status: confirmed (domain and address direction) / open (purchase, done by the o
 ---
 # D-036 Domain vereino.org with clubs on subdomains; vereino.pl redirects
 
-D12 put the domain on hold and listed .org, .com and .app. D34 puts many clubs on one shared instance, and every club needs an address of its own. The owner asked whether vereino.org is too long once clubs get addresses such as `gwiazda.vereino.org`, and chose:
+D12 put the domain on hold and listed .org, .com and .app. D34 puts many clubs on one shared instance, and every club needs an address of its own. The owner asked whether vereino.org is too long once clubs get addresses such as `przyklad.vereino.org`, and chose:
 
 1. **The main domain is `vereino.org`.** The product page and the documentation live at the root.
 2. **`vereino.pl` redirects to `vereino.org`.** It serves the first market and catches people who type the Polish ending. `wereino.pl`, for people who write the name as they hear it, is an optional extra.
 3. **Each club gets `{club}.vereino.org` by default.** The club's public page, the member pages and the panel live on it.
-4. **A club may use its own domain instead.** Open Mercato's `customer_accounts:domain_mapping` maps a hostname such as `ksgwiazda.pl` to the club.
+4. **A club may use its own domain instead.** Open Mercato's `customer_accounts:domain_mapping` maps a hostname such as `klub-przyklad.example` to the club.
 5. **The club part of the address is short and plain.** It uses lowercase a–z, digits and hyphens, without Polish letters, up to about 15 characters. The club chooses it. Names such as `www`, `app`, `api`, `mail`, `admin`, `docs` and `status` are reserved.
 6. **E-mail is sent from a subdomain** of `vereino.org`, with SPF, DKIM and DMARC. The club's name goes in the sender name. This is the e-mail subdomain the engineering standards spec asks for (S12.1).
 
-**Why the length is acceptable:** `vereino.org` has 11 characters. A club address has about 18–24, for example `gwiazda.vereino.org` (19) or `uks-gwiazda.vereino.org` (23). That is usual for hosted platforms with club subdomains. Parents and coaches rarely type the address: they open a link from a message, scan a QR code from a poster or start the app from the home screen. The length that matters is the club part, so it gets the limit in point 5.
+**Why the length is acceptable:** `vereino.org` has 11 characters. A club address has about 18–24, for example `przyklad.vereino.org` (19) or `uks-przyklad.vereino.org` (23). That is usual for hosted platforms with club subdomains. Parents and coaches rarely type the address: they open a link from a message, scan a QR code from a poster or start the app from the home screen. The length that matters is the club part, so it gets the limit in point 5.
 
-**Why subdomains rather than paths (`vereino.org/gwiazda`):**
+**Why subdomains rather than paths (`vereino.org/przyklad`):**
 
 - each club is its own origin, so one club's cookies and sessions are not visible to another;
 - switching a club to its own domain changes only the hostname;

@@ -20,7 +20,7 @@ import { updateClubSettings } from '../_fixtures/members'
 
 // TEST-M12 (foundation III REQ-M12, DD-M18, AC-M12; #138) on the TEST-008 family: Anna ("Kasia" of the spec) is the
 // guardian of Hania (14, no account; Żaki and the pool group — "Jaś") and Kuba (16, with an account, Żaki — "Ola"); the
-// coach of Żaki is Marek ("Wojtek"); Piotr is another family in Żaki; Krystyna coordinates the academy. Anna writes to
+// coach of Żaki is Marek ("Rafał"); Piotr is another family in Żaki; Krystyna coordinates the academy. Anna writes to
 // the Żaki coaches about Hania: Marek gets the in-app notice and the e-mail, the thread is `direct` in Anna's inbox and
 // the staff lists, Piotr sees nothing (403 on the thread). Kuba writes to his coach: Anna is among the recipients, and
 // her reply reaches the coach. A group or a person outside the household → 403 `scope_denied`. A thread to the

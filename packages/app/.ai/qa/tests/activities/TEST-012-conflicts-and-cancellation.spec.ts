@@ -61,7 +61,7 @@ test('TEST-012 conflicts: capacity over the place tree, capacity 2, touching tim
     const admin = club.adminToken
     const { academy, zaki, orliki, coordinator } = await scheduleFor(request, club)
     const trampkarze = await createGroup(request, admin, { sectionId: academy, name: 'Trampkarze', kind: 'team' })
-    const complex = await createStructure(request, admin, 'places', { name: 'Orlik 2024', kind: 'complex' })
+    const complex = await createStructure(request, admin, 'places', { name: 'Orlik', kind: 'complex' })
     const pitch = await createStructure(request, admin, 'places', {
       name: 'Boisko 1',
       kind: 'pitch',

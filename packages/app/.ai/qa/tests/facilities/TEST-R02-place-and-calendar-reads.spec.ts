@@ -103,7 +103,7 @@ test('TEST-R02 facility place options and calendar fields by role; TEST-R12 the 
     })
 
     // The people: a coach of Żaki, the attendant of Boisko A, the maintainer of Boisko A.
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
       personId: coach.personId,
@@ -223,7 +223,7 @@ test('TEST-R02 facility place options and calendar fields by role; TEST-R12 the 
     for (const entry of adminDay.body?.entries ?? []) expect(entry.placeName).toBe('Boisko A')
     expect(byKind(adminDay.body?.entries, 'session')).toMatchObject({
       groupName: 'Żaki',
-      coachName: 'Wojtek Trener',
+      coachName: 'Rafał Trener',
       status: null,
       contact: null,
       canOpen: false,
@@ -246,7 +246,7 @@ test('TEST-R02 facility place options and calendar fields by role; TEST-R12 the 
     for (const token of [coach.token, setup.coordinator]) {
       const day = await calendar(token, pitchA)
       expect(day.status, JSON.stringify(day.body)).toBe(200)
-      expect(byKind(day.body?.entries, 'session')).toMatchObject({ groupName: 'Żaki', coachName: 'Wojtek Trener' })
+      expect(byKind(day.body?.entries, 'session')).toMatchObject({ groupName: 'Żaki', coachName: 'Rafał Trener' })
       for (const kind of ['rental', 'request']) {
         expect(byKind(day.body?.entries, kind)).toMatchObject({ placeName: 'Boisko A', contact: null, canOpen: false })
       }

@@ -246,7 +246,7 @@ Renter e-mail link -> /p/{club}/rentals/cancel/{token} -> POST /api/facilities/p
 
 ### Journey J-R02 — The administrator reads the day and decides on a request (B-23, B-25)
 
-1. Aneta opens `/backend/facilities/calendar?place=…&date=…` from the dashboard widget "Dziś na obiekcie". She sees training sessions, a club booking, a rental and a pending request on one axis, and "2 grupy klubu naraz" under the place name.
+1. Joanna opens `/backend/facilities/calendar?place=…&date=…` from the dashboard widget "Dziś na obiekcie". She sees training sessions, a club booking, a rental and a pending request on one axis, and "2 grupy klubu naraz" under the place name.
 2. The request block says "Zgłoszenie: FC Blokersi (czeka na akceptację)". In "Wpisy dnia" its row has the link "Decyzja", which opens `/backend/facilities/requests`.
 3. The card shows the contact, the purpose, "Kwota orientacyjna 150 zł — na konto: Gmina Przykładowo", "brak kolizji", "brak w rejestrze zakazów", "regulamin zaakceptowany online", "e-mail potwierdzony" and "wygasa śr. 18:40". She presses "Akceptuj"; the dialog's first line names the owner (`action.approve.intro`).
 4. After approval the card leaves the queue, the rental is `requested`, and — with `payments` — its charge is payable to the municipality.
@@ -261,16 +261,16 @@ Renter e-mail link -> /p/{club}/rentals/cancel/{token} -> POST /api/facilities/p
 
 ### Journey J-R04 — A rental is paid, or is not (completes J-005 step 4)
 
-1. With `payments`: the municipality's statement shows the transfer. On B-24 Aneta presses "Potwierdź wpłatę" on the row; it opens the rental's charge (B-22 of the payments parity spec, J-C03), where she records the transfer. The charge becomes `paid`. Back on B-24 the rental is `confirmed` and its row says "opłacona".
+1. With `payments`: the municipality's statement shows the transfer. On B-24 Joanna presses "Potwierdź wpłatę" on the row; it opens the rental's charge (B-22 of the payments parity spec, J-C03), where she records the transfer. The charge becomes `paid`. Back on B-24 the rental is `confirmed` and its row says "opłacona".
 2. Without `payments`, or for a rental entered before it was enabled: the same button confirms the rental at once (`action.rentalConfirm.toast`); the dialog says the payment is noted in the rental register only.
-3. Not paid: after the payment deadline the rental appears under "Nieopłacone po terminie". If the agreement with the municipality has automatic expiry, the next lifecycle run cancels it free of charge, releases the slot and e-mails the renter; if not, Aneta calls the renter and then records the payment or cancels the rental.
+3. Not paid: after the payment deadline the rental appears under "Nieopłacone po terminie". If the agreement with the municipality has automatic expiry, the next lifecycle run cancels it free of charge, releases the slot and e-mails the renter; if not, Joanna calls the renter and then records the payment or cancels the rental.
 4. Failures: a direct confirm of a rental whose charge is still open answers 409 `rental_awaits_payment` with the link to the charge; a payment event that arrives twice confirms once; if the event was missed, the confirm action succeeds as soon as the charge is `paid`.
 
 ### Journey J-R05 — A closure flags entries and the right people learn of it
 
-1. The municipality announces an event. Aneta adds the closure on the Closures tab; the save says "Oznaczono do przeniesienia: 2 terminy, 1 rezerwacja klubu, 1 wynajem".
+1. The municipality announces an event. Joanna adds the closure on the Closures tab; the save says "Oznaczono do przeniesienia: 2 terminy, 1 rezerwacja klubu, 1 wynajem".
 2. The coordinator of Akademia and the coach of the two sessions each get one notification and one e-mail naming the closure and their sessions; the booker of the club booking gets one for the booking; the administrators get one for the rental; the renter gets an e-mail saying the club will propose a new time.
-3. Aneta opens B-24 → "Do przeniesienia", opens the rental and moves it; the flag clears and the renter gets the "moved" e-mail. The coordinator moves the sessions on the page the groups and activities spec defines.
+3. Joanna opens B-24 → "Do przeniesienia", opens the rental and moves it; the flag clears and the renter gets the "moved" e-mail. The coordinator moves the sessions on the page the groups and activities spec defines.
 4. Failures: a recipient without an account gets the e-mail only; a failed dispatch is retried by its key and never sent twice.
 
 ### Journey J-R06 — The renter cancels through the link
@@ -289,7 +289,7 @@ Renter e-mail link -> /p/{club}/rentals/cancel/{token} -> POST /api/facilities/p
 ### Journey J-R08 — The attendant asks for an entry ban
 
 1. After a fight on the pitch Tomek reports an incident on `/club/facility`, picks today's rental "KS Sąsiedzi" as the party involved (its name goes into "people involved") and ticks the action "Wnioskowano o zakaz wstępu" (the existing `facilities.records.incidentAction.entry_ban_requested`).
-2. The administrators get the notice "Wniosek o zakaz wstępu — Boisko piłkarskie". On the Incidents tab the row carries "wniosek o zakaz" and the action "Wydaj zakaz", which opens the ban form with the place, the incident and the reason filled in; Aneta picks the subject and the period.
+2. The administrators get the notice "Wniosek o zakaz wstępu — Boisko piłkarskie". On the Incidents tab the row carries "wniosek o zakaz" and the action "Wydaj zakaz", which opens the ban form with the place, the incident and the reason filled in; Joanna picks the subject and the period.
 3. The ban is saved with `incident_id`; the incident shows "zakaz wydany". A new rental for that renter answers 409 `entry_ban_active`.
 4. Failures: the attendant calling the ban route directly gets 403 `scope_denied` as today.
 

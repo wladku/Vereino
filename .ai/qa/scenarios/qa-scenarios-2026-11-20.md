@@ -409,7 +409,7 @@ Report window: **2026-11-14 → 2026-11-20** (routes for base `main`). Issue: [#
 **What to verify**
 
 - [ ] Saving the place dialog → the new place is selected in „Miejsce”, marked „(zewnętrzne)”, toast „Dodano i wybrano: {name}”; the list column „Miejsce” shows the „zewnętrzne” badge
-- [ ] Saving without a public address → the server proposes one from the name (e.g. gwiazda-cup-2026)
+- [ ] Saving without a public address → the server proposes one from the name (e.g. przyklad-cup-2026)
 - [ ] Parts appear in one table per day heading with visiting teams, coach (or „brak trenera” badge) and status
 - [ ] „Przenieś” dialog shows the place read-only (the club event's place) and the save toast names how many people were told
 - [ ] „Usuń” on a part with a declaration → „Tej części nie można usunąć” offering to cancel it instead; nothing deleted
@@ -2341,7 +2341,7 @@ Every issue closed since the window start, with the scenarios that cover it. Epi
 | [#359](https://github.com/wladku/Vereino/issues/359) | groups: roster correction follow-ups from the review of #355 (scope tests, usage query, a11y) | S10 |
 | [#366](https://github.com/wladku/Vereino/issues/366) | fix(facilities): the slot dialog may preselect "General purpose" for a coach before their groups load (TEST-R04 flake) | S55 |
 | [#368](https://github.com/wladku/Vereino/issues/368) | test(activities): TEST-A12 scans the new-event form mid colour-scheme fade and fails color-contrast intermittently | no manual check needed (#369) |
-| [#375](https://github.com/wladku/Vereino/issues/375) | E14 — Club events with parts, like the Gwiazda Cup tournament | epic — see its stories |
+| [#375](https://github.com/wladku/Vereino/issues/375) | E14 — Club events with parts, like the Przykład Cup tournament | epic — see its stories |
 | [#376](https://github.com/wladku/Vereino/issues/376) | E14-S01 — A club event and its parts exist through the API, each part with a group is a session of that group, and only the event's managers move or cancel it | S09, S11, S51, S56, S64 |
 | [#377](https://github.com/wladku/Vereino/issues/377) | E14-S02 — A section coordinator adds a missing external place from the event form, and it stays on the list for next time | S11, S51, S64 |
 | [#378](https://github.com/wladku/Vereino/issues/378) | E14-S03 — An administrator lists club events in the panel, creates one with its place, and works its parts by day | S09, S11 |
@@ -2376,7 +2376,7 @@ Merged PRs without a user-visible change. They are covered by the automated gate
 - [#347](https://github.com/wladku/Vereino/pull/347) test: UI texts use the key of the component on the page, not a key with the same text — test-only change — no user-visible change
 - [#369](https://github.com/wladku/Vereino/pull/369) test(activities): TEST-A12 waits for the colour-scheme fade before its dark scan (#368) — test-only change — no user-visible change
 - [#372](https://github.com/wladku/Vereino/pull/372) docs(specs): move several children from a roster to another group (REQ-L15) — documentation only (specs, SDLC, lessons)
-- [#373](https://github.com/wladku/Vereino/pull/373) docs(specs): a club event with parts, like the Gwiazda Cup tournament (D-032) — documentation only (specs, SDLC, lessons)
+- [#373](https://github.com/wladku/Vereino/pull/373) docs(specs): a club event with parts, like the Przykład Cup tournament (D-032) — documentation only (specs, SDLC, lessons)
 - [#390](https://github.com/wladku/Vereino/pull/390) test(people): TEST-L03 declares on a session after today, not on today's — test-only change — no user-visible change
 - [#395](https://github.com/wladku/Vereino/pull/395) ci: di-commands:check keeps every command file out of what a module's di.ts loads — CI and pipeline only — no user-visible change
 - [#399](https://github.com/wladku/Vereino/pull/399) ci: run the integration suite on six shards instead of three — CI and pipeline only — no user-visible change
@@ -2485,7 +2485,7 @@ One line per PR in the window, grouped by merge date (newest first).
 - [#386](https://github.com/wladku/Vereino/pull/386) feat(facilities): the renter gets e-mails about their rental and cancels it through a link (E11-S12, #286) — base `main` · QA: needs-qa · Issue refs: [#286](https://github.com/wladku/Vereino/issues/286) · Scenarios: S72
 - [#385](https://github.com/wladku/Vereino/pull/385) feat(facilities): a rental's charge is payable to the place owner and the rental is confirmed by its payment (E11-S11, #285) — base `main` · QA: needs-qa · Issue refs: [#285](https://github.com/wladku/Vereino/issues/285) · Scenarios: S46
 - [#374](https://github.com/wladku/Vereino/pull/374) feat(groups): a section coordinator edits rosters, marks a case and deletes a message from the phone (E10-S09, #274) — base `main` · QA: needs-qa · Issue refs: [#267](https://github.com/wladku/Vereino/issues/267), [#274](https://github.com/wladku/Vereino/issues/274) · Scenarios: S49, S50
-- [#373](https://github.com/wladku/Vereino/pull/373) docs(specs): a club event with parts, like the Gwiazda Cup tournament (D-032) — base `main` · QA: skip-qa · Issue refs: none · Scenarios: no manual check
+- [#373](https://github.com/wladku/Vereino/pull/373) docs(specs): a club event with parts, like the Przykład Cup tournament (D-032) — base `main` · QA: skip-qa · Issue refs: none · Scenarios: no manual check
 - [#372](https://github.com/wladku/Vereino/pull/372) docs(specs): move several children from a roster to another group (REQ-L15) — base `main` · QA: skip-qa · Issue refs: none · Scenarios: no manual check
 - [#371](https://github.com/wladku/Vereino/pull/371) feat(people): an administrator enters role dates, a guardianship start, an external id and a material title, and an author edits their own message (E13-S02, #304) — base `main` · QA: needs-qa · Issue refs: [#304](https://github.com/wladku/Vereino/issues/304) · Scenarios: S35, S59
 - [#370](https://github.com/wladku/Vereino/pull/370) feat(payments): M-15 names the receiver and lists receipts by charge; M-18 keeps the group in the URL, states the coach mode and shows the handover time (E12-S10, #300) — base `main` · QA: needs-qa · Issue refs: [#300](https://github.com/wladku/Vereino/issues/300) · Scenarios: S06, S58

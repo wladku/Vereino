@@ -26,8 +26,8 @@ import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
 
 // Club events spec TEST-T04 (REQ-T02, REQ-T05, DD-T02, DD-T05, DD-T06; #376): a part session is moved and cancelled
 // only by who manages its club event. Piotr, coach of Trampkarz only, gets 403 `club_event_part_managed_by_event` for a
-// PATCH and a cancellation of his part session; Wojtek, coordinator of the academy, gets the same on a part of the
-// administrator's whole-club event; a coordinator of another section is outside the session's scope (403). Wojtek
+// PATCH and a cancellation of his part session; Rafał, coordinator of the academy, gets the same on a part of the
+// administrator's whole-club event; a coordinator of another section is outside the session's scope (403). Rafał
 // moves the Orlik part of his own event by an hour (200; the participant gets one moved notice) and is refused another
 // place (422 `club_event_part_place_fixed`). Piotr still reports his absence on his part. The generic activity edit and
 // delete answer 409 `activity_is_club_event_part` with `clubEventId`.
@@ -46,8 +46,8 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     const trampkarz = await createGroup(request, admin, { sectionId: academy, name: 'Trampkarz', kind: 'team' })
     const { hall, salka } = await examplePlaces(request, club)
     const since = addDays(calendarDate(), -30)
-    const wojtek = await signedInStaff(request, club, {
-      firstName: 'Wojtek',
+    const rafal = await signedInStaff(request, club, {
+      firstName: 'Rafał',
       lastName: 'Malinowski',
       role: 'coordinator',
       sectionId: academy,
@@ -65,7 +65,7 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
       role: 'coach',
       validFrom: since,
     })
-    await addMembership(request, admin, { groupId: orlik, personId: wojtek.personId, role: 'coach', validFrom: since })
+    await addMembership(request, admin, { groupId: orlik, personId: rafal.personId, role: 'coach', validFrom: since })
     const player = await createPerson(request, admin, {
       firstName: 'Iga',
       lastName: 'Gracz',
@@ -75,19 +75,19 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     const iga = await memberAccount(request, club, player, 'iga-t04')
 
     const saturday = nextWeekday(addDays(calendarDate(), 7), 'SA')
-    const eventId = await clubEventId(request, wojtek.token, {
-      name: 'GWIAZDA CUP 2026',
+    const eventId = await clubEventId(request, rafal.token, {
+      name: 'PRZYKŁAD CUP 2026',
       sectionId: academy,
       placeId: hall,
     })
-    const orlikPart = await partIds(request, wojtek.token, eventId, {
+    const orlikPart = await partIds(request, rafal.token, eventId, {
       title: 'Turniej Orlika Młodszego',
       groupId: orlik,
-      coachPersonId: wojtek.personId,
+      coachPersonId: rafal.personId,
       startsAt: zoneInstant(saturday, '09:00'),
       endsAt: zoneInstant(saturday, '14:00'),
     })
-    const trampkarzPart = await partIds(request, wojtek.token, eventId, {
+    const trampkarzPart = await partIds(request, rafal.token, eventId, {
       title: 'Turniej Trampkarza',
       groupId: trampkarz,
       coachPersonId: piotr.personId,
@@ -123,11 +123,11 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     )
     expect(piotrCancel.status, JSON.stringify(piotrCancel.body)).toBe(403)
     expect(piotrCancel.body?.code).toBe('club_event_part_managed_by_event')
-    // Wojtek coordinates the academy, but the whole-club event is the administrator's.
+    // Rafał coordinates the academy, but the whole-club event is the administrator's.
     const festynSession = await sessionOf(festynPart.occurrenceId)
     const notHisEvent = await moveOccurrence(
       request,
-      wojtek.token,
+      rafal.token,
       festynSession.id,
       { startAt: zoneInstant(addDays(saturday, 1), '11:00'), endAt: zoneInstant(addDays(saturday, 1), '12:00') },
       festynSession.updatedAt,
@@ -136,7 +136,7 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     expect(notHisEvent.body?.code).toBe('club_event_part_managed_by_event')
     const notHisCancel = await cancelOccurrence(
       request,
-      wojtek.token,
+      rafal.token,
       festynSession.id,
       'Deszcz',
       festynSession.updatedAt,
@@ -147,11 +147,11 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     const ewaMove = await moveOccurrence(request, ewa.token, trampkarzSession.id, later, trampkarzSession.updatedAt)
     expect(ewaMove.status, JSON.stringify(ewaMove.body)).toBe(403)
 
-    // --- Wojtek moves his Orlik part by an hour; the participant gets one moved notice ---
+    // --- Rafał moves his Orlik part by an hour; the participant gets one moved notice ---
     const orlikSession = await sessionOf(orlikPart.occurrenceId)
     const elsewhere = await moveOccurrence(
       request,
-      wojtek.token,
+      rafal.token,
       orlikSession.id,
       { placeId: salka },
       orlikSession.updatedAt,
@@ -160,7 +160,7 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     expect(elsewhere.body?.code).toBe('club_event_part_place_fixed')
     const moved = await moveOccurrence(
       request,
-      wojtek.token,
+      rafal.token,
       orlikSession.id,
       { startAt: zoneInstant(saturday, '10:00'), endAt: zoneInstant(saturday, '15:00'), placeId: hall },
       orlikSession.updatedAt,
@@ -195,7 +195,7 @@ test('TEST-T04 a coach and a coordinator outside the event cannot move or cancel
     const updatedAt = String((activity.body as { updatedAt?: string }).updatedAt)
     const edit = await updateActivity(
       request,
-      wojtek.token,
+      rafal.token,
       { id: String(orlikPart.activityId), name: 'Inny' },
       updatedAt,
     )

@@ -5,8 +5,8 @@ import { CANCELLING_ROLES, cancellationCoordinatorIds, cancellingRole } from '..
 
 test('a coach cancellation adds the section coordinators, unique and sorted, never the canceller', () => {
   assert.deepEqual(cancellationCoordinatorIds('coach', ['c-2', 'c-1', 'c-2'], 'p-9'), ['c-1', 'c-2'])
-  // Wojtek coaches the group and coordinates its section: he is not told of his own cancellation.
-  assert.deepEqual(cancellationCoordinatorIds('coach', ['wojtek', 'ola'], 'wojtek'), ['ola'])
+  // Rafał coaches the group and coordinates its section: he is not told of his own cancellation.
+  assert.deepEqual(cancellationCoordinatorIds('coach', ['rafal', 'ola'], 'rafal'), ['ola'])
   assert.deepEqual(cancellationCoordinatorIds('coach', ['ola'], null), ['ola'])
 })
 

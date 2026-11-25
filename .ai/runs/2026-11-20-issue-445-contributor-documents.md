@@ -37,4 +37,4 @@ A contributor finds `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, issu
 
 - #456: add `.vscode/extensions.json`.
 - Owner: enable private vulnerability reporting, secret scanning with push protection and Dependabot alerts (epic #442), and decide whether to publish contact e-mails in `CODE_OF_CONDUCT.md`.
-- Kacper Kuć's GitHub handle is unknown to the repository (CODEOWNERS has only `@wladku`); add it to `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` when known.
+- Kacper's GitHub handle is unknown to the repository (CODEOWNERS has only `@wladku`); add it to `CONTRIBUTING.md` and `CODE_OF_CONDUCT.md` when known.

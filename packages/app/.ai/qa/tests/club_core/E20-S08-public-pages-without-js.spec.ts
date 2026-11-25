@@ -113,7 +113,7 @@ test('E20-S08 public club pages show their content without JavaScript and carry 
           id: 'P-03',
           path: `/p/${slug}/places`,
           title: `${clubName} — ${text('facilities.public.places.pageTitle')}`,
-          visible: [clubName, 'Hala sportowa w Liszkach'],
+          visible: [clubName, 'Hala sportowa w Zielonym Lesie'],
           description: text('facilities.public.places.metaDescription').replace('{club}', clubName),
         },
         {

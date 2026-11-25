@@ -33,4 +33,4 @@
 
 - Step 3.1 is the owner's: *Settings → General → Pull Requests → Automatically delete head branches*.
 - ST-AC-04's live part (a PR stacked on a merged PR targets `main` after the next train run) is observable only after merge.
-- Phase 2 (phone alerts) is ops on cezar-ws and out of scope.
+- Phase 2 (phone alerts) is ops on the build server and out of scope.
