@@ -436,3 +436,15 @@ textarea { min-height: 76px; resize: vertical; }
   .slotlist li > .btn { grid-column: 1 / -1; justify-self: start; }
   .slotlist li > span:empty { display: none; }
 }
+
+/* Training outline in the PZPN layout (M-21), PZPN export preview (M-22), coach units (M-24). */
+table.pzpn { width: 100%; border-collapse: collapse; margin: 0 0 10px; font-size: 13px; }
+table.pzpn th, table.pzpn td { border: 1px solid var(--border); padding: 6px 8px; text-align: left; vertical-align: top; }
+table.pzpn th { background: var(--muted); font-weight: 600; white-space: nowrap; }
+.kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.print-page { max-width: 780px; margin: 0 auto; padding: 24px 16px; background: var(--background); color: var(--foreground); }
+@media print {
+  #chrome, .no-print, .mock-banner, .toasts, .drawer { display: none !important; }
+  .print-page { padding: 0; max-width: none; }
+  table.pzpn th { background: #eee !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
