@@ -98,3 +98,39 @@ export async function clubName(container: AwilixContainer, scope: TrainingScope)
   const { values } = await settings.get(scope)
   return values.shortName ?? (await settings.organizationName(scope))
 }
+
+/**
+ * The persons who lead the group on `date`: a live `coach` or `assistant` membership (training outlines spec DD-O12:
+ * every coach or assistant of the session's group records a use at close, so each of them may rate).
+ */
+export async function groupLeadersOn(
+  container: AwilixContainer,
+  scope: TrainingScope,
+  groupId: string,
+  date: string,
+  em?: EntityManager,
+): Promise<string[]> {
+  assertRegistered(container, GROUPS_DIRECTORY)
+  const roster = await container.resolve<GroupDirectory>(GROUPS_DIRECTORY).rosterOn(scope, groupId, date, em)
+  return [...new Set(roster.filter((entry) => LEADER_ROLES.has(entry.role)).map((entry) => entry.personId))]
+}
+
+const LEADER_ROLES = new Set<string>(['coach', 'assistant'])
+
+/** The public names ("First L.") of the persons who gave the name consent (DD-29); the others are absent. */
+export function findPublicNames(
+  container: AwilixContainer,
+  scope: TrainingScope,
+  ids: readonly string[],
+  em?: EntityManager,
+): Promise<Map<string, string>> {
+  assertRegistered(container, PEOPLE_PERSON_DIRECTORY)
+  return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).publicNames(scope, ids, em)
+}
+
+/** The club's widest outline library level (`ClubSettings.outlineLibraryMaxVisibility`, B-O1, BR-O4). */
+export async function clubLibraryLevel(container: AwilixContainer, scope: TrainingScope): Promise<string> {
+  assertRegistered(container, CLUB_CORE_SETTINGS)
+  const { values } = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  return values.outlineLibraryMaxVisibility
+}

@@ -86,6 +86,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'payments.groups.collect',
       // Training outlines of the coordinator's sections (training outlines spec, #683).
       'training.outlines.write',
+      // The shared outline library: browse, copy, rate, report, publish up to the club level (#685).
+      'training.library.use',
+      'training.library.publish',
       // The panel dashboard with the widgets of the coordinator's other features: "Sessions needing a coach" and
       // "Unsettled sessions" for the own sections (navigation spec REQ-N04, Q-N03 approved 2026-11-15; #260).
       'dashboards.view',
@@ -111,6 +114,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'payments.groups.collect',
       // Own outlines and those of the groups the coach runs (training outlines spec, #683).
       'training.outlines.write',
+      // The shared outline library: browse, copy, rate, report, publish own outlines (#685).
+      'training.library.use',
+      'training.library.publish',
     ],
     implies: ['member'],
     requiresScope: null,

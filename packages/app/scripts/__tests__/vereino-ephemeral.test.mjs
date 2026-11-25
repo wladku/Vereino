@@ -67,8 +67,12 @@ test('buildAppEnv points the app at the database and pins test-only values', () 
     stateDir: '/tmp/state',
     baseEnv: { KEEP: '1', NODE_ENV: 'development' },
     secret: 'test-secret',
+    library: { tenantId: 't-1', organizationId: 'o-1', raterSecret: 'r-1' },
   })
   assert.equal(env.KEEP, '1')
+  assert.equal(env.VEREINO_LIBRARY_TENANT_ID, 't-1')
+  assert.equal(env.VEREINO_LIBRARY_ORGANIZATION_ID, 'o-1')
+  assert.equal(env.VEREINO_LIBRARY_RATER_SECRET, 'r-1')
   assert.equal(env.NODE_ENV, 'production')
   assert.equal(env.PORT, '6001')
   assert.equal(env.BASE_URL, 'http://127.0.0.1:6001')
@@ -84,6 +88,8 @@ test('buildAppEnv points the app at the database and pins test-only values', () 
 test('buildAppEnv defaults to the process environment and a random secret', () => {
   const env = buildAppEnv({ databaseUrl: 'postgres://db', port: 1, stateDir: '/tmp' })
   assert.equal(env.JWT_SECRET.length, 64)
+  assert.match(env.VEREINO_LIBRARY_TENANT_ID, /^[0-9a-f-]{36}$/)
+  assert.equal(env.VEREINO_LIBRARY_RATER_SECRET.length, 64)
   assert.equal(env.PATH ?? env.Path, process.env.PATH ?? process.env.Path)
   assert.equal(env.VEREINO_OAUTH_GOOGLE_CLIENT_ID, process.env.VEREINO_OAUTH_GOOGLE_CLIENT_ID)
 })

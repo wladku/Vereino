@@ -828,5 +828,10 @@
   "club_core.offboarding.banner.started": "The export has started. Download it from this banner when it is ready.",
   "club_core.offboarding.banner.startError": "The export could not be started.",
   "club_core.offboarding.banner.loadError": "Could not check whether the club is leaving Vereino.",
-  "club_core.offboarding.banner.retry": "Try again"
+  "club_core.offboarding.banner.retry": "Try again",
+  "club_core.settings.fields.outlineLibraryMaxVisibility": "Widest outline library level",
+  "club_core.settings.fields.outlineLibraryMaxVisibility.description": "How widely coaches may share training outlines: only in the club, with clubs on Vereino, or with the public. Shared outlines are licensed under CC BY-SA 4.0. Lowering the level withdraws the outlines shared above it.",
+  "club_core.settings.outlineLibraryMaxVisibility.club": "Only in the club",
+  "club_core.settings.outlineLibraryMaxVisibility.clubs": "Clubs on Vereino",
+  "club_core.settings.outlineLibraryMaxVisibility.public": "Public"
 }

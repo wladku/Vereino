@@ -39,11 +39,16 @@ export {
 export { isUnlinkedScope, scopeDenialCode, type ScopeDenialCode } from './lib/scope-denial'
 export {
   clubDataContributor,
+  clubDeleteBeyondTenantToken,
   clubDeleteContributorToken,
   clubExportContributorToken,
   type ClubDataContributor,
 } from './lib/club-data'
-export { registerClubDataContributor } from './services/club-data'
+export {
+  registerClubDataContributor,
+  registerClubDeleteBeyondTenant,
+  type ClubDeleteBeyondTenant,
+} from './services/club-data'
 export {
   assertInScope,
   authorizeScoped,

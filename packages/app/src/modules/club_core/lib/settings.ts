@@ -74,6 +74,13 @@ export const DECLARATION_KINDS = ['absence_only', 'confirm'] as const
 export type DeclarationKind = (typeof DECLARATION_KINDS)[number]
 export type DeclarationKinds = Record<ActivityType, DeclarationKind>
 
+/**
+ * The widest level the club's coaches may publish training outlines at (training outlines spec B-O1, BR-O4; #685):
+ * `club` (never published), `clubs` (clubs on Vereino) or `public`. A new club starts at `clubs` (D-038 §4).
+ */
+export const OUTLINE_LIBRARY_LEVELS = ['club', 'clubs', 'public'] as const
+export type OutlineLibraryLevel = (typeof OUTLINE_LIBRARY_LEVELS)[number]
+
 /** Who pays the online payment commission (R13). */
 export const ONLINE_FEE_MODES = ['club_pays', 'payer_pays'] as const
 /** How coaches are settled (R14); a stored setting only until the settlement work (A05). */
@@ -161,6 +168,8 @@ export const clubSettingFieldSchemas = {
     .int()
     .min(FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE.min)
     .max(FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE.max),
+  /** The widest training outline library level (B-O1, BR-O4; #685). */
+  outlineLibraryMaxVisibility: z.enum(OUTLINE_LIBRARY_LEVELS),
 } as const
 
 export const clubSettingsSchema = z.object(clubSettingFieldSchemas)
@@ -194,6 +203,7 @@ export const CLUB_SETTINGS_DEFAULTS: Readonly<ClubSettingsValues> = {
   coachMayCancel: true,
   orderSalesDocument: 'none',
   formerParticipantRetentionMonths: 12,
+  outlineLibraryMaxVisibility: 'clubs',
 }
 
 export const CLUB_SETTING_KEYS = Object.keys(clubSettingFieldSchemas) as ClubSettingKey[]

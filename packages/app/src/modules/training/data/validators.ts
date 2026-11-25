@@ -2,6 +2,7 @@
 // *Data Models* → `training_outlines`; #683). The parts' shape and limits live in `lib/outline.ts`.
 import { z } from 'zod'
 import { OUTLINE_LANGUAGES, OUTLINE_LIMITS, OUTLINE_PARTS, outlinePartsSchema } from '../lib/outline'
+import { PUBLISH_VISIBILITIES, REPORT_NOTE_MAX, REPORT_REASONS, STARS } from '../lib/library'
 
 const text = (max: number) => z.string().trim().max(max)
 
@@ -116,3 +117,37 @@ export const outlineListQuerySchema = z.object({
   occurrenceId: z.uuid().optional(),
   activityId: z.uuid().optional(),
 })
+
+// ---------------------------------------------------------------------------------------------------------------------
+// The shared library (training outlines spec phase 4, *API*; E24-S05, #685)
+
+/** Publishes an outline at `visibility`; `acceptTerms` accepts the library terms at the first publication. */
+export const publishSchema = z
+  .object({ id: z.uuid(), visibility: z.enum(PUBLISH_VISIBILITIES), acceptTerms: z.boolean().optional() })
+  .strict()
+
+export const withdrawSchema = z.object({ id: z.uuid() }).strict()
+
+/** Copies a library entry into the club as the caller's own outline (REQ-O12). */
+export const copySchema = z.object({ entryId: z.uuid() }).strict()
+
+export const rateSchema = z
+  .object({ entryId: z.uuid(), stars: z.number().int().min(STARS.min).max(STARS.max) })
+  .strict()
+
+export const reportSchema = z
+  .object({
+    entryId: z.uuid(),
+    reason: z.enum(REPORT_REASONS),
+    note: z.string().trim().max(REPORT_NOTE_MAX).nullable().default(null),
+  })
+  .strict()
+
+/** The job of `activities.occurrence.completed`: the uses of the closed session's library outline. */
+export const recordUsesSchema = z.object({ occurrenceId: z.uuid() }).strict()
+
+/** The job of `people.person.updated` and the anonymisation: the author's name leaves the library. */
+export const stripAuthorSchema = z.object({ personId: z.uuid() }).strict()
+
+/** The job of `club_core.settings.updated`: entries above the club's level are withdrawn (BR-O5). */
+export const applyLevelSchema = z.object({}).strict()

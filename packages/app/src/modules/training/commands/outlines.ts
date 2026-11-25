@@ -59,6 +59,7 @@ import {
   assertNotLocked,
   copyIntoSessions,
   inWriteTransaction,
+  originFields,
   outlineLoader,
   outlineTarget,
   scheduleTarget,
@@ -397,7 +398,7 @@ const attachOutlineCommand: CommandHandler<Record<string, unknown>, OutlineComma
         )
         await assertNotLocked(session)
         await assertFree(em, scope, { occurrenceId: session.id })
-        row = sessionOutline(em, scope, session, content, author, source.id)
+        row = sessionOutline(em, scope, session, content, author, source.id, originFields(source))
       } else {
         const activityId = parsed.activityId as string
         const activity = await findActivity(ctx.container, scope, activityId, em)
@@ -413,6 +414,7 @@ const attachOutlineCommand: CommandHandler<Record<string, unknown>, OutlineComma
           activityId: activity.id,
           occurrenceId: null,
           sourceOutlineId: source.id,
+          ...originFields(source),
           ...outlineContent(content),
         })
         em.persist(row)

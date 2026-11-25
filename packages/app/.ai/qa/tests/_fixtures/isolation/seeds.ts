@@ -11,7 +11,7 @@ import { seedGroups } from './seed-groups'
 import { seedPayments } from './seed-payments'
 import { seedPaymentsOrders } from './seed-payments-orders'
 import { seedPeople } from './seed-people'
-import { seedTraining } from './seed-training'
+import { seedTraining, seedTrainingLibrary } from './seed-training'
 
 export const MODULE_SEEDS: Record<string, ModuleSeed> = {
   foundation: seedFoundation,
@@ -24,6 +24,7 @@ export const MODULE_SEEDS: Record<string, ModuleSeed> = {
   payments: seedPayments,
   'payments-orders': seedPaymentsOrders,
   training: seedTraining,
+  'training-library': seedTrainingLibrary,
 }
 
 /** The seeds of the given modules (all when `modules` is null; `payments` includes `payments-orders`), in order. */

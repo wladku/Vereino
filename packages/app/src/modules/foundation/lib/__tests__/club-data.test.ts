@@ -1,10 +1,16 @@
 import { describe, expect, it } from '@jest/globals'
-import { clubDataContributor, clubDeleteContributorToken, clubExportContributorToken } from '../club-data'
+import {
+  clubDataContributor,
+  clubDeleteBeyondTenantToken,
+  clubDeleteContributorToken,
+  clubExportContributorToken,
+} from '../club-data'
 
 describe('club data contributor tokens', () => {
   it('names the export and deletion tokens after the module', () => {
     expect(clubExportContributorToken('payments')).toBe('club_core.clubExport.payments')
     expect(clubDeleteContributorToken('payments')).toBe('club_core.clubDelete.payments')
+    expect(clubDeleteBeyondTenantToken('training')).toBe('club_core.clubDeleteBeyondTenant.training')
   })
 })
 

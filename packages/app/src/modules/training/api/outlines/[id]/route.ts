@@ -74,6 +74,21 @@ const viewSchema = z.object({
   locked: z.boolean().describe('Read-only: 72 hours after the session’s end (BR-O3)'),
   fileName: z.string().describe('The PDF’s file name without the extension'),
   clubName: z.string().nullable().describe('The club’s name for the print header'),
+  publication: z
+    .object({ entryId: z.uuid(), visibility: z.string() })
+    .nullable()
+    .describe('The library entry the outline is shared as (#685)'),
+  origin: z
+    .object({ entryId: z.string().nullable(), clubName: z.string(), authorName: z.string().nullable() })
+    .nullable()
+    .describe('The first author of an outline copied from the library'),
+  library: z
+    .object({
+      enabled: z.boolean(),
+      maxVisibility: z.enum(['club', 'clubs', 'public']),
+      termsAccepted: z.boolean(),
+    })
+    .describe('Whether the library is on, the club’s widest level and whether the caller accepted the terms'),
   createdAt: z.string(),
   updatedAt: z.string(),
 })

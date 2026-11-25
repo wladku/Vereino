@@ -1,5 +1,5 @@
 {
-  "$comment": "Cross-club isolation probes of the training routes (#628; training outlines spec phase 2, #683). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "$comment": "Cross-club isolation probes of the training routes (#628; training outlines spec phases 2 and 4, #683, #685). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check. The library routes show club A what club B published on purpose: their `library` probes check that nothing else of club B comes back.",
   "routes": {
     "/api/training/outlines": {
       "GET": [
@@ -188,6 +188,202 @@
           "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
         }
       }
+    },
+    "/api/training/outlines/[id]/publish": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:outline"
+          },
+          "body": {
+            "visibility": "clubs"
+          }
+        }
+      ],
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:outline"
+        }
+      }
+    },
+    "/api/training/library": {
+      "GET": [
+        {
+          "probe": "library",
+          "why": "The shared library lists what every club published at clubs or public level (DD-O10); club B's entries are shared on purpose, nothing else of club B may show"
+        },
+        {
+          "probe": "library",
+          "query": {
+            "sort": "used"
+          },
+          "why": "The shared library lists what every club published at clubs or public level (DD-O10); club B's entries are shared on purpose, nothing else of club B may show"
+        },
+        {
+          "probe": "library",
+          "query": {
+            "q": "Cykl",
+            "part": "main",
+            "ageCategory": "U11"
+          },
+          "why": "The shared library lists what every club published at clubs or public level (DD-O10); club B's entries are shared on purpose, nothing else of club B may show"
+        }
+      ]
+    },
+    "/api/training/library/[entryId]": {
+      "GET": [
+        {
+          "probe": "library",
+          "params": {
+            "entryId": "$B:libraryEntry"
+          },
+          "why": "Club B shared this outline with clubs on Vereino (DD-O11): the entry, its credit and rating show, never its source club, outline, session or persons"
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "entryId": "$B:outline"
+          }
+        }
+      ]
+    },
+    "/api/training/library/[entryId]/copy": {
+      "POST": [
+        {
+          "probe": "library",
+          "params": {
+            "entryId": "$B:libraryEntry"
+          },
+          "expect": [201],
+          "why": "Copying a shared entry is the library's purpose (REQ-O12): club A gets its own outline with the credit, no club B id"
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "entryId": "$B:outline"
+          }
+        }
+      ]
+    },
+    "/api/training/library/[entryId]/rating": {
+      "PUT": [
+        {
+          "probe": "library",
+          "params": {
+            "entryId": "$B:libraryEntry"
+          },
+          "body": {
+            "stars": 5
+          },
+          "expect": [409],
+          "why": "A rating needs a use of the entry by the same coach first (BR-O6): rating_requires_use"
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "entryId": "$B:outline"
+          },
+          "body": {
+            "stars": 5
+          }
+        }
+      ]
+    },
+    "/api/training/library/[entryId]/report": {
+      "POST": [
+        {
+          "probe": "library",
+          "params": {
+            "entryId": "$B:libraryEntry"
+          },
+          "body": {
+            "reason": "other"
+          },
+          "expect": [201],
+          "why": "Anyone who sees a shared entry may report it (REQ-O15); one club's reports never hide it"
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "entryId": "$B:outline"
+          },
+          "body": {
+            "reason": "other"
+          }
+        }
+      ]
+    },
+    "/api/training/library/[entryId]/images/[n]": {
+      "GET": [
+        {
+          "probe": "library",
+          "params": {
+            "entryId": "$B:libraryPublicEntry",
+            "n": "0"
+          },
+          "why": "The image of an outline club B shared (metadata stripped at publish); a signed-in coach sees public entries too"
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "entryId": "$B:outline",
+            "n": "0"
+          }
+        }
+      ]
+    },
+    "/api/training/public/library/[entryId]": {
+      "GET": [
+        {
+          "probe": "library",
+          "roles": ["anonymous"],
+          "params": {
+            "entryId": "$B:libraryPublicEntry"
+          },
+          "why": "Club B shared this outline with the public (REQ-O13): it opens without a session"
+        },
+        {
+          "probe": "public",
+          "params": {
+            "entryId": "$B:libraryEntry"
+          }
+        }
+      ]
+    },
+    "/api/training/public/library/[entryId]/report": {
+      "POST": [
+        {
+          "probe": "public",
+          "params": {
+            "entryId": "$B:libraryEntry"
+          },
+          "body": {
+            "reason": "other"
+          }
+        }
+      ]
+    },
+    "/api/training/public/library/[entryId]/images/[n]": {
+      "GET": [
+        {
+          "probe": "library",
+          "roles": ["anonymous"],
+          "params": {
+            "entryId": "$B:libraryPublicEntry",
+            "n": "0"
+          },
+          "why": "The image of an outline club B shared with the public"
+        },
+        {
+          "probe": "public",
+          "params": {
+            "entryId": "$B:libraryEntry",
+            "n": "0"
+          }
+        }
+      ]
     }
   }
 }
