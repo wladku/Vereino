@@ -52,4 +52,4 @@ lists the cells and the smoke check of each.
 
 | Cell | Railway environment | Club domain | Opened | Clubs (ceiling) |
 |---|---|---|---|---|
-| c1 | `production` | `vereino.org` (D-036) | — | see `capacity.md` |
+| c1 | `production` | `vereino.org` (D-036) | — | ≈ 250–300 clubs at the sizing of the 300-club step of `capacity.md` |

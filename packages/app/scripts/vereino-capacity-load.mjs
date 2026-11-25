@@ -72,7 +72,8 @@ export async function runScenario(name, { call, state, random = Math.random, tod
             json: {
               occurrenceId: guardian.occurrenceId,
               personId: guardian.childId,
-              declared: random() < 0.8 ? 'yes' : 'no',
+              // Trainings take absences only (`absence_only`): a guardian reports one or withdraws it.
+              declared: random() < 0.7 ? 'no' : 'unknown',
             },
           }),
         ),

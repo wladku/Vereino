@@ -71,10 +71,10 @@ test('every single-request scenario calls its route as its actor', async () => {
   )
 })
 
-test('the declare scenario declares yes or no by the random draw', async () => {
+test('the declare scenario reports an absence or withdraws it by the random draw', async () => {
   for (const [draw, declared] of [
-    [0.1, 'yes'],
-    [0.9, 'no'],
+    [0.1, 'no'],
+    [0.9, 'unknown'],
   ]) {
     const { calls, call } = fakeCall()
     await runScenario('guardian.declare', { call, state: STATE, random: () => draw, today: '2026-11-25' })
