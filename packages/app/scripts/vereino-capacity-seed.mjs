@@ -27,6 +27,8 @@ export const SEED_DEFAULTS = {
   state: '/tmp/vereino-capacity/state.json',
   'super-email': '',
   'super-password': '',
+  // The command that runs the app's CLI, e.g. `docker exec vereino-capacity-cli yarn` for the Docker stack.
+  cli: 'yarn',
 }
 
 /** Synthetic password of every seeded account (the stack is disposable and private to the test). */
@@ -41,16 +43,22 @@ export const FAMILY_MAPPING = {
   'guardian1.lastName': 4,
   'guardian1.email': 5,
   group: 6,
+  'participant.externalId': 7,
+  'guardian1.birthDate': 8,
 }
 
 export const groupName = (index) => `Grupa ${String(index + 1)}`
-export const guardianLastName = (slug, index) => `Opiekun-${slug}-${String(index)}`
-export const childLastName = (slug, index) => `Dziecko-${slug}-${String(index)}`
+// Zero-padded: the people list filters names by prefix, so `…-1` would also find `…-10`.
+const pad = (index) => String(index).padStart(5, '0')
+export const guardianLastName = (slug, index) => `Opiekun-${slug}-${pad(index)}`
+export const childLastName = (slug, index) => `Dziecko-${slug}-${pad(index)}`
 export const guardianEmail = (slug, index) => `guardian-${String(index)}@${slug}.capacity.test`
 
 /** The import sheet of one club: participant `i` in group `i % groups`, with guardian `i`. */
 export function familiesCsv(slug, participants, groups) {
-  const lines = ['Imię;Nazwisko;Data urodzenia;Imię opiekuna;Nazwisko opiekuna;E-mail opiekuna;Grupa']
+  const lines = [
+    'Imię;Nazwisko;Data urodzenia;Imię opiekuna;Nazwisko opiekuna;E-mail opiekuna;Grupa;Nr;Data urodzenia opiekuna',
+  ]
   for (let index = 0; index < participants; index += 1) {
     const birth = `${String(2012 + (index % 8))}-0${String(1 + (index % 9))}-1${String(index % 9)}`
     lines.push(
@@ -62,6 +70,8 @@ export function familiesCsv(slug, participants, groups) {
         guardianLastName(slug, index),
         guardianEmail(slug, index),
         groupName(index % groups),
+        `${slug}-${String(index)}`,
+        '1985-05-20',
       ].join(';'),
     )
   }
@@ -85,10 +95,12 @@ export function lastJsonLine(text) {
 }
 
 /** Runs `yarn mercato club_core create-club` for the club and answers its result line. */
-export function createClubCli(slug, timeZone, spawnSyncImpl = spawnSync) {
+export function createClubCli(slug, timeZone, spawnSyncImpl = spawnSync, cli = 'yarn') {
+  const [command, ...prefix] = cli.split(' ').filter(Boolean)
   const run = spawnSyncImpl(
-    'yarn',
+    command,
     [
+      ...prefix,
       'mercato',
       'club_core',
       'create-club',
@@ -176,7 +188,7 @@ export async function personByLastName(call, token, lastName) {
 export async function seedClub(ctx, index) {
   const { call, options, superToken, now, spawnSyncImpl, log } = ctx
   const slug = clubSlug(index)
-  const created = createClubCli(slug, options['time-zone'], spawnSyncImpl)
+  const created = createClubCli(slug, options['time-zone'], spawnSyncImpl, options.cli)
   const today = clubDay(now(), options['time-zone'])
   const adminToken = await passwordAndToken(call, superToken, created.adminUserId, `admin@${slug}.capacity.test`)
   const post = async (pathName, json, what) =>
@@ -324,7 +336,7 @@ export async function runSeed({ argv, env = process.env, deps = {} }) {
       fs.writeFileSync(file, text, { mode: 0o600 })
     },
   } = deps
-  const call = createApi({ baseUrl: options['base-url'], fetchImpl })
+  const call = createApi({ baseUrl: options['base-url'], fetchImpl, retries: 2 })
   const superEmail = options['super-email'] || env.OM_INIT_SUPERADMIN_EMAIL
   const superPassword = options['super-password'] || env.OM_INIT_SUPERADMIN_PASSWORD
   if (!superEmail || !superPassword) throw new Error('the superadmin e-mail and password are needed')

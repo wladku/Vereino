@@ -118,11 +118,13 @@ test('summarize groups by label and counts failures and 429s; markdownTable prin
     { label: 'a', status: 0, ms: 3 },
     { label: 'b', status: 503, ms: 30 },
     { label: 'b', status: 429, ms: 20 },
+    { label: 'c', status: 409, ms: 5 },
+    { label: 'c', status: 302, ms: 5 },
   ]
   const summary = summarize(samples, 2)
   assert.deepEqual(
     summary.rows.map((entry) => entry.label),
-    ['a', 'b'],
+    ['a', 'b', 'c'],
   )
   assert.deepEqual(summary.rows[1], {
     label: 'b',
@@ -130,24 +132,37 @@ test('summarize groups by label and counts failures and 429s; markdownTable prin
     rps: 1.5,
     errors: 1,
     limited: 1,
+    refused: 0,
     p50: 20,
     p95: 30,
     p99: 30,
     max: 30,
   })
-  assert.equal(summary.total.count, 4)
+  assert.equal(summary.rows[2].refused, 1)
+  assert.equal(summary.total.count, 6)
   assert.equal(summary.total.errors, 2)
 
   const empty = summarize([], 0)
   assert.deepEqual(empty, {
     rows: [],
-    total: { label: 'all', count: 0, rps: null, errors: 0, limited: 0, p50: null, p95: null, p99: null, max: null },
+    total: {
+      label: 'all',
+      count: 0,
+      rps: null,
+      errors: 0,
+      limited: 0,
+      refused: 0,
+      p50: null,
+      p95: null,
+      p99: null,
+      max: null,
+    },
   })
   const table = markdownTable(empty).split('\n')
   assert.equal(table.length, 3)
   assert.match(table[0], /^\| Route \| Requests/)
-  assert.equal(table[2], '| all | 0 | – | 0 | 0 | – | – | – | – |')
-  assert.match(markdownTable(summary), /\| b \| 3 \| 1\.5 \| 1 \| 1 \| 20 \| 30 \| 30 \| 30 \|/)
+  assert.equal(table[2], '| all | 0 | – | 0 | 0 | 0 | – | – | – | – |')
+  assert.match(markdownTable(summary), /\| b \| 3 \| 1\.5 \| 1 \| 1 \| 0 \| 20 \| 30 \| 30 \| 30 \|/)
 })
 
 test('clubDay answers the date and weekday of the club time zone', () => {
@@ -183,4 +198,21 @@ test('pickWeighted picks by weight and falls back to the last entry', () => {
 
 test('sleep resolves after the delay', async () => {
   assert.equal(await sleep(1), undefined)
+})
+
+test('createApi sends a request that got no answer again, up to `retries` times', async () => {
+  let calls = 0
+  const fetchImpl = async () => {
+    calls += 1
+    if (calls < 3) throw new Error('fetch failed', { cause: new Error('other side closed') })
+    return { status: 200, text: async () => '{"ok":true}' }
+  }
+  const call = createApi({ baseUrl: 'http://x', fetchImpl, retries: 2 })
+  assert.deepEqual((await call('GET', '/')).body, { ok: true })
+  assert.equal(calls, 3)
+  calls = 0
+  const once = createApi({ baseUrl: 'http://x', fetchImpl })
+  const failed = await once('GET', '/')
+  assert.equal(failed.status, 0)
+  assert.equal(failed.body.error, 'fetch failed (other side closed)')
 })

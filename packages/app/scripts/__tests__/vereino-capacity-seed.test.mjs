@@ -70,15 +70,15 @@ const fakeSpawn = (stdoutFor = (slug) => `log line\n{"level":"info"}\n${createdL
   const runs = []
   const spawnSyncImpl = (command, args, options) => {
     runs.push({ command, args, options })
-    return { stdout: stdoutFor(args[4]), stderr: '' }
+    return { stdout: stdoutFor(args[args.indexOf('--slug') + 1]), stderr: '' }
   }
   return { runs, spawnSyncImpl }
 }
 
 test('the names and the import sheet follow the people import mapping', () => {
   assert.equal(groupName(0), 'Grupa 1')
-  assert.equal(guardianLastName('cap-001', 2), 'Opiekun-cap-001-2')
-  assert.equal(childLastName('cap-001', 2), 'Dziecko-cap-001-2')
+  assert.equal(guardianLastName('cap-001', 2), 'Opiekun-cap-001-00002')
+  assert.equal(childLastName('cap-001', 2), 'Dziecko-cap-001-00002')
   assert.equal(guardianEmail('cap-001', 2), 'guardian-2@cap-001.capacity.test')
   assert.equal(SEED_DEFAULTS.clubs, 100)
   assert.equal(FAMILY_MAPPING.group, 6)
@@ -87,7 +87,7 @@ test('the names and the import sheet follow the people import mapping', () => {
   assert.equal(lines[4], '')
   assert.equal(
     lines[3],
-    'Dziecko2;Dziecko-cap-001-2;2014-03-12;Anna;Opiekun-cap-001-2;guardian-2@cap-001.capacity.test;Grupa 1',
+    'Dziecko2;Dziecko-cap-001-00002;2014-03-12;Anna;Opiekun-cap-001-00002;guardian-2@cap-001.capacity.test;Grupa 1;cap-001-2;1985-05-20',
   )
   assert.equal(lines[0].split(';').length, Object.keys(FAMILY_MAPPING).length)
 })
@@ -107,6 +107,10 @@ test('createClubCli runs create-club and accepts created or exists', () => {
   assert.ok(runs[0].args.includes('Europe/Warsaw'))
   const exists = fakeSpawn(() => '{"status":"exists"}')
   assert.equal(createClubCli('cap-002', 'UTC', exists.spawnSyncImpl).status, 'exists')
+  const docker = fakeSpawn(() => '{"status":"exists"}')
+  createClubCli('cap-003', 'UTC', docker.spawnSyncImpl, 'docker exec vereino-capacity-cli yarn')
+  assert.equal(docker.runs[0].command, 'docker')
+  assert.deepEqual(docker.runs[0].args.slice(0, 5), ['exec', 'vereino-capacity-cli', 'yarn', 'mercato', 'club_core'])
 })
 
 test('createClubCli throws without a result line or for another status', () => {
@@ -181,7 +185,7 @@ test('seedClub creates the club, its records and the signed-in guardians', async
   assert.equal(club.guardians.length, 3)
   assert.deepEqual(club.guardians[1], {
     token: 'tok:guardian-1@cap-007.capacity.test',
-    childId: 'p:Dziecko-cap-007-1',
+    childId: 'p:Dziecko-cap-007-00001',
     occurrenceId: club.occurrences[1],
   })
   assert.deepEqual(logs, ['[capacity-seed] cap-007 seeded'])

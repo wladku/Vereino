@@ -28,9 +28,23 @@ export function parseArgs(argv, defaults) {
   return options
 }
 
-/** An HTTP client over `fetchImpl` that answers `{ status, body, ms }` and never throws for a status. */
-export function createApi({ baseUrl, fetchImpl = fetch, now = () => performance.now() }) {
-  return async function call(method, path, { token, json, form, headers = {}, cookie } = {}) {
+/**
+ * An HTTP client over `fetchImpl` that answers `{ status, body, ms }` and never throws for a status. `retries`: how
+ * often a request that got no answer at all (status 0, e.g. a kept-alive socket the server had closed) is sent again;
+ * the seed uses it, the load test does not (a failure there is a result).
+ */
+export function createApi({ baseUrl, fetchImpl = fetch, now = () => performance.now(), retries = 0 }) {
+  const once = createOnce({ baseUrl, fetchImpl, now })
+  return async function call(method, path, request = {}) {
+    let result = await once(method, path, request)
+    for (let attempt = 0; attempt < retries && result.status === 0; attempt += 1)
+      result = await once(method, path, request)
+    return result
+  }
+}
+
+function createOnce({ baseUrl, fetchImpl, now }) {
+  return async function once(method, path, { token, json, form, headers = {}, cookie } = {}) {
     const init = { method, headers: { ...headers }, redirect: 'manual' }
     if (token) init.headers.authorization = `Bearer ${token}`
     if (cookie) init.headers.cookie = cookie
@@ -53,7 +67,8 @@ export function createApi({ baseUrl, fetchImpl = fetch, now = () => performance.
         body = null
       }
     } catch (error) {
-      body = { error: error instanceof Error ? error.message : String(error) }
+      const cause = error instanceof Error && error.cause instanceof Error ? ` (${error.cause.message})` : ''
+      body = { error: `${error instanceof Error ? error.message : String(error)}${cause}` }
     }
     return { status, body, ms: now() - started }
   }
@@ -104,6 +119,7 @@ function row(label, list, durationSec) {
     rps: durationSec > 0 ? Math.round((list.length / durationSec) * 10) / 10 : null,
     errors: list.filter((sample) => sample.status === 0 || sample.status >= 500).length,
     limited: list.filter((sample) => sample.status === 429).length,
+    refused: list.filter((sample) => sample.status >= 400 && sample.status < 500 && sample.status !== 429).length,
     p50: round(percentile(times, 50)),
     p95: round(percentile(times, 95)),
     p99: round(percentile(times, 99)),
@@ -113,10 +129,11 @@ function row(label, list, durationSec) {
 
 /** A markdown table of `summarize` rows. */
 export function markdownTable(summary) {
-  const header = '| Route | Requests | req/s | 5xx/failed | 429 | p50 ms | p95 ms | p99 ms | max ms |'
-  const lines = [header, '|---|---:|---:|---:|---:|---:|---:|---:|---:|']
+  const header = '| Route | Requests | req/s | 5xx/failed | 429 | other 4xx | p50 ms | p95 ms | p99 ms | max ms |'
+  const lines = [header, '|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|']
   for (const entry of [...summary.rows, summary.total]) {
-    const cells = [entry.label, entry.count, entry.rps, entry.errors, entry.limited, entry.p50, entry.p95, entry.p99]
+    const cells = [entry.label, entry.count, entry.rps, entry.errors, entry.limited, entry.refused, entry.p50]
+    cells.push(entry.p95, entry.p99)
     lines.push(`| ${[...cells, entry.max].map((cell) => (cell === null ? '–' : String(cell))).join(' | ')} |`)
   }
   return lines.join('\n')
