@@ -48,7 +48,7 @@ checks `integration` and `browser-smoke` still report success. Pushes (`main`, `
   throwaway shared clone: `SDLC.md` + `.ai/runs/x.md` merged `--no-ff` into `main`) with `HEAD^1 HEAD` → `code=false`.
   Over the last 60 commits of `main`, 9 are docs-only.
 - `yarn verify` first run: failed at `format:check` (`ci-changes.test.mjs is not formatted`); `yarn format`, resumed
-  `--from format:check` → all steps passed; then one full run → all 23 steps passed.
+  `--from format:check` → all steps passed; then one full run → all 22 steps passed.
 - `yarn guard --base origin/main` → no blocking findings; warning: `.github/workflows/ci.yml` agent rule file changed.
 
 ## Open problems / next steps
