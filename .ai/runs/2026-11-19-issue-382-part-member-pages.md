@@ -1,6 +1,6 @@
 # Run — #382 E14-S07: a guardian sees only their child's part, named with its club event
 
-- **Goal:** implement phase 7 of `.ai/specs/2026-11-18-vereino-club-events-with-parts.md` (REQ-T03; TEST-T03 member pages, TEST-T13; AC-T04; J-T03, J-T06) and ship it as one PR.
+- **Goal:** implement phase 7 of `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md` (REQ-T03; TEST-T03 member pages, TEST-T13; AC-T04; J-T03, J-T06) and ship it as one PR.
 - **Trigger:** Cezar run of `om-auto-fix-issue` on issue #382 (label `cezar`, 2026-11-19); feature route, spec `Ready for implementation` (owner approval Q-T20 on the issue, PR #418), dependency #376 closed.
 - **Branch:** `feat/issue-382-guardian-sees-child-part`.
 

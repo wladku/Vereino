@@ -25,6 +25,9 @@ A suspected breach is always SEV1 until the assessment below says otherwise. Whe
    started, when it was noticed, every action and its result.
 3. **Look**: `curl -s -w '%{http_code}\n' https://<host>/api/healthz`; the Railway project (which service is red, the
    last deployment and its time); `status.railway.com`; the worker and web logs with the filters of `monitoring.md`.
+   Who changed what in Railway (a variable, a token, a member, a deploy) is in the workspace audit log, kept 30 days
+   on Pro: export it at once for the incident note, and for anything older than 30 days use the monthly exports of
+   [`deploy.md` → *Audit log export*](deploy.md#audit-log-export).
 4. **Decide**: a deploy in the last hour and the fault started after it → **roll back** first, investigate later.
    Personal data may have been seen, changed, lost or sent to the wrong person → start the **breach path** in
    parallel; the clock runs from the moment you became aware.
@@ -119,7 +122,8 @@ decided. The register lives in `docs/compliance/breach-register.md` (compliance 
 data**: numbers and categories only, never names.
 
 **Containment first**: revoke leaked keys and tokens, rotate secrets (`JWT_SECRET`, database password, bucket keys),
-remove the exposure, and keep the evidence (logs are kept only 7 days on Hobby — export the relevant lines into the
+remove the exposure, re-run the [lock-down checklist](deploy.md#lock-down-checklist) when a Railway token, member
+or setting was involved, and keep the evidence (logs are kept only 7 days on Hobby — export the relevant lines into the
 incident note right away, without personal data).
 
 ## Service level objectives (pilot, S15.6)

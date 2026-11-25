@@ -1,7 +1,7 @@
 # Run — issue #287: staff are told when a closure or maintenance window flags their entry to be moved (E11-S13)
 
 - **Goal and trigger:** cezar task 5a805662 (`om-auto-fix-issue 287`), unattended. After `flagUnderWindow`, tell the people who must move the flagged entries: the coordinators and coach of a session, the booker of a club booking, the club administrators for a rental, and the renter by e-mail (REQ-R18, TEST-R18, AC-R14, J-R05).
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` (phase 13, DD-R14); #287 (epic #253); `feat/issue-287-reschedule-notices`.
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (phase 13, DD-R14); #287 (epic #253); `feat/issue-287-reschedule-notices`.
 - **Approval:** the spec is `Ready for implementation` (owner approval 2026-11-16 on #253, which lists the notification contract of phase 13 as an approved additive change). The issue's "blocking: spec is Draft" note is outdated. The dependencies #275 and #279 are closed. No migration, no new dependency.
 
 ## Steps
@@ -33,7 +33,7 @@
 - `packages/app/src/modules/facilities/emails/templates.ts`, `notifications.ts`, `di.ts`, `i18n/en.json`, `i18n/pl.json`
 - `packages/app/src/modules/facilities/components/club-places/ClubPlacePage.tsx`
 - `packages/app/.ai/qa/tests/facilities/TEST-R18-reschedule-notices.spec.ts` (new)
-- `.ai/specs/2026-11-14-vereino-parity-facilities.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-facilities/2026-11-18-issue-287-phase-13.md`
+- `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md`, `.ai/specs/changelog/2026-11-14-vereino-parity-facilities/2026-11-18-issue-287-phase-13.md`
 - `.ai/lessons/dispatch-in-app-link-is-per-type.md` (new lesson)
 - this log
 

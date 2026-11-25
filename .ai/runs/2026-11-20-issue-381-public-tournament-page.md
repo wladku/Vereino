@@ -2,7 +2,7 @@
 
 - **Trigger:** Cezar queued `om-auto-fix-issue 381` after the `cezar` label (2026-11-20T03:49Z), task 141c42c2.
 - **Issue:** #381 (epic #375), feature route; dependencies #376, #379, #263 closed; the P-06 narrowing, the DI methods and the public routes approved by the owner on 2026-11-19 (Q-T20, PR #418).
-- **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, phase 6 (REQ-T09, REQ-T10, REQ-T08 public files; TEST-T09, TEST-T10, TEST-T14, TEST-T15 public part).
+- **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, phase 6 (REQ-T09, REQ-T10, REQ-T08 public files; TEST-T09, TEST-T10, TEST-T14, TEST-T15 public part).
 - **Branch:** `feat/issue-381-tournament-page-public-events` (Cezar worktree).
 
 ## Goal

@@ -1,6 +1,6 @@
 # Run log — issue #312: staff setup checklist, group move with one fee, person photo and contract PDF
 
-- **Goal and trigger:** implement E13-S10 (#312), phase L10 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`; unattended Cezar run (`om-auto-fix-issue`, label `cezar`, 2026-11-19).
+- **Goal and trigger:** implement E13-S10 (#312), phase L10 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`; unattended Cezar run (`om-auto-fix-issue`, label `cezar`, 2026-11-19).
 - **Spec / issue / branch:** spec phase L10 (REQ-L09, REQ-L11, REQ-L12 photo and contract attachment; TEST-L17, TEST-L18, TEST-L20); issue #312; branch `feat/issue-312-coach-setup-checklist`; worktree `.ai/cezar/worktrees/a5429987-…`.
 - **Approvals relied on:** the spec is `Ready for implementation` for L1–L10; Ask First items 4 (migration D), 8 (new routes and error codes) and 10 (the skip rule in `payments`) approved by the owner on #255 (2026-11-16). The roster's "Move…" action was added to this story by the owner's comment on #312 (2026-11-18). No new module, dependency or feature id.
 

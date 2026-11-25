@@ -21,13 +21,18 @@ export async function register(): Promise<void> {
     // Vereino local patch (engineering standards S8.10, issue #462): refuse to start when a required variable is
     // missing or malformed, naming the variables (never their values) on stderr. Same check as the Railway start
     // scripts run before the server (`scripts/vereino-boot-env.mjs`).
-    const { findBootEnvProblems, formatBootEnvProblems } = await import('../scripts/vereino-boot-env.mjs')
+    const { findBootEnvProblems, findBootEnvWarnings, formatBootEnvProblems } = await import('../scripts/vereino-boot-env.mjs')
     const bootEnvMessage = formatBootEnvProblems(findBootEnvProblems(process.env))
     if (bootEnvMessage !== null) {
       const nodeProcess = process
       nodeProcess.stderr.write(`${bootEnvMessage}\n`)
       nodeProcess.exit(1)
     }
+    for (const warning of findBootEnvWarnings(process.env)) process.stderr.write(`[vereino] Warning: ${warning}\n`)
+    // Vereino local patch (#738): log an outage of the rate limiter's Redis store, which the platform limiter absorbs
+    // silently by counting per process.
+    const { watchRateLimitStore } = await import('@/modules/foundation/services/rate-limit-store-watch')
+    await watchRateLimitStore(process.env)
     const { assertJwtSecretPolicy } = await import('@open-mercato/shared/lib/auth/jwt')
     try {
       assertJwtSecretPolicy()

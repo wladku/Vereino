@@ -1,6 +1,6 @@
 # Run: issue #598 — AC-L05 browser evidence for the coach departure cash link
 
-- **Goal / trigger:** cezar task (om-auto-fix-issue) for #598 (label `cezar`). Epic #565, spec `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` — AC-L05.
+- **Goal / trigger:** cezar task (om-auto-fix-issue) for #598 (label `cezar`). Epic #565, spec `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` — AC-L05.
 - **Branch:** `test/issue-598-coach-departure-refusal-cash-link`.
 - **Route:** `testing` + `spec-pr` (test only, `direct`; no spec rewrite).
 

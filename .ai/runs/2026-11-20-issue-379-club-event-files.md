@@ -2,7 +2,7 @@
 
 - **Trigger:** Cezar queued `om-auto-fix-issue 379` after the `cezar` label (2026-11-20T02:38Z), task 544f0c2a.
 - **Issue:** #379 (epic #375), feature route; dependencies E14-S01 (#376) and E14-S03 (#378) closed; migration T2, the routes, command ids and error codes approved by the owner on 2026-11-19 (Q-T20, PR #418).
-- **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, phase 4 (REQ-T08, DD-T10; TEST-T08, TEST-T11 files steps).
+- **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, phase 4 (REQ-T08, DD-T10; TEST-T08, TEST-T11 files steps).
 - **Branch:** `feat/issue-379-admin-uploads-event-poster-logos` (Cezar worktree).
 
 ## Goal

@@ -15,6 +15,7 @@ import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { declarationLinkRequestSchema } from '../../data/validators'
 import { requestDeclarationLink, type DeclarationLinkRequest } from '../../services/declaration-links'
 import { errorSchema } from '../shared'
+import { linkRequestEmailLimit, sessionlessSubjectAllowed } from '@/modules/foundation'
 
 const logger = createLogger('activities').child({ component: 'declaration-link-request' })
 
@@ -48,7 +49,9 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ error: 'Validation failed', details: parsed.error.issues }, { status: 400 })
   }
   const data = parsed.data
-  nextServer.after(() => sendRequestedLinks(data))
+  // Per address within the club (S8.6, #738): over the limit nothing is sent, and the answer stays the same 202.
+  const emailLimit = linkRequestEmailLimit('activities_declaration_link_email', data.clubSlug, data.email)
+  if (await sessionlessSubjectAllowed(request, emailLimit)) nextServer.after(() => sendRequestedLinks(data))
   const wait = MIN_RESPONSE_MS - (Date.now() - started)
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait))
   return Response.json({ status: 'accepted' }, { status: 202 })
@@ -61,7 +64,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Send a personal link for one session to an address',
       description:
-        'Sessionless (REQ-017). The club comes from its public slug, the session from the public page it came from (`occurrencePublicRef` = the session id of the share-text link). When the address belongs to a participant of the session or to an active guardian of one, an e-mail with a personal link to `/club/d/{token}` is sent; otherwise nothing is sent. Always 202 with the same body and no sooner than one second; the links are issued and sent after the response, so neither the answer nor its timing tells whether an address is known. Rate-limited per client IP.',
+        'Sessionless (REQ-017). The club comes from its public slug, the session from the public page it came from (`occurrencePublicRef` = the session id of the share-text link). When the address belongs to a participant of the session or to an active guardian of one, an e-mail with a personal link to `/club/d/{token}` is sent; otherwise nothing is sent. Always 202 with the same body and no sooner than one second; the links are issued and sent after the response, so neither the answer nor its timing tells whether an address is known. Rate-limited per client IP (429); at most 3 links per hour per address within a club, beyond which nothing is sent and the answer stays the same.',
       requestBody: { contentType: 'application/json', schema: declarationLinkRequestSchema },
       responses: [{ status: 202, description: 'Accepted', schema: z.object({ status: z.literal('accepted') }) }],
       errors: [

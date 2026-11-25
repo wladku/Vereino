@@ -1,7 +1,7 @@
 # Run log — issue #596: TEST-R09 proves the renter's expiry e-mail and the partly paid rental on the unpaid list
 
 - **Trigger:** Cezar run 6dc75229 (`om-auto-fix-issue`), queued by the `cezar` label on #596.
-- **Issue:** #596 (epic #565). **Spec:** `.ai/specs/2026-11-14-vereino-parity-facilities.md`, AC-R05.
+- **Issue:** #596 (epic #565). **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md`, AC-R05.
 - **Branch:** `test/issue-596-renter-expiry-email`. **Route:** `direct` (test only) + `testing`.
 
 ## Steps
@@ -31,6 +31,6 @@
 ## Follow-up run 2026-11-22 — merge-train conflict (om-auto-fix-pr, cezar run 9a2fdce9)
 
 - **Trigger:** PR #615 labelled `merge-train-conflict` (DIRTY) after #608 (close-out III, #568) landed on `main`.
-- **Steps:** detached HEAD at `origin/test/issue-596-renter-expiry-email`; `git merge origin/main`; one conflict in `.ai/specs/2026-11-14-vereino-parity-facilities.md` (AC-R05: this PR ticks it, `main` marked it `gap: #596`).
+- **Steps:** detached HEAD at `origin/test/issue-596-renter-expiry-email`; `git merge origin/main`; one conflict in `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (AC-R05: this PR ticks it, `main` marked it `gap: #596`).
 - **Decision:** took `main`'s file and re-applied only this PR's ticked AC-R05 line, so `main`'s `gap: #597` on AC-R14 stays (taking the PR's whole file would have dropped it). The status line stays as `main` wrote it (AGENTS.md *Spec status line*).
 - **Tests:** `main` changed only docs and two module READMEs since this PR's base, and the conflict was in a spec, so no integration test was rerun; TEST-R09 is unchanged by the merge.

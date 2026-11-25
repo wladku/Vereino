@@ -1,7 +1,7 @@
 # Run: #255 — spec L (people life cycle and data entry) to Ready for implementation
 
 - **Goal and trigger:** unattended cezar run (task eeab479d) of `om-auto-create-pr`: record the owner decisions of 2026-11-16 on epic #255, fix the pre-implementation audit gaps (c1)–(c11), set `Status: Ready for implementation`. Docs only: no code, no migration file.
-- **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`. **Issue:** epic #255 ([audit](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561), [owner decisions](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)). **Branch:** `docs/issue-255-spec-l-ready`.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`. **Issue:** epic #255 ([audit](https://github.com/wladku/Vereino/issues/255#issuecomment-6899654561), [owner decisions](https://github.com/wladku/Vereino/issues/255#issuecomment-6910006611)). **Branch:** `docs/issue-255-spec-l-ready`.
 
 ## Steps
 
@@ -29,7 +29,7 @@
 
 ## Files changed
 
-- `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`
+- `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`
 - `.ai/specs/changelog/2026-11-14-vereino-people-life-cycle-and-data-entry/2026-11-16-issue-255-ready.md`
 - `.ai/runs/2026-11-16-issue-255-spec-l-ready.md`
 
