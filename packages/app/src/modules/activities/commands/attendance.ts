@@ -25,6 +25,7 @@ import {
   assertTransition,
   authorizeScoped,
   foundationErrors,
+  prefetchSessionScope,
   type TargetLock,
 } from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
@@ -341,6 +342,9 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
   atomicReplay: true,
   async execute(rawInput, ctx) {
     const now = new Date()
+    // The session scope is read on its own pooled connection before the transaction holds one (#549): the evening
+    // peak sends many declarations at once, and resolving it inside would deadlock the pool (capacity test, #633).
+    const sessionScope = await prefetchSessionScope(ctx)
     const result = await inWriteTransaction(ctx, 'activities.attendance.declare', async (em) => {
       const load = loadOccurrence(ctx)
       const authorized = await authorizeScoped(
@@ -355,6 +359,7 @@ const declareCommand: CommandHandler<Record<string, unknown>, DeclareCommandResu
         rawInput,
         ctx,
         em,
+        { sessionScope },
       )
       return writeDeclaration(ctx, em, {
         occurrence: authorized.entity as Occurrence,
