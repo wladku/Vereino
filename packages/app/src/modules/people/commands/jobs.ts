@@ -18,11 +18,13 @@ import {
   bootstrapAdminSchema,
   importPurgeJobSchema,
   lifeCycleJobSchema,
+  medicalRemindersJobSchema,
   retentionSweepJobSchema,
   syncRolesJobSchema,
 } from '../data/validators'
 import { LIFE_CYCLE_STEPS } from '../lib/life-cycle-rules'
 import { runLifeCycle, type LifeCycleCounts } from '../services/life-cycle'
+import { runMedicalReminders, type MedicalRemindersCounts } from '../services/medical-reminders'
 import { runRetentionSweep, type RetentionSweepRun } from '../services/retention-sweep'
 import { MEMBERSHIP_WAITING_STATUSES, importPurgeCutoff } from '../lib/import-rules'
 import { IMPORT_FILE_OWNER_ENTITY, IMPORT_PARTITION, attachmentServiceOf } from './imports'
@@ -542,8 +544,63 @@ const retentionSweepJobCommand: CommandHandler<Record<string, unknown>, Retentio
   },
 }
 
+export type MedicalRemindersJobResult = OrganizationTarget & {
+  today: string
+  dryRun: boolean
+  counts: MedicalRemindersCounts
+}
+
+/**
+ * `people.persons.medical_reminders` — the daily `people:medical-reminders` job (training outlines and medical expiry
+ * spec REQ-O03, REQ-O04, BR-O1, DD-O04, R20; #682): reminders a month before and on the medical certificate date, and
+ * the dates cleared without a consent in force, after a departure or 12 months after they passed
+ * (`services/medical-reminders.ts`). Idempotent through the dispatch keys and the state it clears; `dryRun` counts.
+ * Not undoable; the audit entry and the log carry counts only, never a date.
+ */
+const medicalRemindersJobCommand: CommandHandler<Record<string, unknown>, MedicalRemindersJobResult> = {
+  id: 'people.persons.medical_reminders',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const { target, parsed } = await authorizeJob(
+      ctx,
+      'people.persons.medical_reminders.authorize',
+      medicalRemindersJobSchema,
+      rawInput,
+    )
+    const scope = { tenantId: target.tenantId, organizationId: target.organizationId }
+    const today = typeof parsed.today === 'string' ? parsed.today : await clubToday(ctx.container, scope)
+    const dryRun = parsed.dryRun === true
+    const counts = await runMedicalReminders(ctx, scope, {
+      today,
+      dryRun,
+      onFailure: (error, step) => {
+        logger.warn('A medical reminder step failed for one person; the next run retries it', {
+          ...scope,
+          step,
+          err: error,
+        })
+        getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.medical_reminders.failed' })
+      },
+    })
+    logger.info('Medical reminders finished', { ...scope, today, dryRun, ...counts })
+    return { ...target, today, dryRun, counts }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.jobs.medical_reminders', 'Medical certificate reminders'),
+      resourceKind: 'people.organization',
+      resourceId: result.organizationId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      context: { actingRole: result.actingRole, today: result.today, dryRun: result.dryRun, ...result.counts },
+    }
+  },
+}
+
 registerCommand(syncRolesJobCommand)
 registerCommand(bootstrapAdminCommand)
 registerCommand(purgeImportsJobCommand)
 registerCommand(lifeCycleJobCommand)
 registerCommand(retentionSweepJobCommand)
+registerCommand(medicalRemindersJobCommand)

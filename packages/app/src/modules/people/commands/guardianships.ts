@@ -9,6 +9,7 @@
 // Consents follow the P-08 transitions and record who changed them and when. The `people.guardianship.*` events let
 // the role sync grant `vereino_payer` to an adult guardian with an account.
 import { randomUUID } from 'node:crypto'
+import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -30,10 +31,13 @@ import {
   applyConsentChanges,
   firstOverlapping,
   parseStoredConsents,
+  subjectOnlyChanges,
+  withdraws,
   type ConsentChanges,
   type StoredConsents,
 } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
+import { emitMedicalUpdated } from '../services/medical'
 import {
   actorPersonId,
   guardianshipEvents,
@@ -42,6 +46,7 @@ import {
   inWriteTransaction,
   isUniqueViolation,
   loadGuardianshipLocked,
+  loadPersonLocked,
   lockPerson,
   type GuardianshipSnapshot,
 } from './shared'
@@ -59,6 +64,21 @@ export type GuardianshipCommandResult = {
   guardianship: Guardianship
   actingRole: ActingRole
   before: GuardianshipSnapshot | null
+  /** The ward whose medical certificate date a `medical` withdrawal cleared (BR-O1, #682). */
+  medicalClearedWard?: Person | null
+}
+
+/** Clears the ward's medical certificate date under its row lock; the ward when a date was cleared, else null. */
+async function clearWardMedicalDate(
+  em: EntityManager,
+  ctx: CommandRuntimeContext,
+  wardPersonId: string,
+): Promise<Person | null> {
+  const ward = await loadPersonLocked(em, ctx, wardPersonId, { lockMode: LockMode.PESSIMISTIC_WRITE })
+  if (!ward?.medicalValidUntil) return null
+  ward.medicalValidUntil = null
+  ward.updatedAt = new Date()
+  return ward
 }
 
 /**
@@ -153,6 +173,8 @@ async function mapPayerViolation<T>(run: () => Promise<T>): Promise<T> {
 
 type ConsentChangeContext = {
   ctx: CommandRuntimeContext
+  /** Who changes them: only a guardian gives or withdraws the `medical` consent (BR-O1, #682). */
+  actingRole: ActingRole
   /** The caller's scope: its `self` grant names who changed the consents. */
   actorScope: Scope
   clubScope: ClubScope
@@ -173,6 +195,9 @@ async function changeConsents(
   if (!changes) return current
   const result = applyConsentChanges(current, changes, new Date(), actorPersonId(context.actorScope))
   if (result.changed.length === 0) return current
+  if (context.actingRole !== 'guardian' && subjectOnlyChanges(result.changed).length > 0) {
+    await peopleErrors.throw('medical_consent_subject_only')
+  }
   const today = await clubToday(context.ctx.container, context.clubScope)
   if (endsBefore(context.period, today)) await peopleErrors.throw('guardianship_ended')
   return result.consents
@@ -308,6 +333,7 @@ const createGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
         if (parsed.isPrimaryPayer) await assertPrimaryPayerFree(em, scope, parsed.wardPersonId, period, null)
         const consents = await changeConsents({}, parsed.consents, {
           ctx,
+          actingRole: authorized.actingRole,
           actorScope: authorized.scope,
           clubScope: scope,
           period,
@@ -373,6 +399,7 @@ const updateGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
         if (isPrimaryPayer) await assertPrimaryPayerFree(em, scope, row.wardPersonId, period, row.id)
         const consents = await changeConsents(before.consents, patch.consents, {
           ctx,
+          actingRole: authorized.actingRole,
           actorScope: authorized.scope,
           clubScope: scope,
           period,
@@ -446,14 +473,24 @@ const setConsentsCommand: CommandHandler<Record<string, unknown>, GuardianshipCo
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       row.consents = await changeConsents(before.consents, authorized.parsed.consents, {
         ctx,
+        actingRole: authorized.actingRole,
         actorScope: authorized.scope,
         clubScope: scope,
         period: { validFrom: row.validFrom, validTo: row.validTo ?? null },
       })
       row.updatedAt = new Date()
-      return { guardianship: row, actingRole: authorized.actingRole, before }
+      // A guardian's withdrawal of the `medical` consent clears the ward's date (BR-O1, #682), whatever another
+      // guardian decided: the date is entered again once a consent is in force.
+      const ward =
+        withdraws(authorized.parsed.consents, 'medical') &&
+        parseStoredConsents(before.consents).medical?.granted === true &&
+        !row.consents.medical?.granted
+          ? await clearWardMedicalDate(em, ctx, row.wardPersonId)
+          : null
+      return { guardianship: row, actingRole: authorized.actingRole, before, medicalClearedWard: ward }
     })
     await emitGuardianship(ctx, result.guardianship, 'updated')
+    if (result.medicalClearedWard) await emitMedicalUpdated(ctx, result.medicalClearedWard)
     return result
   },
   buildLog: ({ result }) =>

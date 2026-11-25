@@ -7,7 +7,8 @@
 // `vereino:club:ward:groups` spot) and each consent's last author. People life-cycle spec REQ-L10 (#309): each consent
 // shows the club's own wording (DD-39), "given to an earlier wording" when given before the club changed it (DD-L11),
 // and the line saying what withdrawing changes. Phase L8 (#310): the lines "May have an own account — ask the club" and
-// "Turns 18 on {date}: from then {name} decides alone".
+// "Turns 18 on {date}: from then {name} decides alone". #682 (M-O4): the ward's sports medical certificate — the
+// guardian's `medical` consent and the date (`MedicalSection`).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -23,6 +24,7 @@ import { MemberSwitchField, StatusTag } from '@vereino/ui'
 import { ClubFrame } from './ClubFrame'
 import { ConsentEffect, EarlierWording, useConsentLabel, useConsentStatus } from './ConsentList'
 import { WardNotices } from './LifeCycleNotices'
+import { MedicalSection } from './MedicalSection'
 import {
   CLUB_HOME_HREF,
   MEMBER_PROFILE_QUERY_KEY,
@@ -173,6 +175,22 @@ function Ward({ profile, personId }: { profile: MemberProfile; personId: string 
         timeZone={profile.club.timezone}
         texts={profile.consentTexts}
       />
+      {ward.medical ? (
+        <MedicalSection
+          key={`${ward.medical.updatedAt ?? ''}:${ward.guardianship.updatedAt ?? ''}`}
+          personId={ward.personId}
+          medical={ward.medical}
+          consent={ward.guardianship.consents.medical}
+          consentTarget={{
+            url: `/api/people/guardianships/${ward.guardianship.id}/consents`,
+            method: 'POST',
+            body: (granted) => ({ consents: { medical: granted } }),
+            lockToken: ward.guardianship.updatedAt,
+          }}
+          timeZone={profile.club.timezone}
+          texts={profile.consentTexts}
+        />
+      ) : null}
     </>
   )
 }

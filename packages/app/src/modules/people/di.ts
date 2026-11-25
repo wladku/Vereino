@@ -15,11 +15,13 @@ import {
   departureRequestReceivedTemplate,
   lifeCycleNoticeTemplates,
   accountAgeNoticeTemplates,
+  medicalReminderTemplates,
 } from './emails/templates'
 import notificationTypes from './notifications'
 import { clubAudienceProvider, createContactResolver, personsAudienceProvider } from './services/audience'
 import type { ClubScope } from './services/club-clock'
 import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-gate'
+import { PEOPLE_MEDICAL_STATUS, createMedicalStatusReader } from './services/medical'
 import { createPersonDirectory } from './services/person-directory'
 import { syncPersonRoles, type PersonRoleSyncOutcome } from './services/role-sync'
 import { createPeopleScopeService } from './services/scope-service'
@@ -71,6 +73,8 @@ export function register(container: AppContainer) {
   // Phase L8 (#310): the 18th-birthday and account-age notices.
   for (const template of lifeCycleNoticeTemplates) registerEmailTemplate(container, template)
   for (const template of accountAgeNoticeTemplates) registerEmailTemplate(container, template)
+  // Training outlines and medical expiry spec phase 1 (#682): the medical certificate reminders.
+  for (const template of medicalReminderTemplates) registerEmailTemplate(container, template)
   // Registrars run for every request and job container, so the services close over that container; the factories
   // take no parameters, which keeps them independent of CLASSIC parameter-name injection.
   const scopeService = asFunction(() => createPeopleScopeService(container)).scoped()
@@ -83,6 +87,8 @@ export function register(container: AppContainer) {
       .scoped()
       .proxy(),
     [PEOPLE_ROLE_SYNC]: asFunction(() => roleSync).scoped(),
+    // DD-O03 (#682): the medical certificate status of persons the caller holds in scope, for `groups` and `activities`.
+    [PEOPLE_MEDICAL_STATUS]: asFunction(() => createMedicalStatusReader(container)).scoped(),
     [PEOPLE_PAYMENTS_GATE]: asFunction(() => createPaymentsGate(container)).scoped(),
     [audienceProviderToken('club')]: asValue(clubAudienceProvider),
     [audienceProviderToken('persons')]: asValue(personsAudienceProvider),
