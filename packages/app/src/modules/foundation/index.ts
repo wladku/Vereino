@@ -107,6 +107,24 @@ export {
   type PublicRouteLoadInput,
 } from './services/public-route-load'
 export {
+  PASSWORD_RESET_EMAIL_LIMIT,
+  SIGN_IN_EMAIL_LIMIT,
+  accountEmailLimit,
+  emailFromBody,
+  linkRequestEmailLimit,
+  tokenLimit,
+  type SessionlessLimit,
+  type SessionlessLimitConfig,
+} from './lib/sessionless-limits'
+export {
+  enforceSessionlessLimits,
+  noteClientAddress,
+  sessionlessRateLimiter,
+  sessionlessSubjectAllowed,
+  withAccountEmailLimit,
+} from './services/sessionless-limits'
+export { watchRateLimitStore } from './services/rate-limit-store-watch'
+export {
   desiredRoles,
   rolesForAssignments,
   seedRoles,
