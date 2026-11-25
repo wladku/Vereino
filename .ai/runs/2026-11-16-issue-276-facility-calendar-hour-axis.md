@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 276`, issue labelled `cezar`). Build phase 2 of the facilities
   parity spec: B-23 `/backend/facilities/calendar?place=&date=` around one `DayAxis` component.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 2 (REQ-R01, REQ-R03; TEST-R01
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 2 (REQ-R01, REQ-R03; TEST-R01
   axis part, TEST-R03; AC-R01); #276 (epic #253, depends on #275, merged); `feat/issue-276-facility-calendar-hour-axis`.
 - **Approval:** the spec is `Ready for implementation` (owner decisions on #253, 2026-11-16). Phase 2 has no migration
   and no contract change (no route, schema or event changes; only UI, a pure lib and catalog keys).

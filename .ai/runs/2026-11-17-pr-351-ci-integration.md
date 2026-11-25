@@ -3,7 +3,7 @@
 - **Goal and trigger:** cezar task (`om-auto-fix-pr 351`): the required check `integration` failed on PR #351
   (shard 3/3); merge `main` in, find the cause, push to `feat/issue-280-admin-booking-request-card` without rewriting
   history, never merge.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 6; #280; PR #351; worked on a
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 6; #280; PR #351; worked on a
   detached HEAD at `origin/feat/issue-280-admin-booking-request-card`.
 
 ## Steps

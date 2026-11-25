@@ -1,7 +1,7 @@
 # Run log — issue #607: the club events list views, editing a part and removing an undeclared part (AC-T11)
 
 - **Trigger:** Cezar run be460837 (`om-auto-fix-issue`), issue labelled `cezar`.
-- **Issue:** #607 (epic #565). **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, AC-T11.
+- **Issue:** #607 (epic #565). **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, AC-T11.
 - **Branch:** `test/issue-607-club-events-list-views`.
 - **Route:** `direct` (test only, no product code), `testing`.
 

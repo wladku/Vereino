@@ -1,7 +1,7 @@
 # Run: issue #308 — anonymise a former person with a retention hold; delete a person created by mistake (E13-S06, phase L6)
 
 - **Trigger:** Cezar `vereino-issue` workflow, label `cezar` on #308 (2026-11-20T03:19Z); skill `om-auto-fix-issue` with the repo-local override (feature route).
-- **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, phase L6 (REQ-L05, TEST-L07, TEST-L08, TEST-L20, AC-L06, J-L04). Ready; migration B, the feature `people.persons.anonymize`, the event `people.person.anonymized` and the first emission of `people.person.deleted` approved on #255 (2026-11-16, items 2, 5, 7). Dependencies #306, #307 merged; #310 (the job) merged, so step 5 lands here (gap c9).
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, phase L6 (REQ-L05, TEST-L07, TEST-L08, TEST-L20, AC-L06, J-L04). Ready; migration B, the feature `people.persons.anonymize`, the event `people.person.anonymized` and the first emission of `people.person.deleted` approved on #255 (2026-11-16, items 2, 5, 7). Dependencies #306, #307 merged; #310 (the job) merged, so step 5 lands here (gap c9).
 - **Branch:** `feat/issue-308-anonymise-former-person` (worktree created by Cezar for this run). Claim: assignee, `in-progress`, 🤖 comment on #308 naming the worktree and the run.
 
 ## Steps

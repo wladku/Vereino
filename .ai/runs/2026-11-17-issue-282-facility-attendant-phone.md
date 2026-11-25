@@ -1,6 +1,6 @@
 # Run: issue #282 — E11-S08 a facility attendant takes and manages rentals and asks for an entry ban, all on the phone
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 282`, label `cezar`): build phase 8 of `.ai/specs/2026-11-14-vereino-parity-facilities.md` (REQ-R13, REQ-R14; TEST-R13, TEST-R14; AC-R09, AC-R10; J-R01, J-R08).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 282`, label `cezar`): build phase 8 of `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (REQ-R13, REQ-R14; TEST-R13, TEST-R14; AC-R09, AC-R10; J-R01, J-R08).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #253); issue #282; dependencies #277, #278, #279, #258, #259 closed; branch `feat/issue-282-facility-attendant-phone-rentals`.
 
 ## Steps

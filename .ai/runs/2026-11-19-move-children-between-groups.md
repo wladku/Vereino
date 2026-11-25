@@ -2,7 +2,7 @@
 
 - **Trigger:** Cezar run d328a39a (`om-auto-fix-issue`), issue label `cezar` on #383.
 - **Issue:** #383 — labels `feature`, `priority-medium`, `risk-high`. Depends on #312 (closed) and #274 (closed).
-- **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, phase L11 (REQ-L15, DD-L16, J-L09,
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, phase L11 (REQ-L15, DD-L16, J-L09,
   TEST-L21, TEST-L22, TEST-L20 for the new route, AC-L15). Ask First item 14 (the route, the command and
   `move_preview_stale`) approved by the owner on 2026-11-19 (PR #418); Q-L22…Q-L24 confirmed.
 - **Branch:** `feat/issue-383-move-children-between-groups`.

@@ -1,7 +1,7 @@
 # Run: issue #599 — "Former member" on the history screens (AC-L06)
 
 - **Trigger:** Cezar run 82955a06 (`om-auto-fix-issue 599`, label `cezar`), unattended.
-- **Issue:** #599 (epic #565); spec `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, AC-L06.
+- **Issue:** #599 (epic #565); spec `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, AC-L06.
 - **Branch:** `test/issue-599-anonymised-former-member-labels`.
 
 ## Goal
@@ -37,7 +37,7 @@ the charges list read "Former member" with no former name or contact; fix any sc
 
 - `packages/app/src/modules/activities/services/coach-units.ts`
 - `packages/app/.ai/qa/tests/people/TEST-L24-former-member-history-screens.spec.ts`
-- `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`
+- `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`
 - `.ai/specs/changelog/2026-11-14-vereino-people-life-cycle-and-data-entry/2026-11-22-issue-599-former-member-screens.md`
 - this log
 

@@ -1,0 +1,1 @@
+| 2026-11-25 | #774: disjoint runs also share no commit off `main` (a PR that merged another PR's branch is the same source), and more than three quarantines listing the same runs in one pass become one triage issue without `cezar`. |

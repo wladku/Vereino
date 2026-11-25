@@ -3,7 +3,7 @@
 - **Date:** 2026-10-27
 - **Agent / tool:** Claude Code (Opus 5.5), interactive, with three read-only fresh-context review subagents (contradictions, anti-patterns and platform fit, unnecessary complexity)
 - **Trigger:** product owner — "Przejrzyj tę specyfikację i znajdź niespójne albo wzajemnie wykluczające się rozwiązania projektowe. Sprawdź, czy nie ma w niej antywzorców i niepotrzebnej złożoności." (both foundation specs), then "popraw blokery 1–7 i DD-20 (DD-20 w PR #43, reszta na osobnej gałęzi). Cięcia i RODO zostaw do mojej decyzji."
-- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-foundation-primitives.md` (foundation I), `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` (foundation II); DD-20 on `docs/foundation-ii-spec-to-main` (PR #43); the blockers on `docs/foundation-review-blockers`, branched from PR #43's head because foundation II exists only there
+- **Spec / issue / branch:** `.ai/specs/2026-10-27-vereino-foundation-primitives.md` (foundation I), `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` (foundation II); DD-20 on `docs/foundation-ii-spec-to-main` (PR #43); the blockers on `docs/foundation-review-blockers`, branched from PR #43's head because foundation II exists only there
 - **Status:** completed — blockers applied; the simplification cuts and GDPR retention are left for the owner
 
 ## Goal
@@ -31,8 +31,8 @@ Find contradictions, mutually exclusive decisions, anti-patterns and needless co
 
 ## Files changed
 
-- PR #43: `.ai/specs/implemented/2026-10-27-vereino-facilities.md`, `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-20-vereino-club-management.md` (DD-20)
-- This branch: `.ai/specs/2026-10-27-vereino-foundation-primitives.md`, `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-27-vereino-social-sign-in.md` (rename, `execute`), `.ai/specs/2026-10-20-vereino-club-management.md` (reuse row, role events rows, declaration token hash), `.ai/specs/2026-10-27-vereino-club-payments.md` (order-link hash), `.ai/lessons/retarget-stacked-pr-before-merge.md` + `.ai/lessons.md`, this log
+- PR #43: `.ai/specs/implemented/2026-10-27-vereino-facilities.md`, `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-20-vereino-club-management.md` (DD-20)
+- This branch: `.ai/specs/2026-10-27-vereino-foundation-primitives.md`, `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md`, `.ai/specs/2026-10-27-vereino-social-sign-in.md` (rename, `execute`), `.ai/specs/2026-10-20-vereino-club-management.md` (reuse row, role events rows, declaration token hash), `.ai/specs/2026-10-27-vereino-club-payments.md` (order-link hash), `.ai/lessons/retarget-stacked-pr-before-merge.md` + `.ai/lessons.md`, this log
 
 ## Commands and results
 

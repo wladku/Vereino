@@ -1,6 +1,6 @@
 # Run: issue #283 — E11-S09 a person who maintains a place sees, plans and completes their tasks on the phone
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 283`, label `cezar`): build phase 9 of `.ai/specs/2026-11-14-vereino-parity-facilities.md` (REQ-R15; TEST-R15; AC-R11; J-R07).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 283`, label `cezar`): build phase 9 of `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (REQ-R15; TEST-R15; AC-R11; J-R07).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #253; Q-R19 confirmed); issue #283; dependency #278 merged; branch `feat/issue-283-phone-maintenance-tasks`.
 
 ## Steps

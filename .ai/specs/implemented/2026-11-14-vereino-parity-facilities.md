@@ -1,7 +1,7 @@
 # Vereino — facilities parity: the day calendar, rentals, the attendant on the phone and the open promises of phase 5
 
 **Date**: 2026-11-14
-**Status**: In progress — approved by the product owner on 2026-11-16 ([owner decisions on #253](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145)); every phase landed; left: AC-R05 (the renter's e-mail on automatic expiry has no integration test), AC-R14 (the notice's link to the now existing "Needs a new time" view is not proven) (close-out #452)
+**Status**: Implemented — approved by the product owner on 2026-11-16 ([owner decisions on #253](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145)); every phase landed and every acceptance criterion is ticked from evidence on `main` (AC-R05 by #596, AC-R14 by #597; close-out IV #719)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 

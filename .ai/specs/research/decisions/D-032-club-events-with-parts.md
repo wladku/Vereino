@@ -20,6 +20,6 @@ The sandbox at `main` `3252cf4` offers only a one-off event for one group. A clu
 
 **Why:** the club organises such tournaments several times a season, they are funded publicly (the poster names the municipality and the ministry), and parents, visiting clubs and sponsors look for one page with the whole schedule; nine unrelated events hide that the club is the host.
 
-**Applied in:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`.
+**Applied in:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`.
 
 **To change:** a superseding record approved by the owner.

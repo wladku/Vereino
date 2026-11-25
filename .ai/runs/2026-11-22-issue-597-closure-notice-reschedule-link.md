@@ -1,7 +1,7 @@
 # Run log — #597: closure notices link coordinators to "Needs a new time"
 
 - **Trigger:** Cezar run b17e477d (`om-auto-fix-issue`), issue labelled `cezar`.
-- **Issue:** #597 (epic #565). **Spec:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` AC-R14; groups and activities spec REQ-A05 / REQ-A10.
+- **Issue:** #597 (epic #565). **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` AC-R14; groups and activities spec REQ-A05 / REQ-A10.
 - **Branch:** `fix/issue-597-closure-notices-needs-new-time`. **Route:** `direct` (bug: code deviates from an accepted criterion).
 
 ## Steps

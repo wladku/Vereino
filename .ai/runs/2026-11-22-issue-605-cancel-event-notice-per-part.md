@@ -1,7 +1,7 @@
 # Run log — issue #605: cancelling a club event tells each family once per part (AC-T01)
 
 - **Trigger:** Cezar run d0f85f73 (`om-auto-fix-issue`), issue labelled `cezar`.
-- **Issue:** #605 (epic #565). **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, AC-T01.
+- **Issue:** #605 (epic #565). **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, AC-T01.
 - **Branch:** `test/issue-605-cancel-event-notice-per-part`. **Route:** `direct` (test only, no product code).
 
 ## Steps

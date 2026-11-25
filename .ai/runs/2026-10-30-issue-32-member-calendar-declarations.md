@@ -3,7 +3,7 @@
 - **Date:** 2026-10-30
 - **Agent / tool:** Claude Code (Fable 5.1, then Opus 5.5 after a model switch), `om-auto-fix-issue 22` → feature route → `om-auto-implement-spec` → `om-auto-create-pr` (plain engine), then `om-auto-review-pr`; three implementation subagents (the `@vereino/ui` member layer, the policies admin page, the API integration tests) with disjoint files
 - **Trigger:** the product owner chose "story by story" for epic #22 (E03): #32 first, then #33, with #34 in parallel
-- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 steps 4 and 5 (REQ-006, REQ-007; TEST-008, TEST-009, TEST-011, TEST-014, TEST-055 presence part) on `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` P-23 and P-25; issue #32; PR #61; branch `feat/issue-32-member-calendar-declarations` from `main` (`f0ef599`) in the worktree `C:\Users\wkuc\vereino-issue-32`
+- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 steps 4 and 5 (REQ-006, REQ-007; TEST-008, TEST-009, TEST-011, TEST-014, TEST-055 presence part) on `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` P-23 and P-25; issue #32; PR #61; branch `feat/issue-32-member-calendar-declarations` from `main` (`f0ef599`) in the worktree `C:\Users\wkuc\vereino-issue-32`
 - **Status:** complete
 
 Source doc: .ai/specs/2026-10-20-vereino-club-management.md
@@ -48,7 +48,7 @@ Phases 1–7 as listed under *Progress*: foundation primitives; attendance data 
 - `packages/app/src/components/ClientBootstrap.tsx` — the `member` profile
 - `packages/app/src/__tests__/ui/*` — Jest render tests
 - `packages/app/.ai/qa/tests/_fixtures/attendance.ts`, `activities/TEST-008…`, `TEST-009…`, `TEST-011…`, `TEST-014…`, `TEST-055-called-up-children…`
-- `.ai/specs/2026-10-20-vereino-club-management.md` (notes under phase 2 steps 4 and 5, Changelog), `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` (Changelog), `.ai/specs/2026-10-27-vereino-foundation-primitives.md` (V-F05, Changelog)
+- `.ai/specs/2026-10-20-vereino-club-management.md` (notes under phase 2 steps 4 and 5, Changelog), `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` (Changelog), `.ai/specs/2026-10-27-vereino-foundation-primitives.md` (V-F05, Changelog)
 - `.ai/runs/2026-10-30-issue-32-member-calendar-declarations.md` — this log
 
 ## Commands and results

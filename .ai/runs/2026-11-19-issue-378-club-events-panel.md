@@ -2,7 +2,7 @@
 
 - **Trigger:** Cezar queued `om-auto-fix-issue 378` after the `cezar` label (2026-11-19T22:32Z), task 7e350780.
 - **Issue:** #378 (epic #375), feature route; dependencies E14-S01 (#376) and E14-S02 (#377) closed; readiness cleared by the owner on 2026-11-19 (spec T approved, PR #418 merged).
-- **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, phase 3 (REQ-T11 without the Files tab, REQ-T04 UI; TEST-T11 without the files steps).
+- **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, phase 3 (REQ-T11 without the Files tab, REQ-T04 UI; TEST-T11 without the files steps).
 - **Branch:** `feat/issue-378-admin-club-events-panel` (Cezar worktree).
 
 ## Goal
