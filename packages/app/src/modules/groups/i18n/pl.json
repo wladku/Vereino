@@ -510,5 +510,13 @@
   "groups.ageCategories.proposal": "Wiek {from}–{to} lat zaproponowano z kategorii {category}; w razie potrzeby zmień go i zapisz.",
   "groups.ageCategories.proposalOpen": "Wiek od {from} lat zaproponowano z kategorii {category}; w razie potrzeby zmień go i zapisz.",
   "groups.club.nav.clubEvents": "Imprezy klubowe",
-  "groups.club.pzpnExport": "Eksport do PZPN"
+  "groups.club.nav.outlines": "Konspekty treningów",
+  "groups.club.pzpnExport": "Eksport do PZPN",
+  "groups.club.medical.missing": "Orzeczenie: brak",
+  "groups.club.medical.unknown": "Orzeczenie: nieznane",
+  "groups.club.medical.expired": "Orzeczenie wygasło {date}",
+  "groups.club.medical.expiring": "Orzeczenie do {date} (wkrótce wygasa)",
+  "groups.club.medical.valid": "Orzeczenie do {date}",
+  "groups.club.medical.filter": "Orzeczenie: nieważne",
+  "groups.club.medical.filterEmpty": "Wszyscy tutaj mają ważne orzeczenie lekarskie."
 }

@@ -93,6 +93,9 @@
         }
       ]
     },
+    "/api/people/medical-status": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "personIds": "$B:memberPerson" } }]
+    },
     "/api/people/me": {
       "GET": { "probe": "read" },
       "PUT": {
@@ -169,6 +172,13 @@
         "probe": "foreign-id",
         "params": { "id": "$B:memberPerson" },
         "body": { "id": "$B:memberPerson", "changes": { "image": true } }
+      }
+    },
+    "/api/people/persons/[id]/medical": {
+      "PUT": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:memberPerson" },
+        "body": { "validUntil": "$A:nextWeek" }
       }
     },
     "/api/people/persons/[id]/data-export": {

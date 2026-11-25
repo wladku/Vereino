@@ -1,7 +1,7 @@
 # Cezar stall prevention: the owner sees every stall, stacked PRs keep moving
 
 **Date**: 2026-11-24
-**Status**: Ready for implementation — Open Questions answered by the owner on 2026-11-24
+**Status**: In progress — Open Questions answered by the owner on 2026-11-24
 
 Extends: .ai/specs/2026-11-18-merge-throughput.md
 

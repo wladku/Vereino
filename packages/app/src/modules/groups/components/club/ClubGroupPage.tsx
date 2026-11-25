@@ -9,6 +9,8 @@
 // unknown one "not found". States: loading, error with retry, empty ("This group has no members yet" with Add). The
 // coordinator also moves several children to another group in one previewed step (spec L REQ-L15, J-L09 step 6; #383):
 // "Move to another group" opens the panel's bulk move as a full-screen sheet; the success notice offers Undo.
+// Training outlines and medical expiry spec M-O1 (#682): for a reader holding `people.medical.view` each participant
+// carries the medical certificate chip, and "Medical: not valid" narrows the loaded roster to the red ones.
 import * as React from 'react'
 import Link from 'next/link'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -20,7 +22,15 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
-import { CLUB_GROUPS_HREF, MemberSkeleton, StatusTag, useClubToday } from '@vereino/ui'
+import {
+  CLUB_GROUPS_HREF,
+  MedicalStatusTag,
+  MemberSkeleton,
+  StatusTag,
+  isMedicalNotValid,
+  useClubToday,
+  type MedicalStatusItem,
+} from '@vereino/ui'
 import { ROSTER_VIEWS, membershipActions, type MembershipAction, type PeriodStatus } from '../../lib/groups-rules'
 import {
   OWN_FORBIDDEN_STATE,
@@ -36,6 +46,7 @@ import { MoveChildrenDialog, MoveChildrenNotice, type MoveChildrenResult } from 
 import { useCanManageGroups } from '../useCanManageGroups'
 import { useRemoveMembership } from '../useRemoveMembership'
 import { GroupsClubFrame } from './GroupsClubFrame'
+import { useMedicalLabels, useMedicalStatuses } from './useMedicalStatuses'
 
 const PAGE_SIZE = 50
 
@@ -94,15 +105,19 @@ function MemberCard({
   today,
   canManage,
   onAction,
+  medical,
 }: {
   row: MembershipRow
   groupKind: string | null
   today: string
   canManage: boolean
   onAction: (action: MembershipAction, row: MembershipRow) => void
+  /** The participant's medical status, when the reader may see it (M-O1). */
+  medical: MedicalStatusItem | null
 }) {
   const t = useT()
   const locale = useLocale()
+  const { labels: medicalLabels, formatDate: medicalDate } = useMedicalLabels()
   const status = rowStatus(row, today)
   const name = personName(row.person) || t('groups.memberships.unknownPerson')
   const age = typeof row.person?.age === 'number' ? t('groups.club.roster.age', { age: String(row.person.age) }) : null
@@ -122,6 +137,15 @@ function MemberCard({
       <p className="text-muted-foreground text-sm break-words">
         {[roleLabel(t, row.role, groupKind), age].filter(Boolean).join(' · ')}
       </p>
+      {medical ? (
+        <MedicalStatusTag
+          item={medical}
+          labels={medicalLabels}
+          formatDate={medicalDate}
+          personId={row.personId ?? undefined}
+          data-testid="club-group-medical"
+        />
+      ) : null}
       <p className="text-muted-foreground text-sm tabular-nums" data-testid="club-roster-dates">
         {datesLine(t, row, locale)}
       </p>
@@ -222,7 +246,21 @@ function Roster({ group }: { group: GroupDetail }) {
       {t('groups.memberships.actions.add')}
     </Button>
   ) : null
-  const rows = list.data?.pages.flatMap((page) => page.items) ?? []
+  const loadedRows = list.data?.pages.flatMap((page) => page.items) ?? []
+  // M-O1: the participants' medical statuses, once the roster is loaded; nothing while unknown or not allowed.
+  const participantIds = loadedRows.flatMap((row) => (row.role === 'participant' && row.personId ? [row.personId] : []))
+  const medicalStatuses = useMedicalStatuses(participantIds)
+  const [notValidOnly, setNotValidOnly] = React.useState(false)
+  const medicalOf = (row: MembershipRow): MedicalStatusItem | null =>
+    row.role === 'participant' && row.personId ? (medicalStatuses.get(row.personId) ?? null) : null
+  const medicalFilterShown = medicalStatuses.size > 0
+  const filtering = medicalFilterShown && notValidOnly
+  const rows = filtering
+    ? loadedRows.filter((row) => {
+        const item = medicalOf(row)
+        return item ? isMedicalNotValid(item.status) : false
+      })
+    : loadedRows
   let body: React.ReactNode
   if (!list.data && list.isFetching) {
     body = <MemberSkeleton shape="rows" label={t('groups.club.loading')} />
@@ -236,6 +274,12 @@ function Roster({ group }: { group: GroupDetail }) {
           </Button>
         }
       />
+    )
+  } else if (filtering && rows.length === 0 && loadedRows.length > 0) {
+    body = (
+      <p className="text-muted-foreground" data-testid="club-group-medical-filter-empty">
+        {t('groups.club.medical.filterEmpty')}
+      </p>
     )
   } else if (rows.length === 0) {
     body = (
@@ -258,6 +302,7 @@ function Roster({ group }: { group: GroupDetail }) {
               today={today}
               canManage={canManage}
               onAction={onAction}
+              medical={medicalOf(row)}
             />
           ))}
         </ul>
@@ -311,7 +356,7 @@ function Roster({ group }: { group: GroupDetail }) {
           }}
         />
       ) : null}
-      {canManage && rows.length > 0 ? (
+      {canManage && loadedRows.length > 0 ? (
         <div className="flex flex-col gap-2 sm:flex-row">
           {addButton}
           {view === 'active' ? (
@@ -348,6 +393,23 @@ function Roster({ group }: { group: GroupDetail }) {
           ))}
         </TabsList>
         <TabsContent value={view} className="flex flex-col gap-2">
+          {medicalFilterShown ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={notValidOnly ? 'default' : 'outline'}
+                className="min-h-11 rounded-full"
+                aria-pressed={notValidOnly}
+                data-testid="club-group-medical-filter"
+                onClick={() => {
+                  setNotValidOnly(!notValidOnly)
+                }}
+              >
+                {t('groups.club.medical.filter')}
+              </Button>
+            </div>
+          ) : null}
           {body}
         </TabsContent>
       </Tabs>

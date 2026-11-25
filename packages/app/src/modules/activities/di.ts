@@ -18,6 +18,7 @@ import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
 import { ACTIVITIES_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { ACTIVITIES_DEPARTURE_CONTRIBUTOR, createDepartureContribution } from './services/departure-contribution'
 import { ACTIVITIES_GROUP_USAGE, groupUsage } from './services/group-usage'
+import { ACTIVITIES_OCCURRENCE_FACTS, createOccurrenceFacts } from './services/occurrence-facts'
 import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
 import { ACTIVITIES_PLACE_USAGE, placeUsage } from './services/place-usage'
 import { ACTIVITIES_PUBLIC_EVENTS, createPublicEvents } from './services/public-events'
@@ -107,5 +108,9 @@ export function register(container: AppContainer) {
     // `hasRegistration` — the subject's attendance, declaration links, the contact reads that returned their contacts and
     // the substitutions where they are a coach, with staff actions counted. Read only, in the caller's EntityManager.
     [ACTIVITIES_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
+    // `activities.occurrenceFacts` (training outlines spec DD-O07a, #683): the facts of sessions and activities by id
+    // in the caller's organization, which `training` reads with `hasRegistration` (attach scope, the 72-hour lock,
+    // series copies, the print header). Read only.
+    [ACTIVITIES_OCCURRENCE_FACTS]: asFunction(() => createOccurrenceFacts(container)).scoped(),
   })
 }

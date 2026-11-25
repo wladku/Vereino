@@ -11,11 +11,12 @@ const at = '2026-11-01T10:00:00.000Z'
 const now = new Date('2026-11-19T08:30:00.000Z')
 
 describe('consent text keys (DD-39, REQ-L10)', () => {
-  it('lists the six consents whose wording the club may change', () => {
+  it('lists the seven consents whose wording the club may change', () => {
     expect(CONSENT_TEXT_KEYS).toEqual([
       'regulations',
       'image',
       'trips',
+      'medical',
       'share_contact_with_coaches',
       'share_presence_with_guardians',
       'publish_name_consent',
