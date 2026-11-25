@@ -27,7 +27,7 @@
 
 - `yarn verify` → `all 22 step(s) passed`.
 - `yarn guard` → `No blocking findings.`
-- After merging `main` (step 4): see the commands below.
+- After merging `main` (step 4): `yarn verify` → `all 22 step(s) passed`; `yarn guard` → `No blocking findings.`
 
 ## Open problems / next steps
 
