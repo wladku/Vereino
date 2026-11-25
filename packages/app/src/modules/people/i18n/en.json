@@ -884,5 +884,19 @@
   "people.dataExport.errors.failed": "The data could not be exported. Nothing was downloaded. Try again.",
   "people.errors.import_progress_unavailable": "The import could not report its progress, so nothing was committed. Try again in a moment.",
   "people.imports.record.committing": "Committing the import…",
-  "people.imports.record.committingRows": "Committing the import: {processed} of {total} rows"
+  "people.imports.record.committingRows": "Committing the import: {processed} of {total} rows",
+  "people.errors.medical_consent_missing": "The date can be saved only while the person (or, for a minor, a guardian) consents to keeping it.",
+  "people.errors.medical_consent_subject_only": "Only the person or a guardian gives or withdraws the consent to keep the medical certificate date.",
+  "people.errors.medical_status_too_many": "Ask for the medical status of at most 200 people at once.",
+  "people.audit.persons.medical_set": "Change the medical certificate date",
+  "people.audit.jobs.medical_reminders": "Medical certificate reminders",
+  "people.notifications.medicalExpiring.title": "Medical certificate expires soon",
+  "people.notifications.medicalExpiring.body": "A sports medical certificate in your family expires within a month. Enter the new date once the doctor issues it.",
+  "people.notifications.medicalExpired.title": "Medical certificate expires today",
+  "people.notifications.medicalExpired.body": "A sports medical certificate in your family expires today. Enter the new date once the doctor issues it.",
+  "people.email.medicalExpiring.subject": "{name}'s medical certificate expires on {date}",
+  "people.email.medicalExpiring.lead": "The sports medical certificate of {name} is valid until {date}. Book the doctor's visit in time and enter the new date in the app, so the coach sees that {name} may play.",
+  "people.email.medicalExpired.subject": "{name}'s medical certificate expires today",
+  "people.email.medicalExpired.lead": "The sports medical certificate of {name} is valid until {date}. From tomorrow the coach sees it as expired. Enter the new date in the app once the doctor has issued it.",
+  "people.email.medical.action": "Enter the new date"
 }

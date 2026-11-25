@@ -89,7 +89,8 @@ export function carriedOverConsents(
   const next: Partial<Record<ConsentKind, StoredConsentEntry>> = { ...own }
   const copied: ConsentKind[] = []
   for (const kind of CONSENT_KINDS) {
-    if (own[kind]) continue
+    // `medical` is not carried over: the adult gives their own; the guardian's stays in force 30 days (BR-O1, #682).
+    if (own[kind] || kind === 'medical') continue
     let latest: StoredConsentEntry | null = null
     for (const consents of ending) {
       const entry = consents[kind]

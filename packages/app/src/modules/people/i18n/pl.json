@@ -884,5 +884,19 @@
   "people.dataExport.errors.failed": "Nie udało się wyeksportować danych. Nic nie zostało pobrane. Spróbuj ponownie.",
   "people.errors.import_progress_unavailable": "Import nie mógł raportować postępu, więc niczego nie zatwierdzono. Spróbuj ponownie za chwilę.",
   "people.imports.record.committing": "Zatwierdzanie importu…",
-  "people.imports.record.committingRows": "Zatwierdzanie importu: {processed} z {total} wierszy"
+  "people.imports.record.committingRows": "Zatwierdzanie importu: {processed} z {total} wierszy",
+  "people.errors.medical_consent_missing": "Datę można zapisać tylko wtedy, gdy osoba (a za osobę niepełnoletnią opiekun) zgadza się na jej przechowywanie.",
+  "people.errors.medical_consent_subject_only": "Zgody na przechowywanie daty orzeczenia lekarskiego udziela i ją wycofuje tylko sama osoba albo opiekun.",
+  "people.errors.medical_status_too_many": "Zapytaj o status orzeczeń najwyżej 200 osób naraz.",
+  "people.audit.persons.medical_set": "Zmiana daty orzeczenia lekarskiego",
+  "people.audit.jobs.medical_reminders": "Przypomnienia o orzeczeniach lekarskich",
+  "people.notifications.medicalExpiring.title": "Orzeczenie lekarskie wkrótce traci ważność",
+  "people.notifications.medicalExpiring.body": "Orzeczenie lekarskie członka Twojej rodziny traci ważność w ciągu miesiąca. Wpisz nową datę, gdy lekarz wystawi orzeczenie.",
+  "people.notifications.medicalExpired.title": "Orzeczenie lekarskie traci dziś ważność",
+  "people.notifications.medicalExpired.body": "Orzeczenie lekarskie członka Twojej rodziny traci dziś ważność. Wpisz nową datę, gdy lekarz wystawi orzeczenie.",
+  "people.email.medicalExpiring.subject": "Orzeczenie lekarskie: {name} – ważne do {date}",
+  "people.email.medicalExpiring.lead": "Orzeczenie lekarskie o zdolności do uprawiania sportu ({name}) jest ważne do {date}. Umów wizytę u lekarza z wyprzedzeniem i wpisz nową datę w aplikacji, aby trener widział, że {name} może grać.",
+  "people.email.medicalExpired.subject": "Orzeczenie lekarskie: {name} – traci dziś ważność",
+  "people.email.medicalExpired.lead": "Orzeczenie lekarskie o zdolności do uprawiania sportu ({name}) jest ważne do {date}. Od jutra trener zobaczy je jako nieważne. Wpisz nową datę w aplikacji, gdy lekarz wystawi orzeczenie.",
+  "people.email.medical.action": "Wpisz nową datę"
 }

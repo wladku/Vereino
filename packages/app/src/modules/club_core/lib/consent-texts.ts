@@ -4,13 +4,14 @@
 // before `changedAt` is shown as "given to an earlier wording" by the module that owns it. Time is a parameter (S3.5).
 
 /**
- * The consents whose wording the club may change: the three of a guardianship or of an adult participant, and the
- * three a member gives in their profile (REQ-037, REQ-006, DD-29).
+ * The consents whose wording the club may change: the four of a guardianship or of an adult participant (`medical`:
+ * the sports medical certificate date, #682), and the three a member gives in their profile (REQ-037, REQ-006, DD-29).
  */
 export const CONSENT_TEXT_KEYS = [
   'regulations',
   'image',
   'trips',
+  'medical',
   'share_contact_with_coaches',
   'share_presence_with_guardians',
   'publish_name_consent',
