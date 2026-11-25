@@ -146,7 +146,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Provider callback',
       description:
-        'Consumes the single-use state (it must match the HttpOnly cookie), exchanges the code with the PKCE verifier and checks the id token. A sign-in with a linked identity sets the platform session cookies and redirects to the landing path; every other sign-in outcome redirects to `/login?identity=unlinked|invalid|failed`, which all render one sentence. A link round trip redirects to `/club/profile?identity=linked|failed`. A round trip started on a club\'s address (DD-S07) redirects to that address\'s `handoff` route with a one-minute single-use token, and its failures land on that address. Never creates an account. Rate-limited per client IP.',
+        "Consumes the single-use state (it must match the HttpOnly cookie), exchanges the code with the PKCE verifier and checks the id token. A sign-in with a linked identity sets the platform session cookies and redirects to the landing path; every other sign-in outcome redirects to `/login?identity=unlinked|invalid|failed`, which all render one sentence. A link round trip redirects to `/club/profile?identity=linked|failed`. A round trip started on a club's address (DD-S07) redirects to that address's `handoff` route with a one-minute single-use token, and its failures land on that address. Never creates an account. Rate-limited per client IP.",
       responses: [
         {
           status: 303,

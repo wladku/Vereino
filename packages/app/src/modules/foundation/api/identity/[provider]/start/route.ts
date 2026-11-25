@@ -94,7 +94,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Redirect to the provider',
       description:
-        'Sessionless sign-in, or — with a session holding `foundation.identity.self` — linking the signed-in user. Redirects to the provider with PKCE (S256) and a single-use state bound to an HttpOnly cookie. `redirect` is a same-origin path to land on after a sign-in (default `/club`). On a club\'s address the round trip returns there through the central callback\'s hand-off (DD-S07). Rate-limited per client IP.',
+        "Sessionless sign-in, or — with a session holding `foundation.identity.self` — linking the signed-in user. Redirects to the provider with PKCE (S256) and a single-use state bound to an HttpOnly cookie. `redirect` is a same-origin path to land on after a sign-in (default `/club`). On a club's address the round trip returns there through the central callback's hand-off (DD-S07). Rate-limited per client IP.",
       responses: [{ status: 302, description: 'Redirect to the provider', mediaType: 'text/html' }],
       errors: [
         { status: 403, description: 'Signed in without `foundation.identity.self`', schema: identityErrorSchema },
