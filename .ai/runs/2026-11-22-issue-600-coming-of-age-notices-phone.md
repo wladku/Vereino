@@ -1,6 +1,6 @@
 # Run: #600 — the 18th-birthday notices on the ward card at 375 px (AC-L07)
 
-- **Goal and trigger:** cezar task f20c27ef, `om-auto-fix-issue 600` (label `cezar`). Close the AC-L07 gap of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`: a browser test of `people/components/club/LifeCycleNotices.tsx` on the ward card and the own card at 375 px, Polish and English, light and dark, axe clean, texts through `uiText()`.
+- **Goal and trigger:** cezar task f20c27ef, `om-auto-fix-issue 600` (label `cezar`). Close the AC-L07 gap of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`: a browser test of `people/components/club/LifeCycleNotices.tsx` on the ward card and the own card at 375 px, Polish and English, light and dark, axe clean, texts through `uiText()`.
 - **Issue / branch:** #600 / `test/issue-600-birthday-notices-ward-card`.
 - **Started / finished:** 2026-11-22.
 
@@ -20,7 +20,7 @@
 ## Files changed
 
 - `packages/app/.ai/qa/tests/people/TEST-L09-coming-of-age-notices-phone.spec.ts` (new)
-- `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (AC-L07 ticked)
+- `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (AC-L07 ticked)
 - `.ai/specs/changelog/2026-11-14-vereino-people-life-cycle-and-data-entry/2026-11-22-issue-600-coming-of-age-notices-phone.md` (new)
 - this log
 

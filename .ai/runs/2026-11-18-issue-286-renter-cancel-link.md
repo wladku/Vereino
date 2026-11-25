@@ -2,7 +2,7 @@
 
 - **Trigger:** cezar `om-auto-fix-issue 286` (label `cezar` added); resumed once after a cezar restart.
 - **Issue / PR / branch:** #286 / (opened by this run) / `feat/issue-286-renter-cancel-link`
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` (Ready for implementation; the `facilities_rental_links` migration and the sessionless routes approved on #253, Ask First items 1 and 2)
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (Ready for implementation; the `facilities_rental_links` migration and the sessionless routes approved on #253, Ask First items 1 and 2)
 - **Date:** 2026-11-18
 
 ## Goal

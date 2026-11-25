@@ -1,7 +1,7 @@
 # Run: #591 — scheduled jobs dispatch through the platform worker and refuse a forged scope (AC-G05, TEST-G06)
 
 - **Trigger:** cezar task (issue labelled `cezar`), skill `om-auto-fix-issue` with the repo-local override.
-- **Issue:** #591 (epic #565). **Spec:** `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` — AC-G05, TEST-G06, REQ-G05, DD-G07.
+- **Issue:** #591 (epic #565). **Spec:** `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` — AC-G05, TEST-G06, REQ-G05, DD-G07.
 - **Branch:** `fix/issue-591-scheduled-job-scope-guard` (renamed from the cezar task branch).
 - **Owner decision (issue comment, 2026-11-24):** a forged scope is also a well-formed organization id without a registration of the job; the check lives in one shared helper, not in each worker.
 
@@ -27,7 +27,7 @@
 - `packages/app/src/modules/foundation/services/scheduled-job-scope.ts` (new), `register-module-schedule.ts`, `index.ts`, `README.md`, `workers/dispatch-sweep.ts`
 - `packages/app/src/modules/{activities,facilities,payments,people}/workers/*.ts` (18 files)
 - `packages/app/.ai/qa/tests/foundation/TEST-G06-scheduled-job-dispatch.spec.ts` (new), `_fixtures/scheduled-job-probe/probe.mjs` (new), `_fixtures/messaging-probe/probe.mjs`
-- `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md`, its changelog file
+- `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md`, its changelog file
 
 ## Commands and results
 

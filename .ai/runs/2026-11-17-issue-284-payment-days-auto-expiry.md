@@ -1,6 +1,6 @@
 # Run: issue #284 — E11-S10 payment days and automatic expiry from the management agreement
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 284`, label `cezar`): build phase 10 of `.ai/specs/2026-11-14-vereino-parity-facilities.md` (REQ-R07, DD-R10, DD-R11; TEST-R09, TEST-R01 deadline part; AC-R05).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 284`, label `cezar`): build phase 10 of `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (REQ-R07, DD-R10, DD-R11; TEST-R09, TEST-R01 deadline part; AC-R05).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #253: Ask First item 3 covers `clubCoreContracts.facilityAgreement`, the `facility_management` terms shape and 422 `contract_terms_invalid`; Q-R21 — expiry off by default); issue #284; depends on #279 (merged); branch `feat/issue-284-payment-days-auto-expiry`.
 
 ## Steps

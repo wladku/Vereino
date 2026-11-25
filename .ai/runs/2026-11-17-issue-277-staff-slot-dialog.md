@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 277`, issue labelled `cezar`). Build phase 3 of the facilities
   parity spec: the slot dialog on B-23 and B-24 and the renter search.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 3 (REQ-R02; TEST-R04, TEST-R05;
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 3 (REQ-R02; TEST-R04, TEST-R05;
   AC-R02); #277 (epic #253, depends on #276, merged); `feat/issue-277-staff-slot-dialog-booking`.
 - **Approval:** the spec is `Ready for implementation`; the issue's Ask First items — `clubCoreDirectory.searchInstitutions`,
   the new `GET /api/facilities/renters` route and the labelled `conflicts[]` — are item (a)3 and (a)5 of the

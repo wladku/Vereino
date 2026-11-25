@@ -1,6 +1,6 @@
 # Run log — issue #309, phase L7 "Consents: the adult's own, effects, texts"
 
-- **Goal and trigger:** cezar queued `om-auto-fix-issue` on #309 (label `cezar`, 2026-11-19 04:00 UTC). Feature route: implement phase L7 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (Ready for implementation; migration C and the `consentFlags` contract approved by the owner on #255, 2026-11-16, Ask First items 3 and 6; Q-L15 and Q-L16 confirmed there).
+- **Goal and trigger:** cezar queued `om-auto-fix-issue` on #309 (label `cezar`, 2026-11-19 04:00 UTC). Feature route: implement phase L7 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (Ready for implementation; migration C and the `consentFlags` contract approved by the owner on #255, 2026-11-16, Ask First items 3 and 6; Q-L15 and Q-L16 confirmed there).
 - **Spec / issue / branch:** spec above; issue #309 (E13-S07, epic #255); branch `feat/issue-309-adult-participant-consents`, worktree `.ai/cezar/worktrees/bf3230ce-…`.
 
 ## Steps

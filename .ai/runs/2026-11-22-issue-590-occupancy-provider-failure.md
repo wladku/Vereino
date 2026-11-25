@@ -1,7 +1,7 @@
 # Run log — issue #590: a failing occupancy provider (AC-G03, TEST-G04)
 
 - **Trigger:** Cezar run fdd9eef4 (`om-auto-fix-issue`), queued by the `cezar` label on #590.
-- **Issue:** #590 (epic #565). **Spec:** `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` — AC-G03, TEST-G04.
+- **Issue:** #590 (epic #565). **Spec:** `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` — AC-G03, TEST-G04.
 - **Branch:** `test/issue-590-occupancy-provider-failure`.
 - **Route:** `direct` (missing integration test for behaviour that exists; no product code changes).
 

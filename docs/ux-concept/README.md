@@ -290,7 +290,7 @@ Platform groups (media, integrations and the rest) follow the six. A coordinator
 | B-15 | `/backend/activities/occurrences` (perspectives incl. the section calendar) | Sessions | `activities.view` | 2 |
 | B-16 | `/backend/activities/reports/coach-units` | Coach units report | `activities.reports.view` (own row on the phone: `activities.reports.view_own`) | 2 |
 | B-17 | `/backend/activities/policies` | Declaration policies | `activities.manage` | 2 |
-| B-T1 / B-T2 / B-T3 | `/backend/activities/club-events`, `…/create`, `…/[id]` | Club events (list, form, record with Details · Parts · Files) | `activities.view` / `activities.manage` | [club events spec](../../.ai/specs/2026-11-18-vereino-club-events-with-parts.md) |
+| B-T1 / B-T2 / B-T3 | `/backend/activities/club-events`, `…/create`, `…/[id]` | Club events (list, form, record with Details · Parts · Files) | `activities.view` / `activities.manage` | [club events spec](../../.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md) |
 | B-18 / B-19 | `/backend/communication/threads` (tabs: All, Cases = `/backend/communication/cases`), `…/[id]` | Threads and cases | `communication.view` ("Mark as case": `communication.cases.manage`) | 3 |
 | B-20 | `/backend/payments/fees` (Discounts tab = `/backend/payments/discounts`) | Fees and discounts | `payments.manage` | 4 |
 | B-21 / B-22 | `/backend/payments/charges` (perspectives incl. Overdue), `…/[id]` | Charges | `payments.view` / `payments.manage` | 4 |

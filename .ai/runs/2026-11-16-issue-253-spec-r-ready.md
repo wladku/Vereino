@@ -1,7 +1,7 @@
 # Run: #253 — spec R (facilities parity) to `Ready for implementation`
 
 - **Goal and trigger:** unattended cezar run (task 4be70a43) of `om-auto-create-pr`, asked by the owner: record the owner decisions of 2026-11-16 in spec R, fix the pre-implementation audit gaps (c1)–(c10), set `Status: Ready for implementation`. Docs only.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-facilities.md`. **Epic:** #253 ([audit](https://github.com/wladku/Vereino/issues/253#issuecomment-6899389065), [owner decisions](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145)). **Branch:** `docs/issue-253-spec-r-ready`.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md`. **Epic:** #253 ([audit](https://github.com/wladku/Vereino/issues/253#issuecomment-6899389065), [owner decisions](https://github.com/wladku/Vereino/issues/253#issuecomment-6910005145)). **Branch:** `docs/issue-253-spec-r-ready`.
 
 ## Steps
 

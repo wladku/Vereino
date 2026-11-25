@@ -2,7 +2,7 @@
 
 - **Trigger:** cezar task 94cfb413 (`issue.labeled` `cezar` on #289), `om-auto-fix-issue 289`, feature route.
 - **Issue / branch:** #289 (E11-S15) / `feat/issue-289-guest-public-places-view`.
-- **Spec:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 15 (REQ-R16, TEST-R16, AC-R12); status `Ready for implementation`. The verify `summary` and the new public-read fields are covered by Ask First item 5 ("additive response fields on … verify …", phase 15 named), approved by the owner on 2026-11-16 (#253). Q-R16 and Q-R17 confirmed there too.
+- **Spec:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 15 (REQ-R16, TEST-R16, AC-R12); status `Ready for implementation`. The verify `summary` and the new public-read fields are covered by Ask First item 5 ("additive response fields on … verify …", phase 15 named), approved by the owner on 2026-11-16 (#253). Q-R16 and Q-R17 confirmed there too.
 
 ## Steps
 

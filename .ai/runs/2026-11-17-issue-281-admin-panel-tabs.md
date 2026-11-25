@@ -1,7 +1,7 @@
 # Run: issue #281 — E11-S07 an administrator works the zones, closures, price list, log, incidents and bans tabs and adds past records from the panel
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 281`, label `cezar`): build phase 7 of
-  `.ai/specs/2026-11-14-vereino-parity-facilities.md` (REQ-R09, REQ-R10; TEST-R11, TEST-R01 92-day rule; AC-R07).
+  `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (REQ-R09, REQ-R10; TEST-R11, TEST-R01 92-day rule; AC-R07).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #253, which also approves the
   issue's Ask First item: the past-start widening of `POST /api/facilities/internal-bookings` for the club
   administrator, with 422 `booking_too_old` — *Rollout*, row 5 of the Ask First table; Q-R13 confirmed). Dependencies

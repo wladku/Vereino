@@ -3,7 +3,7 @@
 - **Date:** 2026-10-29
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` (installed from `open-mercato/skills`, repo-local override applied; feature route) with one implementation subagent (which used a page subagent and a test subagent) and the coordinator's own review and gate
 - **Trigger:** product owner — "/om-auto-fix-issue 22"; #22 is the E03 epic, the owner chose #31 and approved the new module, its migrations and the `date-fns` / `date-fns-tz` declaration in `@vereino/core` ("Moduł + migracje + deps w core")
-- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 steps 3 and 8 (and the dependency half of step 1), foundation II `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` P-24, P-25, P-26 (TEST-007, TEST-012, TEST-034); issue #31 (epic #22); branch `feat/issue-31-activities`
+- **Spec / issue / branch:** `.ai/specs/2026-10-20-vereino-club-management.md` phase 2 steps 3 and 8 (and the dependency half of step 1), foundation II `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` P-24, P-25, P-26 (TEST-007, TEST-012, TEST-034); issue #31 (epic #22); branch `feat/issue-31-activities`
 - **Status:** completed — PR open for review
 
 ## Goal

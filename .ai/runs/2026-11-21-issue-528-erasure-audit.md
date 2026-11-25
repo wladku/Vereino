@@ -1,7 +1,7 @@
 # Run: issue #528 — anonymisation records the basis for kept data and clears order contacts, payer labels and delivery rows (S9.6)
 
 - **Trigger:** cezar run 8efe4af8 (issue labelled `cezar`), skill `om-auto-fix-issue` with the repo-local override; step 1 of 3 (build, draft PR; an independent reviewer marks it ready).
-- **Issue:** #528 · **Branch:** `fix/issue-528-anonymisation-kept-data-basis` · **Spec:** `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (*Security → Erasure*, contract `DepartureContributor`), engineering standards S9.6.
+- **Issue:** #528 · **Branch:** `fix/issue-528-anonymisation-kept-data-basis` · **Spec:** `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (*Security → Erasure*, contract `DepartureContributor`), engineering standards S9.6.
 
 ## Steps
 
@@ -27,7 +27,7 @@
 - `packages/app/src/modules/facilities/services/departure-contribution.ts`
 - `packages/app/src/modules/foundation/services/dispatch.ts`, `foundation/index.ts`
 - `packages/app/.ai/qa/tests/people/TEST-L07-anonymise-and-delete.spec.ts`
-- `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, `.ai/specs/changelog/2026-11-14-vereino-people-life-cycle-and-data-entry/2026-11-21-issue-528-erasure-audit.md`
+- `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, `.ai/specs/changelog/2026-11-14-vereino-people-life-cycle-and-data-entry/2026-11-21-issue-528-erasure-audit.md`
 - `docs/compliance/data-subject-requests.md`, `docs/compliance/retention.md`
 - `.ai/lessons/person-data-in-a-module-needs-an-erase-part.md`, this log
 

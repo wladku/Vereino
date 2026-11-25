@@ -1,6 +1,6 @@
 # Run log — issue #306, phase L4 "Leaving the club: members and guardians"
 
-- **Goal and trigger:** cezar queued `om-auto-fix-issue` on #306 (label `cezar`, 2026-11-18 01:00 UTC). Feature route: implement phase L4 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (Ready for implementation; migration A, the DI contract, the events, the routes and the list behaviour change approved by the owner on #255, 2026-11-16).
+- **Goal and trigger:** cezar queued `om-auto-fix-issue` on #306 (label `cezar`, 2026-11-18 01:00 UTC). Feature route: implement phase L4 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (Ready for implementation; migration A, the DI contract, the events, the routes and the list behaviour change approved by the owner on #255, 2026-11-16).
 - **Spec / issue / branch:** spec above; issue #306 (E13-S04, epic #255); branch `feat/issue-306-phone-leave-family-flow`.
 
 ## Steps

@@ -1,7 +1,7 @@
 # Merge throughput: PRs reach main without stalling
 
 **Date**: 2026-11-18
-**Status**: Ready for implementation — approved by the owner on 2026-11-18
+**Status**: In progress — approved by the owner on 2026-11-18; phases 1–3 built (PR #399, PR #402, #449 PR #458); left: REQ-MT05 (the picker spreads modules) and the fix-run half of REQ-MT06 (a Cezar automation on the mirrored train labels) live in the Cezar picker and configuration, outside the repository, with a run log as their evidence (*Operations*); MT-AC-01 (10-run p50) and MT-AC-04 (a label-started fix run within 10 min) have no recorded evidence yet (close-out IV #719)
 
 > Related: engineering standards `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (S13, S14, ADR-015; this spec amends S14.1); the batch train in `.ai/specs/2026-11-18-batch-merge-train.md` (split out of this spec on review); `SDLC.md` → "Validation gate" and "The automation contract"; `.github/workflows/ci.yml`, `.github/workflows/merge-train.yml`, `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs` (unit tests in `packages/app/scripts/__tests__/merge-train-plan.test.mjs`); `packages/app/.ai/qa/tests/playwright.config.ts`. Identifiers: goals `MT-01…`, decisions `MT-D01…`, requirements `REQ-MT01…`, tests `MT-TEST-01…`, acceptance `MT-AC-01…`, questions `MT-Q1…`.
 

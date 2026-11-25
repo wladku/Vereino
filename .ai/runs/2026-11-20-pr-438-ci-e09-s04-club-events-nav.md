@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (om-auto-fix-pr) — drive PR #438 (issue #380, E14-S05 club events on the phone) back to green after `integration (shard 6/6)` failed; merge `main` in; no force-push, never merge.
 - **Branch:** `feat/issue-380-section-coordinator-club-event`, worked on a detached HEAD at its origin tip `528b172a`, pushed with `git push origin HEAD:feat/issue-380-section-coordinator-club-event`.
-- **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md` (REQ-T12) — unchanged by this run.
+- **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md` (REQ-T12) — unchanged by this run.
 
 ## Steps
 
