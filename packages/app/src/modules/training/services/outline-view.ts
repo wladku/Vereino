@@ -6,8 +6,10 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { Scope } from '@vereino/core'
 import { assertInScope } from '@/modules/foundation'
-import { OUTLINE_KINDS, outlineTarget } from '../commands/shared'
-import { Outline } from '../data/entities'
+import { OUTLINE_KINDS, outlineTarget, selfPersonId } from '../commands/shared'
+import { Outline, OutlineAuthor } from '../data/entities'
+import { LIBRARY_TERMS_VERSION, readLevel, readOrigin, type CreditOrigin, type LibraryLevel } from '../lib/library'
+import { TRAINING_LIBRARY, type TrainingLibrary } from './library'
 import {
   isOutlineLocked,
   outlineFileName,
@@ -18,6 +20,7 @@ import {
   type OutlineParts,
 } from '../lib/outline'
 import {
+  clubLibraryLevel,
   clubName,
   findGroups,
   findOccurrences,
@@ -62,8 +65,19 @@ export type OutlineView = {
   session: OutlineSessionView | null
   locked: boolean
   fileName: string
+  /** The library entry the outline is shared as (E24-S05, #685), or null while it stays in the club. */
+  publication: { entryId: string; visibility: string } | null
+  /** The first author a copy from the library keeps the credit of, or null for an outline written in the club. */
+  origin: CreditOrigin | null
   createdAt: string
   updatedAt: string
+}
+
+/** What the outline page needs to offer sharing (B-O1, BR-O4): the club's level and the caller's accepted terms. */
+export type OutlineLibraryState = {
+  enabled: boolean
+  maxVisibility: LibraryLevel
+  termsAccepted: boolean
 }
 
 const fullName = (person: { firstName: string; lastName: string } | undefined): string | null =>
@@ -133,6 +147,10 @@ export async function outlineViews(
       session: fact ? sessionView(fact, fact.coachPersonId ? fullName(persons.get(fact.coachPersonId)) : null) : null,
       locked: isOutlineLocked(fact?.endAt ?? null, now),
       fileName: outlineFileName({ language: row.language, topic: row.topic, date: fact?.occurrenceDate ?? null }),
+      publication: row.publishedEntryId
+        ? { entryId: row.publishedEntryId, visibility: row.publishedVisibility ?? 'clubs' }
+        : null,
+      origin: readOrigin(row.originCredit),
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     }
@@ -148,14 +166,24 @@ export async function readOutline(
   scope: TrainingScope,
   grants: Scope,
   id: string,
-): Promise<{ row: Outline; view: OutlineView & { clubName: string | null } } | null> {
+): Promise<{
+  row: Outline
+  view: OutlineView & { clubName: string | null; library: OutlineLibraryState }
+} | null> {
   const em = container.resolve<EntityManager>('em').fork()
   const row = await em.findOne(Outline, { ...scope, id, deletedAt: null })
   if (!row) return null
   await assertInScope(grants, OUTLINE_KINDS, outlineTarget(row))
-  const [[view], club] = await Promise.all([
+  const self = selfPersonId(grants)
+  const [[view], club, level, accepted] = await Promise.all([
     outlineViews(container, scope, [row], new Date(), em),
     clubName(container, scope),
+    clubLibraryLevel(container, scope),
+    self
+      ? em.count(OutlineAuthor, { ...scope, personId: self, termsVersion: LIBRARY_TERMS_VERSION, deletedAt: null })
+      : Promise.resolve(0),
   ])
-  return { row, view: { ...view, clubName: club } }
+  const enabled = container.resolve<TrainingLibrary>(TRAINING_LIBRARY).config() !== null
+  const library: OutlineLibraryState = { enabled, maxVisibility: readLevel(level), termsAccepted: accepted > 0 }
+  return { row, view: { ...view, clubName: club, library } }
 }

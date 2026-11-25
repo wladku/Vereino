@@ -23,7 +23,12 @@ import { isEncryptedPayloadShape } from '@open-mercato/shared/lib/encryption/aes
 import { resolveEntityIdFromMetadata } from '@open-mercato/shared/lib/encryption/entityIds'
 import type { TenantDataEncryptionService } from '@open-mercato/shared/lib/encryption/tenantDataEncryptionService'
 import { getCliModules } from '@open-mercato/shared/modules/registry'
-import { clubExportContributorToken, type ClubDataContributor } from '@/modules/foundation'
+import {
+  clubDeleteBeyondTenantToken,
+  clubExportContributorToken,
+  type ClubDataContributor,
+  type ClubDeleteBeyondTenant,
+} from '@/modules/foundation'
 import {
   CLUB_ARCHIVE_FORMAT,
   CLUB_ARCHIVE_MANIFEST,
@@ -146,6 +151,17 @@ function moduleContributors(container: AwilixContainer): ClubDataContributor[] {
     .map((mod) => clubExportContributorToken(mod.id))
     .filter((token) => container.hasRegistration(token))
     .map((token) => container.resolve<ClubDataContributor>(token))
+}
+
+/**
+ * The modules' deletions of a club's rows held outside its tenant (the shared outline library, #685), read with
+ * `hasRegistration` in module order.
+ */
+function beyondTenantHooks(container: AwilixContainer): ClubDeleteBeyondTenant[] {
+  return getCliModules()
+    .map((mod) => clubDeleteBeyondTenantToken(mod.id))
+    .filter((token) => container.hasRegistration(token))
+    .map((token) => container.resolve<ClubDeleteBeyondTenant>(token))
 }
 
 type ClubTargets = { tables: ClubTable[]; insertOrder: ClubTable[]; catalogue: Catalogue }
@@ -416,12 +432,18 @@ export async function deleteClub(
       const rows = await countRows(em, entry, scope)
       if (rows > 0) summary.tables.push({ module: entry.module, table: entry.table, rows })
     }
+    for (const hook of beyondTenantHooks(container)) {
+      for (const counted of await hook.count(em, scope)) {
+        if (counted.rows > 0) summary.tables.push({ module: hook.module, table: counted.table, rows: counted.rows })
+      }
+    }
     return summary
   }
   // The schedules and the attachment files are taken from the rows the transaction deletes (#681): a failed deletion
   // leaves a live club its schedules, and a file uploaded meanwhile is deleted with its row, not left in storage.
   let scheduleIds: string[] = []
   let attachments: AttachmentRow[] = []
+  const afterCommit: Array<() => Promise<void>> = []
   // The administrator's export archives (#676) are named by the club's progress jobs, which the deletion removes.
   const exportArchives = supersededArchives(await findClubExportJobs(em, scope), '')
   await em.transactional(async (tx) => {
@@ -447,7 +469,23 @@ export async function deleteClub(
       if (entry.table === 'scheduled_jobs') scheduleIds = result.map((row) => row.id)
       if (result.length > 0) summary.tables.push({ module: entry.module, table: entry.table, rows: result.length })
     }
+    // A club's rows outside its tenant (the shared outline library's entries and its coaches' ratings, #685) go in
+    // the same transaction, so a deleted club leaves no row with its organization id (BR-M4).
+    for (const hook of beyondTenantHooks(container)) {
+      const removed = await hook.delete(tx, scope)
+      for (const deleted of removed.tables) {
+        if (deleted.rows > 0) summary.tables.push({ module: hook.module, table: deleted.table, rows: deleted.rows })
+      }
+      if (removed.afterCommit) afterCommit.push(removed.afterCommit)
+    }
   })
+  for (const run of afterCommit) {
+    try {
+      await run()
+    } catch {
+      summary.filesFailed += 1
+    }
+  }
   // The rows are gone, so the scheduler service's `unregister` (which looks the row up first) would do nothing: the
   // repeatable jobs are removed from BullMQ directly. The local strategy polls the table and needs nothing more.
   if (scheduleIds.length > 0 && container.hasRegistration('bullmqSchedulerService')) {

@@ -59,6 +59,7 @@ export class ClubSettings extends ScopedEntityBase {
     | 'offboardingNoticeAt'
     | 'offboardingDeleteAfter'
     | 'formerParticipantRetentionMonths'
+    | 'outlineLibraryMaxVisibility'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
   ownAccountMinAge: number = 16
@@ -125,6 +126,13 @@ export class ClubSettings extends ScopedEntityBase {
    */
   @Property({ name: 'former_participant_retention_months', type: 'int', default: 12 })
   formerParticipantRetentionMonths: number = 12
+
+  /**
+   * The widest level the club's coaches may publish training outlines at (training outlines spec B-O1, BR-O4, D-038
+   * §4; #685): `club` (never published), `clubs` (clubs on Vereino, the default) or `public`.
+   */
+  @Property({ name: 'outline_library_max_visibility', type: 'text', default: 'clubs' })
+  outlineLibraryMaxVisibility: string = 'clubs'
 
   /** Globally unique slug of the public pages `/p/{publicSlug}` (DD-23); null until the club chooses one. */
   @Property({ name: 'public_slug', type: 'text', nullable: true })

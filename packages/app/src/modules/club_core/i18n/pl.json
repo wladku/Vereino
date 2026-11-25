@@ -830,5 +830,10 @@
   "club_core.offboarding.banner.loadError": "Nie udało się sprawdzić, czy klub kończy korzystanie z Vereino.",
   "club_core.offboarding.banner.retry": "Spróbuj ponownie",
   "club_core.settings.consentTexts.medical": "Data ważności orzeczenia lekarskiego",
-  "club_core.settings.consentTexts.medical.builtIn": "Zgadzam się, aby klub przechowywał datę ważności orzeczenia lekarskiego o zdolności do uprawiania sportu, pokazywał jej status trenerom i przypominał mi przed jej upływem"
+  "club_core.settings.consentTexts.medical.builtIn": "Zgadzam się, aby klub przechowywał datę ważności orzeczenia lekarskiego o zdolności do uprawiania sportu, pokazywał jej status trenerom i przypominał mi przed jej upływem",
+  "club_core.settings.fields.outlineLibraryMaxVisibility": "Najszerszy poziom biblioteki konspektów",
+  "club_core.settings.fields.outlineLibraryMaxVisibility.description": "Jak szeroko trenerzy mogą udostępniać konspekty: tylko w klubie, klubom w Vereino lub publicznie. Udostępnione konspekty są na licencji CC BY-SA 4.0. Obniżenie poziomu wycofuje konspekty udostępnione szerzej.",
+  "club_core.settings.outlineLibraryMaxVisibility.club": "Tylko w klubie",
+  "club_core.settings.outlineLibraryMaxVisibility.clubs": "Kluby w Vereino",
+  "club_core.settings.outlineLibraryMaxVisibility.public": "Publicznie"
 }

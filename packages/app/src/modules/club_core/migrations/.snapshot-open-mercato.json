@@ -363,6 +363,23 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
+        "outline_library_max_visibility": {
+          "name": "outline_library_max_visibility",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "'clubs'",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
+        },
         "own_account_min_age": {
           "name": "own_account_min_age",
           "type": "int",

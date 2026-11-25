@@ -1,8 +1,12 @@
 // training records of the cross-club isolation guard (#628; training outlines spec phase 2, #683): a weekly training
 // series of Żaki of its own (three sessions) with a series outline, so each session holds its own copy; an own outline
-// of Żaki's coach with an image on its first exercise; and the session outline of the first session.
+// of Żaki's coach with an image on its first exercise; and the session outline of the first session. Phase 4 (#685):
+// the club opens its library level to `public`, shares the own outline (with its image) with the public
+// (`libraryPublicEntry`) and the series outline with clubs on Vereino (`libraryEntry`) — the library tenant is created
+// first (`training library-init`, idempotent; the harness configures it).
 import { expect } from '@playwright/test'
 import { addDays, safeDay, weekdayOf } from '../activities'
+import { OPTIMISTIC_LOCK_HEADER, mercato } from '../club'
 import { png } from '../publication'
 import type { ModuleSeed } from './seed'
 
@@ -90,4 +94,30 @@ export const seedTraining: ModuleSeed = async ({ request, seeded, api }) => {
   )
   refs.sessionOutline = String(listed.body?.items?.[0]?.id)
   seeded.markers.push(refs.outline, refs.seriesOutline, refs.sessionOutline, refs.outlineImage)
+}
+
+/** Opens the club's library level to `public` and shares two outlines (#685): `libraryPublicEntry`, `libraryEntry`. */
+export const seedTrainingLibrary: ModuleSeed = async ({ seeded, api }) => {
+  const { refs } = seeded
+  mercato(['training', 'library-init'])
+  const current = await api<{ updatedAt?: string | null }>('GET', '/api/club_core/settings')
+  const lock = current.body?.updatedAt
+  await api('PUT', '/api/club_core/settings', {
+    data: { outlineLibraryMaxVisibility: 'public' },
+    headers: lock ? { [OPTIMISTIC_LOCK_HEADER]: lock } : {},
+    status: 200,
+  })
+  const coach = seeded.tokens.coach
+  const shared = await api<{ entryId?: string }>('POST', `/api/training/outlines/${refs.outline}/publish`, {
+    token: coach,
+    data: { visibility: 'public', acceptTerms: true },
+    status: 201,
+  })
+  refs.libraryPublicEntry = String(shared.body?.entryId)
+  const series = await api<{ entryId?: string }>('POST', `/api/training/outlines/${refs.seriesOutline}/publish`, {
+    token: coach,
+    data: { visibility: 'clubs' },
+    status: 201,
+  })
+  refs.libraryEntry = String(series.body?.entryId)
 }

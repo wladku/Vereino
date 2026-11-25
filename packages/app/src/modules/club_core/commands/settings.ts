@@ -159,6 +159,7 @@ function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
   row.coachMayCancel = values.coachMayCancel
   row.orderSalesDocument = values.orderSalesDocument
   row.formerParticipantRetentionMonths = values.formerParticipantRetentionMonths
+  row.outlineLibraryMaxVisibility = values.outlineLibraryMaxVisibility
   row.updatedAt = new Date()
 }
 
@@ -186,6 +187,7 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
     before.formerParticipantRetentionMonths,
     row.formerParticipantRetentionMonths,
   )
+  row.outlineLibraryMaxVisibility = text(before.outlineLibraryMaxVisibility, row.outlineLibraryMaxVisibility)
   if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
   if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone

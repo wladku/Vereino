@@ -12,6 +12,10 @@
 //   2xx is a leak; so is any club B marker in the answer other than the ids the caller sent.
 // - `public`: the same without a session (club A's slug with club B's resource, for example).
 // - `exempt`: not called; the inventory says why.
+// - `library` (training outlines spec phase 4, #685): the shared outline library, which shows club A what club B
+//   published on purpose. Each role calls it after both clubs are seeded; the answer must not be a 5xx, the strict role
+//   must get the probe's `expect` (default 200), and it must hold no club B marker other than club B's library refs
+//   (`$B:library…`): no club-level outline, session, person, rater key or e-mail of club B.
 import { request as playwrightRequest, type APIRequestContext, type APIResponse } from '@playwright/test'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -19,7 +23,7 @@ import { randomUUID } from 'node:crypto'
 import { APP_ROOT } from '../club'
 import { CLUB_ROLES, type ProbeRole, type Refs, type SeededClub } from './seed'
 
-export type ProbeKind = 'read' | 'foreign-id' | 'foreign-ref' | 'public' | 'exempt'
+export type ProbeKind = 'read' | 'foreign-id' | 'foreign-ref' | 'public' | 'exempt' | 'library'
 
 export type Probe = {
   probe: ProbeKind
@@ -249,6 +253,11 @@ function leaksIn(text: string, markers: readonly string[], allowed: Set<string>)
   return markers.filter((marker) => !allowed.has(marker) && lower.includes(marker.toLowerCase()))
 }
 
+/** Club B's library refs (`library…`): what club B published on purpose, which a `library` probe may show. */
+export function libraryRefsOf(club: SeededClub): string[] {
+  return Object.entries(club.refs).flatMap(([key, value]) => (key.startsWith('library') ? [value] : []))
+}
+
 export type ReadSnapshot = Map<string, Answer>
 
 const snapshotKey = (entry: InventoryEntry, role: ProbeRole) => `${entryLabel(entry)} as ${role}`
@@ -312,9 +321,25 @@ export async function runProbes(
       calls += 1
       const where = `${label} as ${role} (${built.url})`
       if (answer.status >= 500) problems.push(`${where}: ${String(answer.status)} ${truncate(answer.text)}`)
-      const leaks = leaksIn(answer.text, markers, used)
+      const leaks = probe.probe === 'library' ? [] : leaksIn(answer.text, markers, used)
       if (leaks.length > 0) {
         problems.push(`${where}: answered ${String(answer.status)} with club B data ${leaks.slice(0, 5).join(', ')}`)
+      }
+      if (probe.probe === 'library') {
+        const shared = new Set([...used, ...libraryRefsOf(clubs.B)])
+        const beyond = leaksIn(answer.text, markers, shared)
+        if (beyond.length > 0) {
+          problems.push(`${where}: answered ${String(answer.status)} with club B data ${beyond.slice(0, 5).join(', ')}`)
+        }
+        if (role === strictRoleOf(probe)) {
+          const expected = probe.expect ?? [200]
+          if (!expected.includes(answer.status)) {
+            problems.push(
+              `${where}: expected ${expected.join('/')}, got ${String(answer.status)} ${truncate(answer.text)}`,
+            )
+          }
+        }
+        continue
       }
       if (probe.probe === 'read') {
         const before = snapshot.get(snapshotKey(entry, role))

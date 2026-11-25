@@ -37,6 +37,7 @@ import {
   type OutlineParts,
 } from '../../lib/outline'
 import { OutlineReadView } from './OutlineReadView'
+import { PublishPanel } from './PublishPanel'
 import { TrainingClubFrame } from './TrainingClubFrame'
 import {
   OUTLINES_HREF,
@@ -756,6 +757,7 @@ function ExistingOutline({ id }: { id: string }) {
       ) : (
         <Editor key={outline.updatedAt} outline={outline} target={{}} />
       )}
+      <PublishPanel outline={outline} />
     </>
   )
 }

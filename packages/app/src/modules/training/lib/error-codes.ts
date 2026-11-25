@@ -22,6 +22,19 @@ export const errorCodes = [
   { code: 'outline_image_too_large', status: 422, messageKey: 'training.errors.outline_image_too_large' },
   { code: 'outline_images_limit_reached', status: 422, messageKey: 'training.errors.outline_images_limit_reached' },
   { code: 'outline_exercise_not_found', status: 422, messageKey: 'training.errors.outline_exercise_not_found' },
+  // The shared library (phase 4, E24-S05, #685). Without its configuration the library is off (DD-O10).
+  { code: 'library_not_configured', status: 404, messageKey: 'training.errors.library_not_configured' },
+  // BR-O4: a publication above the club's widest level.
+  { code: 'visibility_above_club_level', status: 403, messageKey: 'training.errors.visibility_above_club_level' },
+  // The author accepts the library terms before the first publication (*Security* → *Public content*).
+  { code: 'library_terms_required', status: 409, messageKey: 'training.errors.library_terms_required' },
+  // An unknown, hidden or removed entry, or one the viewer may not see; an outline that is not published.
+  { code: 'library_entry_not_found', status: 404, messageKey: 'training.errors.library_entry_not_found' },
+  { code: 'outline_not_published', status: 404, messageKey: 'training.errors.outline_not_published' },
+  // BR-O6: a rating needs a use of the entry by the same coach.
+  { code: 'rating_requires_use', status: 409, messageKey: 'training.errors.rating_requires_use' },
+  // REQ-O15: one report per coach (or client address) and entry.
+  { code: 'library_report_exists', status: 409, messageKey: 'training.errors.library_report_exists' },
 ] as const satisfies ErrorCodeTable
 
 export type TrainingErrorCode = (typeof errorCodes)[number]['code']

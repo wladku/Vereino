@@ -830,5 +830,10 @@
   "club_core.offboarding.banner.loadError": "Could not check whether the club is leaving Vereino.",
   "club_core.offboarding.banner.retry": "Try again",
   "club_core.settings.consentTexts.medical": "Medical certificate date",
-  "club_core.settings.consentTexts.medical.builtIn": "I consent to the club keeping the expiry date of the sports medical certificate, to show its status to the coaches and to remind me before it expires"
+  "club_core.settings.consentTexts.medical.builtIn": "I consent to the club keeping the expiry date of the sports medical certificate, to show its status to the coaches and to remind me before it expires",
+  "club_core.settings.fields.outlineLibraryMaxVisibility": "Widest outline library level",
+  "club_core.settings.fields.outlineLibraryMaxVisibility.description": "How widely coaches may share training outlines: only in the club, with clubs on Vereino, or with the public. Shared outlines are licensed under CC BY-SA 4.0. Lowering the level withdraws the outlines shared above it.",
+  "club_core.settings.outlineLibraryMaxVisibility.club": "Only in the club",
+  "club_core.settings.outlineLibraryMaxVisibility.clubs": "Clubs on Vereino",
+  "club_core.settings.outlineLibraryMaxVisibility.public": "Public"
 }

@@ -39,6 +39,7 @@ describe('club settings', () => {
       coachMayCancel: true,
       orderSalesDocument: 'none',
       formerParticipantRetentionMonths: 12,
+      outlineLibraryMaxVisibility: 'clubs',
     })
     expect(clubSettingsSchema.parse(CLUB_SETTINGS_DEFAULTS)).toEqual(CLUB_SETTINGS_DEFAULTS)
   })
@@ -197,6 +198,15 @@ describe('club settings', () => {
     expect(resolveClubSettings({ formerParticipantRetentionMonths: 500 })).toMatchObject({
       values: { formerParticipantRetentionMonths: 12 },
       invalidKeys: ['formerParticipantRetentionMonths'],
+    })
+  })
+
+  it('takes the widest outline library level, `clubs` by default (B-O1, #685)', () => {
+    expect(clubSettingsPatchSchema.safeParse({ outlineLibraryMaxVisibility: 'public' }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ outlineLibraryMaxVisibility: 'world' }).success).toBe(false)
+    expect(resolveClubSettings({ outlineLibraryMaxVisibility: 'world' })).toMatchObject({
+      values: { outlineLibraryMaxVisibility: 'clubs' },
+      invalidKeys: ['outlineLibraryMaxVisibility'],
     })
   })
 
