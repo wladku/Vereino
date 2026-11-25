@@ -85,7 +85,21 @@
 - `npx eslint` on the changed files: 0 errors. The 3 warnings are in files this run did not change.
 - `yarn test:integration:vereino --filter ISSUE-738`: 4 passed (sign-in 11th attempt 429; reset 4th 429; club_core,
   facilities, activities, payments and foundation families 429 with `Retry-After`; link request stays 202).
-- `yarn verify` and the integration tests of the changed routes: see the steps below.
+- First `yarn verify`: failed at `format:check` (six new files not formatted). Fixed with `yarn format`; `yarn verify
+  --from format:check` passed. Then one full `yarn verify` on the committed branch (result in the PR body).
+- A self-review of the diff found that the token layers of the three facilities link routes and the order-cancel route
+  had never been applied: an earlier scripted edit ran after a failed `cd`. They were applied before the commit.
+- Integration tests of the changed routes, one id per run:
+  - ISSUE-738: 4 passed.
+  - TEST-017 (declaration links): passed.
+  - TEST-R17 (rental cancel link): passed.
+  - E07-S09 (order links): passed.
+  - TEST-S01 (Google sign-in): passed.
+  - TEST-N09 (public header sign-in): passed.
+  - TEST-036 (facilities request security): **failed**, verbatim:
+    `Error: [internal] no request row for the token` at `_fixtures/facility-requests.ts:164`. It fails identically on
+    the base commit `d3ff9dff` without this change (detached checkout, same runner), so it is pre-existing on this
+    machine and not caused by #738. The request route it fails on is unchanged here.
 
 ## Open problems / next steps
 
@@ -95,5 +109,6 @@
   3. Record in a run log that two clients have separate sign-in counters and that counters survive a redeploy.
 
   This run has no Railway access, and the code is not deployed before merge.
+- TEST-036 fails locally on `main` as well (above); left for a separate issue.
 - The platform dispatcher's `requestRateLimited` lifecycle event carries `clientIp` (platform behaviour). Vereino's
   own log lines carry none.

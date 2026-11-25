@@ -44,7 +44,7 @@ async function firstRefusal(
 
 function signIn(request: APIRequestContext, email: string) {
   return request.post('/api/auth/login', {
-    form: { email, password: 'not-the-password-738' },
+    form: { email, password: randomBytes(12).toString('hex') },
     headers: LIMITED,
   })
 }
