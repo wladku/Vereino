@@ -1,6 +1,7 @@
 # The CI failure ledger (merge-throughput spec, REQ-MT04; SDLC.md "Validation gate"): after a failed CI run of this
 # repository, it records the failed integration tests in the ledger issue and opens a quarantine issue (labels bug,
-# priority-high, cezar) for a test that fails in two runs sharing no PR within 48 h, or on main. It never blocks a
+# priority-high, cezar) for a test that fails in two runs sharing no PR and no commit off main within 48 h, or on main;
+# more than three such tests failing in the same runs get one triage issue without cezar (#774). It never blocks a
 # merge. It runs main's copy of the script, never checks out PR code, skips runs from forks, and writes only test ids
 # and spec paths that exist on main, because the quarantine issue starts an autonomous build.
 name: CI failure ledger
