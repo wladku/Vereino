@@ -1,0 +1,1 @@
+| 2026-11-25 | #777: S14.1 — docs-only pull requests skip the integration shards, the browser-smoke work, `image-smoke` and `perf` (job `changes`, `scripts/ci-changes.mjs`); `gate` runs in full, the required checks `integration` and `browser-smoke` still report success, pushes to `main` and `merge-train/**` run everything |

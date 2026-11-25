@@ -51,6 +51,20 @@ describe('checksState', () => {
     assert.equal(checksState(runs, REQUIRED), 'success')
   })
 
+  it('is success for a docs-only PR: required checks green, shards and smoke jobs skipped (#777)', () => {
+    const runs = [
+      done('changes', 'success', 1),
+      done('gate', 'success', 2),
+      ...[1, 2, 3, 4, 5, 6].map((shard) => done(`integration (shard ${shard}/6)`, 'skipped', 2 + shard)),
+      done('integration', 'success', 9),
+      done('browser-smoke', 'success', 10),
+      done('image-smoke', 'skipped', 11),
+      done('perf', 'skipped', 12),
+    ]
+    assert.equal(checksState(runs, REQUIRED), 'success')
+    assert.equal(checksState(runs, [...REQUIRED, 'merge-train/verified']), 'pending')
+  })
+
   it('ignores checks that are not required', () => {
     const runs = [done('gate', 'success'), done('integration', 'success'), done('browser-smoke', 'success')]
     assert.equal(checksState([...runs, done('perf', 'failure')], REQUIRED), 'success')
