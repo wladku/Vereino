@@ -22,6 +22,8 @@ export const CLUB_GROUP_PAYMENTS_HREF = '/club/coach/payments'
 export const CLUB_CASH_HREF = '/club/cash'
 /** The club events a section coordinator or the administrator organises from the phone (club events spec REQ-T12). */
 export const CLUB_CLUB_EVENTS_HREF = '/club/club-events'
+/** A coach's training outlines in the PZPN template (training outlines spec M-O5, #683). */
+export const CLUB_OUTLINES_HREF = '/club/training/outlines'
 export const BACKEND_HREF = '/backend'
 /** The installed `auth` logout route: it revokes the session, clears the cookies and redirects to `/login`. */
 export const SIGN_OUT_ACTION = '/api/auth/logout'
@@ -48,6 +50,7 @@ export type MemberShellLabels = {
   acceptCash: string
   groups: string
   clubEvents: string
+  outlines: string
   backend: string
   signOut: string
   context: string
@@ -76,6 +79,7 @@ export const MEMBER_SHELL_LABEL_KEYS: readonly (keyof MemberShellLabels)[] = [
   'acceptCash',
   'groups',
   'clubEvents',
+  'outlines',
   'backend',
   'signOut',
   'context',
@@ -136,6 +140,8 @@ export const MEMBER_MORE_DESTINATIONS: readonly MemberDestination[] = [
   { href: CLUB_CASH_HREF, label: 'acceptCash', features: ['payments.cash.record'], available: true },
   // Tournaments and other club events with their parts (club events spec REQ-T12, E14-S05 #380).
   { href: CLUB_CLUB_EVENTS_HREF, label: 'clubEvents', features: ['activities.manage'], available: true },
+  // Training outlines of a coach, a coordinator or the administrator (training outlines spec M-O5, #683).
+  { href: CLUB_OUTLINES_HREF, label: 'outlines', features: ['training.outlines.write'], available: true },
 ]
 
 /** The fixed feature list the frames check once per session (`useMemberNavFeatures`). */

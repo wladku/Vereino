@@ -1080,5 +1080,6 @@
   "payments.cashCustody.history.columns.receipts": "Receipts",
   "payments.cashCustody.history.columns.receivedBy": "Received by",
   "payments.cashCustody.history.columns.amount": "Amount",
-  "payments.club.nav.clubEvents": "Club events"
+  "payments.club.nav.clubEvents": "Club events",
+  "payments.club.nav.outlines": "Training outlines"
 }
