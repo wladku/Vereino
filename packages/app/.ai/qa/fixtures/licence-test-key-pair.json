@@ -1,0 +1,6 @@
+{
+  "//": "Vereino Enterprise TEST licence key pair (enterprise package spec DD-E11, ENT-TEST-01..03; #649). Public on purpose: it signs test keys only. Its kid is trusted only by a build that ran enterprise-overlay.mjs --ci and only with VEREINO_CI=true; production and staging builds reject every key it signs.",
+  "kid": "test-2026-1",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAkV9lwCdAYlqvg6bsqI9sO5Yq7UseHPFxJKkbDkeWElw=\n-----END PUBLIC KEY-----\n",
+  "privateKeyPem": "-----BEGIN PRIVATE KEY-----\nMC4CAQAwBQYDK2VwBCIEIAzLle0IcM1aQQdHyq4mOxw0FTPS/on3LFKhaz9CaGRc\n-----END PRIVATE KEY-----\n"
+}

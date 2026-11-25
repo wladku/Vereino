@@ -65,5 +65,7 @@
   "foundation.identity.profile.lead": "Połącz konto, aby logować się jednym kliknięciem. Połączenie nigdy nie tworzy nowego konta.",
   "foundation.identity.retry": "Spróbuj ponownie",
   "foundation.identity.title": "Połączone konta",
-  "foundation.identity.unlink": "Odłącz {provider}"
+  "foundation.identity.unlink": "Odłącz {provider}",
+  "foundation.errors.enterprise_feature_disabled": "Ta strona nie jest dostępna.",
+  "foundation.errors.enterprise_feature_read_only": "Licencja na tę funkcję wygasła. Nadal możesz przeglądać i eksportować jej dane, ale nie możesz ich zmieniać. Poproś administratora klubu o odnowienie licencji."
 }
