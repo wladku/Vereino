@@ -6,6 +6,7 @@
 // client fetch it always had.
 import type { RateLimitConfig } from '@open-mercato/shared/lib/ratelimit/types'
 import { createLogger } from '@open-mercato/shared/lib/logger'
+import { noteClientAddress, sessionlessRateLimiter } from './sessionless-limits'
 
 const logger = createLogger('foundation').child({ component: 'public-route-load' })
 
@@ -30,12 +31,13 @@ export type PublicRouteAnswer = { ok: boolean; status: number; body: unknown }
 
 async function rateLimited(rateLimit: RateLimitConfig | undefined): Promise<boolean> {
   if (!rateLimit) return false
-  const { getCachedRateLimiterService } = await import('@open-mercato/core/bootstrap')
-  const service = getCachedRateLimiterService()
+  const { headers } = await import('next/headers')
+  const request = { headers: await headers() } as unknown as Request
+  const service = await sessionlessRateLimiter(request)
   if (!service) return false
   const { getClientIp, RATE_LIMIT_FALLBACK_KEY } = await import('@open-mercato/shared/lib/ratelimit/helpers')
-  const { headers } = await import('next/headers')
-  const clientIp = getClientIp({ headers: await headers() } as unknown as Request, service.trustProxyDepth)
+  const clientIp = getClientIp(request, service.trustProxyDepth)
+  noteClientAddress(request, clientIp, service.trustProxyDepth)
   const result = await service.consume(clientIp ?? RATE_LIMIT_FALLBACK_KEY, rateLimit)
   return !result.allowed
 }
