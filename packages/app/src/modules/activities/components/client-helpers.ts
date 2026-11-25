@@ -144,6 +144,8 @@ export type OccurrenceDetail = OccurrenceRow & {
   placeGeoLng?: number | null
   /** The caller may restore the cancelled session (the club administrator, before its end; #268). */
   mayRestore?: boolean
+  /** The caller may reopen the done session with a reason (the club administrator; AC-G02, #588). */
+  mayReopen?: boolean
   /** The activity is an away trip (REQ-A15: the club's team is `away` in the score). */
   isAway?: boolean
   /** The recorded score of a match or sparring (REQ-A15), or null. */

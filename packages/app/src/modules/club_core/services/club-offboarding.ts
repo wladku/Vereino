@@ -47,6 +47,8 @@ import {
   type ManifestFile,
   type ManifestTable,
 } from '../lib/club-offboarding'
+import { CLUB_EXPORT_PARTITION, supersededArchives } from '../lib/club-export'
+import { findClubExportJobs } from './club-export'
 
 export type ClubScope = { tenantId: string; organizationId: string }
 export type ClubIdentity = ClubScope & { slug: string; settingsId: string }
@@ -387,8 +389,8 @@ const TOMBSTONE_SCRUB = `
  * Deletes every row of the club from every covered table, in one transaction, children first; the club's settings row
  * stays as the slug's tombstone (`deleted_at` set, the slug, time zone and notice dates kept) until the slug is
  * released. The transaction deletes the club's `scheduled_jobs` and `attachments` rows with the rest; only after the
- * commit are the schedules' BullMQ repeatables removed, the attachment files deleted from storage and the club's cache
- * entries cleared, each from the rows the transaction deleted (#681).
+ * commit are the schedules' BullMQ repeatables removed, the attachment files and the administrator's export archives
+ * deleted from storage and the club's cache entries cleared, each from the rows the transaction deleted (#681).
  * With `dryRun` it only counts. The data-encryption key is derived from the master secret and the tenant id (Q-M07), so
  * there is no key to destroy until a key store holds the keys.
  */
@@ -420,6 +422,8 @@ export async function deleteClub(
   // leaves a live club its schedules, and a file uploaded meanwhile is deleted with its row, not left in storage.
   let scheduleIds: string[] = []
   let attachments: AttachmentRow[] = []
+  // The administrator's export archives (#676) are named by the club's progress jobs, which the deletion removes.
+  const exportArchives = supersededArchives(await findClubExportJobs(em, scope), '')
   await em.transactional(async (tx) => {
     // The notice is checked again in the deletion's own transaction: the update locks the settings row, so an
     // `offboard-club --cancel` that commits first leaves no due row here and nothing is deleted.
@@ -468,6 +472,18 @@ export async function deleteClub(
       summary.filesDeleted += 1
     } catch {
       summary.filesFailed += 1
+    }
+  }
+  if (exportArchives.length > 0) {
+    const driver = await factory.resolveForPartition(CLUB_EXPORT_PARTITION)
+    for (const storagePath of exportArchives) {
+      try {
+        if (driver.deleteStrict) await driver.deleteStrict(CLUB_EXPORT_PARTITION, storagePath)
+        else await driver.delete(CLUB_EXPORT_PARTITION, storagePath)
+        summary.filesDeleted += 1
+      } catch {
+        summary.filesFailed += 1
+      }
     }
   }
   if (container.hasRegistration('cache')) {

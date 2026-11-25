@@ -284,6 +284,14 @@ function Roster({ group }: { group: GroupDetail }) {
           {group.name}
         </h1>
         {group.sectionName ? <p className="text-muted-foreground text-sm">{group.sectionName}</p> : null}
+        {/* The team's PZPN schedule and attendance exports (training outlines spec M-O9, #684), team preselected. */}
+        <Link
+          href={`/club/reports/pzpn?groupId=${encodeURIComponent(group.id)}`}
+          className="text-primary inline-flex min-h-11 items-center self-start text-sm underline"
+          data-testid="club-group-pzpn"
+        >
+          {t('groups.club.pzpnExport')}
+        </Link>
         {canManage ? null : (
           <p className="text-muted-foreground text-sm" data-testid="club-roster-read-only">
             {t('groups.club.roster.readOnly')}

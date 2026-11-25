@@ -354,6 +354,8 @@ async function runStep(step) {
         code: body?.code ?? null,
         ids: items ? items.map((item) => item.id) : null,
         withGroups: items ? items.filter((item) => item._groups !== undefined).length : null,
+        // The whole body only when the step asks for it (many clubs TEST-M04: the share link at the club address).
+        ...(step.withBody ? { body } : {}),
       }
     }
     case 'publish': {
@@ -382,6 +384,16 @@ async function runStep(step) {
       return { ok: true }
     }
     case 'sweep': {
+      // The sweeper runs only for an organization holding its registration (`verifyScheduledJobScope`, #591); a club
+      // gets it from `seedDefaults`, a test club from here (the upsert on the stable id makes a repeat a no-op).
+      const container = await newContainer()
+      const registered = await container.resolve('foundationSchedules').registerModuleSchedule(container, {
+        module: 'foundation',
+        name: 'dispatch-sweep',
+        schedule: { interval: '2m' },
+        scope,
+      })
+      if (!registered) throw new Error('[internal] the dispatch-sweep schedule could not be registered')
       await sweepWorker.handler(
         { id: 'probe-sweep', payload: scope, createdAt: new Date().toISOString() },
         {

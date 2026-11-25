@@ -25,6 +25,11 @@
       "key": "facilities.places.kind.session",
       "pattern": "zaję(?:cia|ć|ciach|ciom|ciami)(?!\\p{L})",
       "reason": "Glossary rule 1 keeps \"zajęcia\" in the calendar legend (mockup ui.timeline.legendSessions: \"zajęcia\"). The tag names the kind of an entry on the place calendar, the same word as its legend."
+    },
+    {
+      "key": "activities.reports.pzpn.schedule.columns.coach",
+      "pattern": "trener",
+      "reason": "The PZPN schedule export (training outlines spec REQ-O10, #684) names its columns as PZPN's \"Harmonogram treningowy\" does, so a coach copying the file into PZPN's academy system finds the same headers; PZPN's form says \"Trener\"."
     }
   ]
 }

@@ -79,6 +79,9 @@ const detailSchema = occurrenceListItemSchema.extend({
   mayRestore: z
     .boolean()
     .describe('The caller may restore the cancelled session: the club administrator, while it has not ended (#268).'),
+  mayReopen: z
+    .boolean()
+    .describe('The caller may reopen the done session with a reason: the club administrator (AC-G02, #588).'),
   mayAssign: z
     .boolean()
     .describe(
@@ -141,6 +144,16 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
         sectionId: row.sectionId,
         groupId: row.groupId,
       }) !== null
+    // Reopen (#588): the club administrator only, a done session — the command's own checks.
+    const mayReopen =
+      row.status === 'done' &&
+      findActingRole(grants, ['club_admin'], {
+        id: row.id,
+        tenantId: row.tenantId,
+        organizationId: row.organizationId,
+        sectionId: row.sectionId,
+        groupId: row.groupId,
+      }) !== null
     const substituteFor = substituted.get(row.id)
     const activity = activities.get(row.activityId)
     const activityTeam = teams.get(row.activityId)
@@ -192,6 +205,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       actingRole,
       mayCancel: cancelRole !== null,
       mayRestore,
+      mayReopen,
       // REQ-A10 (#273): the commands' own checks, as the member session page reads them.
       ...sessionActionFlags(
         grants,

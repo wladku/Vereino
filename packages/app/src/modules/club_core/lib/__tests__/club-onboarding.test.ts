@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@jest/globals'
+import { CLUB_DOMAIN_ENV } from '@vereino/core'
 import {
-  CLUB_DOMAIN_ENV,
   CLUB_NAME_MAX_LENGTH,
   RESERVED_CLUB_SLUGS,
   clubAddress,

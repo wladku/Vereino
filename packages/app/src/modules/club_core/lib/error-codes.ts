@@ -21,6 +21,8 @@ export const errorCodes = [
     status: 422,
     messageKey: 'club_core.errors.account_age_threshold_out_of_range',
   },
+  // The former participants' retention period (REQ-041; #471): 1–120 months.
+  { code: 'retention_months_out_of_range', status: 422, messageKey: 'club_core.errors.retention_months_out_of_range' },
   { code: 'club_name_invalid', status: 422, messageKey: 'club_core.errors.club_name_invalid' },
   { code: 'bank_account_invalid', status: 422, messageKey: 'club_core.errors.bank_account_invalid' },
   { code: 'accent_color_invalid', status: 422, messageKey: 'club_core.errors.accent_color_invalid' },
@@ -40,6 +42,11 @@ export const errorCodes = [
   // asked for before the notice period ended.
   { code: 'club_not_found', status: 404, messageKey: 'club_core.errors.club_not_found' },
   { code: 'offboarding_not_due', status: 409, messageKey: 'club_core.errors.offboarding_not_due' },
+  // The administrator's own export (E22-S06b, #676): offered only while a notice is recorded, one at a time, and the
+  // download needs a finished archive.
+  { code: 'export_unavailable', status: 409, messageKey: 'club_core.errors.export_unavailable' },
+  { code: 'export_running', status: 409, messageKey: 'club_core.errors.export_running' },
+  { code: 'export_not_found', status: 404, messageKey: 'club_core.errors.export_not_found' },
   { code: 'publication_slug_required', status: 422, messageKey: 'club_core.errors.publication_slug_required' },
   // Online booking requests need the facility calendar (navigation spec REQ-N12, DD-N13; #262).
   {

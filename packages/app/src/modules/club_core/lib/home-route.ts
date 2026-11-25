@@ -3,8 +3,11 @@
 // the approved slug lookup of `clubCorePublicSite` (AGENTS.md exception D-024/D-026) and never searches for a club in
 // system scope. A guest lands on the club's public page while it is published, otherwise on `/login`; a signed-in
 // visitor goes into the app. Pure: the environment and the lookup's answer are passed in.
+// Deprecated with many clubs on one instance (spec phase 3, #631): with `VEREINO_CLUB_DOMAIN` set the request's host picks
+// the club (`club-host.ts`) and `VEREINO_HOME_CLUB_SLUG` is not read; it stays the single-club fallback, not removed.
 import { isPublicSlug } from './publication'
 
+/** Deprecated: read only while `VEREINO_CLUB_DOMAIN` is unset (many clubs spec phase 3, #631). */
 export const HOME_CLUB_SLUG_ENV = 'VEREINO_HOME_CLUB_SLUG'
 
 /** The configured public slug of the instance's club, or null when it is unset or not a well-formed public slug. */

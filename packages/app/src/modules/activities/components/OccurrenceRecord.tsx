@@ -9,7 +9,8 @@
 // row shows "Needs a coach" or "{substitute} (substitute for {coach})"; with `activities.manage` a planned session gets
 // "Assign substitute" / "Change coach" (the substitute dialog), and the substitution history is listed, oldest first.
 // #268 (REQ-A05): the place shows its address and a map link, and the club administrator restores a cancelled session
-// that has not ended (`mayRestore`) with a reason. E10-S07 (#272, REQ-A15): a match or sparring shows its score, and
+// that has not ended (`mayRestore`) with a reason, and reopens a done session (`mayReopen`, AC-G02, #588) with a
+// reason, so its attendance can be checked off again. E10-S07 (#272, REQ-A15): a match or sparring shows its score, and
 // once it started the session's coach, a coach of the group, the coordinator or the administrator records it here.
 import * as React from 'react'
 import Link from 'next/link'
@@ -208,6 +209,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
   const [cancelling, setCancelling] = React.useState(false)
   const [staffing, setStaffing] = React.useState(false)
   const [restoring, setRestoring] = React.useState(false)
+  const [reopening, setReopening] = React.useState(false)
   const query = useQuery({
     queryKey: ['activities-occurrence', id],
     queryFn: async (): Promise<OccurrenceLoad> => {
@@ -251,6 +253,8 @@ export function OccurrenceRecord({ id }: { id: string }) {
   // The coach's attendance list (#33) lives on the member side; it reads and saves through the same record scope.
   const canOpenAttendance = features.coach && occurrence.status !== 'cancelled'
   const canRestore = features.manage && occurrence.mayRestore === true
+  // AC-G02 (#588): the club administrator reopens a done session with a reason.
+  const canReopen = features.manage && occurrence.mayReopen === true
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
@@ -280,7 +284,7 @@ export function OccurrenceRecord({ id }: { id: string }) {
             </Link>
           ) : null}
         </div>
-        {canMove || canCancel || canOpenAttendance || canStaff || canRestore ? (
+        {canMove || canCancel || canOpenAttendance || canStaff || canRestore || canReopen ? (
           <div className="flex flex-wrap items-center gap-2">
             {canOpenAttendance ? (
               <Button asChild variant="outline" size="sm">
@@ -330,6 +334,19 @@ export function OccurrenceRecord({ id }: { id: string }) {
                 }}
               >
                 {t('activities.occurrences.actions.restore')}
+              </Button>
+            ) : null}
+            {canReopen ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                data-testid="occurrence-reopen-button"
+                onClick={() => {
+                  setReopening(true)
+                }}
+              >
+                {t('activities.occurrences.actions.reopen')}
               </Button>
             ) : null}
             {canCancel ? (
@@ -431,6 +448,16 @@ export function OccurrenceRecord({ id }: { id: string }) {
           occurrence={occurrence}
           open={restoring}
           onOpenChange={setRestoring}
+          onDone={refetch}
+        />
+      ) : null}
+      {canReopen ? (
+        <RestoreOccurrenceDialog
+          key={occurrence.updatedAt ?? occurrence.id}
+          action="reopen"
+          occurrence={occurrence}
+          open={reopening}
+          onOpenChange={setReopening}
           onDone={refetch}
         />
       ) : null}

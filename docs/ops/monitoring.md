@@ -79,12 +79,13 @@ Measured on 2026-11-20 with a production build (`next start`, `NODE_ENV=producti
 
 | Check | Variable (service) | Pinged by | Period / grace |
 |---|---|---|---|
-| Worker | `VEREINO_OPS_WORKER_HEARTBEAT_URL` (worker service) | the `foundation:dispatch-sweep` job after each successful sweep — the scheduler starts it every 2 minutes for every club, through the queue and the worker, and it reads PostgreSQL; at most one ping a minute per process | 3 min / 2 min |
+| Worker | `VEREINO_OPS_WORKER_HEARTBEAT_URL` (worker service) | the `foundation:dispatch-sweep` job after each successful sweep — the scheduler starts it every 2 minutes (for every club, or once for all clubs after `retire-club-schedules`, #629), through the queue and the worker, and it reads PostgreSQL; at most one ping a minute per process | 3 min / 2 min |
 | Payments invariants | `VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL` (worker service) | the nightly `payments:verify-invariants` job of every club (03:00 in the club's time zone, #531): `<url>` after a clean run, `<url>/fail` when a charge does not match its payments or the `KP`/`RG` numbering has a duplicate or a gap; by hand: `yarn mercato payments run-job --job verify-invariants --tenant <id> --org <id>`. With several clubs a later clean club's ping clears the check again, but the `/fail` notification has already gone out; the log line names the club | 1 day / 2 h |
 | Backup | `VEREINO_OPS_BACKUP_HEARTBEAT_URL` (backup job, E18-S03 #464) | `scripts/backup-dump.mjs` at the end of every run (#519): `<url>` after a successful dump, `<url>/fail` after a failed one, through the helpers of `packages/app/scripts/vereino-ops-signal.mjs`, which the job image copies in; by hand: `node packages/app/scripts/vereino-ops-signal.mjs backup.succeeded …` or `… backup.failed …` | 1 day / 2 h |
 
-The worker heartbeat needs at least one club with its schedules (`docs/ops/deploy.md` → *Per-club schedules*): with
-no club there is no sweep and the check alerts — on staging the demonstration club provides it. A ping carries no
+The worker heartbeat needs the dispatch sweep's schedule (`docs/ops/deploy.md` → *Per-club jobs*): one system-wide
+schedule once the instance runs on the sweeps, before that at least one club's — with neither there is no sweep and
+the check alerts. A ping carries no
 payload. A refused ping is logged by the worker as `Worker heartbeat ping failed`, by the backup job as
 `"msg":"backup.heartbeat.failed"` (with the variable name, never the URL) and by the manual helper as
 `ops-signal: the heartbeat ping of VEREINO_OPS_BACKUP_HEARTBEAT_URL failed`; a refused ping never changes the job's
