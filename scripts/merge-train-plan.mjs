@@ -260,29 +260,34 @@ export const RETARGET_MARKER = '<!-- merge-train:retarget -->'
 export const BASE_CLOSED_MARKER = '<!-- merge-train:base-closed -->'
 /** Why a stacked PR gets its action, as the run log prints it. */
 export const RETARGET_REASONS = {
-  'base-merged': 'its base PR merged',
+  'base-merged': 'its base PR merged into the default branch',
+  'base-merged-elsewhere': 'its base PR merged into another branch',
   'base-closed': 'its base PR was closed without merging',
   'base-open': 'its base PR is still open',
   'no-base-pr': 'no PR has its base branch as head',
 }
 
 /**
- * Plans the stacked PRs (REQ-ST01). `stacked` are the open PRs whose base is not `main`, `{ number, base }` with `base`
- * the base branch; `basePrs` are the PRs of this repository whose head is one of those branches,
- * `{ number, head, state: 'open' | 'closed', merged }`. A branch can be the head of several PRs over time: an open one
- * wins (nothing moves while work on the base goes on), then a merged one, then one closed without merging. The answer
- * is one `{ pr, base, action, reason, basePr }` per stacked PR, in its order: `action` is `retarget` (to `main`),
- * `block` (label `blocked`, no retarget) or `none`; `reason` a key of `RETARGET_REASONS`; `basePr` the deciding PR's
- * number, `null` when no PR has that head.
+ * Plans the stacked PRs (REQ-ST01). `stacked` are the open PRs whose base is not `target` (`main`), `{ number, base }`
+ * with `base` the base branch; `basePrs` are the PRs of this repository whose head is one of those branches,
+ * `{ number, head, base, state: 'open' | 'closed', merged }` with `base` the branch that PR targets. A branch can be the
+ * head of several PRs over time: an open one wins (nothing moves while work on the base goes on), then one merged into
+ * `target`, then one merged into another branch (a deeper stack: retargeting would bring that branch's unmerged commits
+ * along, so nothing moves until it reaches `target`), then one closed without merging. The answer is one
+ * `{ pr, base, action, reason, basePr }` per stacked PR, in its order: `action` is `retarget` (to `target`), `block`
+ * (label `blocked`, no retarget) or `none`; `reason` a key of `RETARGET_REASONS`; `basePr` the deciding PR's number,
+ * `null` when no PR has that head.
  */
-export function planRetargets(stacked, basePrs) {
+export function planRetargets(stacked, basePrs, { target = 'main' } = {}) {
   return stacked.map((pr) => {
     const bases = basePrs.filter((base) => base.head === pr.base && base.number !== pr.number)
     const decide = (action, reason, base) => ({ pr: pr.number, base: pr.base, action, reason, basePr: base?.number ?? null })
     const open = bases.find((base) => base.state === 'open')
     if (open) return decide('none', 'base-open', open)
-    const merged = bases.find((base) => base.merged)
+    const merged = bases.find((base) => base.merged && base.base === target)
     if (merged) return decide('retarget', 'base-merged', merged)
+    const elsewhere = bases.find((base) => base.merged)
+    if (elsewhere) return decide('none', 'base-merged-elsewhere', elsewhere)
     if (bases.length) return decide('block', 'base-closed', bases[0])
     return decide('none', 'no-base-pr', null)
   })

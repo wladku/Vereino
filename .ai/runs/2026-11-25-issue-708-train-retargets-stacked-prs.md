@@ -16,6 +16,7 @@
 ## Decisions
 
 - **An open PR on the base branch wins over a merged one.** A branch can be the head of several PRs over time; while one is open, retargeting could bring its unmerged commits to `main`, so nothing moves (conservative reading of "base open → nothing").
+- **Review fix (independent reviewer subagent, same run):** a base PR counts as merged only when it merged into `main` (`base.ref`); one merged into another branch (C on B, B merged into A) gives `none` / `base-merged-elsewhere`, because retargeting C to `main` would carry A's unmerged commits. Also: each PR's comments are read before any write and a failure there is a per-PR warning (the loop goes on); a closed-base PR that already got its comment is left alone, so a `blocked` label the owner removed is not re-added every run.
 - **Retargets run before the queue is read**, so a retargeted PR joins the queue in the same run (the spec allows "the next run"; this is earlier, not different).
 - **Separate I/O module** (`merge-train-stacked.mjs`) instead of code inside `merge-train.mjs`: the latter runs `main()` on import and is excluded from coverage, so ST-TEST-02 could not drive it; the new module is under the 100 % coverage rule.
 - **No `blocked` mirroring onto the linked issue** and no automatic removal of `blocked` later: the spec asks for neither, and the owner decides a closed-base PR.
@@ -23,7 +24,7 @@
 
 ## Commands and results
 
-- `node --test … merge-train-*.test.mjs` with coverage: 103 pass, `merge-train-plan.mjs` and `merge-train-stacked.mjs` at 100 % lines/branches/functions (a `for (;;)` pagination loop first left one V8 branch uncovered; rewritten as `do … while`).
+- `node --test … merge-train-*.test.mjs` with coverage: 103 pass before the review fix, 107 after, `merge-train-plan.mjs` and `merge-train-stacked.mjs` at 100 % lines/branches/functions (a `for (;;)` pagination loop first left one V8 branch uncovered; rewritten as `do … while`).
 - Read-only dry run of `applyRetargets` against `wladku/Vereino` with a GET-only client: 0 stacked PRs open today, no write attempted.
 - `yarn verify`: first run failed at `format:check` (3 new/changed files unformatted) → `yarn format` → `yarn verify --from format:check` passed all 16 steps; a final full `yarn verify` and `yarn guard` ran before the push (see PR).
 - Integration tests: none added or changed (tooling-only change).

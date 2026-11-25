@@ -209,7 +209,7 @@ describe('MT-TEST-05: labels mirrored onto the linked issue', () => {
 // ST-TEST-01 of `.ai/specs/2026-11-24-cezar-stall-prevention.md` (REQ-ST01): the five scenarios of the Delta.
 describe('ST-TEST-01: planRetargets', () => {
   const stacked = (number, base) => ({ number, base })
-  const base = (number, head, state, merged = false) => ({ number, head, state, merged })
+  const base = (number, head, state, merged = false, into = 'main') => ({ number, head, base: into, state, merged })
 
   it('retargets a PR whose base PR merged (scenario: base merged)', () => {
     assert.deepEqual(
@@ -263,8 +263,24 @@ describe('ST-TEST-01: planRetargets', () => {
     assert.equal(planRetargets([stacked(5, 'feat/self')], [base(5, 'feat/self', 'open')])[0].reason, 'no-base-pr')
   })
 
+  it('never retargets a PR whose base PR merged into another branch (three levels: C on B, B merged into A)', () => {
+    const bases = [base(2, 'feat/b', 'closed', true, 'feat/a')]
+    assert.deepEqual(planRetargets([stacked(3, 'feat/b')], bases), [
+      { pr: 3, base: 'feat/b', action: 'none', reason: 'base-merged-elsewhere', basePr: 2 },
+    ])
+    assert.equal(planRetargets([stacked(3, 'feat/b')], bases, { target: 'feat/a' })[0].action, 'retarget')
+    const later = [...bases, base(4, 'feat/b', 'closed', true)]
+    assert.equal(planRetargets([stacked(3, 'feat/b')], later)[0].basePr, 4)
+  })
+
   it('names every reason it gives', () => {
-    assert.deepEqual(Object.keys(RETARGET_REASONS).sort(), ['base-closed', 'base-merged', 'base-open', 'no-base-pr'])
+    assert.deepEqual(Object.keys(RETARGET_REASONS).sort(), [
+      'base-closed',
+      'base-merged',
+      'base-merged-elsewhere',
+      'base-open',
+      'no-base-pr',
+    ])
     assert.deepEqual(planRetargets([], []), [])
   })
 })

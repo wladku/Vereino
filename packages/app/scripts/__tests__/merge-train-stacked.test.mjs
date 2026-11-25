@@ -53,8 +53,8 @@ describe('ST-TEST-02: readStacked', () => {
     assert.deepEqual(
       basePrs.filter((base) => base.state === 'closed'),
       [
-        { number: 563, head: 'feat/issue-563-sessions', state: 'closed', merged: true },
-        { number: 677, head: 'feat/issue-677-offboarding', state: 'closed', merged: false },
+        { number: 563, head: 'feat/issue-563-sessions', base: 'main', state: 'closed', merged: true },
+        { number: 677, head: 'feat/issue-677-offboarding', base: 'main', state: 'closed', merged: false },
       ],
     )
     assert.equal(
@@ -116,7 +116,7 @@ describe('ST-TEST-02: applyRetargets', () => {
     assert.deepEqual(done[2].body, { labels: [BLOCKED_LABEL] })
     assert.ok(done[3].body.body.includes(BASE_CLOSED_MARKER) && done[3].body.body.includes('#677'))
     assert.deepEqual(lines, [
-      '#643: stacked on feat/issue-563-sessions — its base PR merged (#563): retarget to main',
+      '#643: stacked on feat/issue-563-sessions — its base PR merged into the default branch (#563): retarget to main',
       '#686: stacked on feat/issue-677-offboarding — its base PR was closed without merging (#677): label blocked, no retarget',
       '#700: stacked on feat/issue-688-exports — its base PR is still open (#690): nothing to do',
       '#701: stacked on release/2026-11 — no PR has its base branch as head: nothing to do',
@@ -134,6 +134,51 @@ describe('ST-TEST-02: applyRetargets', () => {
     const { api, writes } = fakeApi(responses)
     await run(api)
     assert.deepEqual(writes(), [])
+  })
+
+  it('leaves a closed-base PR alone once commented, so a blocked label the owner removed stays removed', async () => {
+    const responses = structuredClone(FIXTURES)
+    responses['GET /repos/wladku/Vereino/issues/686/comments?sort=created&per_page=100&page=1'].push({
+      body: `Merge train: … ${BASE_CLOSED_MARKER}`,
+    })
+    const { api, writes } = fakeApi(responses)
+    await run(api)
+    assert.equal(
+      writes().some((call) => call.path.startsWith('/repos/wladku/Vereino/issues/686/')),
+      false,
+    )
+  })
+
+  it('retargets but does not comment twice when the retarget comment is already there', async () => {
+    const responses = structuredClone(FIXTURES)
+    responses['GET /repos/wladku/Vereino/issues/643/comments?sort=created&per_page=100&page=1'].push({
+      body: `Merge train: … ${RETARGET_MARKER}`,
+    })
+    const { api, writes } = fakeApi(responses)
+    await run(api)
+    assert.deepEqual(
+      writes()
+        .filter((call) => call.path.includes('/643'))
+        .map((call) => call.method),
+      ['PATCH'],
+    )
+  })
+
+  it('logs a failed comment read as a warning, changes nothing on that PR and goes on with the next', async () => {
+    const responses = structuredClone(FIXTURES)
+    delete responses['GET /repos/wladku/Vereino/issues/643/comments?sort=created&per_page=100&page=1']
+    const failing = async (method, path, body) =>
+      path.startsWith('/repos/wladku/Vereino/issues/643/comments')
+        ? { status: 500, body: { message: 'Server Error' } }
+        : api(method, path, body)
+    const { api, writes } = fakeApi(responses)
+    const { lines } = await run(failing)
+    assert.equal(
+      writes().some((call) => call.path.includes('/643')),
+      false,
+    )
+    assert.ok(writes().some((call) => call.path === '/repos/wladku/Vereino/issues/686/comments'))
+    assert.ok(lines.some((line) => line.startsWith('::warning::#643: GET /repos/wladku/Vereino/issues/643/comments')))
   })
 
   it('writes nothing in a dry run and says so in the log', async () => {
@@ -177,7 +222,10 @@ describe('ST-TEST-02: applyRetargets', () => {
 describe('ST-TEST-02: describeRetarget and retargetComment', () => {
   it('names the target branch, the base PR and the marker', () => {
     const step = { pr: 2, base: 'feat/a', action: 'retarget', reason: 'base-merged', basePr: 1 }
-    assert.equal(describeRetarget(step, 'trunk'), '#2: stacked on feat/a — its base PR merged (#1): retarget to trunk')
+    assert.equal(
+      describeRetarget(step, 'trunk'),
+      '#2: stacked on feat/a — its base PR merged into the default branch (#1): retarget to trunk',
+    )
     assert.match(retargetComment(step, 'trunk'), /retargeted this PR to `trunk`/)
     const blocked = { ...step, action: 'block', reason: 'base-closed' }
     assert.match(retargetComment(blocked, 'trunk'), /closed without merging.*`blocked`/)

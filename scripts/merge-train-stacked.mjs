@@ -35,13 +35,25 @@ export async function readStacked({ api, repo, baseBranch }) {
   const stacked = open
     .filter((pull) => pull.base.ref !== baseBranch)
     .map((pull) => ({ number: pull.number, base: pull.base.ref, labels: pull.labels.map((label) => label.name) }))
-  const basePrs = open.map((pull) => ({ number: pull.number, head: pull.head.ref, state: 'open', merged: false }))
+  const basePrs = open.map((pull) => ({
+    number: pull.number,
+    head: pull.head.ref,
+    base: pull.base.ref,
+    state: 'open',
+    merged: false,
+  }))
   const owner = repo.split('/')[0]
   for (const branch of new Set(stacked.map((pr) => pr.base))) {
     if (basePrs.some((base) => base.head === branch)) continue
     const closed = await readAll(api, `/repos/${repo}/pulls?state=closed&head=${owner}:${encodeURIComponent(branch)}`)
     for (const pull of closed) {
-      basePrs.push({ number: pull.number, head: pull.head.ref, state: 'closed', merged: Boolean(pull.merged_at) })
+      basePrs.push({
+        number: pull.number,
+        head: pull.head.ref,
+        base: pull.base.ref,
+        state: 'closed',
+        merged: Boolean(pull.merged_at),
+      })
     }
   }
   return { stacked, basePrs }
@@ -68,29 +80,38 @@ async function write(api, log, method, path, body, pr) {
   return result.status < 300
 }
 
-async function commentOnce(api, log, repo, pr, body, marker) {
-  const comments = await readAll(api, `/repos/${repo}/issues/${pr}/comments?sort=created`)
-  if (comments.some((entry) => (entry.body ?? '').includes(marker))) return
-  await write(api, log, 'POST', `/repos/${repo}/issues/${pr}/comments`, { body }, pr)
-}
-
 /**
- * Reads, plans and applies the stacked PRs (REQ-ST01) and answers the plan. With `dryRun` it only logs. A write that
- * fails is logged as a warning and the other PRs go on; a failed read throws, and the caller logs it.
+ * Reads, plans and applies the stacked PRs (REQ-ST01) and answers the plan. With `dryRun` it only logs. Each PR's
+ * comments are read first: its one comment (hidden marker) is posted once, and a closed-base PR that already got it is
+ * left alone, so a `blocked` label the owner removed stays removed. A failed write or comment read is logged as a
+ * warning and the other PRs go on; a failed read of the PR lists throws, and the caller logs it.
  */
 export async function applyRetargets({ api, repo, baseBranch, dryRun = false, log = console.log }) {
   const { stacked, basePrs } = await readStacked({ api, repo, baseBranch })
-  const plan = planRetargets(stacked, basePrs)
+  const plan = planRetargets(stacked, basePrs, { target: baseBranch })
   for (const step of plan) {
     log(`${describeRetarget(step, baseBranch)}${dryRun && step.action !== 'none' ? ' (dry run: no change)' : ''}`)
     if (dryRun || step.action === 'none') continue
-    const marker = step.action === 'retarget' ? RETARGET_MARKER : BASE_CLOSED_MARKER
-    if (step.action === 'retarget') {
-      if (!(await write(api, log, 'PATCH', `/repos/${repo}/pulls/${step.pr}`, { base: baseBranch }, step.pr))) continue
-    } else if (!stacked.find((pr) => pr.number === step.pr).labels.includes(BLOCKED_LABEL)) {
-      await write(api, log, 'POST', `/repos/${repo}/issues/${step.pr}/labels`, { labels: [BLOCKED_LABEL] }, step.pr)
+    try {
+      await applyStep(api, log, repo, baseBranch, step, stacked.find((pr) => pr.number === step.pr))
+    } catch (error) {
+      log(`::warning::#${step.pr}: ${error.message}`)
     }
-    await commentOnce(api, log, repo, step.pr, retargetComment(step, baseBranch), marker)
   }
   return plan
+}
+
+async function applyStep(api, log, repo, baseBranch, step, pr) {
+  const marker = step.action === 'retarget' ? RETARGET_MARKER : BASE_CLOSED_MARKER
+  const comments = await readAll(api, `/repos/${repo}/issues/${step.pr}/comments?sort=created`)
+  const commented = comments.some((entry) => (entry.body ?? '').includes(marker))
+  if (step.action === 'retarget') {
+    if (!(await write(api, log, 'PATCH', `/repos/${repo}/pulls/${step.pr}`, { base: baseBranch }, step.pr))) return
+  } else {
+    if (commented) return
+    if (!pr.labels.includes(BLOCKED_LABEL)) {
+      await write(api, log, 'POST', `/repos/${repo}/issues/${step.pr}/labels`, { labels: [BLOCKED_LABEL] }, step.pr)
+    }
+  }
+  if (!commented) await write(api, log, 'POST', `/repos/${repo}/issues/${step.pr}/comments`, { body: retargetComment(step, baseBranch) }, step.pr)
 }
