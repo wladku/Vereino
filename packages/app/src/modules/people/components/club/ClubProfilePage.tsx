@@ -16,6 +16,7 @@
 // (`OwnConsentsSection`), and every consent shows the club's own wording when the club changed it, with "given to an
 // earlier wording" for a consent given before the change (DD-L11). Phase L8 (#310): a card before and after the
 // member's own 18th birthday, and each ward's lines "May have an own account" and "Turns 18 on {date}" (`WardNotices`).
+// Social sign-in (#566): below the password, `foundation`'s "Connected accounts" on the `vereino:club:profile:sign-in` spot.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -511,6 +512,7 @@ export function ClubProfilePage() {
           <WardsSection profile={profile} />
           <GuardiansSection profile={profile} />
           <PasswordSection />
+          <InjectionSpot spotId="vereino:club:profile:sign-in" context={{}} />
           <LeaveSection profile={profile} />
         </div>
       )}

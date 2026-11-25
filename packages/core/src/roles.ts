@@ -49,6 +49,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'payments.*',
       'facilities.*',
       'dictionaries.*',
+      // Social sign-in (#566): the administrator lists and unlinks any person's sign-in identities.
+      'foundation.identity.manage',
       // The panel dashboard (README B-01) with the Vereino widgets the other features offer (#88).
       'dashboards.view',
     ],
@@ -94,6 +96,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     authRole: 'vereino_coach',
     features: [
       'people.self',
+      // Social sign-in (#566): own identities follow `people.self`.
+      'foundation.identity.self',
       // The medical certificate status and date of the own groups' players, no write (REQ-O02; #682).
       'people.medical.view',
       'communication.view',
@@ -146,7 +150,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
   },
   member: {
     authRole: 'vereino_member',
-    features: ['people.self', 'activities.attendance.declare', 'communication.view'],
+    // `foundation.identity.self` (#566): own social sign-in identities follow `people.self`.
+    features: ['people.self', 'foundation.identity.self', 'activities.attendance.declare', 'communication.view'],
     requiresScope: null,
   },
   payer: {
