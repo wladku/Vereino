@@ -307,13 +307,13 @@ No migration and no flag. Each phase ships on its own; rolling one back restores
 
 ## Resolved assumptions (autonomous defaults)
 
-| Id | Assumption | Why | Override by |
+| Id | Assumption | Why | Status |
 |---|---|---|---|
-| A-W01 | M-11 (`/club/places/[placeId]`) gets the same Week and Month as B-23 | it shares the day axis and the mockup's `screenPlace` with B-23, and the owner asked for the switch "on all calendar views" | the owner on #784 |
-| A-W02 | B-15 keeps "Agenda" as a fourth tab, like M-03 keeps "Najbliższe" | `ScheduleView` already offers it and nobody asked to remove it | the owner on #784 |
-| A-W03 | If `ScheduleView` cannot hide its own view buttons, B-15 keeps them in sync with the shared control instead | the platform component is installed, not owned | the phase 5 PR |
-| A-W04 | The phone/desktop boundary is `md` (768 px), the seven-axes week starts at `lg` (1024 px) | the existing breakpoints of P-04 and the panel | the owner on #784 |
-| A-W05 | The public `from`/`to` cap is 31 days | the facilities calendar's own cap (`MAX_CALENDAR_DAYS`) and a full month | the phase 2 PR |
+| A-W01 | M-11 (`/club/places/[placeId]`) gets the same Week and Month as B-23 | it shares the day axis and the mockup's `screenPlace` with B-23, and the owner asked for the switch "on all calendar views" | confirmed by the owner 2026-11-25 (PR #785) |
+| A-W02 | B-15 keeps "Agenda" as a fourth tab, like M-03 keeps "Najbliższe" | `ScheduleView` already offers it and nobody asked to remove it | confirmed by the owner 2026-11-25 (PR #785) |
+| A-W03 | If `ScheduleView` cannot hide its own view buttons, B-15 keeps them in sync with the shared control instead | the platform component is installed, not owned | confirmed by the owner 2026-11-25 (PR #785) |
+| A-W04 | The phone/desktop boundary is `md` (768 px), the seven-axes week starts at `lg` (1024 px) | the existing breakpoints of P-04 and the panel | confirmed by the owner 2026-11-25 (PR #785) |
+| A-W05 | The public `from`/`to` cap is 31 days | the facilities calendar's own cap (`MAX_CALENDAR_DAYS`) and a full month | confirmed by the owner 2026-11-25 (PR #785) |
 
 ## Changelog
 
