@@ -221,6 +221,11 @@ Every deploy of the **app** service runs, in this order (ADR-013, S14.5):
 The **worker** service (`sh ./scripts/railway-worker.sh`) runs the boot check and then `yarn mercato queue worker
 --all`; it never migrates. Deploy it after the app service, from the same commit.
 
+Before a change to the `Dockerfile`, the start scripts or the server packages reaches staging, the CI job
+`image-smoke` runs `scripts/image-smoke.sh`: it builds the `runner` stage and runs steps 2–4 above, `yarn initialize`
+and the worker against throwaway PostgreSQL and Redis containers, with the start scripts' default
+`CACHE_STRATEGY=redis`. Run it locally the same way (`scripts/image-smoke.sh`; Docker and Node needed) (#727).
+
 - **staging**: every commit on `main` deploys automatically; turn on Railway's "Wait for CI" so a red `main` never
   deploys.
 - **production**: only a commit with a release tag, inside the release window, following the
@@ -256,6 +261,8 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
    run `yarn initialize --no-examples` once. It refuses to run on a database that already has users.
 3. Remove `OM_INIT_ADMIN_PASSWORD`. Create each club, starting with the demo club, with `yarn mercato club_core
    create-club` ([`clubs.md`](clubs.md)); it runs the per-club setup below itself.
+4. On `production`: run the [lock-down checklist](#lock-down-production) and record the pass before the first real
+   club data is entered.
 
 ## After every deploy
 
@@ -325,6 +332,80 @@ yarn mercato foundation restore-club-schedules --job payments:generate-charges
 runs, the per-club schedules left and the clubs, due, leased and failing counts. `yarn mercato foundation club-jobs
 sweep [--job <key>]` runs one sweep now. One club's job still runs by hand without the sweep, as before, for example
 `yarn mercato payments run-job --job generate-charges --tenant <id> --org <id>`.
+
+## Lock down production
+
+The Railway settings that keep the production environment closed (E25-S01, #735; epic #734). Railway encrypts data at
+rest and in transit, but on Pro every member of the workspace reaches every project and environment in it, project and
+workspace tokens bypass two-factor sign-in, and the workspace audit log is kept 30 days (D-039). This list closes what
+the application cannot.
+
+**When.** The owner runs the whole list once on the production environment **before the first real club data**, and
+again after every change of the Railway plan, of the workspace members or roles, or of the services of the project
+(a service added, removed or renamed, a database template replaced). Each pass is recorded in a run log
+(`.ai/runs/YYYY-MM-DD-production-lock-down.md`), item by item, **without values**: names of variables, services and
+tokens only, never a secret, a URL with a password or a token. The first pass is recorded in
+`.ai/runs/2026-11-25-issue-735-production-lock-down.md`.
+
+Out of scope here (settled elsewhere): signing Railway's DPA, volume backups and PITR, and two-factor enforcement for
+the workspace (D-039, `docs/compliance/processors.md` P-1).
+
+### Lock-down checklist
+
+| # | Item | How to check and fix | Source (read 2026-11-25) |
+|---|---|---|---|
+| L-1 | **No public TCP proxy** on PostgreSQL or Redis in `production` | Each database service → *Settings* → *Networking*: no *Public Access* / *TCP Proxy* entry; delete one if present. Railway databases are private unless public access is added, which creates the proxy and its `DATABASE_PUBLIC_URL` | [PostgreSQL](https://docs.railway.com/guides/postgresql), [TCP proxy](https://docs.railway.com/networking/tcp-proxy) |
+| L-2 | The app, the worker and the backup job reach the databases **only over `*.railway.internal`** | Their `DATABASE_URL` and `REDIS_URL` are references to the database service's private variables (`${{Postgres.DATABASE_URL}}`, `${{Redis.REDIS_URL}}`), never `DATABASE_PUBLIC_URL` or a proxy host; the resolved host ends in `.railway.internal` (check the service's *Variables* tab, never copy the value out). Each environment has its own isolated private network over WireGuard | [Private networking](https://docs.railway.com/reference/private-networking) |
+| L-3 | Every production **secret is a sealed variable** | `JWT_SECRET`, `AUTH_SECRET`, `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, `RESEND_API_KEY`, `VEREINO_LICENCE_KEYS`, the `BACKUP_S3_*` keys and any provider key added later: *Seal* in the variable's menu. A sealed value is given to builds and deployments but never shown in the UI or returned by the API or `railway variables` / `railway run`, and it cannot be unsealed. Keep a copy of `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (it must never change) and of the licence keys in the team password manager before sealing | [Sealed variables](https://docs.railway.com/guides/variables) |
+| L-4 | **No secret shared with staging** | Every production secret has its own value, generated for production (`openssl rand -hex 32` for the signing secrets); no project-level shared variable (`${{shared.…}}`) holds a secret; staging never references a production service | [Variables](https://docs.railway.com/guides/variables) |
+| L-5 | **PR environments are off** for the project that holds production | *Project Settings* → *Environments*: PR environments disabled. A PR environment would deploy unreviewed code into the project that holds club data | [Environments](https://docs.railway.com/guides/environments) |
+| L-6 | **Token inventory**: production holds only the tokens the maintainers need | Project tokens (*Project Settings* → *Tokens*; one environment each) and workspace tokens (account settings → *Tokens*; the whole workspace) keep working without two-factor sign-in. List every token that can reach production in the [token inventory](#token-inventory) with its owner and purpose; revoke every token that is not on it | [Public API](https://docs.railway.com/reference/public-api), [Two-factor enforcement](https://docs.railway.com/access/two-factor-enforcement) |
+| L-7 | **CI and the build agents hold no Railway token for production** | No Railway token in the GitHub repository's or organisation's Actions secrets, in a GitHub environment, or on the machines of the build agents (Cezar runs, sandboxes). Staging deploys from GitHub through Railway's own integration, not through a token; the backup job runs inside Railway ([`backups.md`](backups.md)) | — (repository rule) |
+| L-8 | **Workspace members** | The workspace's member list and roles match the people the owner decided may reach production (D-039: every role reaches every project of the workspace). When a member leaves, revoke the tokens they own the same day (L-6) | [Workspaces and roles](https://docs.railway.com/projects/workspaces) |
+| L-9 | **Audit log export** is in place | The [monthly export](#audit-log-export) ran within the last 30 days | [Audit logs](https://docs.railway.com/enterprise/audit-logs) |
+
+Database access for a maintainer (a restore, a one-off query) goes through a shell inside the environment (`railway
+ssh` on the app service), not through a proxy. If a restore really needs a public proxy, add it, use it and delete it
+in the same session, and write both times in the incident note.
+
+### Token inventory
+
+Kept in the team password manager next to the tokens themselves, never in this repository. One row per token that can
+reach production:
+
+| Token name (as shown in Railway) | Type (project / workspace / account) | Reaches | Owner | Purpose | Created | Next review |
+|---|---|---|---|---|---|---|
+
+Rules: a project token is preferred over a workspace token because it reaches one environment only; a token has one
+owner and one purpose; a token whose owner leaves, or whose purpose is gone, is revoked the same day; the inventory is
+reviewed at every lock-down pass. An account token reaches every workspace of the account and is never created for
+production work.
+
+### Audit log export
+
+Railway keeps the workspace audit log 30 days on Pro (48 hours on Hobby, 18 months on Enterprise), so an
+investigation that reaches further back needs an exported copy. An Admin of the workspace exports it **once a month,
+within 30 days of the previous export**, and at once when an incident starts ([`incident.md`](incident.md)).
+
+Export through Railway's GraphQL API (`https://backboard.railway.com/graphql/v2`, query `auditLogs`), with a token
+held only for the export (listed in the [token inventory](#token-inventory)) given through an environment variable,
+never on the command line or in a file in the repository:
+
+```bash
+curl -s https://backboard.railway.com/graphql/v2 \
+  -H "Authorization: Bearer $RAILWAY_AUDIT_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"query":"query($w:String!,$after:String){auditLogs(workspaceId:$w,after:$after){edges{node{id eventType createdAt projectId environmentId payload context}}pageInfo{endCursor hasNextPage}}}","variables":{"w":"<workspace id>","after":null}}' \
+  > audit-YYYY-MM.page-1.json
+```
+
+Repeat with `"after"` set to the previous page's `pageInfo.endCursor` while `hasNextPage` is true. Railway's page
+documents the query and its fields but not its pagination arguments: on the first export confirm the argument names
+against the API schema and correct this command here if they differ.
+
+The events identify the workspace members who acted (the `payload` and `context` fields), so the pages are personal data
+of the maintainers: they go to the maintainers' storage (the team password manager or the private incident folder), are kept
+12 months, and never enter this repository, an issue, a log or a transcript. The run log of the export records the
+month, the number of events and where the file was stored, nothing else.
 
 ## Enterprise licence keys
 
