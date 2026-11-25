@@ -7,6 +7,7 @@ import {
   DEFAULT_BATCH_SIZE,
   MAX_BATCH_SIZE,
   QA_HOLD_REASON,
+  QA_INSTRUCTION_MISSING,
   VERDICT_STATUS,
   batchesAlone,
   judgeBatch,
@@ -131,7 +132,7 @@ describe('BT-TEST-01: planBatch', () => {
       { size: 4, skipLabels: ['blocked'] },
     )
     assert.deepEqual(numbers(plan), [4])
-    assert.deepEqual(plan.held, [{ pr: 3, reason: QA_HOLD_REASON }])
+    assert.deepEqual(plan.held, [{ pr: 3, reason: `${QA_HOLD_REASON}; ${QA_INSTRUCTION_MISSING}`, instruction: false }])
   })
 
   it('lets a PR that changes CI or the train go alone (BT-D05)', () => {

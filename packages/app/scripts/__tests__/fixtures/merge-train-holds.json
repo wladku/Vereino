@@ -1,0 +1,14 @@
+{
+  "GET /repos/wladku/Vereino/issues/601/comments?per_page=100&page=1": [
+    { "id": 9001, "user": { "login": "github-actions[bot]" }, "body": "## Code review\n\nApproved." }
+  ],
+  "GET /repos/wladku/Vereino/issues/602/comments?per_page=100&page=1": [],
+  "GET /repos/wladku/Vereino/issues/603/comments?per_page=100&page=1": [
+    {
+      "id": 9031,
+      "user": { "login": "wladku" },
+      "body": "Merge train: this PR is `risk-high` and asks for manual QA (`needs-qa`). The train holds it until the owner tests it and sets `qa` (SDLC.md \"QA\", MT-D02). <!-- merge-train:qa-hold -->"
+    },
+    { "id": 9032, "user": { "login": "wladku" }, "body": "Poprawka po QA." }
+  ]
+}

@@ -108,6 +108,22 @@ One label lives outside this taxonomy: `do-not-close`, applied by humans to issu
 
 The pipeline's QA gate is off (`qaGate: false`), so for `risk-low` and `risk-medium` PRs `needs-qa` is advisory and does not block a merge on its own. **A `risk-high` PR labelled `needs-qa` does not merge before manual QA** (owner decision MT-D02, 2026-11-18, `.ai/specs/2026-11-18-merge-throughput.md`): the merge train holds it, logs why and comments once on the PR, until the owner tests it and sets `qa`; the train then queues it like any other PR. User-facing changes are still proven by the author with browser evidence as `AGENTS.md` requires (both locales, 375 px, console without errors). `qa-failed`, `do-not-merge` and `blocked` remain hard blocks. Automation never sets `qa`, `qa-failed` or `qa-approved`. To make every `needs-qa` a hard block until `qa-approved`, set `qaGate: true` and re-run `om-setup-agent-pipeline`.
 
+**QA instruction.** A `risk-high` PR that asks for QA (`needs-qa`) carries a short Polish test instruction for the owner in its description, between fixed markers (QM-D01/QM-D02, `.ai/specs/2026-11-24-qa-request-email.md`). Plain language, no jargon, no passwords; 3–7 numbered steps saying where to click and what must show. A PR without screens says what the owner sees instead (for example "nic do klikania — sprawdzenie to polecenie; sesja decyzyjna może je uruchomić za Ciebie").
+
+```markdown
+<!-- qa-instruction:start -->
+## Jak przetestować (QA)
+**Co się zmienia:** 1–2 zdania prostym językiem.
+**Przygotowanie:** `node C:\Users\wkuc\vereino-sandbox-env\sandbox.mjs preview <PR>` (5–10 min), potem http://127.0.0.1:4300; konto: … (rola, nie hasło).
+**Kroki:**
+1. …
+**Czego nie sprawdzisz:** np. płatność Stripe, klucze Google — i dlaczego.
+**Po teście:** działa → etykieta `qa`; nie działa → `qa-failed` i komentarz, co poszło źle.
+<!-- qa-instruction:end -->
+```
+
+The train's hold comment links the instruction; when the block is missing or empty (or its markers are out of order), the comment says **QA instruction missing** and carries the hidden marker `<!-- merge-train:qa-instruction-missing -->`, so the picker queues a run that writes the block without changing code. When the block is written later, the train edits the same comment (`scripts/merge-train-holds.mjs`).
+
 ## The claim protocol
 
 Before mutating an issue or PR, an agent claims it with all three signals: it assigns itself, adds the `in-progress` label, and posts a `🤖`-prefixed claim comment saying what it is doing. Any agent that finds an existing claim backs off instead of colliding. A PR carrying `in-progress` is also skipped by the merge tooling. A claim belongs to the **run** that made it, not to the GitHub account: agents, forks of a session and orchestrated runs all act as the same user, so a run that did not post the claim backs off (or asks) even when the claim carries its own login. The claim comment names the run's worktree, branch and start time (`.ai/skills/om-auto-fix-issue/SKILL.md` §5).
@@ -116,7 +132,7 @@ The claim is released when the work finishes — on success and on failure alike
 
 ## The automation contract
 
-The `om-auto-*` skills run this process unattended and are chainable: each accepts the artifact the previous one produced (an issue id, a spec path, or a PR number from the `PR: #<number> (link: <url>)` reference line every PR-producing skill emits), and each detects work already started — an open PR referencing the issue or plan — and continues on it rather than opening a duplicate. A completed autonomous run leaves a **ready** (non-draft), fully labeled PR — one pipeline label, category, QA meta, one priority, one risk — with a run-summary comment, a committed run log in `.ai/runs/`, and, for user-facing changes, screenshots from the working app attached as PR evidence. Draft PRs are reserved for explicitly incomplete states: spec-only design PRs, interrupted hand-offs, or autonomous defaults flagged for human confirmation. Automation never applies `qa-approved`.
+The `om-auto-*` skills run this process unattended and are chainable: each accepts the artifact the previous one produced (an issue id, a spec path, or a PR number from the `PR: #<number> (link: <url>)` reference line every PR-producing skill emits), and each detects work already started — an open PR referencing the issue or plan — and continues on it rather than opening a duplicate. A completed autonomous run leaves a **ready** (non-draft), fully labeled PR — one pipeline label, category, QA meta, one priority, one risk — with a run-summary comment, a committed run log in `.ai/runs/`, and, for user-facing changes, screenshots from the working app attached as PR evidence. Draft PRs are reserved for explicitly incomplete states: spec-only design PRs, interrupted hand-offs, or autonomous defaults flagged for human confirmation. Automation never applies `qa-approved`. The run that adds `needs-qa` to a `risk-high` PR writes the PR's `qa-instruction` block in the same step (see "QA"; `.ai/skills/om-open-pr/SKILL.md`), and any run that rewrites a PR description keeps that block; a run queued for a PR whose hold comment says "QA instruction missing" only writes the block.
 
 ## Validation gate
 

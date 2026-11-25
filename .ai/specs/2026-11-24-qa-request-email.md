@@ -1,7 +1,7 @@
 # QA request e-mail: the owner gets a concrete test instruction for every PR held for his QA
 
 **Date**: 2026-11-24
-**Status**: Ready for implementation — decided by the owner on 2026-11-24
+**Status**: In progress — decided by the owner on 2026-11-24
 
 Extends: .ai/specs/2026-11-18-merge-throughput.md
 
