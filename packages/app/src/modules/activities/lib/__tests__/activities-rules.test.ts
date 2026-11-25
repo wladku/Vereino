@@ -275,8 +275,8 @@ describe('the cancellation audience', () => {
       'marek',
       'ola',
       'piotr',
-      'unknown-age',
       'rafal',
+      'unknown-age',
     ])
     expect(cancellationNotifiedCount(withCoordinators, 'marek')).toBe(8)
   })

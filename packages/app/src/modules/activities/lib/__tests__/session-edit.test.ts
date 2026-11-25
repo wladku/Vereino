@@ -162,7 +162,9 @@ describe('sessionEditBody', () => {
         ZONE,
       ),
     ).toMatchObject({ venue: { name: 'Hala', address: 'ul. Długa 2' } })
-    expect(sessionEditBody({ ...initial, venueAddress: 'ul. Polna 3, Zielony Las' }, initial, atVenue, ZONE)).toMatchObject({
+    expect(
+      sessionEditBody({ ...initial, venueAddress: 'ul. Polna 3, Zielony Las' }, initial, atVenue, ZONE),
+    ).toMatchObject({
       venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Polna 3, Zielony Las' },
     })
   })

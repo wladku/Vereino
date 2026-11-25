@@ -342,7 +342,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
           ]),
         ),
       ).toEqual({
-        'Orlik': {
+        Orlik: {
           kind: 'complex',
           underOrlik: false,
           topLevel: true,

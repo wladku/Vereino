@@ -82,11 +82,7 @@ test('TEST-T13 the part of a club event on the family’s phone: the event line 
           publicPath,
         )
         const teams = page.getByTestId('club-session-invited-teams')
-        await expect(teams.getByRole('listitem'), label).toHaveText([
-          'Wisła Brzezie',
-          'Orzeł Brzozów',
-          'UKS Sąsiedni',
-        ])
+        await expect(teams.getByRole('listitem'), label).toHaveText(['Wisła Brzezie', 'Orzeł Brzozów', 'UKS Sąsiedni'])
         await expect(
           page.getByText(uiText('activities.club.session.visitingTeams', { exact: true })),
           label,

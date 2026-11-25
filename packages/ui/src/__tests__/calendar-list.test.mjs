@@ -300,7 +300,9 @@ test('renders the secondary links of an item through the link component', () => 
 })
 
 test('renders what an item is a part of under its title, linked only when it has a page (club events REQ-T03)', () => {
-  const linked = render({ days: days(item({ partOf: { label: 'PRZYKŁAD CUP 2026', href: '/p/przyklad/events/cup' } })) })
+  const linked = render({
+    days: days(item({ partOf: { label: 'PRZYKŁAD CUP 2026', href: '/p/przyklad/events/cup' } })),
+  })
   assert.match(
     linked,
     /<p class="text-sm font-medium" data-testid="calendar-item-part-of"><a href="\/p\/przyklad\/events\/cup" class="[^"]*">PRZYKŁAD CUP 2026<\/a><\/p>/,
