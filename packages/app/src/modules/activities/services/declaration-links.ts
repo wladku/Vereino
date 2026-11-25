@@ -273,7 +273,7 @@ export async function linkPersons(
   em: EntityManager,
 ): Promise<string[]> {
   const scope: ActivitiesScope = { tenantId: link.tenantId, organizationId: link.organizationId }
-  const grants = await resolveScopeForPerson({ container }, { personId: link.guardianPersonId, ...scope })
+  const grants = await resolveScopeForPerson({ container }, { personId: link.guardianPersonId, ...scope }, { em })
   const allowed = new Set(
     grants.filter((grant) => grant.kind === 'self' || grant.kind === 'guardian').flatMap((grant) => grant.ids ?? []),
   )

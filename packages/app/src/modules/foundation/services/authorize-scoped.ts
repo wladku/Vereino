@@ -88,7 +88,8 @@ export type AuthorizeScopedOptions = {
   /**
    * The session scope this command resolved with `prefetchSessionScope(ctx)` before it opened its write transaction
    * (#549). Used only for the session source, only when it was prefetched for this same `ctx` and only for the
-   * tenant and organization the session still names; otherwise the scope is resolved here as usual.
+   * tenant and organization the session still names; otherwise the scope is resolved here as usual — on the
+   * transaction's connection (#728), so a command needs no prefetch to stay clear of the pool deadlock.
    */
   sessionScope?: PrefetchedSessionScope | null
 }
@@ -100,12 +101,11 @@ export type PrefetchedSessionScope = Readonly<TrustedScope & { scope: Scope }>
 const prefetchedFor = new WeakMap<PrefetchedSessionScope, CommandRuntimeContext>()
 
 /**
- * Resolves the caller's session scope before the command opens its write transaction (#549). The scope provider
- * reads on its own pooled connection, so calling it inside the transaction holds one connection while it waits for a
- * second: with as many concurrent commands as the pool has connections, every command waits and none proceeds until
- * the acquire timeout. A command that many callers run at once (e.g. "Accept cash", whose receipt numbering
- * serializes them) prefetches the scope and passes it as `options.sessionScope`; the scope check itself still runs
- * in `authorizeScoped`, inside the transaction. Null when the context carries no session scope.
+ * Resolves the caller's session scope before the command opens its write transaction (#549). Since #728
+ * `authorizeScoped` reads the scope on the transaction's own connection, so no command needs this to avoid the pool
+ * deadlock; it remains for the commands that prefetch the scope alongside other reads before the transaction (and
+ * keep the transaction shorter). The scope check itself still runs in `authorizeScoped`, inside the transaction.
+ * Null when the context carries no session scope.
  */
 export async function prefetchSessionScope(ctx: CommandRuntimeContext): Promise<PrefetchedSessionScope | null> {
   const trusted = sessionScope(ctx)
@@ -192,9 +192,12 @@ function tokenScope(ctx: CommandRuntimeContext, subject: TokenScopeSubject): Tru
   return { tenantId: subject.tenantId, organizationId: subject.organizationId }
 }
 
+// `em` is the command's transactional EntityManager: the provider reads the grants on the transaction's connection, so
+// no command holds one pooled connection while it waits for a second (#728, #549).
 async function deriveScope(
   source: ScopeSource | undefined,
   ctx: CommandRuntimeContext,
+  em: EntityManager,
   prefetched?: PrefetchedSessionScope | null,
 ): Promise<(TrustedScope & { scope: Scope }) | null> {
   if (source && 'job' in source) {
@@ -203,14 +206,14 @@ async function deriveScope(
   }
   if (source && 'token' in source) {
     const trusted = tokenScope(ctx, source.token)
-    return trusted ? { ...trusted, scope: await resolveScopeForPerson(ctx, source.token) } : null
+    return trusted ? { ...trusted, scope: await resolveScopeForPerson(ctx, source.token, { em }) } : null
   }
   const trusted = sessionScope(ctx)
   if (!trusted || !ctx.auth) return null
   if (source && 'marker' in source) {
     return { ...trusted, scope: [{ kind: 'self_user', ids: [ctx.auth.sub] }] }
   }
-  return { ...trusted, scope: prefetchedScopeFor(ctx, trusted, prefetched) ?? (await resolveScope(ctx)) }
+  return { ...trusted, scope: prefetchedScopeFor(ctx, trusted, prefetched) ?? (await resolveScope(ctx, { em })) }
 }
 
 async function matchOrRefuse(
@@ -270,7 +273,7 @@ export async function authorizeScoped<TSchema extends z.ZodType, TEntity extends
     throw new Error('[internal] authorizeScoped must run inside the write transaction (foundation DD-F18)')
   }
   const { parsed, custom } = await parseInput(spec.input, input)
-  const derived = await deriveScope(spec.scopeSource, ctx, options.sessionScope)
+  const derived = await deriveScope(spec.scopeSource, ctx, em, options.sessionScope)
   if (!derived) return foundationErrors.throw('scope_denied')
   const { tenantId, organizationId, scope } = derived
   // Only the session scope says whether a person is linked: a marker scope is `self_user` by construction, a job

@@ -416,7 +416,8 @@ async function loadThreadAccess(
   const scope = trusted(ctx)
   const thread = await loadThread(em, scope, threadId, lock)
   if (!thread) return null
-  const self = selfPersonId(await scopeContract.resolve(ctx))
+  // Read on the transaction's connection (#728): a second pooled connection here deadlocks the pool under load.
+  const self = selfPersonId(await scopeContract.resolve(ctx, { em }))
   const participation = self ? await em.findOne(ThreadParticipant, { ...scope, threadId, personId: self }) : null
   return {
     thread,
