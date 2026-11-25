@@ -10,7 +10,7 @@ import { png } from '../_fixtures/publication'
 import { uiText } from '../_fixtures/ui-text'
 
 // Club events spec TEST-T12 (REQ-T12, AC-T12, J-T01, the phone half of J-T05; E14-S05, #380): the section coordinator
-// on a phone at 375 px finds "Club events" behind More, creates "GWIAZDA CUP 2026" with a new external hall from the
+// on a phone at 375 px finds "Club events" behind More, creates "PRZYKŁAD CUP 2026" with a new external hall from the
 // Add place sheet, adds a part with a visiting team picked and one added in place — first while the connection is
 // lost (the form keeps its values and offers Try again) — is refused a second part whose coach collides (409, nothing
 // saved), copies the first part into an open part, moves the first part (the session edit shows the place locked and
@@ -22,8 +22,8 @@ test.describe.configure({ timeout: 900_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
-const EVENT = 'GWIAZDA CUP 2026'
-const HALL = 'Hala sportowa w Liszkach'
+const EVENT = 'PRZYKŁAD CUP 2026'
+const HALL = 'Hala sportowa w Zielonym Lesie'
 const ORLIK_PART = 'Turniej Żaków'
 const SENIORS_PART = 'Turniej Drużyn – Seniorzy (16+)'
 const MORE = uiText('people.club.nav.more', { exact: true })
@@ -59,7 +59,7 @@ test('TEST-T12 the section coordinator sets up and runs a club event on the phon
     const orlik = await createGroup(request, admin, { sectionId: family.academy, name: 'Orlik młodszy', kind: 'team' })
     expect(orlik).not.toBe('')
     const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
-      data: { name: 'Wisła Liszki', clubName: 'LKS Wisła Liszki' },
+      data: { name: 'Wisła Brzezie', clubName: 'LKS Wisła Brzezie' },
     })
     expect(team.status, JSON.stringify(team.body)).toBe(201)
     const coaches = await call<{ items?: Array<{ id: string; name: string }> }>(
@@ -111,13 +111,13 @@ test('TEST-T12 the section coordinator sets up and runs a club event on the phon
 
     // --- J-T01 steps 1–3: the form, the hall from the Add place sheet ---
     await page.getByTestId('club-event-member-name').fill(EVENT)
-    await expect(page.getByTestId('club-event-member-slug')).toHaveAttribute('placeholder', 'gwiazda-cup-2026')
+    await expect(page.getByTestId('club-event-member-slug')).toHaveAttribute('placeholder', 'przyklad-cup-2026')
     await expect(page.getByTestId('club-event-member-section')).toContainText('Akademia piłkarska')
     await page.getByTestId('club-event-member-add-place').click()
     const sheet = page.getByTestId('add-external-place-sheet')
     await expect(sheet).toBeVisible()
     await sheet.getByTestId('add-external-place-name').fill(HALL)
-    await sheet.getByTestId('add-external-place-address').fill('ul. Szkolna 50, Liszki')
+    await sheet.getByTestId('add-external-place-address').fill('ul. Szkolna 50, Zielony Las')
     await sheet.getByTestId('add-external-place-submit').click()
     await expect(sheet).toBeHidden()
     await expect(page.getByTestId('club-event-member-place')).toContainText(HALL)
@@ -138,13 +138,13 @@ test('TEST-T12 the section coordinator sets up and runs a club event on the phon
     await page.getByTestId('club-event-part-member-end').fill('14:00')
     await choose(page, 'club-event-part-member-group', 'Żaki · Akademia piłkarska')
     await choose(page, 'club-event-part-member-coach', coachName)
-    await choose(page, 'club-event-part-team-picker', 'Wisła Liszki (LKS Wisła Liszki)')
+    await choose(page, 'club-event-part-team-picker', 'Wisła Brzezie (LKS Wisła Brzezie)')
     await page.getByTestId('club-event-part-add-team').click()
     const teamDialog = page.getByTestId('club-event-part-team-create')
     const teamName = teamDialog.locator('input[name="name"]')
     await expect(async () => {
-      await teamName.fill('CIS Czernichów')
-      await expect(teamName).toHaveValue('CIS Czernichów', { timeout: 1_000 })
+      await teamName.fill('UKS Sąsiedni')
+      await expect(teamName).toHaveValue('UKS Sąsiedni', { timeout: 1_000 })
     }).toPass({ timeout: 15_000 })
     await teamDialog.getByRole('button', { name: uiText('activities.clubEvents.part.teams.submit') }).click()
     await expect(teamDialog).toBeHidden()

@@ -214,7 +214,7 @@ test('TEST-026 log, incidents and bans: open and close the day, report, ban, rev
     expect(oldEdit.status, JSON.stringify(oldEdit.body)).toBe(200)
 
     // Staff without `facilities.log.write` (a coach) cannot write the log or report incidents.
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     const coachLog = await postLog(request, coach.token, { placeId: setup.pitch, logDate: addDays(today, -1) })
     expect(coachLog.status, JSON.stringify(coachLog.body)).toBe(403)
     // The coach reads the day with `facilities.view`, but not the log (its conditions and remarks).

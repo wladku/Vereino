@@ -73,9 +73,9 @@ describe('addressedStaffIds', () => {
 
 describe('directMembers', () => {
   it('addresses the subject directly and the staff as coaches', () => {
-    expect(directMembers('jas', ['wojtek'])).toEqual([
+    expect(directMembers('jas', ['rafal'])).toEqual([
       { personId: 'jas', reason: 'direct' },
-      { personId: 'wojtek', reason: 'coach' },
+      { personId: 'rafal', reason: 'coach' },
     ])
   })
 })
@@ -85,15 +85,15 @@ describe('directParticipantRows', () => {
     expect(
       directParticipantRows(
         [
-          { personId: 'wojtek', reasons: ['coach'] },
+          { personId: 'rafal', reasons: ['coach'] },
           { personId: 'dad', reasons: ['guardian'] },
         ],
         'kasia',
-        ['wojtek'],
+        ['rafal'],
       ),
     ).toEqual([
       { personId: 'kasia', reasons: ['author'] },
-      { personId: 'wojtek', reasons: ['coach', 'staff'] },
+      { personId: 'rafal', reasons: ['coach', 'staff'] },
       { personId: 'dad', reasons: ['guardian'] },
     ])
   })
@@ -139,12 +139,12 @@ describe('directOptions', () => {
       ['football', { id: 'football', name: 'Piłka nożna' }],
       ['swimming', { id: 'swimming', name: 'Pływanie' }],
     ]),
-    coachIdsByGroup: new Map([['zaki', ['wojtek', 'kasia', 'nameless']]]),
+    coachIdsByGroup: new Map([['zaki', ['rafal', 'kasia', 'nameless']]]),
     coordinatorIdsBySection: new Map([['football', ['zofia', 'adam']]]),
     names: new Map([
       ['kasia', 'Kasia Nowak'],
       ['jas', 'Jaś Nowak'],
-      ['wojtek', 'Wojtek Trener'],
+      ['rafal', 'Rafał Trener'],
       ['zofia', 'Zofia Koordynator'],
       ['adam', 'Adam Koordynator'],
     ]),
@@ -169,7 +169,7 @@ describe('directOptions', () => {
         groupName: 'Żaki',
         sectionId: 'football',
         sectionName: 'Piłka nożna',
-        coachNames: ['Wojtek Trener'],
+        coachNames: ['Rafał Trener'],
         coordinatorNames: ['Adam Koordynator', 'Zofia Koordynator'],
       },
       {
@@ -188,7 +188,7 @@ describe('directOptions', () => {
   it('keeps the viewer among the staff names for a viewer linked to no person', () => {
     expect(directOptions(facts, null).find((option) => option.groupId === 'zaki')?.coachNames).toEqual([
       'Kasia Nowak',
-      'Wojtek Trener',
+      'Rafał Trener',
     ])
   })
 })

@@ -85,7 +85,7 @@ test('TEST-R18 a closure and a maintenance window tell the coordinator, coach, b
       role: 'coordinator',
       sectionId: setup.academy,
     })
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
       personId: coach.personId,

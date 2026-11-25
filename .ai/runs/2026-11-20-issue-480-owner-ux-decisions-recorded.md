@@ -11,7 +11,7 @@
 3. Recomputed the contrast values from `packages/app/src/app/globals.css` (oklch to sRGB, alpha composited in sRGB over the surface): the earlier C1 values were confirmed (field border 3.36 light, 4.25 / 3.85 dark; ring 3.36; focus 19.79 / 18.96), and the C2 sidebar group heading (`text-muted-foreground/70` on `--background` — the AppShell aside is `bg-background`) measures 2.78 light and 4.20 dark, fixed by full-opacity `--muted-foreground` (4.96 / 7.63). Checkbox on `--primary`: 17.91 / 17.16 light, 15.72 / 14.22 dark.
 4. `tokens.md` 0.2: C1–C4 resolved, each naming D-033; `--input`, `--ring`, `--focus-ring-outer` overrides; `--accent-indigo` no longer for checkbox and radio; `--focus-indicator` as the one indicator; `--club-accent*` marked *to be built* in `vereino-tokens.css`; a "Status icons" map with a default icon per kind.
 5. Mockup: `badge()` in `app.ts` renders the kind's default icon (`CircleCheck`, `Clock`, `CircleAlert`, `CircleDashed`, `Info`) or the status's own (`CircleX` cancelled/rejected, `X` not attending/absent, `CalendarX` deadline passed); the one hand-written `.badge` (session type on M-04) now goes through `badge()`; `styles.css` got the `--status-*-icon` colours of `tokens.md` (light and dark). Rebuilt `app.js` with `node docs/ux-concept/mockups/build.mjs`.
-6. Browser check with Playwright on the file-served mockup: M-05 (coach Wojtek), M-08 (guardian Kasia), B-21 (administrator Aneta) × pl/en × light/dark × 1440/375 px — 24 screenshots.
+6. Browser check with Playwright on the file-served mockup: M-05 (coach Rafał), M-08 (guardian Kasia), B-21 (administrator Joanna) × pl/en × light/dark × 1440/375 px — 24 screenshots.
 7. `yarn verify`.
 
 ## Decisions

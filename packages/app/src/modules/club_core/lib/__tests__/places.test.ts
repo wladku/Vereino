@@ -17,7 +17,7 @@ import {
 } from '../places'
 
 describe('place hierarchy', () => {
-  // Orlik 2024 (complex) → Boisko (pitch) → Szatnia (locker room); Hala is a second root.
+  // Orlik (complex) → Boisko (pitch) → Szatnia (locker room); Hala is a second root.
   const parentOf = new Map<string, string | null>([
     ['orlik', null],
     ['boisko', 'orlik'],
@@ -156,8 +156,8 @@ describe('effective opening hours (DD-41)', () => {
 
 describe('external place duplicates (club events spec REQ-T06, #377)', () => {
   it('keys a place by its trimmed, lower-cased name and address', () => {
-    expect(externalPlaceKey('  Hala sportowa w Liszkach ', 'UL. Szkolna 50, Liszki ')).toBe(
-      'hala sportowa w liszkach\nul. szkolna 50, liszki',
+    expect(externalPlaceKey('  Hala sportowa w Zielonym Lesie ', 'UL. Szkolna 50, Zielony Las ')).toBe(
+      'hala sportowa w zielonym lesie\nul. szkolna 50, zielony las',
     )
     expect(externalPlaceKey('ŁAWKA', null)).toBe('ławka\n')
     expect(externalPlaceKey('Ławka', undefined)).toBe(externalPlaceKey('ławka', '  '))
@@ -165,14 +165,19 @@ describe('external place duplicates (club events spec REQ-T06, #377)', () => {
 
   it('finds the live place with the same name and address', () => {
     const places = [
-      { id: 'other-address', name: 'Hala sportowa w Liszkach', address: 'ul. Szkolna 5, Liszki' },
-      { id: 'no-address', name: 'Hala sportowa w Liszkach', address: null },
-      { id: 'same', name: 'hala sportowa w liszkach', address: ' ul. szkolna 50, liszki' },
+      { id: 'other-address', name: 'Hala sportowa w Zielonym Lesie', address: 'ul. Szkolna 5, Zielony Las' },
+      { id: 'no-address', name: 'Hala sportowa w Zielonym Lesie', address: null },
+      { id: 'same', name: 'hala sportowa w zielonym lesie', address: ' ul. szkolna 50, zielony las' },
     ]
     expect(
-      duplicateExternalPlaceId({ name: 'Hala sportowa w Liszkach ', address: 'ul. Szkolna 50, Liszki' }, places),
+      duplicateExternalPlaceId(
+        { name: 'Hala sportowa w Zielonym Lesie ', address: 'ul. Szkolna 50, Zielony Las' },
+        places,
+      ),
     ).toBe('same')
-    expect(duplicateExternalPlaceId({ name: 'Hala w Krakowie', address: 'ul. Szkolna 50, Liszki' }, places)).toBeNull()
+    expect(
+      duplicateExternalPlaceId({ name: 'Hala w Krakowie', address: 'ul. Szkolna 50, Zielony Las' }, places),
+    ).toBeNull()
     expect(duplicateExternalPlaceId({ name: 'Hala', address: 'Adres 1' }, [])).toBeNull()
   })
 

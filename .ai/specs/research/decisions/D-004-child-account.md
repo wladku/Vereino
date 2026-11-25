@@ -9,4 +9,4 @@ status: confirmed
 **Decision:** <13 no account; ≥13 login with a limited view; consents and payments stay with the guardian.
 **Why:** the parent sees all their children; a teenager checks the schedule on their own.
 **To change:** legal opinion (GDPR; the age of digital consent in Poland = 16 for information society services — to check whether it applies; [ASSUMPTION]).
-**Revisit:** before rollout at Gwiazda.
+**Revisit:** before rollout at Przykład.

@@ -22,7 +22,7 @@ const rate = (patch: Partial<RentalRateShape>): RentalRateShape => ({
   ...patch,
 })
 
-// The Orlik 2024 reference: municipal club 150 PLN, winter with lighting 220 PLN (November–March), external 350 PLN.
+// The Orlik reference: municipal club 150 PLN, winter with lighting 220 PLN (November–March), external 350 PLN.
 const WINTER = rate({
   id: 'winter',
   renterCategory: 'municipal_club_winter_lighting',

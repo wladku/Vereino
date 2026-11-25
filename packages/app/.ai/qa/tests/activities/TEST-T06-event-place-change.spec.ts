@@ -46,7 +46,7 @@ test('TEST-T06 a change of the event’s place moves only the planned future par
     const today = calendarDate()
     const saturday = nextWeekday(addDays(today, 7), 'SA')
     const sunday = addDays(saturday, 1)
-    const eventId = await clubEventId(request, admin, { name: 'GWIAZDA CUP 2026', sectionId: academy, placeId: hall })
+    const eventId = await clubEventId(request, admin, { name: 'PRZYKŁAD CUP 2026', sectionId: academy, placeId: hall })
     const future1 = await partIds(request, admin, eventId, {
       title: 'Turniej Orlika',
       groupId: g1,

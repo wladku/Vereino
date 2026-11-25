@@ -33,7 +33,7 @@ const rule = (patch: Partial<ZoneRuleShape>): ZoneRuleShape => ({
   ...patch,
 })
 
-/** Orlik 2024 (§2): Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30. */
+/** Orlik (§2): Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30. */
 const ORLIK_HOURS = {
   seasons: [
     {

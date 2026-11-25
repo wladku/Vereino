@@ -36,7 +36,7 @@ const candidate = (id: string, extra: Partial<HandoverCandidate> = {}): Handover
   id,
   method: 'cash',
   receiptNumber: 'KP/2026/11/001',
-  collectedByPersonId: 'wojtek',
+  collectedByPersonId: 'rafal',
   reversesPaymentId: null,
   cashHandoverId: null,
   reversed: false,
@@ -45,7 +45,7 @@ const candidate = (id: string, extra: Partial<HandoverCandidate> = {}): Handover
 
 describe('handoverRefusal', () => {
   const refuse = (payments: HandoverCandidate[], paymentIds = payments.map((row) => row.id)) =>
-    handoverRefusal({ collectorPersonId: 'wojtek', paymentIds, payments })
+    handoverRefusal({ collectorPersonId: 'rafal', paymentIds, payments })
 
   it('accepts the cash payments the collector holds', () => {
     expect(refuse([candidate('a'), candidate('b')])).toBeNull()
@@ -96,10 +96,10 @@ describe('custodyByCollector', () => {
   it('groups by collector, oldest payment first, and leaves reversed payments out', () => {
     const result = custodyByCollector(
       [
-        held('w3', 'wojtek', '2026-11-10', 13500, 'T2'),
-        held('w2', 'wojtek', '2026-11-10', 20000, 'T1'),
-        held('w4', 'wojtek', '2026-11-10', 1000, 'T1'),
-        held('w1', 'wojtek', '2026-11-03', 20000),
+        held('w3', 'rafal', '2026-11-10', 13500, 'T2'),
+        held('w2', 'rafal', '2026-11-10', 20000, 'T1'),
+        held('w4', 'rafal', '2026-11-10', 1000, 'T1'),
+        held('w1', 'rafal', '2026-11-03', 20000),
         held('m1', 'marek', '2026-11-12', 5000),
         held('m2', 'marek', '2026-11-01', 7000),
         held('x1', 'zofia', '2026-11-05', 9999),
@@ -107,7 +107,7 @@ describe('custodyByCollector', () => {
       new Set(['x1', 'w4']),
     )
     expect(result.total).toBe(65500)
-    expect(result.items.map((item) => item.collectorPersonId)).toEqual(['marek', 'wojtek'])
+    expect(result.items.map((item) => item.collectorPersonId)).toEqual(['marek', 'rafal'])
     expect(result.items[1]).toEqual(expect.objectContaining({ oldestPaidOn: '2026-11-03', total: 53500 }))
     expect(result.items[1].payments.map((row) => row.id)).toEqual(['w1', 'w2', 'w3'])
     expect(result.items[0].payments.map((row) => row.id)).toEqual(['m2', 'm1'])

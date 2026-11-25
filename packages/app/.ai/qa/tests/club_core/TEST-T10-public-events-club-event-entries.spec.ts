@@ -15,7 +15,7 @@ import { png, publicGet, publish, putSectionPublic, upload, type PublicationBloc
 
 // Club events spec TEST-T10 (REQ-T10, DD-T12, AC-T10; #381): P-06 lists a published club event once. Club A publishes
 // its page and the `events` block, with the public sections Akademia (the public Orlik group and the non-public
-// Rezerwy group) and Pływanie (the public Delfiny group). "GWIAZDA CUP 2026" (Akademia, with a poster) has three
+// Rezerwy group) and Pływanie (the public Delfiny group). "PRZYKŁAD CUP 2026" (Akademia, with a poster) has three
 // parts — Orlik, Rezerwy and the open seniors' part; a single public sparring of Orlik; a whole-club "Dzień klubu"
 // with a Delfiny part; a cancelled "Odwołany turniej"; "Jesienny turniej" with parts 40 and 30 days ago; "Stary
 // turniej" with parts 70 and 30 days ago; and an unpublished one. `GET …/events` lists one entry per published club
@@ -86,7 +86,7 @@ test('TEST-T10 P-06 lists one entry per published club event, a whole-club one w
       })
 
     // The cup: three parts over two days, a poster.
-    const cup = await clubEventId(request, admin, { name: 'GWIAZDA CUP 2026', sectionId: academy, placeId: hall })
+    const cup = await clubEventId(request, admin, { name: 'PRZYKŁAD CUP 2026', sectionId: academy, placeId: hall })
     await part(cup, 'Część Orlika', orlik, addDays(today, 7), '09:00', '14:00')
     await part(cup, 'Część Rezerw', reserves, addDays(today, 8))
     await part(cup, 'Część seniorów', null, addDays(today, 14), '08:30', '15:00')
@@ -133,13 +133,13 @@ test('TEST-T10 P-06 lists one entry per published club event, a whole-club one w
     const hidden = await clubEventId(request, admin, { name: 'Ukryty turniej', sectionId: academy, placeId: hall })
     await part(hidden, 'Ukryta część', orlik, addDays(today, 12))
 
-    await publish(request, admin, slug, BLOCKS, { shortName: 'LKS Gwiazda' })
+    await publish(request, admin, slug, BLOCKS, { shortName: 'LKS Przykład' })
 
     // --- All sections ---
     const all = await publicGet(request, `/api/club_core/public/${slug}/events`)
     expect(all.status, JSON.stringify(all.body)).toBe(200)
     const page = all.body as unknown as EventsPage
-    expect(names(page.upcoming)).toEqual(['GWIAZDA CUP 2026', 'Sparing Orlika', 'Dzień klubu', 'Odwołany turniej'])
+    expect(names(page.upcoming)).toEqual(['PRZYKŁAD CUP 2026', 'Sparing Orlika', 'Dzień klubu', 'Odwołany turniej'])
     expect(names(page.past)).toEqual(['Jesienny turniej'])
     const [cupEntry, sparring, clubEntry, cancelledEntry] = page.upcoming as [Entry, Entry, Entry, Entry]
     expect(cupEntry).toMatchObject({
@@ -148,14 +148,14 @@ test('TEST-T10 P-06 lists one entry per published club event, a whole-club one w
       date: addDays(today, 7),
       endDate: addDays(today, 14),
       startTime: '09:00',
-      place: 'Hala sportowa w Liszkach',
+      place: 'Hala sportowa w Zielonym Lesie',
       mapUrl: expect.stringContaining('openstreetmap.org'),
       cancelled: false,
       past: false,
       section: { name: 'Akademia', slug: 'akademia' },
-      clubEventSlug: 'gwiazda-cup-2026',
+      clubEventSlug: 'przyklad-cup-2026',
       partsCount: 3,
-      posterUrl: `/api/club_core/public/${slug}/events/gwiazda-cup-2026/files/${String(poster.body?.id)}`,
+      posterUrl: `/api/club_core/public/${slug}/events/przyklad-cup-2026/files/${String(poster.body?.id)}`,
     })
     expect(sparring).toMatchObject({
       kind: 'event',
@@ -192,7 +192,7 @@ test('TEST-T10 P-06 lists one entry per published club event, a whole-club one w
     // --- `?section=akademia`: the cup and the sparring; the whole-club event has no public Akademia group ---
     const academyPage = (await publicGet(request, `/api/club_core/public/${slug}/events?section=akademia`))
       .body as unknown as EventsPage
-    expect(names(academyPage.upcoming)).toEqual(['GWIAZDA CUP 2026', 'Sparing Orlika', 'Odwołany turniej'])
+    expect(names(academyPage.upcoming)).toEqual(['PRZYKŁAD CUP 2026', 'Sparing Orlika', 'Odwołany turniej'])
     expect(names(academyPage.past)).toEqual(['Jesienny turniej'])
 
     // --- `?section=plywanie`: the whole-club event with its Delfiny part, without a section ---

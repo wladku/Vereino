@@ -73,7 +73,7 @@ export const seedActivities: ModuleSeed = async ({ request, seeded, api, admin }
 
   // An external team (the opponent of a match, the visitor of a part).
   const team = await api<Created>('POST', '/api/groups/external-teams', {
-    data: { name: 'Wisła Liszki', clubName: 'Wisła Liszki' },
+    data: { name: 'Wisła Brzezie', clubName: 'Wisła Brzezie' },
     status: 201,
   })
   refs.opponentTeam = String(team.body?.id)

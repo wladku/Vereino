@@ -8,7 +8,7 @@
 
 1. Read both failing runs (`gh run view 45616729085|45616841827 --log-failed`). Both runs came from PR branches, `docs/privacy-move-research-anonymise-club` (#746) and `docs/mockup-current-app` (#750). The only error was in run 45616841827: `create account {"error":"Validation failed",…"path":["email"],"message":"Invalid email address"}`, `Expected: 201 Received: 400`, at `TEST-T02-club-event-parts.spec.ts:63`.
 2. Checked `main` and the open PRs. No fix exists, and the test is not changed on `main`.
-3. Compared the two branches. Both carry the same anonymisation change, which renames the coordinator `Wojtek` to `Rafał`. `createStaff` in `_fixtures/club.ts` built the email from the lowercased first name (`rafał-…@example.org`), and the API rejected it as an invalid email.
+3. Compared the two branches. Both carry the same anonymisation change, which renames the coordinator to the fictional `Rafał`. `createStaff` in `_fixtures/club.ts` built the email from the lowercased first name (`rafał-…@example.org`), and the API rejected it as an invalid email.
 4. Decision: no quarantine, because the test is green on `main` and the failure has a known cause. I fixed the fixture instead. `emailLocalPart` folds the first name to ASCII (`ł` → `l`, NFKD, drops anything that is not `[a-z0-9]`, falls back to `staff`). This fixes every test on those PRs that creates staff with a Polish first name.
 5. Lesson `ci-ledger-quarantine-check-each-run-first` gained the #754 case and a rule: diff the failing runs' branches against each other.
 

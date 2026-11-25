@@ -8,7 +8,7 @@
   // Types
   // ═══════════════════════════════════════════════════════════════════
   type DemoState = 'normal' | 'loading' | 'empty' | 'error'
-  type PersonaId = 'kasia' | 'ola' | 'wojtek' | 'anna' | 'aneta' | 'beata' | 'tomek' | 'guest'
+  type PersonaId = 'kasia' | 'ola' | 'rafal' | 'anna' | 'joanna' | 'beata' | 'tomek' | 'guest'
   type ShellKind = 'member' | 'backend' | 'public' | 'bare'
   type Errors = Record<string, string>
   type OccType = 'training' | 'match' | 'sparring' | 'tournament' | 'camp' | 'other'
@@ -188,8 +188,8 @@
   function seed(): Db {
     const db: Db = {
       settings: {
-        name: 'LKS Gwiazda Ściejowice', short: 'Gwiazda', slug: 'gwiazda', tz: 'Europe/Warsaw', minAge: 13, phone: '600 000 000', logo: LOGO_CLUB,
-        description: 'Klub sportowy z Ściejowic: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem 2024 w imieniu Gminy Liszki.',
+        name: 'LKS Przykład Dolina', short: 'Przykład', slug: 'przyklad', tz: 'Europe/Warsaw', minAge: 13, phone: '600 000 000', logo: LOGO_CLUB,
+        description: 'Klub sportowy z Doliny: akademia piłkarska dla dzieci i młodzieży, sekcja pływacka i zajęcia ruchowe dla dorosłych. Administrujemy Orlikiem 2024 w imieniu Gminy Zielony Las.',
         publication: { enabled: true, description_schedule: true, conditions: true, prices: true, coaches: true, materials: true, contact: true, places_calendar: true, online_requests: true, events: true },
         // Online payment fee (R13): the club pays it by default; the example operator fee is the ~PLN 2 per payment a parent named in an interview.
         coachFees: 'collect', onlineFee: { mode: 'club_pays', fixed: 200 },
@@ -200,17 +200,17 @@
         P('p-kasia', 'Kasia', 'Nowak', '1986-04-02', { email: 'kasia.nowak@example.pl', phone: '600 100 200', account: true }),
         P('p-jas', 'Jaś', 'Nowak', '2017-05-03'),
         P('p-ola', 'Ola', 'Nowak', '2012-03-14', { email: 'ola.nowak@example.pl', account: true }),
-        P('p-wojtek', 'Wojtek', 'Malinowski', '1990-06-11', { email: 'wojtek@gwiazda.example', phone: '601 222 333', account: true, publishConsent: true }),
-        P('p-piotr', 'Piotr', 'Zieliński', '1995-01-20', { email: 'piotr@gwiazda.example', account: true, publishConsent: true }),
-        P('p-anna', 'Anna', 'Kowalczyk', '1992-09-30', { email: 'anna@gwiazda.example', account: true, publishConsent: true }),
-        P('p-aneta', 'Aneta', 'Wiśniewska', '1984-02-17', { email: 'aneta@gwiazda.example', account: true, pesel: '84021712345' }),
-        P('p-tomek', 'Tomek', 'Lis', '1999-07-07', { email: 'tomek@gwiazda.example', account: true }),
-        P('p-ewa', 'Ewa', 'Dąbrowska', '1993-12-01', { email: 'ewa@gwiazda.example', account: true, publishConsent: false }),
-        P('p-michal', 'Michał', 'Nowicki', '1994-03-03', { email: 'michal@gwiazda.example', account: true, publishConsent: true }),
-        P('p-kamil', 'Kamil', 'Wrona', '1997-08-08', { email: 'kamil@gwiazda.example', account: true, publishConsent: true }),
-        P('p-lukasz', 'Łukasz', 'Dudek', '1991-11-11', { email: 'lukasz@gwiazda.example', account: true, publishConsent: false }),
-        P('p-marcin', 'Marcin', 'Sobczak', '1980-05-05', { email: 'marcin@gwiazda.example', account: true, publishConsent: true }),
-        P('p-natalia', 'Natalia', 'Krawczyk', '1998-02-20', { email: 'natalia@gwiazda.example', account: true, publishConsent: true }),
+        P('p-rafal', 'Rafał', 'Malinowski', '1990-06-11', { email: 'rafal@przyklad.example', phone: '601 222 333', account: true, publishConsent: true }),
+        P('p-piotr', 'Piotr', 'Zieliński', '1995-01-20', { email: 'piotr@przyklad.example', account: true, publishConsent: true }),
+        P('p-anna', 'Anna', 'Kowalczyk', '1992-09-30', { email: 'anna@przyklad.example', account: true, publishConsent: true }),
+        P('p-joanna', 'Joanna', 'Wiśniewska', '1984-02-17', { email: 'joanna@przyklad.example', account: true, pesel: '84021712345' }),
+        P('p-tomek', 'Tomek', 'Lis', '1999-07-07', { email: 'tomek@przyklad.example', account: true }),
+        P('p-ewa', 'Ewa', 'Dąbrowska', '1993-12-01', { email: 'ewa@przyklad.example', account: true, publishConsent: false }),
+        P('p-michal', 'Michał', 'Nowicki', '1994-03-03', { email: 'michal@przyklad.example', account: true, publishConsent: true }),
+        P('p-kamil', 'Kamil', 'Wrona', '1997-08-08', { email: 'kamil@przyklad.example', account: true, publishConsent: true }),
+        P('p-lukasz', 'Łukasz', 'Dudek', '1991-11-11', { email: 'lukasz@przyklad.example', account: true, publishConsent: false }),
+        P('p-marcin', 'Marcin', 'Sobczak', '1980-05-05', { email: 'marcin@przyklad.example', account: true, publishConsent: true }),
+        P('p-natalia', 'Natalia', 'Krawczyk', '1998-02-20', { email: 'natalia@przyklad.example', account: true, publishConsent: true }),
         P('p-marek', 'Marek', 'Kowalski', '1983-08-08', { email: 'marek.k@example.pl', account: true }),
         P('p-adam', 'Adam', 'Kowalski', '2017-02-14'),
         P('p-zosia', 'Zosia', 'Kowalska', '2012-11-02'),
@@ -224,7 +224,7 @@
         P('p-maja', 'Maja', 'Pawlak', '2018-02-02'),
         P('p-dorota', 'Dorota', 'Wójcik', '1979-09-09', { email: 'dorota.w@example.pl', account: true }),
         P('p-teresa', 'Teresa', 'Lis', '1970-04-25', { email: 'teresa.lis@example.pl', account: true }),
-        P('p-beata', 'Beata', 'Zając', '1978-03-15', { email: 'skarbnik@gwiazda.example', phone: '603 444 555', account: true }),
+        P('p-beata', 'Beata', 'Zając', '1978-03-15', { email: 'skarbnik@przyklad.example', phone: '603 444 555', account: true }),
       ],
       guardianships: [
         { id: 'gs-1', guardian: 'p-kasia', ward: 'p-jas', relation: 'parent', primaryPayer: true, consents: { regulations: true, image: true, trips: true } },
@@ -238,10 +238,10 @@
         { id: 'gs-9', guardian: 'p-robert', ward: 'p-filip', relation: 'other', primaryPayer: false, consents: { regulations: true, image: false, trips: false } },
       ],
       roles: [
-        { id: 'ra-1', person: 'p-aneta', role: 'club_admin' },
-        { id: 'ra-2', person: 'p-wojtek', role: 'coordinator', section: 's-akad' },
-        { id: 'ra-3', person: 'p-aneta', role: 'coordinator', section: 's-basen' },
-        { id: 'ra-4', person: 'p-wojtek', role: 'coach' },
+        { id: 'ra-1', person: 'p-joanna', role: 'club_admin' },
+        { id: 'ra-2', person: 'p-rafal', role: 'coordinator', section: 's-akad' },
+        { id: 'ra-3', person: 'p-joanna', role: 'coordinator', section: 's-basen' },
+        { id: 'ra-4', person: 'p-rafal', role: 'coach' },
         { id: 'ra-5', person: 'p-piotr', role: 'coach' },
         { id: 'ra-6', person: 'p-anna', role: 'coach' },
         { id: 'ra-7', person: 'p-ewa', role: 'coach' },
@@ -251,28 +251,28 @@
         { id: 'ra-14', person: 'p-ewa', role: 'coordinator', section: 's-zumba' }, { id: 'ra-16', person: 'p-beata', role: 'treasurer' }, { id: 'ra-15', person: 'p-natalia', role: 'coordinator', section: 's-cheer' },
       ],
       sections: [
-        { id: 's-akad', name: 'Akademia piłkarska', slug: 'akademia', short: 'Piłka nożna dla dzieci i młodzieży od 4 lat — osiem grup rocznikowych, od Kids do Trampkarza.', description: 'Akademia Gwiazdy: treningi na boisku Gwiazdy Ściejowice według programu PZPN „Grassroots” — radość z gry, technika i współpraca. Drużyny grają w ligach OZPN.', isPublic: true, conditions: 'Deklaracja członkowska, badania lekarskie (od kategorii Trampkarz), strój sportowy, obuwie na sztuczną murawę.', contactName: 'Akademia Gwiazdy', contactEmail: 'akademiagwiazdy@gmail.com', contactPhone: '608 07 29 29', materials: ['Regulamin akademii (PDF)', 'Deklaracja członkowska (PDF)', 'Grafik treningów (PDF)'], active: true, color: 'akad', updatedAt: 1 },
-        { id: 's-basen', logo: LOGO_BASEN, name: 'Basen', slug: 'basen', short: 'Nauka i doskonalenie pływania dla dzieci 6–12 lat.', description: 'Zajęcia w małych grupach na basenie zewnętrznym, z instruktorkami pływania. Zimą zajęcia na krytej pływalni partnerskiej.', isPublic: true, conditions: 'Strój kąpielowy, czepek, klapki, ręcznik. Dziecko musi być zdrowe — zaświadczenie lekarskie przy zapisie.', contactName: 'Aneta Wiśniewska — koordynatorka', contactEmail: 'basen@gwiazda.example', contactPhone: '602 333 444', materials: ['Regulamin sekcji pływackiej (PDF)'], active: true, color: 'basen', updatedAt: 1 },
-        { id: 's-zumba', logo: LOGO_ZUMBA, name: 'Zumba', slug: 'zumba', short: 'Taniec fitness przy muzyce latino dla młodzieży i dorosłych.', description: 'Godzina dobrej energii w salce klubowej — bez wymagań, w przyjaznej atmosferze.', isPublic: true, conditions: 'Wygodny strój i buty sportowe, woda. Od 16 lat.', contactName: 'Ewa Dąbrowska — instruktorka', contactEmail: 'zumba@gwiazda.example', contactPhone: '600 000 000', materials: [], active: true, color: 'zumba', updatedAt: 1 },
-        { id: 's-szachy', logo: LOGO_SZACHY, name: 'Szachy', slug: 'szachy', short: 'Nauka gry w szachy dla dzieci od 7 lat i dorosłych.', description: 'Zasady, taktyka i turnieje klubowe. Zajęcia w salce klubowej.', isPublic: true, conditions: 'Bez wymagań — szachownice zapewnia klub.', contactName: 'Biuro klubu', contactEmail: 'biuro@gwiazda.example', contactPhone: '600 000 000', materials: ['Regulamin turnieju klubowego (PDF)'], active: true, color: 'szachy', updatedAt: 1 },
-        { id: 's-cheer', logo: LOGO_CHEER, name: 'Cheerleader', slug: 'cheerleader', short: 'Taniec, akrobatyka i doping na meczach klubu dla dziewcząt i chłopców 8–14 lat.', description: 'Układy taneczne z pomponami, elementy akrobatyki i występy podczas meczów Gwiazdy.', isPublic: true, conditions: 'Strój sportowy, obuwie na halę. Pompony zapewnia klub.', contactName: 'Natalia Krawczyk — trenerka', contactEmail: 'cheer@gwiazda.example', contactPhone: '600 000 000', materials: [], active: true, color: 'cheer', updatedAt: 1 },
+        { id: 's-akad', name: 'Akademia piłkarska', slug: 'akademia', short: 'Piłka nożna dla dzieci i młodzieży od 4 lat — osiem grup rocznikowych, od Kids do Trampkarza.', description: 'Akademia Przykładu: treningi na boisku Przykładu Dolina według programu PZPN „Grassroots” — radość z gry, technika i współpraca. Drużyny grają w ligach OZPN.', isPublic: true, conditions: 'Deklaracja członkowska, badania lekarskie (od kategorii Trampkarz), strój sportowy, obuwie na sztuczną murawę.', contactName: 'Akademia Przykładu', contactEmail: 'akademia@przyklad.example', contactPhone: '600 000 111', materials: ['Regulamin akademii (PDF)', 'Deklaracja członkowska (PDF)', 'Grafik treningów (PDF)'], active: true, color: 'akad', updatedAt: 1 },
+        { id: 's-basen', logo: LOGO_BASEN, name: 'Basen', slug: 'basen', short: 'Nauka i doskonalenie pływania dla dzieci 6–12 lat.', description: 'Zajęcia w małych grupach na basenie zewnętrznym, z instruktorkami pływania. Zimą zajęcia na krytej pływalni partnerskiej.', isPublic: true, conditions: 'Strój kąpielowy, czepek, klapki, ręcznik. Dziecko musi być zdrowe — zaświadczenie lekarskie przy zapisie.', contactName: 'Joanna Wiśniewska — koordynatorka', contactEmail: 'basen@przyklad.example', contactPhone: '602 333 444', materials: ['Regulamin sekcji pływackiej (PDF)'], active: true, color: 'basen', updatedAt: 1 },
+        { id: 's-zumba', logo: LOGO_ZUMBA, name: 'Zumba', slug: 'zumba', short: 'Taniec fitness przy muzyce latino dla młodzieży i dorosłych.', description: 'Godzina dobrej energii w salce klubowej — bez wymagań, w przyjaznej atmosferze.', isPublic: true, conditions: 'Wygodny strój i buty sportowe, woda. Od 16 lat.', contactName: 'Ewa Dąbrowska — instruktorka', contactEmail: 'zumba@przyklad.example', contactPhone: '600 000 000', materials: [], active: true, color: 'zumba', updatedAt: 1 },
+        { id: 's-szachy', logo: LOGO_SZACHY, name: 'Szachy', slug: 'szachy', short: 'Nauka gry w szachy dla dzieci od 7 lat i dorosłych.', description: 'Zasady, taktyka i turnieje klubowe. Zajęcia w salce klubowej.', isPublic: true, conditions: 'Bez wymagań — szachownice zapewnia klub.', contactName: 'Biuro klubu', contactEmail: 'biuro@przyklad.example', contactPhone: '600 000 000', materials: ['Regulamin turnieju klubowego (PDF)'], active: true, color: 'szachy', updatedAt: 1 },
+        { id: 's-cheer', logo: LOGO_CHEER, name: 'Cheerleader', slug: 'cheerleader', short: 'Taniec, akrobatyka i doping na meczach klubu dla dziewcząt i chłopców 8–14 lat.', description: 'Układy taneczne z pomponami, elementy akrobatyki i występy podczas meczów Przykładu.', isPublic: true, conditions: 'Strój sportowy, obuwie na halę. Pompony zapewnia klub.', contactName: 'Natalia Krawczyk — trenerka', contactEmail: 'cheer@przyklad.example', contactPhone: '600 000 000', materials: [], active: true, color: 'cheer', updatedAt: 1 },
       ],
       places: [
-        { id: 'pl-orlik', name: 'Orlik 2024', kind: 'complex', publicSchedule: false, acceptsRequests: false, capacity: 1, address: 'ul. Sportowa 1, Ściejowice' },
-        { id: 'pl-boisko', parent: 'pl-orlik', name: 'Boisko piłkarskie', kind: 'pitch', slug: 'orlik-boisko', publicSchedule: true, acceptsRequests: true, capacity: 2, address: 'ul. Sportowa 1, Ściejowice', surface: 'sztuczna trawa' },
-        { id: 'pl-multi', parent: 'pl-orlik', name: 'Boisko wielofunkcyjne', kind: 'multi_pitch', slug: 'orlik-wielofunkcyjne', publicSchedule: true, acceptsRequests: true, capacity: 2, address: 'ul. Sportowa 1, Ściejowice', surface: 'poliuretan' },
-        { id: 'pl-salka', name: 'Salka w budynku klubowym', kind: 'hall', slug: 'salka', publicSchedule: true, acceptsRequests: false, capacity: 1, address: 'Budynek klubowy, Ściejowice' },
-        { id: 'pl-basen', name: 'Basen zewnętrzny', kind: 'pool', slug: 'basen', publicSchedule: false, acceptsRequests: false, capacity: 2, address: 'Pływalnia partnerska, Liszki' },
-        { id: 'pl-liszki', name: 'Boisko Wisły Liszki', kind: 'pitch', publicSchedule: false, acceptsRequests: false, capacity: 1, address: 'Boisko sportowe, Liszki', external: true },
+        { id: 'pl-orlik', name: 'Orlik', kind: 'complex', publicSchedule: false, acceptsRequests: false, capacity: 1, address: 'ul. Sportowa 1, Dolina' },
+        { id: 'pl-boisko', parent: 'pl-orlik', name: 'Boisko piłkarskie', kind: 'pitch', slug: 'orlik-boisko', publicSchedule: true, acceptsRequests: true, capacity: 2, address: 'ul. Sportowa 1, Dolina', surface: 'sztuczna trawa' },
+        { id: 'pl-multi', parent: 'pl-orlik', name: 'Boisko wielofunkcyjne', kind: 'multi_pitch', slug: 'orlik-wielofunkcyjne', publicSchedule: true, acceptsRequests: true, capacity: 2, address: 'ul. Sportowa 1, Dolina', surface: 'poliuretan' },
+        { id: 'pl-salka', name: 'Salka w budynku klubowym', kind: 'hall', slug: 'salka', publicSchedule: true, acceptsRequests: false, capacity: 1, address: 'Budynek klubowy, Dolina' },
+        { id: 'pl-basen', name: 'Basen zewnętrzny', kind: 'pool', slug: 'basen', publicSchedule: false, acceptsRequests: false, capacity: 2, address: 'Pływalnia partnerska, Zielony Las' },
+        { id: 'pl-zielony-las', name: 'Boisko Wisły Brzezie', kind: 'pitch', publicSchedule: false, acceptsRequests: false, capacity: 1, address: 'Boisko sportowe, Zielony Las', external: true },
       ],
       institutions: [
-        { id: 'i-gmina', name: 'Gmina Liszki', type: 'municipality', contact: 'Referat Sportu, 12 000 00 00', bank: 'PL 12 1240 0000 0000 0000 1234 5678' },
+        { id: 'i-gmina', name: 'Gmina Zielony Las', type: 'municipality', contact: 'Referat Sportu, 12 000 00 00', bank: 'PL 12 1240 0000 0000 0000 1234 5678' },
         { id: 'i-sasiedzi', name: 'KS Sąsiedzi', type: 'club', contact: 'Jan Nowicki, 603 000 111' },
         { id: 'i-abak', name: 'Abak sp. z o.o.', type: 'company', contact: 'Recepcja, 12 345 67 89' },
-        { id: 'i-szkola', name: 'SP Ściejowice', type: 'school', contact: 'Sekretariat, 12 111 22 33' },
+        { id: 'i-szkola', name: 'SP Dolina', type: 'school', contact: 'Sekretariat, 12 111 22 33' },
       ],
       contracts: [
-        { id: 'k-1', party: 'p-wojtek', kind: 'coach', from: '2026-09-01', base: 120000, unit: 6000, match: 10000, travel: 5000 },
+        { id: 'k-1', party: 'p-rafal', kind: 'coach', from: '2026-09-01', base: 120000, unit: 6000, match: 10000, travel: 5000 },
         { id: 'k-2', party: 'p-piotr', kind: 'coach', from: '2026-09-01', base: 80000, unit: 5500, match: 10000, travel: 5000 },
         { id: 'k-3', party: 'p-anna', kind: 'coach', from: '2026-09-01', base: 0, unit: 7000, match: 0, travel: 0 },
         { id: 'k-4', party: 'p-ewa', kind: 'coach', from: '2026-09-01', base: 0, unit: 8000, match: 0, travel: 0 },
@@ -287,8 +287,8 @@
         { id: 'g-kids', section: 's-akad', name: 'Kids', kind: 'team', category: 'rocznik 2021–2022', season: '2026/27', ageFrom: 4, ageTo: 5, isPublic: true, publicDescription: 'Pierwsze spotkanie z piłką: zabawy ruchowe, koordynacja i radość z gry.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-kamil'] },
         { id: 'g-skrzat', section: 's-akad', name: 'Skrzat', kind: 'team', category: 'rocznik 2020', season: '2026/27', ageFrom: 6, ageTo: 6, isPublic: true, publicDescription: 'Gry i zabawy z piłką, pierwsze mini-mecze.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-kamil'] },
         { id: 'g-zakm', section: 's-akad', name: 'Żak młodszy', kind: 'team', category: 'rocznik 2019', league: 'Liga Żaka OZPN', season: '2026/27', ageFrom: 7, ageTo: 7, isPublic: true, publicDescription: 'Prowadzenie piłki, podania, gra 3×3 i 4×4.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-michal'] },
-        { id: 'g-zaks', section: 's-akad', name: 'Żak starszy', kind: 'team', category: 'rocznik 2018', league: 'Liga Żaka OZPN', season: '2026/27', ageFrom: 8, ageTo: 8, isPublic: true, publicDescription: 'Technika użytkowa i mini-mecze ligowe 5×5.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-wojtek'] },
-        { id: 'g-orlm', section: 's-akad', name: 'Orlik młodszy', kind: 'team', category: 'rocznik 2017', league: 'Liga Orlika OZPN', season: '2026/27', ageFrom: 9, ageTo: 9, isPublic: true, publicDescription: 'Gra 5×5, technika użytkowa, pierwsze elementy taktyki.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: ['p-jas', 'p-adam', 'p-bartek', 'p-filip', 'p-lena'], coaches: ['p-wojtek'] },
+        { id: 'g-zaks', section: 's-akad', name: 'Żak starszy', kind: 'team', category: 'rocznik 2018', league: 'Liga Żaka OZPN', season: '2026/27', ageFrom: 8, ageTo: 8, isPublic: true, publicDescription: 'Technika użytkowa i mini-mecze ligowe 5×5.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-rafal'] },
+        { id: 'g-orlm', section: 's-akad', name: 'Orlik młodszy', kind: 'team', category: 'rocznik 2017', league: 'Liga Orlika OZPN', season: '2026/27', ageFrom: 9, ageTo: 9, isPublic: true, publicDescription: 'Gra 5×5, technika użytkowa, pierwsze elementy taktyki.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: ['p-jas', 'p-adam', 'p-bartek', 'p-filip', 'p-lena'], coaches: ['p-rafal'] },
         { id: 'g-orls', section: 's-akad', name: 'Orlik starszy', kind: 'team', category: 'rocznik 2015–2016', league: 'Liga Orlika OZPN', season: '2026/27', ageFrom: 10, ageTo: 11, isPublic: true, publicDescription: 'Gra 7×7, przygotowanie do piłki jedenastoosobowej.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-lukasz'] },
         { id: 'g-mlodzik', section: 's-akad', name: 'Młodzik starszy', kind: 'team', category: 'rocznik 2014', league: 'Liga Młodzika OZPN', season: '2026/27', ageFrom: 12, ageTo: 12, isPublic: true, publicDescription: 'Taktyka zespołowa i mecze ligowe 9×9.', conditions: 'Strój sportowy, obuwie na sztuczną murawę, bidon.', members: [], coaches: ['p-lukasz'] },
         { id: 'g-tramp', section: 's-akad', name: 'Trampkarz', kind: 'team', category: 'rocznik 2012–2013', league: 'II liga Trampkarzy OZPN', season: '2026/27', ageFrom: 13, ageTo: 14, isPublic: true, publicDescription: 'Treningi taktyczne i mecze ligowe 11×11.', conditions: 'Badania lekarskie, korki/turfy, ochraniacze.', members: ['p-ola', 'p-zosia', 'p-kuba'], coaches: ['p-piotr'] },
@@ -298,14 +298,14 @@
         { id: 'g-cheer', section: 's-cheer', name: 'Cheerleaderki', kind: 'class_group', level: 'wszyscy', ageFrom: 8, ageTo: 14, isPublic: true, publicDescription: 'Układy z pomponami, akrobatyka i występy na meczach.', conditions: 'Strój sportowy, obuwie na halę.', members: ['p-zosia'], coaches: ['p-natalia'] },
       ],
       externalTeams: [
-        { id: 'et-rzesz', name: 'LKS Rzeszotary' }, { id: 'et-myd', name: 'UKS Mydlniki' }, { id: 'et-liszki', name: 'Wisła Liszki' }, { id: 'et-sas', name: 'KS Sąsiedzi' }, { id: 'et-kryspinow', name: 'Orzeł Kryspinów' },
+        { id: 'et-laki', name: 'LKS Łąki' }, { id: 'et-gorki', name: 'UKS Górki' }, { id: 'et-brzezie', name: 'Wisła Brzezie' }, { id: 'et-sas', name: 'KS Sąsiedzi' }, { id: 'et-brzozow', name: 'Orzeł Brzozów' },
       ],
       activities: [
         { id: 'a-kids', group: 'g-kids', name: 'Trening Kids', type: 'training', weekdays: [1, 3], start: '17:05', end: '18:05', place: 'pl-multi', coach: 'p-kamil', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-skrzat', group: 'g-skrzat', name: 'Trening Skrzatów', type: 'training', weekdays: [1, 3], start: '18:15', end: '19:15', place: 'pl-multi', coach: 'p-kamil', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-zakm', group: 'g-zakm', name: 'Trening Żaków młodszych', type: 'training', weekdays: [1, 3], start: '18:15', end: '19:30', place: 'pl-multi', coach: 'p-michal', from: '2026-09-01', to: '2027-06-30' },
-        { id: 'a-zaks', group: 'g-zaks', name: 'Trening Żaków starszych', type: 'training', weekdays: [1, 3], start: '18:15', end: '19:30', place: 'pl-boisko', coach: 'p-wojtek', from: '2026-09-01', to: '2027-06-30' },
-        { id: 'a-orlm', group: 'g-orlm', name: 'Trening Orlików młodszych', type: 'training', weekdays: [2, 4], start: '17:00', end: '18:30', place: 'pl-boisko', coach: 'p-wojtek', from: '2026-09-01', to: '2027-06-30' },
+        { id: 'a-zaks', group: 'g-zaks', name: 'Trening Żaków starszych', type: 'training', weekdays: [1, 3], start: '18:15', end: '19:30', place: 'pl-boisko', coach: 'p-rafal', from: '2026-09-01', to: '2027-06-30' },
+        { id: 'a-orlm', group: 'g-orlm', name: 'Trening Orlików młodszych', type: 'training', weekdays: [2, 4], start: '17:00', end: '18:30', place: 'pl-boisko', coach: 'p-rafal', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-orls', group: 'g-orls', name: 'Trening Orlików starszych', type: 'training', weekdays: [2, 4], start: '17:40', end: '19:10', place: 'pl-boisko', coach: 'p-lukasz', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-mlodzik', group: 'g-mlodzik', name: 'Trening Młodzików starszych', type: 'training', weekdays: [2, 4], start: '16:00', end: '17:30', place: 'pl-boisko', coach: 'p-lukasz', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-tramp', group: 'g-tramp', name: 'Trening Trampkarzy', type: 'training', weekdays: [1, 3], start: '18:00', end: '19:30', place: 'pl-boisko', coach: 'p-piotr', from: '2026-09-01', to: '2027-06-30' },
@@ -313,10 +313,10 @@
         { id: 'a-zumba', group: 'g-zumba', name: 'Zumba', type: 'training', weekdays: [2], start: '19:00', end: '20:00', place: 'pl-salka', coach: 'p-ewa', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-szachy', group: 'g-szachy', name: 'Szachy', type: 'training', weekdays: [3], start: '16:30', end: '17:30', place: 'pl-salka', coach: 'p-marcin', from: '2026-09-01', to: '2027-06-30' },
         { id: 'a-cheer', group: 'g-cheer', name: 'Trening cheerleaderek', type: 'training', weekdays: [5], start: '17:00', end: '18:30', place: 'pl-salka', coach: 'p-natalia', from: '2026-09-01', to: '2027-06-30' },
-        { id: 'a-turniej-szach', group: 'g-szachy', name: 'II Turniej Szachowy z Gwiazdą o Puchar Wójta Gminy Liszki', type: 'tournament', weekdays: [6], start: '10:00', end: '15:00', place: 'pl-salka', coach: 'p-marcin', from: '2026-10-17', to: '2026-10-17', oneOff: true,
-          info: ['Turniej dla dzieci i młodzieży z gminy Liszki urodzonych w 2012 r. i młodszych, z maksymalnym rankingiem PZSzach 1600.', 'Start o godz. 10:00, budynek klubowy LKS Gwiazda Ściejowice.', 'Zapisy przez formularz.', 'Wpisowe: 40 zł; dla zawodników Gwiazdy i CIS Czernichów: 10 zł.'] },
-        { id: 'a-mecz', group: 'g-tramp', name: 'Mecz ligowy: Gwiazda — LKS Rzeszotary', type: 'match', weekdays: [7], start: '10:00', end: '11:30', gather: '09:15', confirmBy: '2026-11-13 12:00', place: 'pl-boisko', coach: 'p-piotr', from: '2026-11-15', to: '2026-11-15', opponent: 'et-rzesz', oneOff: true },
-        { id: 'a-sparing', group: 'g-orlm', name: 'Sparing: Wisła Liszki — Gwiazda', type: 'sparring', weekdays: [6], start: '09:00', end: '10:30', gather: '08:30', confirmBy: '2026-11-10 12:00', place: 'pl-liszki', coach: 'p-wojtek', from: '2026-11-14', to: '2026-11-14', opponent: 'et-liszki', oneOff: true },
+        { id: 'a-turniej-szach', group: 'g-szachy', name: 'II Turniej Szachowy z Przykładem o Puchar Wójta Gminy Zielony Las', type: 'tournament', weekdays: [6], start: '10:00', end: '15:00', place: 'pl-salka', coach: 'p-marcin', from: '2026-10-17', to: '2026-10-17', oneOff: true,
+          info: ['Turniej dla dzieci i młodzieży z gminy Zielony Las urodzonych w 2012 r. i młodszych, z maksymalnym rankingiem PZSzach 1600.', 'Start o godz. 10:00, budynek klubowy LKS Przykład Dolina.', 'Zapisy przez formularz.', 'Wpisowe: 40 zł; dla zawodników Przykładu i UKS Sąsiedni: 10 zł.'] },
+        { id: 'a-mecz', group: 'g-tramp', name: 'Mecz ligowy: Przykład — LKS Łąki', type: 'match', weekdays: [7], start: '10:00', end: '11:30', gather: '09:15', confirmBy: '2026-11-13 12:00', place: 'pl-boisko', coach: 'p-piotr', from: '2026-11-15', to: '2026-11-15', opponent: 'et-laki', oneOff: true },
+        { id: 'a-sparing', group: 'g-orlm', name: 'Sparing: Wisła Brzezie — Przykład', type: 'sparring', weekdays: [6], start: '09:00', end: '10:30', gather: '08:30', confirmBy: '2026-11-10 12:00', place: 'pl-zielony-las', coach: 'p-rafal', from: '2026-11-14', to: '2026-11-14', opponent: 'et-brzezie', oneOff: true },
       ],
       occurrences: [], attendance: {}, substitutions: [],
       policies: [
@@ -348,12 +348,12 @@
       rentals: [
         { id: 'r-abak', place: 'pl-boisko', renter: 'Abak sp. z o.o.', renterId: 'i-abak', category: 'external_commercial', contact: 'Marta Abak', email: 'marta@abak.example', phone: '605 111 222', date: '2026-11-10', start: '19:30', end: '21:00', units: 1, amount: 30000, status: 'confirmed', via: 'phone' },
         { id: 'r-sas', place: 'pl-boisko', renter: 'KS Sąsiedzi', renterId: 'i-sasiedzi', category: 'municipal_club_winter_lighting', contact: 'Jan Nowicki', email: 'jan@sasiedzi.example', phone: '603 000 111', date: '2026-11-11', start: '19:30', end: '21:00', units: 1, amount: 18000, status: 'requested', via: 'phone' },
-        { id: 'r-myd', place: 'pl-boisko', renter: 'UKS Mydlniki', category: 'municipal_club_winter_lighting', contact: 'Paweł Mydlnicki', email: 'kontakt@mydlniki.example', phone: '604 222 333', date: '2026-11-13', start: '19:30', end: '21:00', units: 1, amount: 18000, status: 'pending_approval', via: 'online', holdUntil: '2026-11-11 14:00', purpose: 'Sparing seniorów' },
-        { id: 'r-xyz', place: 'pl-boisko', renter: 'Akademia Ruchu Kraków', category: 'external_commercial', contact: 'Ewa Ruch', email: 'biuro@akademiaruchu.example', phone: '606 333 444', date: '2026-11-14', start: '09:00', end: '10:30', units: 1, amount: 30000, status: 'pending_approval', via: 'online', holdUntil: '2026-11-12 09:00', purpose: 'Zajęcia ogólnorozwojowe', banMatch: false },
-        { id: 'r-old', place: 'pl-boisko', renter: 'SP Ściejowice', renterId: 'i-szkola', category: 'municipal_club', contact: 'Sekretariat', email: 'sp@sciejowice.example', phone: '12 111 22 33', date: '2026-11-02', start: '19:30', end: '21:00', units: 1, amount: 18000, status: 'done', via: 'phone' },
+        { id: 'r-myd', place: 'pl-boisko', renter: 'UKS Górki', category: 'municipal_club_winter_lighting', contact: 'Paweł Górski', email: 'kontakt@gorki.example', phone: '604 222 333', date: '2026-11-13', start: '19:30', end: '21:00', units: 1, amount: 18000, status: 'pending_approval', via: 'online', holdUntil: '2026-11-11 14:00', purpose: 'Sparing seniorów' },
+        { id: 'r-xyz', place: 'pl-boisko', renter: 'Akademia Ruchu Miasto', category: 'external_commercial', contact: 'Ewa Ruch', email: 'biuro@akademiaruchu.example', phone: '606 333 444', date: '2026-11-14', start: '09:00', end: '10:30', units: 1, amount: 30000, status: 'pending_approval', via: 'online', holdUntil: '2026-11-12 09:00', purpose: 'Zajęcia ogólnorozwojowe', banMatch: false },
+        { id: 'r-old', place: 'pl-boisko', renter: 'SP Dolina', renterId: 'i-szkola', category: 'municipal_club', contact: 'Sekretariat', email: 'sp@dolina.example', phone: '12 111 22 33', date: '2026-11-02', start: '19:30', end: '21:00', units: 1, amount: 18000, status: 'done', via: 'phone' },
       ],
       bookings: [
-        { id: 'b-szk', place: 'pl-salka', date: '2026-11-12', start: '20:00', end: '21:30', purpose: 'Szkolenie trenerów (UEFA Grassroots)', by: 'p-aneta', section: 's-akad', status: 'confirmed' },
+        { id: 'b-szk', place: 'pl-salka', date: '2026-11-12', start: '20:00', end: '21:30', purpose: 'Szkolenie trenerów (UEFA Grassroots)', by: 'p-joanna', section: 's-akad', status: 'confirmed' },
       ],
       closures: [
         { id: 'cl-1', place: 'pl-boisko', date: '2026-11-18', start: '08:00', end: '22:00', reason: 'maintenance', note: 'Szczotkowanie i uzupełnienie granulatu' },
@@ -365,7 +365,7 @@
         { id: 'in-1', date: '2026-11-07', place: 'pl-boisko', kind: 'damage', description: 'Rozerwana siatka w bramce północnej po zajęciach grupy wynajmującej.', action: 'warning', by: 'p-tomek' },
       ],
       bans: [
-        { id: 'bn-1', subject: 'Grupa „Orły” (nieformalna)', from: '2026-10-15', to: '2026-12-31', reason: 'Wielokrotne wejście na boisko w obuwiu z wkrętami', by: 'p-aneta' },
+        { id: 'bn-1', subject: 'Grupa „Orły” (nieformalna)', from: '2026-10-15', to: '2026-12-31', reason: 'Wielokrotne wejście na boisko w obuwiu z wkrętami', by: 'p-joanna' },
       ],
       maintenance: [
         { id: 'mt-1', place: 'pl-boisko', kind: 'przegląd roczny', responsible: 'owner', due: '2026-11-30' },
@@ -394,9 +394,9 @@
     for (const o of db.occurrences) if (o.date < TODAY && o.id !== 'a-tramp-2026-11-09') o.status = 'done'
     for (const o of db.occurrences) if (o.date === '2026-11-11') { o.status = 'cancelled'; o.cancelReason = 'Święto Niepodległości' }
     occ('a-orlm-2026-11-05').coach = 'p-piotr'
-    db.substitutions.push({ occ: 'a-orlm-2026-11-05', prev: 'p-wojtek', next: 'p-piotr', kind: 'substitute_assigned', at: '2026-11-04 20:10', by: 'p-wojtek', reason: 'Kurs trenerski' })
+    db.substitutions.push({ occ: 'a-orlm-2026-11-05', prev: 'p-rafal', next: 'p-piotr', kind: 'substitute_assigned', at: '2026-11-04 20:10', by: 'p-rafal', reason: 'Kurs trenerski' })
     occ('a-orlm-2026-11-12').coach = null
-    db.substitutions.push({ occ: 'a-orlm-2026-11-12', prev: 'p-wojtek', next: null, kind: 'absence_reported', at: '2026-11-09 21:40', by: 'p-wojtek', reason: 'Wyjazd służbowy' })
+    db.substitutions.push({ occ: 'a-orlm-2026-11-12', prev: 'p-rafal', next: null, kind: 'absence_reported', at: '2026-11-09 21:40', by: 'p-rafal', reason: 'Wyjazd służbowy' })
     for (const o of db.occurrences) if (o.status === 'done') {
       const g = db.groups.find((x) => x.id === o.group) as Group
       const silent = db.settings.declarationKinds[o.type] === 'absence_only' // silence = expected, no "yes" is stored
@@ -409,7 +409,7 @@
 
     db.threads = [
       { id: 't-orlm', scope: 'group', scopeId: 'g-orlm', scopeLabel: lt('thread.scope.group', { name: 'Orlik młodszy' }), subject: 'Czwartkowy trening — zmiana trenera', isCase: false, readBy: [], messages: [
-        { id: 'm1', author: 'p-wojtek', role: 'coach', body: 'Dzień dobry! W czwartek 12.11 nie poprowadzę treningu — koordynator wskaże zastępstwo, godzina bez zmian (17:00).', at: '2026-11-09 21:45', delivered: 6, failed: 0 },
+        { id: 'm1', author: 'p-rafal', role: 'coach', body: 'Dzień dobry! W czwartek 12.11 nie poprowadzę treningu — koordynator wskaże zastępstwo, godzina bez zmian (17:00).', at: '2026-11-09 21:45', delivered: 6, failed: 0 },
       ] },
       { id: 't-cancel', scope: 'occurrence', scopeId: 'a-tramp-2026-11-11', scopeLabel: lt('thread.scope.occurrence', { name: 'Trening Trampkarzy', date: ld('2026-11-11') }), subject: 'Trening odwołany — Święto Niepodległości', isCase: false, readBy: ['p-kasia'], messages: [
         { id: 'm2', author: 'p-piotr', role: 'coach', body: 'Trening w środę 11.11 jest odwołany (święto). Widzimy się w poniedziałek.', at: '2026-11-05 10:00', delivered: 4, failed: 1 },
@@ -419,7 +419,7 @@
         { id: 'm4', author: 'p-piotr', role: 'coach', body: 'Dziękuję za wiadomość. Zapraszam na rozmowę po poniedziałkowym treningu — omówimy plan rotacji.', at: '2026-11-08 20:30', delivered: 2, failed: 0 },
       ] },
       { id: 't-walne', scope: 'club', scopeId: 'club', scopeLabel: lt('thread.scope.club'), subject: 'Walne zebranie członków 28.11', isCase: false, readBy: [], messages: [
-        { id: 'm5', author: 'p-aneta', role: 'admin', body: 'Zapraszamy na walne zebranie 28.11 o 18:00 w salce klubowej. Porządek obrad w załączniku.', at: '2026-11-06 12:00', delivered: 41, failed: 2 },
+        { id: 'm5', author: 'p-joanna', role: 'admin', body: 'Zapraszamy na walne zebranie 28.11 o 18:00 w salce klubowej. Porządek obrad w załączniku.', at: '2026-11-06 12:00', delivered: 41, failed: 2 },
       ] },
     ]
 
@@ -539,7 +539,7 @@
   }
 
   function seedKit(dbx: Db): void {
-    const c: KitCampaign = { id: 'oc-akad', name: 'Stroje Akademii — zima 2026', description: KIT_DESC, section: 's-akad', groups: dbx.groups.filter((g) => g.section === 's-akad').map((g) => g.id), closes: '2026-11-20', payDue: '2026-12-04', status: 'open', printName: true, printNumber: true, notesLabel: 'Dodatkowe prośby (np. strój bramkarski, ochraniacze, rękawice)', products: kitTemplate(), supplier: 'Hummel — hurtownia Sport-Team', createdBy: 'p-aneta' }
+    const c: KitCampaign = { id: 'oc-akad', name: 'Stroje Akademii — zima 2026', description: KIT_DESC, section: 's-akad', groups: dbx.groups.filter((g) => g.section === 's-akad').map((g) => g.id), closes: '2026-11-20', payDue: '2026-12-04', status: 'open', printName: true, printNumber: true, notesLabel: 'Dodatkowe prośby (np. strój bramkarski, ochraniacze, rękawice)', products: kitTemplate(), supplier: 'Hummel — hurtownia Sport-Team', createdBy: 'p-joanna' }
     dbx.kitCampaigns.push(c)
     const add = (child: string, by: string, choice: Record<string, string>, set: boolean, printNumber: string, at: string, pay?: Pay): void => {
       const priced = kitPrice(c, choice, set)
@@ -551,7 +551,7 @@
       dbx.kitOrders.push(o)
     }
     const none = { 'kp-dres': 'none', 'kp-ortalion': 'none' }
-    add('p-adam', 'p-marek', { ...none, 'kp-koszulka': '128', 'kp-spodenki': '128', 'kp-getry': '31–34', 'kp-dres': '128' }, true, '9', '2026-11-06 20:14', { amount: 30000, method: 'cash', date: '2026-11-05', by: 'p-wojtek', receipt: 'KP/2026/11/005' })
+    add('p-adam', 'p-marek', { ...none, 'kp-koszulka': '128', 'kp-spodenki': '128', 'kp-getry': '31–34', 'kp-dres': '128' }, true, '9', '2026-11-06 20:14', { amount: 30000, method: 'cash', date: '2026-11-05', by: 'p-rafal', receipt: 'KP/2026/11/005' })
     add('p-bartek', 'p-ewelina', { ...none, 'kp-koszulka': '128', 'kp-spodenki': 'none', 'kp-getry': '31–34' }, false, '10', '2026-11-07 08:40')
     add('p-lena', 'p-robert', { ...none, 'kp-koszulka': '128', 'kp-spodenki': '128', 'kp-getry': '31–34', 'kp-czapka': 'yes' }, true, '7', '2026-11-07 21:02', { amount: 15000, method: 'online', date: '2026-11-07', ref: 'pi_3Q…' })
     add('p-kuba', 'p-iwona', { ...none, 'kp-koszulka': '164', 'kp-spodenki': '164', 'kp-getry': '39–42', 'kp-ortalion': '164' }, true, '14', '2026-11-08 18:30', { amount: 22000, method: 'cash', date: '2026-11-09', by: 'p-piotr', receipt: 'KP/2026/11/006' })
@@ -568,12 +568,12 @@
   const PERSONAS: Persona[] = [
     { id: 'kasia', person: 'p-kasia', label: 'Kasia Nowak', roleKey: 'persona.role.guardian', features: ['people.self', 'activities.attendance.declare', 'communication.view', 'payments.view_own', 'payments.pay_online', 'payments.orders.place'], home: '/club', email: 'kasia.nowak@example.pl' },
     { id: 'ola', person: 'p-ola', label: 'Ola Nowak', roleKey: 'persona.role.participant', features: ['people.self', 'activities.attendance.declare', 'communication.view'], home: '/club', email: 'ola.nowak@example.pl' },
-    { id: 'wojtek', person: 'p-wojtek', label: 'Wojtek Malinowski', roleKey: 'persona.role.coachCoordinator', features: ['people.self', 'activities.attendance.declare', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'backend', 'club_core.view', 'club_core.sections.public_content', 'people.view', 'groups.view', 'groups.manage', 'activities.view', 'activities.manage', 'activities.reports.view', 'communication.cases.manage', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'wojtek@gwiazda.example' },
-    { id: 'anna', person: 'p-anna', label: 'Anna Kowalczyk', roleKey: 'persona.role.swimInstructor', features: ['people.self', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'anna@gwiazda.example' },
-    { id: 'aneta', person: 'p-aneta', label: 'Aneta Wiśniewska', roleKey: 'persona.role.admin', features: ['*'], home: '/backend', email: 'aneta@gwiazda.example' },
-    { id: 'beata', person: 'p-beata', label: 'Beata Zając', roleKey: 'persona.role.treasurer', features: ['people.self', 'backend', 'payments.view', 'payments.manage', 'payments.bank.import', 'payments.cash.record', 'payments.cash.settle', 'payments.orders.manage'], home: '/backend', email: 'skarbnik@gwiazda.example' },
-    { id: 'tomek', person: 'p-tomek', label: 'Tomek Lis', roleKey: 'persona.role.attendant', features: ['people.self', 'facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage', 'backend'], home: '/club/facility', email: 'tomek@gwiazda.example' },
-    { id: 'guest', label: '', roleKey: 'persona.role.guest', features: [], home: '/p/gwiazda' },
+    { id: 'rafal', person: 'p-rafal', label: 'Rafał Malinowski', roleKey: 'persona.role.coachCoordinator', features: ['people.self', 'activities.attendance.declare', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'backend', 'club_core.view', 'club_core.sections.public_content', 'people.view', 'groups.view', 'groups.manage', 'activities.view', 'activities.manage', 'activities.reports.view', 'communication.cases.manage', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'rafal@przyklad.example' },
+    { id: 'anna', person: 'p-anna', label: 'Anna Kowalczyk', roleKey: 'persona.role.swimInstructor', features: ['people.self', 'communication.view', 'activities.coach', 'activities.events.create', 'communication.post', 'activities.reports.view_own', 'facilities.view', 'facilities.bookings.create', 'payments.groups.view', 'payments.groups.collect'], home: '/club', email: 'anna@przyklad.example' },
+    { id: 'joanna', person: 'p-joanna', label: 'Joanna Wiśniewska', roleKey: 'persona.role.admin', features: ['*'], home: '/backend', email: 'joanna@przyklad.example' },
+    { id: 'beata', person: 'p-beata', label: 'Beata Zając', roleKey: 'persona.role.treasurer', features: ['people.self', 'backend', 'payments.view', 'payments.manage', 'payments.bank.import', 'payments.cash.record', 'payments.cash.settle', 'payments.orders.manage'], home: '/backend', email: 'skarbnik@przyklad.example' },
+    { id: 'tomek', person: 'p-tomek', label: 'Tomek Lis', roleKey: 'persona.role.attendant', features: ['people.self', 'facilities.view', 'facilities.rentals.manage', 'facilities.log.write', 'facilities.incidents.manage', 'backend'], home: '/club/facility', email: 'tomek@przyklad.example' },
+    { id: 'guest', label: '', roleKey: 'persona.role.guest', features: [], home: '/p/przyklad' },
   ]
 
   let db: Db = seed()
@@ -836,20 +836,20 @@
   // Flows (guide through flows F-01…F-14); title and step labels are catalog keys, translated by renderDrawer
   // ═══════════════════════════════════════════════════════════════════
   const FLOWS: { id: string; title: string; steps: [PersonaId, string, string][] }[] = [
-    { id: 'F-01', title: 'flow.F01.title', steps: [['aneta', '/backend/club/sections', 'flow.F01.s1'], ['aneta', '/backend/people/persons', 'flow.F01.s2'], ['aneta', '/backend/people/persons/p-kasia?tab=guardians', 'flow.F01.s3'], ['aneta', '/backend/people/persons/p-jas?tab=account', 'flow.F01.s4'], ['aneta', '/backend/people/persons/p-kuba?tab=account', 'flow.F01.s5'], ['kasia', '/club', 'flow.F01.s6']] },
+    { id: 'F-01', title: 'flow.F01.title', steps: [['joanna', '/backend/club/sections', 'flow.F01.s1'], ['joanna', '/backend/people/persons', 'flow.F01.s2'], ['joanna', '/backend/people/persons/p-kasia?tab=guardians', 'flow.F01.s3'], ['joanna', '/backend/people/persons/p-jas?tab=account', 'flow.F01.s4'], ['joanna', '/backend/people/persons/p-kuba?tab=account', 'flow.F01.s5'], ['kasia', '/club', 'flow.F01.s6']] },
     { id: 'F-02', title: 'flow.F02.title', steps: [['kasia', '/login', 'flow.F02.s1'], ['kasia', '/club', 'flow.F02.s2'], ['ola', '/club/occurrences/a-mecz-2026-11-15', 'flow.F02.s3'], ['kasia', '/club/occurrences/a-mecz-2026-11-15', 'flow.F02.s4'], ['kasia', '/club/calendar', 'flow.F02.s5']] },
-    { id: 'F-03', title: 'flow.F03.title', steps: [['wojtek', '/club/occurrences/a-orlm-2026-11-17', 'flow.F03.s1'], ['wojtek', '/backend', 'flow.F03.s2'], ['wojtek', '/backend/activities/occurrences?view=unassigned', 'flow.F03.s3'], ['wojtek', '/club/occurrences/a-orlm-2026-11-10/attendance', 'flow.F03.s4'], ['aneta', '/backend/activities/reports/coach-units', 'flow.F03.s5']] },
-    { id: 'F-04', title: 'flow.F04.title', steps: [['wojtek', '/backend/activities/activities', 'flow.F04.s1'], ['wojtek', '/backend/activities/activities/create', 'flow.F04.s2']] },
-    { id: 'F-05', title: 'flow.F05.title', steps: [['wojtek', '/club/occurrences/a-orlm-2026-11-19', 'flow.F05.s1'], ['wojtek', '/club/messages', 'flow.F05.s2'], ['aneta', '/backend/communication/threads/t-uwagi', 'flow.F05.s3']] },
+    { id: 'F-03', title: 'flow.F03.title', steps: [['rafal', '/club/occurrences/a-orlm-2026-11-17', 'flow.F03.s1'], ['rafal', '/backend', 'flow.F03.s2'], ['rafal', '/backend/activities/occurrences?view=unassigned', 'flow.F03.s3'], ['rafal', '/club/occurrences/a-orlm-2026-11-10/attendance', 'flow.F03.s4'], ['joanna', '/backend/activities/reports/coach-units', 'flow.F03.s5']] },
+    { id: 'F-04', title: 'flow.F04.title', steps: [['rafal', '/backend/activities/activities', 'flow.F04.s1'], ['rafal', '/backend/activities/activities/create', 'flow.F04.s2']] },
+    { id: 'F-05', title: 'flow.F05.title', steps: [['rafal', '/club/occurrences/a-orlm-2026-11-19', 'flow.F05.s1'], ['rafal', '/club/messages', 'flow.F05.s2'], ['joanna', '/backend/communication/threads/t-uwagi', 'flow.F05.s3']] },
     { id: 'F-06', title: 'flow.F06.title', steps: [['guest', '/club/link?occ=a-orlm-2026-11-12', 'flow.F06.s1'], ['guest', '/club/d/tok-expired', 'flow.F06.s2']] },
-    { id: 'F-07', title: 'flow.F07.title', steps: [['aneta', '/backend/payments/fees', 'flow.F07.s1'], ['aneta', '/backend/payments/charges', 'flow.F07.s2'], ['aneta', '/backend/payments/charges?view=overdue', 'flow.F07.s3'], ['kasia', '/club/payments', 'flow.F07.s4']] },
-    { id: 'F-08', title: 'flow.F08.title', steps: [['wojtek', '/club/places', 'flow.F08.s1'], ['wojtek', '/club/places/pl-boisko?date=2026-11-14', 'flow.F08.s2'], ['anna', '/club/places/pl-salka?date=2026-11-13', 'flow.F08.s3']] },
-    { id: 'F-09', title: 'flow.F09.title', steps: [['guest', '/p/gwiazda', 'flow.F09.s1'], ['guest', '/p/gwiazda/places', 'flow.F09.s2'], ['guest', '/p/gwiazda/places/orlik-boisko', 'flow.F09.s3'], ['guest', '/mail', 'flow.F09.s4'], ['aneta', '/backend/facilities/requests', 'flow.F09.s5']] },
+    { id: 'F-07', title: 'flow.F07.title', steps: [['joanna', '/backend/payments/fees', 'flow.F07.s1'], ['joanna', '/backend/payments/charges', 'flow.F07.s2'], ['joanna', '/backend/payments/charges?view=overdue', 'flow.F07.s3'], ['kasia', '/club/payments', 'flow.F07.s4']] },
+    { id: 'F-08', title: 'flow.F08.title', steps: [['rafal', '/club/places', 'flow.F08.s1'], ['rafal', '/club/places/pl-boisko?date=2026-11-14', 'flow.F08.s2'], ['anna', '/club/places/pl-salka?date=2026-11-13', 'flow.F08.s3']] },
+    { id: 'F-09', title: 'flow.F09.title', steps: [['guest', '/p/przyklad', 'flow.F09.s1'], ['guest', '/p/przyklad/places', 'flow.F09.s2'], ['guest', '/p/przyklad/places/orlik-boisko', 'flow.F09.s3'], ['guest', '/mail', 'flow.F09.s4'], ['joanna', '/backend/facilities/requests', 'flow.F09.s5']] },
     { id: 'F-10', title: 'flow.F10.title', steps: [['tomek', '/club/facility', 'flow.F10.s1'], ['tomek', '/backend/facilities/calendar', 'flow.F10.s2']] },
-    { id: 'F-11', title: 'flow.F11.title', steps: [['guest', '/p/gwiazda/sections/basen', 'flow.F11.s1'], ['aneta', '/backend/club/publication', 'flow.F11.s2'], ['guest', '/p/gwiazda/sections/basen', 'flow.F11.s3'], ['aneta', '/backend/club/sections/s-zumba/edit?tab=public', 'flow.F11.s4'], ['aneta', '/backend/club/sections', 'flow.F11.s5'], ['guest', '/p/gwiazda/events', 'flow.F11.s6']] },
-    { id: 'F-12', title: 'flow.F12.title', steps: [['aneta', '/backend/facilities/reports/owner', 'flow.F12.s1']] },
-    { id: 'F-13', title: 'flow.F13.title', steps: [['aneta', '/backend/payments/orders', 'flow.F13.s1'], ['aneta', '/backend/payments/orders/create', 'flow.F13.s2'], ['kasia', '/club/orders/oc-akad', 'flow.F13.s3'], ['guest', '/club/orders/oc-akad', 'flow.F13.s4'], ['guest', '/club/o/kit-robert', 'flow.F13.s5'], ['wojtek', '/club/coach/payments', 'flow.F13.s6'], ['beata', '/backend/payments/cash-custody', 'flow.F13.s7'], ['aneta', '/backend/payments/orders/oc-akad?view=supplier', 'flow.F13.s8'], ['wojtek', '/club/coach/payments', 'flow.F13.s9']] },
-    { id: 'F-14', title: 'flow.F14.title', steps: [['aneta', '/backend/payments/fees', 'flow.F14.s1'], ['wojtek', '/club', 'flow.F14.s2'], ['wojtek', '/club/coach/payments?group=g-orlm&due=1', 'flow.F14.s3'], ['anna', '/club/coach/payments', 'flow.F14.s4'], ['beata', '/backend/payments/cash-custody', 'flow.F14.s5'], ['beata', '/backend', 'flow.F14.s6']] },
+    { id: 'F-11', title: 'flow.F11.title', steps: [['guest', '/p/przyklad/sections/basen', 'flow.F11.s1'], ['joanna', '/backend/club/publication', 'flow.F11.s2'], ['guest', '/p/przyklad/sections/basen', 'flow.F11.s3'], ['joanna', '/backend/club/sections/s-zumba/edit?tab=public', 'flow.F11.s4'], ['joanna', '/backend/club/sections', 'flow.F11.s5'], ['guest', '/p/przyklad/events', 'flow.F11.s6']] },
+    { id: 'F-12', title: 'flow.F12.title', steps: [['joanna', '/backend/facilities/reports/owner', 'flow.F12.s1']] },
+    { id: 'F-13', title: 'flow.F13.title', steps: [['joanna', '/backend/payments/orders', 'flow.F13.s1'], ['joanna', '/backend/payments/orders/create', 'flow.F13.s2'], ['kasia', '/club/orders/oc-akad', 'flow.F13.s3'], ['guest', '/club/orders/oc-akad', 'flow.F13.s4'], ['guest', '/club/o/kit-robert', 'flow.F13.s5'], ['rafal', '/club/coach/payments', 'flow.F13.s6'], ['beata', '/backend/payments/cash-custody', 'flow.F13.s7'], ['joanna', '/backend/payments/orders/oc-akad?view=supplier', 'flow.F13.s8'], ['rafal', '/club/coach/payments', 'flow.F13.s9']] },
+    { id: 'F-14', title: 'flow.F14.title', steps: [['joanna', '/backend/payments/fees', 'flow.F14.s1'], ['rafal', '/club', 'flow.F14.s2'], ['rafal', '/club/coach/payments?group=g-orlm&due=1', 'flow.F14.s3'], ['anna', '/club/coach/payments', 'flow.F14.s4'], ['beata', '/backend/payments/cash-custody', 'flow.F14.s5'], ['beata', '/backend', 'flow.F14.s6']] },
   ]
 
   // ═══════════════════════════════════════════════════════════════════
@@ -1328,7 +1328,7 @@
     // Publication blocks: [setting key, label, description] — labels resolved at render time.
     const rows: [string, string, string][] = ['description_schedule', 'conditions', 'prices', 'coaches', 'materials', 'contact', 'events', 'places_calendar', 'online_requests']
       .map((k) => [k, t(`b.screenPublication.${k}.label`), t(`b.screenPublication.${k}.desc`)])
-    return `${pageHead(t('b.screenPublication.title'), t('b.screenPublication.subtitle'), link(esc(t('b.screenPublication.preview')), '/p/gwiazda', 'btn'))}
+    return `${pageHead(t('b.screenPublication.title'), t('b.screenPublication.subtitle'), link(esc(t('b.screenPublication.preview')), '/p/przyklad', 'btn'))}
       <form class="form" data-form="publication" novalidate><div class="form-group">
       <div class="toggle-row"><div><b>${esc(t('b.screenPublication.enabled'))}</b><div class="small muted">${esc(t('b.screenPublication.address', { path: `/p/${db.settings.slug}` }))}</div></div><input type="checkbox" name="enabled" ${pub.enabled ? 'checked' : ''} aria-label="${esc(t('b.screenPublication.enabled'))}"></div>
       ${rows.map(([k, l, d]) => `<div class="toggle-row" data-field="${k}"><div><b>${esc(l)}</b><div class="small muted">${esc(d)}</div></div><input type="checkbox" name="${k}" ${pub[k] ? 'checked' : ''} aria-label="${esc(l)}"></div>`).join('')}
@@ -1372,7 +1372,7 @@
       ${fld('description', t('b.screenSection.publicDescription'), area('description', s.description))}${fld('conditions', t('b.screenSection.conditions'), area('conditions', s.conditions))}
       <div class="fields">${fld('contactName', t('b.screenSection.contactName'), inp('contactName', 'text', s.contactName))}${fld('contactEmail', t('b.screenSection.contactEmail'), inp('contactEmail', 'email', s.contactEmail))}${fld('contactPhone', t('b.screenSection.contactPhone'), inp('contactPhone', 'tel', s.contactPhone))}</div>
       <div class="field" style="margin-top:8px"><span>${esc(t('b.screenSection.materials'))}</span><ul class="list small">${s.materials.map((m) => `<li>${icon('file-text')} ${esc(m)}</li>`).join('') || `<li class="muted">${esc(t('b.screenSection.noFiles'))}</li>`}</ul><small>${esc(t('b.screenSection.materialsHint'))}</small></div></div>
-      <div class="form-actions">${link(esc(t('b.screenSection.preview')), `/p/gwiazda/sections/${s.slug}`, 'btn')}<button class="btn primary" type="submit" ${canEdit ? '' : 'disabled'}>${esc(t('common.save'))}</button></div></form>`
+      <div class="form-actions">${link(esc(t('b.screenSection.preview')), `/p/przyklad/sections/${s.slug}`, 'btn')}<button class="btn primary" type="submit" ${canEdit ? '' : 'disabled'}>${esc(t('common.save'))}</button></div></form>`
     return `${pageHead(s.name, t('b.screenSection.subtitle'))}${tabs}${body}`
   }
 
@@ -1493,7 +1493,7 @@
     const secs = coordSections(me())
     const groups = db.groups.filter((g) => isAdmin() || secs.includes(g.section))
     // Demo prefill: the activity name is club content (Polish).
-    const f = ui.wizard ? JSON.parse(ui.wizard) : { group: 'g-orlm', type: 'training', name: 'Trening dodatkowy Orlików młodszych', place: 'pl-boisko', coach: 'p-wojtek', days: ['2'], start: '17:00', end: '18:00', from: '2026-11-17', to: '2026-12-15' }
+    const f = ui.wizard ? JSON.parse(ui.wizard) : { group: 'g-orlm', type: 'training', name: 'Trening dodatkowy Orlików młodszych', place: 'pl-boisko', coach: 'p-rafal', days: ['2'], start: '17:00', end: '18:00', from: '2026-11-17', to: '2026-12-15' }
     const g = group(f.group)
     const types: [string, string][] = g.kind === 'team'
       ? [['training', t('occType.training')], ['match', t('occType.match')], ['sparring', t('occType.sparring')], ['tournament', t('occType.tournament')], ['camp', t('occType.camp')], ['other', t('b.screenActivityCreate.typeOther')]]
@@ -1898,11 +1898,11 @@
   }
 
   function screenPublicEvents(q: URLSearchParams): string {
-    if (!pub().enabled || !pub().events) return empty(t('p.screenEvents.notPublished'), t('p.screenEvents.notPublishedText'), link(t('p.screenSectionPage.clubPage'), '/p/gwiazda'), 'ban')
+    if (!pub().enabled || !pub().events) return empty(t('p.screenEvents.notPublished'), t('p.screenEvents.notPublishedText'), link(t('p.screenSectionPage.clubPage'), '/p/przyklad'), 'ban')
     const secs = db.sections.filter((s) => s.isPublic && s.active)
     const current = secs.find((s) => s.slug === q.get('section'))
     const chip = (label: string, href: string, on: boolean): string => `<a class="chip ${on ? 'on' : ''}" href="#${href}" ${on ? 'aria-current="true"' : ''}>${esc(label)}</a>`
-    const chips = `<div class="chips" role="group" aria-label="${esc(t('p.screenEvents.sectionFilter'))}" style="margin-bottom:12px">${chip(t('p.screenEvents.all'), '/p/gwiazda/events', !current)}${secs.map((s) => chip(s.name, `/p/gwiazda/events?section=${s.slug}`, s === current)).join('')}</div>`
+    const chips = `<div class="chips" role="group" aria-label="${esc(t('p.screenEvents.sectionFilter'))}" style="margin-bottom:12px">${chip(t('p.screenEvents.all'), '/p/przyklad/events', !current)}${secs.map((s) => chip(s.name, `/p/przyklad/events?section=${s.slug}`, s === current)).join('')}</div>`
     const upcoming = eventsList(current?.id, 'upcoming')
     const past = eventsList(current?.id, 'past')
     return `<div class="hero"><h1>${esc(t('p.screenEvents.title'))}</h1><p>${esc(t('p.screenEvents.subtitle'))}</p></div>${chips}
@@ -1915,13 +1915,13 @@
     const secs = db.sections.filter((s) => s.isPublic && s.active)
     return `<div class="hero"><div class="row" style="gap:14px;align-items:center;margin-bottom:6px">${logoBox(db.settings.logo, t('p.screenClubPage.clubLogo'), 56)}<h1 style="margin:0">${esc(db.settings.name)}</h1></div><p>${esc(db.settings.description)}</p></div>
       <div class="section-title">${esc(t('p.screenClubPage.sections'))}</div>
-      ${secs.length ? `<div class="grid3">${secs.map((s) => `<a class="card" href="#/p/gwiazda/sections/${s.slug}" style="text-decoration:none;display:block"><div class="row" style="gap:10px;margin-bottom:6px">${logoBox(sectionLogo(s), t('p.eventsList.sectionLogo', { name: s.name }), 40)}<h3 style="margin:0">${esc(s.name)}</h3></div><p class="muted small" style="margin:0 0 8px">${esc(s.short)}</p><span class="small">${esc(t('p.screenClubPage.groupsSeeClasses', { n: db.groups.filter((g) => g.section === s.id && g.isPublic).length }))}</span></a>`).join('')}</div>` : empty(t('p.screenClubPage.noSections'), '')}
-      ${pub().places_calendar ? `<div class="section-title">${esc(t('p.screenClubPage.facilities'))}</div><div class="card"><div class="row between"><div><b>${esc(t('p.screenClubPage.placesTitle', { orlik: placeName(db, 'pl-orlik') }))}</b><div class="small muted">${esc(t(pub().online_requests ? 'p.screenClubPage.checkFreeOnline' : 'p.screenClubPage.checkFree'))}</div></div>${link(t('p.screenClubPage.placeCalendars'), '/p/gwiazda/places', 'btn primary')}</div></div>` : ''}`
+      ${secs.length ? `<div class="grid3">${secs.map((s) => `<a class="card" href="#/p/przyklad/sections/${s.slug}" style="text-decoration:none;display:block"><div class="row" style="gap:10px;margin-bottom:6px">${logoBox(sectionLogo(s), t('p.eventsList.sectionLogo', { name: s.name }), 40)}<h3 style="margin:0">${esc(s.name)}</h3></div><p class="muted small" style="margin:0 0 8px">${esc(s.short)}</p><span class="small">${esc(t('p.screenClubPage.groupsSeeClasses', { n: db.groups.filter((g) => g.section === s.id && g.isPublic).length }))}</span></a>`).join('')}</div>` : empty(t('p.screenClubPage.noSections'), '')}
+      ${pub().places_calendar ? `<div class="section-title">${esc(t('p.screenClubPage.facilities'))}</div><div class="card"><div class="row between"><div><b>${esc(t('p.screenClubPage.placesTitle', { orlik: placeName(db, 'pl-orlik') }))}</b><div class="small muted">${esc(t(pub().online_requests ? 'p.screenClubPage.checkFreeOnline' : 'p.screenClubPage.checkFree'))}</div></div>${link(t('p.screenClubPage.placeCalendars'), '/p/przyklad/places', 'btn primary')}</div></div>` : ''}`
   }
 
   function screenSectionPage(p: Record<string, string>): string {
     const s = db.sections.find((x) => x.slug === p.slug)
-    if (!pub().enabled || !s || !s.isPublic) return empty(t('p.screenSectionPage.notFound'), t('p.screenSectionPage.notFoundText'), link(t('p.screenSectionPage.clubPage'), '/p/gwiazda'), 'ban')
+    if (!pub().enabled || !s || !s.isPublic) return empty(t('p.screenSectionPage.notFound'), t('p.screenSectionPage.notFoundText'), link(t('p.screenSectionPage.clubPage'), '/p/przyklad'), 'ban')
     const P = pub()
     const groups = db.groups.filter((g) => g.section === s.id && g.isPublic)
     const card = (g: Group): string => {
@@ -1938,7 +1938,7 @@
         ${P.prices && fee ? `<div class="small" style="margin-top:6px">${t('p.screenSectionPage.fee', { amount: esc(zl(fee.amount)) })}</div>` : ''}
         ${P.coaches ? `<div class="small" style="margin-top:6px"><b>${esc(t('p.screenSectionPage.ledBy'))}</b> ${coaches.map((c) => esc(c || t(g.kind === 'team' ? 'p.screenSectionPage.sectionCoach' : 'p.screenSectionPage.sectionInstructor'))).join(', ')}</div>` : ''}</div>`
     }
-    return `<div class="crumbs small"><a href="#/p/gwiazda">${esc(db.settings.short)}</a> › ${esc(t('p.screenClubPage.sections'))} › ${esc(s.name)}</div>
+    return `<div class="crumbs small"><a href="#/p/przyklad">${esc(db.settings.short)}</a> › ${esc(t('p.screenClubPage.sections'))} › ${esc(s.name)}</div>
       <div class="hero" style="margin-top:8px"><div class="row" style="gap:14px;align-items:center;margin-bottom:6px">${logoBox(sectionLogo(s), t('p.eventsList.sectionLogo', { name: s.name }), 56)}<h1 style="margin:0">${esc(s.name)}</h1></div>${P.description_schedule ? `<p>${esc(s.description)}</p>` : ''}</div>
       ${P.conditions && s.conditions ? `<div class="alert info"><strong>${esc(t('p.screenSectionPage.participation'))}</strong>${esc(s.conditions)}</div>` : ''}
       <div class="section-title">${esc(t('p.screenSectionPage.classes'))}</div>${groups.length ? `<div class="grid2">${groups.map(card).join('')}</div>` : empty(t('p.screenSectionPage.noClasses'), t('p.screenSectionPage.noClassesText'))}
@@ -1950,7 +1950,7 @@
     if (!pub().enabled || !pub().places_calendar) return empty(t('p.screenPublicPlaces.noCalendars'), t('p.screenPublicPlaces.noCalendarsText'), '', 'ban')
     const list = db.places.filter((p) => p.publicSchedule)
     return `<div class="hero"><h1>${esc(t('p.screenPublicPlaces.title'))}</h1><p>${esc(t(pub().online_requests ? 'p.screenPublicPlaces.introOnline' : 'p.screenPublicPlaces.intro'))}</p></div>
-      <div class="grid3">${list.map((p) => `<a class="card" href="#/p/gwiazda/places/${p.slug}" style="text-decoration:none;display:block"><h3>${esc(p.name)}</h3><div class="small muted">${esc(p.address)}${p.surface ? ` · ${esc(p.surface)}` : ''}</div><div style="margin-top:8px">${p.acceptsRequests && pub().online_requests ? badge(t('p.screenPublicPlaces.onlineRequests'), 'success') : badge(t('p.screenPublicPlaces.phoneBooking'), 'neutral')}</div></a>`).join('')}</div>`
+      <div class="grid3">${list.map((p) => `<a class="card" href="#/p/przyklad/places/${p.slug}" style="text-decoration:none;display:block"><h3>${esc(p.name)}</h3><div class="small muted">${esc(p.address)}${p.surface ? ` · ${esc(p.surface)}` : ''}</div><div style="margin-top:8px">${p.acceptsRequests && pub().online_requests ? badge(t('p.screenPublicPlaces.onlineRequests'), 'success') : badge(t('p.screenPublicPlaces.phoneBooking'), 'neutral')}</div></a>`).join('')}</div>`
   }
 
   function publicSegments(pid: string, date: string): { from: number; to: number; label: string; canRequest: boolean; kind: string }[] {
@@ -1972,14 +1972,14 @@
 
   function screenPublicPlace(p: Record<string, string>, q: URLSearchParams): string {
     const place = db.places.find((x) => x.slug === p.slug && x.publicSchedule)
-    if (!pub().enabled || !pub().places_calendar || !place) return empty(t('p.screenSectionPage.notFound'), t('p.screenPublicPlace.notFoundText'), link(t('p.screenPublicPlaces.title'), '/p/gwiazda/places'), 'ban')
+    if (!pub().enabled || !pub().places_calendar || !place) return empty(t('p.screenSectionPage.notFound'), t('p.screenPublicPlace.notFoundText'), link(t('p.screenPublicPlaces.title'), '/p/przyklad/places'), 'ban')
     const start = q.get('from') || TODAY
     const days = Array.from({ length: 10 }, (_, i) => addDays(start, i))
     const canReq = pub().online_requests && place.acceptsRequests
-    return `<div class="crumbs small"><a href="#/p/gwiazda">${esc(db.settings.short)}</a> › <a href="#/p/gwiazda/places">${esc(t('p.screenClubPage.facilities'))}</a> › ${esc(place.name)}</div>
+    return `<div class="crumbs small"><a href="#/p/przyklad">${esc(db.settings.short)}</a> › <a href="#/p/przyklad/places">${esc(t('p.screenClubPage.facilities'))}</a> › ${esc(place.name)}</div>
       <div class="hero" style="margin-top:8px"><h1>${esc(place.name)}</h1><p>${esc(place.address)} · ${esc(t(canReq ? 'p.screenPublicPlace.bookingsOnline' : 'p.screenPublicPlace.bookings', { phone: db.settings.phone }))}</p></div>
       ${canReq ? `<div class="alert info">${t('p.screenPublicPlace.onlineNotice', { owner: esc(facilityOwnerName()) })}</div>` : ''}
-      <div class="row between"><div class="seg"><button type="button" data-action="nav" data-href="/p/gwiazda/places/${place.slug}?from=${addDays(start, -10) < TODAY ? TODAY : addDays(start, -10)}" ${start <= TODAY ? 'disabled' : ''}>${esc(t('p.screenPublicPlace.earlier'))}</button><button type="button" data-action="nav" data-href="/p/gwiazda/places/${place.slug}?from=${addDays(start, 10)}">${esc(t('p.screenPublicPlace.later'))}</button></div><span class="small muted">${dShort(days[0])} – ${dShort(days[9])}</span></div>
+      <div class="row between"><div class="seg"><button type="button" data-action="nav" data-href="/p/przyklad/places/${place.slug}?from=${addDays(start, -10) < TODAY ? TODAY : addDays(start, -10)}" ${start <= TODAY ? 'disabled' : ''}>${esc(t('p.screenPublicPlace.earlier'))}</button><button type="button" data-action="nav" data-href="/p/przyklad/places/${place.slug}?from=${addDays(start, 10)}">${esc(t('p.screenPublicPlace.later'))}</button></div><span class="small muted">${dShort(days[0])} – ${dShort(days[9])}</span></div>
       <div class="legend"><span><i class="z-public_free"></i>${esc(t('p.screenPublicPlace.legendPublic'))}</span><span><i class="z-club_training"></i>${esc(t('p.screenPublicPlace.legendClub'))}</span><span><i class="z-reservable_paid"></i>${esc(t('p.screenPublicPlace.legendBookable'))}</span><span><i class="blk-rent"></i>${esc(t('p.screenPublicPlace.legendBooked'))}</span><span><i class="blk-pend"></i>${esc(t('p.screenPublicPlace.legendPending'))}</span><span><i class="z-closed"></i>${esc(t('p.screenPublicPlace.legendClosed'))}</span></div>
       ${days.map((d) => { const segs = publicSegments(place.id, d); return `<div class="day-head">${dShort(d)}${d === TODAY ? ` (${esc(t('common.todayLower'))})` : ''}</div>${segs.length ? `<ul class="slotlist">${segs.map((s) => { const cls = s.kind === 'rent' ? 'blk-rent' : s.kind === 'pend' ? 'blk-pend' : s.kind === 'closed' ? 'z-closed' : s.kind === 'occ' || s.kind === 'int' ? 'z-club_training' : `z-${s.kind}`; const past = d === TODAY && s.from < toMin(NOW); return `<li class="${cls}"><b>${fromMin(s.from)}–${fromMin(s.to)}</b><span>${esc(s.label)}</span>${s.canRequest && canReq && !past && s.to - s.from >= 90 ? btn(t('p.screenPublicPlace.requestBooking'), 'public-request', { place: place.id, date: d, from: String(s.from), to: String(s.to) }, 'sm primary') : '<span></span>'}</li>` }).join('')}</ul>` : `<p class="small muted">${esc(t('p.screenPublicPlace.closed'))}</p>`}` }).join('')}
       <div class="section-title">${esc(t('p.screenPublicPlace.rates'))}</div><ul class="list small">${db.rates.filter((r) => r.place === place.id).map((r) => `<li class="row between"><span>${esc(r.label)}</span><b>${zl(r.price)}</b></li>`).join('') || `<li class="muted">${esc(t('p.screenPublicPlace.noRates'))}</li>`}</ul>`
@@ -1987,8 +1987,8 @@
 
   function screenVerify(p: Record<string, string>): string {
     const r = db.rentals.find((x) => x.token === p.token)
-    if (!r || p.token === 'expired') return `<div class="alert error" role="alert"><strong>${esc(t('p.screenVerify.expired'))}</strong>${esc(t('p.screenVerify.expiredText'))}</div>${link(t('p.screenPublicPlaces.title'), '/p/gwiazda/places', 'btn primary')}`
-    if (r.status === 'superseded') return `<div class="alert error"><strong>${esc(t('p.screenVerify.taken'))}</strong>${esc(t('p.screenVerify.takenText'))}</div>${link(t('p.screenVerify.backToCalendar'), `/p/gwiazda/places/${(db.places.find((x) => x.id === r.place) as Place).slug}`, 'btn primary')}`
+    if (!r || p.token === 'expired') return `<div class="alert error" role="alert"><strong>${esc(t('p.screenVerify.expired'))}</strong>${esc(t('p.screenVerify.expiredText'))}</div>${link(t('p.screenPublicPlaces.title'), '/p/przyklad/places', 'btn primary')}`
+    if (r.status === 'superseded') return `<div class="alert error"><strong>${esc(t('p.screenVerify.taken'))}</strong>${esc(t('p.screenVerify.takenText'))}</div>${link(t('p.screenVerify.backToCalendar'), `/p/przyklad/places/${(db.places.find((x) => x.id === r.place) as Place).slug}`, 'btn primary')}`
     return `<div class="alert success" role="status"><strong>${esc(t('p.screenVerify.confirmed'))}</strong>${esc(t('p.screenVerify.confirmedText', { until: r.holdUntil }))}</div>
       <div class="card"><div class="item-title">${esc(placeName(db, r.place))}</div><div class="small muted">${esc(dLong(r.date))}, ${r.start}–${r.end} · ${r.units} × 90 min</div><div class="small" style="margin-top:6px">${esc(r.renter)} · ${esc(r.contact)} · ${esc(r.email)}</div><div class="small" style="margin-top:6px">${t('p.screenVerify.estimate', { amount: esc(zl(r.amount)), owner: esc(facilityOwnerName()) })}</div></div>`
   }
@@ -2433,12 +2433,12 @@
     R('/backend/facilities/zones', 'B-26', 'route.B-26', 'backend', ['/api/facilities/zone-rules', '/api/facilities/closures', '/api/facilities/rental-rates'], (_p, q) => screenZones(q)),
     R('/backend/facilities/logs', 'B-27', 'route.B-27', 'backend', ['/api/facilities/logs', '/api/facilities/incidents', '/api/facilities/entry-bans'], (_p, q) => screenLogs(q)),
     R('/backend/facilities/reports/owner', 'B-28', 'route.B-28', 'backend', ['GET /api/facilities/reports/owner?placeId&from&to&format=csv'], (_p, q) => screenOwnerReport(q)),
-    R('/p/gwiazda', 'P-01', 'route.P-01', 'public', ['GET /api/club_core/public/{clubSlug}'], () => screenClubPage(), { persona: false, empty: ['route.P-01.emptyTitle', ''] }),
-    R('/p/gwiazda/sections/:slug', 'P-02', 'route.P-02', 'public', ['GET /api/club_core/public/{clubSlug}/sections/{sectionSlug}'], (p) => screenSectionPage(p), { persona: false, empty: ['route.P-02.emptyTitle', ''] }),
-    R('/p/gwiazda/places', 'P-03', 'route.P-03', 'public', ['GET /api/facilities/public/{clubSlug}/places'], () => screenPublicPlaces(), { persona: false }),
-    R('/p/gwiazda/places/:slug', 'P-04', 'route.P-04', 'public', ['GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule', 'POST …/places/{placeSlug}/requests'], (p, q) => screenPublicPlace(p, q), { persona: false, empty: ['route.P-04.emptyTitle', ''] }),
-    R('/p/gwiazda/events', 'P-06', 'route.P-06', 'public', ['GET /api/club_core/public/{clubSlug}/events?section='], (_p, q) => screenPublicEvents(q), { persona: false, empty: ['route.P-06.emptyTitle', ''] }),
-    R('/p/gwiazda/requests/verify/:token', 'P-05', 'route.P-05', 'public', ['POST /api/facilities/public/requests/verify/{token}'], (p) => screenVerify(p), { persona: false }),
+    R('/p/przyklad', 'P-01', 'route.P-01', 'public', ['GET /api/club_core/public/{clubSlug}'], () => screenClubPage(), { persona: false, empty: ['route.P-01.emptyTitle', ''] }),
+    R('/p/przyklad/sections/:slug', 'P-02', 'route.P-02', 'public', ['GET /api/club_core/public/{clubSlug}/sections/{sectionSlug}'], (p) => screenSectionPage(p), { persona: false, empty: ['route.P-02.emptyTitle', ''] }),
+    R('/p/przyklad/places', 'P-03', 'route.P-03', 'public', ['GET /api/facilities/public/{clubSlug}/places'], () => screenPublicPlaces(), { persona: false }),
+    R('/p/przyklad/places/:slug', 'P-04', 'route.P-04', 'public', ['GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule', 'POST …/places/{placeSlug}/requests'], (p, q) => screenPublicPlace(p, q), { persona: false, empty: ['route.P-04.emptyTitle', ''] }),
+    R('/p/przyklad/events', 'P-06', 'route.P-06', 'public', ['GET /api/club_core/public/{clubSlug}/events?section='], (_p, q) => screenPublicEvents(q), { persona: false, empty: ['route.P-06.emptyTitle', ''] }),
+    R('/p/przyklad/requests/verify/:token', 'P-05', 'route.P-05', 'public', ['POST /api/facilities/public/requests/verify/{token}'], (p) => screenVerify(p), { persona: false }),
   ]
   // ACL features required by the pages (requireFeatures in page.meta.ts).
   const ROUTE_FEATURES: Record<string, string> = {
@@ -2500,8 +2500,8 @@
   }
 
   function publicShell(route: RouteDef, content: string, path: string): string {
-    return `<div class="public"><header class="public-head"><a href="#/p/gwiazda" style="text-decoration:none;font-weight:700;display:flex;gap:8px;align-items:center">${logoBox(db.settings.logo, t('shell.backendShell.clubLogo'), 32)}${esc(db.settings.name)}</a>
-      <nav aria-label="${esc(t('shell.publicShell.navLabel'))}"><a href="#/p/gwiazda" class="${path === '/p/gwiazda' ? 'active' : ''}">${esc(t('shell.publicShell.club'))}</a><a href="#/p/gwiazda/sections/akademia" class="${path.includes('/sections/') ? 'active' : ''}">${esc(t('shell.publicShell.sections'))}</a>${pub().places_calendar ? `<a href="#/p/gwiazda/places" class="${path.includes('/places') ? 'active' : ''}">${esc(t('shell.publicShell.facilities'))}</a>` : ''}${pub().events ? `<a href="#/p/gwiazda/events" class="${path.includes('/events') ? 'active' : ''}">${esc(t('shell.publicShell.events'))}</a>` : ''}<a href="#/login">${esc(t('shell.publicShell.signIn'))}</a></nav></header>
+    return `<div class="public"><header class="public-head"><a href="#/p/przyklad" style="text-decoration:none;font-weight:700;display:flex;gap:8px;align-items:center">${logoBox(db.settings.logo, t('shell.backendShell.clubLogo'), 32)}${esc(db.settings.name)}</a>
+      <nav aria-label="${esc(t('shell.publicShell.navLabel'))}"><a href="#/p/przyklad" class="${path === '/p/przyklad' ? 'active' : ''}">${esc(t('shell.publicShell.club'))}</a><a href="#/p/przyklad/sections/akademia" class="${path.includes('/sections/') ? 'active' : ''}">${esc(t('shell.publicShell.sections'))}</a>${pub().places_calendar ? `<a href="#/p/przyklad/places" class="${path.includes('/places') ? 'active' : ''}">${esc(t('shell.publicShell.facilities'))}</a>` : ''}${pub().events ? `<a href="#/p/przyklad/events" class="${path.includes('/events') ? 'active' : ''}">${esc(t('shell.publicShell.events'))}</a>` : ''}<a href="#/login">${esc(t('shell.publicShell.signIn'))}</a></nav></header>
       <div class="public-body">${content}${apiFoot(route)}</div><footer class="public-foot"><span>${esc(t('shell.publicShell.footer', { club: db.settings.name, phone: db.settings.phone }))}</span><a href="#" data-action="todo" data-what="${esc(t('shell.publicShell.rulesTodo'))}">${esc(t('shell.publicShell.rules'))}</a><a href="#" data-action="todo" data-what="${esc(t('shell.publicShell.privacyTodo'))}">${esc(t('shell.publicShell.privacy'))}</a></footer></div>`
   }
 
@@ -2521,7 +2521,7 @@
     const [path, q] = currentPath()
     if (path === '/mail') { drawer = 'mail'; history.replaceState(null, '', `#${persona().home}`); render(); return }
     // P-05: opening the link from the e-mail confirms the request (POST …/verify/{token}).
-    const vm = path.match(/^\/p\/gwiazda\/requests\/verify\/(.+)$/)
+    const vm = path.match(/^\/p\/przyklad\/requests\/verify\/(.+)$/)
     if (vm) {
       const r = db.rentals.find((x) => x.token === vm[1])
       if (r && r.status === 'pending_verification') {
@@ -2577,7 +2577,7 @@
     if (!drawer) { host.innerHTML = ''; return }
     let title = '', body = ''
     if (drawer === 'flows') { title = t('drawer.renderDrawer.flowsTitle'); body = FLOWS.map((f) => `<div class="flow"><h3>${f.id} ${esc(t(f.title))}</h3><ol>${f.steps.map(([pp, href, l]) => `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${href}">${esc(t(l))}</a> <span class="small muted">— ${esc(personaLabel(PERSONAS.find((x) => x.id === pp) as Persona).split(' ')[0])}</span></li>`).join('')}</ol></div>`).join('') }
-    if (drawer === 'screens') { title = t('drawer.renderDrawer.screensTitle'); const groups: [string, string][] = [['M', 'drawer.renderDrawer.groupMember'], ['B', 'drawer.renderDrawer.groupPanel'], ['P', 'drawer.renderDrawer.groupPublic']]; body = groups.map(([k, l]) => `<div class="section-title">${esc(t(l))}</div><ul class="list">${ROUTES.filter((r) => r.id.startsWith(k)).map((r) => { const sample = r.pattern.replace(':id', r.id === 'M-04' || r.id === 'M-05' ? 'a-orlm-2026-11-10' : r.id === 'M-07' ? 't-orlm' : r.id === 'M-11' ? 'pl-boisko' : r.id === 'B-05' ? 's-akad' : r.id === 'B-10' ? 'p-kasia' : r.id === 'B-12' ? 'g-orlm' : r.id === 'B-19' ? 't-uwagi' : r.id === 'M-17' || r.id === 'B-31' || r.id === 'B-32' ? 'oc-akad' : r.id === 'B-22' ? (db.charges[0] || { id: '' }).id : 'x').replace(':token', r.id === 'M-14' ? 'tok-expired' : r.id === 'M-19' ? 'kit-robert' : 'expired').replace(':slug', r.id === 'P-02' ? 'basen' : 'orlik-boisko'); const pp: PersonaId = k === 'P' ? 'guest' : k === 'B' ? 'aneta' : r.id === 'M-12' ? 'tomek' : r.id === 'M-18' ? 'wojtek' : r.id === 'M-19' ? 'guest' : r.id === 'M-15' ? 'aneta' : r.id === 'M-05' || r.id === 'M-11' ? 'wojtek' : 'kasia'; return `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${sample}"><b>${r.id}</b> ${esc(t(r.name))}</a> <code class="small">${esc(r.pattern)}</code></li>` }).join('')}</ul>`).join('') }
+    if (drawer === 'screens') { title = t('drawer.renderDrawer.screensTitle'); const groups: [string, string][] = [['M', 'drawer.renderDrawer.groupMember'], ['B', 'drawer.renderDrawer.groupPanel'], ['P', 'drawer.renderDrawer.groupPublic']]; body = groups.map(([k, l]) => `<div class="section-title">${esc(t(l))}</div><ul class="list">${ROUTES.filter((r) => r.id.startsWith(k)).map((r) => { const sample = r.pattern.replace(':id', r.id === 'M-04' || r.id === 'M-05' ? 'a-orlm-2026-11-10' : r.id === 'M-07' ? 't-orlm' : r.id === 'M-11' ? 'pl-boisko' : r.id === 'B-05' ? 's-akad' : r.id === 'B-10' ? 'p-kasia' : r.id === 'B-12' ? 'g-orlm' : r.id === 'B-19' ? 't-uwagi' : r.id === 'M-17' || r.id === 'B-31' || r.id === 'B-32' ? 'oc-akad' : r.id === 'B-22' ? (db.charges[0] || { id: '' }).id : 'x').replace(':token', r.id === 'M-14' ? 'tok-expired' : r.id === 'M-19' ? 'kit-robert' : 'expired').replace(':slug', r.id === 'P-02' ? 'basen' : 'orlik-boisko'); const pp: PersonaId = k === 'P' ? 'guest' : k === 'B' ? 'joanna' : r.id === 'M-12' ? 'tomek' : r.id === 'M-18' ? 'rafal' : r.id === 'M-19' ? 'guest' : r.id === 'M-15' ? 'joanna' : r.id === 'M-05' || r.id === 'M-11' ? 'rafal' : 'kasia'; return `<li><a href="#" data-action="goto" data-persona="${pp}" data-href="${sample}"><b>${r.id}</b> ${esc(t(r.name))}</a> <code class="small">${esc(r.pattern)}</code></li>` }).join('')}</ul>`).join('') }
     if (drawer === 'mail') { title = t('drawer.renderDrawer.mailTitle', { n: db.mails.length }); body = db.mails.length ? db.mails.map((m) => `<div class="mail"><div class="small muted">${esc(t('drawer.renderDrawer.mailTo', { to: m.to }))}</div><div class="subj">${esc(txt(m.subject))}</div><pre>${esc(txt(m.body))}</pre>${m.link ? `<a class="btn sm primary" href="#" data-action="mail-link" data-href="${m.link}">${esc(m.linkLabel ? txt(m.linkLabel) : t('drawer.renderDrawer.openLink'))}</a>` : ''}</div>`).join('') : empty(t('drawer.renderDrawer.mailEmptyTitle'), t('drawer.renderDrawer.mailEmptyText')) }
     host.innerHTML = `<aside class="drawer" aria-label="${esc(title)}"><div class="drawer-head"><h2>${esc(title)}</h2><button type="button" class="btn sm" data-action="drawer-close" aria-label="${esc(t('common.close'))}">${icon('x')}</button></div><div class="drawer-body">${body}</div></aside>`
   }
@@ -2819,7 +2819,7 @@
       // Only for a thread about one session: a group thread's "next session" may not be the one the message is about.
       const so = th.scope === 'occurrence' ? occById(occId) : undefined
       const whenWhere = so ? `\n${t('action.shareText.whenWhere', { name: so.name, date: dShort(so.date), gather: so.gather ? `${t('m.occCard.gather', { time: so.gather })} · ` : '', start: so.start, place: placeName(db, so.place), map: mapUrl(db, so.place) })}` : ''
-      const text = `${txt(th.subject)}\n${txt(th.messages[th.messages.length - 1].body)}\n${whenWhere}\n${t('action.shareText.detailsLine', { url: `https://gwiazda.vereino.example/club/link?occ=${occId}` })}`
+      const text = `${txt(th.subject)}\n${txt(th.messages[th.messages.length - 1].body)}\n${whenWhere}\n${t('action.shareText.detailsLine', { url: `https://przyklad.vereino.example/club/link?occ=${occId}` })}`
       try { navigator.clipboard.writeText(text).catch(() => undefined) } catch { /* clipboard unavailable */ }
       openModal({ title: t('action.shareText.title'), submitLabel: t('action.shareText.done'), body: `<div class="alert success"><strong>${t('action.shareText.copied')}</strong>${t('action.shareText.copiedText')}</div><textarea readonly rows="6" style="width:100%">${esc(text)}</textarea><p class="small"><a href="#/club/link?occ=${occId}" data-action="close-modal">${t('action.shareText.preview')}</a></p>`, onSubmit: () => undefined })
     },
@@ -2945,7 +2945,7 @@
       body: `<p class="small muted">${esc(t('ui.slotModal.zone'))} <b>${zone ? zoneLabel(zone.zone) : '—'}</b>. ${backend ? '' : esc(t('ui.slotModal.staffImmediate'))}</p>
         ${fld('mode', t('common.kind'), sel('mode', modes, modes[0][0], 'data-change="slot-mode"'), { req: true })}
         <div class="fields">${fld('start', t('common.from'), inp('start', 'time', startT), { req: true })}${fld('end', t('common.to'), inp('end', 'time', endT), { req: true })}</div>
-        <div data-mode="group" ${modes[0][0] === 'group' ? '' : 'hidden'}><div class="fields" style="margin-top:10px">${fld('group', t('common.group'), sel('group', myGroups.map((g) => [g.id, `${g.name}${g.kind === 'class_group' ? ` (${t('ui.slotModal.classGroup')})` : ''}`] as [string, string]), teams[0]?.id || myGroups[0]?.id), { req: true })}${fld('type', t('common.type'), sel('type', [['tournament', t('ui.slotModal.typeTournament')], ['other', t('ui.slotModal.typeOther')]], 'tournament'), { req: true })}${fld('name', t('common.name'), inp('name', 'text', 'Turniej o Puchar Gwiazdy'), { req: true })}</div>
+        <div data-mode="group" ${modes[0][0] === 'group' ? '' : 'hidden'}><div class="fields" style="margin-top:10px">${fld('group', t('common.group'), sel('group', myGroups.map((g) => [g.id, `${g.name}${g.kind === 'class_group' ? ` (${t('ui.slotModal.classGroup')})` : ''}`] as [string, string]), teams[0]?.id || myGroups[0]?.id), { req: true })}${fld('type', t('common.type'), sel('type', [['tournament', t('ui.slotModal.typeTournament')], ['other', t('ui.slotModal.typeOther')]], 'tournament'), { req: true })}${fld('name', t('common.name'), inp('name', 'text', 'Turniej o Puchar Przykładu'), { req: true })}</div>
           <div class="field" style="margin-top:10px"><span>${esc(t('ui.slotModal.invitedTeams'))}</span><div class="chips">${db.externalTeams.map((et) => `<label class="chip"><input type="checkbox" name="invited" value="${et.id}" class="sr-only" data-change="chip">${esc(et.name)}</label>`).join('')}</div></div></div>
         <div data-mode="general" ${modes[0][0] === 'general' ? '' : 'hidden'} style="margin-top:10px">${fld('purpose', t('ui.slotModal.purpose'), inp('purpose', 'text', '', `maxlength="120" placeholder="${esc(t('ui.slotModal.purposePlaceholder'))}"`), { req: true, hint: t('ui.slotModal.purposeHint') })}${fld('section', t('common.section'), sel('section', db.sections.map((s) => [s.id, s.name] as [string, string]), myGroups[0]?.section || coordSections(pid)[0] || 's-akad'))}</div>
         <div data-mode="rental" ${modes[0][0] === 'rental' ? '' : 'hidden'} style="margin-top:10px"><div class="fields">${fld('renter', t('ui.slotModal.renter'), sel('renter', db.institutions.filter((i) => i.type !== 'municipality').map((i) => [i.id, i.name] as [string, string])), { req: true })}${fld('category', t('ui.slotModal.category'), sel('category', db.rates.filter((r) => r.place === placeId).map((r) => [r.category, r.label] as [string, string])))}${fld('units', t('ui.slotModal.units'), inp('units', 'number', '1', 'min="1" max="4"'), { req: true })}${fld('contact', t('ui.slotModal.contact'), inp('contact'), { req: true })}</div>${chk('regs', esc(t('ui.slotModal.renterAcceptedRules')), true)}</div>`,
@@ -2965,7 +2965,7 @@
         if (conf.length) return { _: `<strong>${esc(t('ui.slotModal.slotTaken'))}</strong><ul style="margin:4px 0 0;padding-left:18px">${conf.map((c) => `<li>${fromMin(c.from)}–${fromMin(c.to)} ${esc(c.label)}</li>`).join('')}</ul>` }
         // External requests waiting in this time slot are superseded.
         const sup = db.rentals.filter((r) => r.status === 'pending_approval' && placeFamily(placeId).includes(r.place) && r.date === date && overlap(s, e, toMin(r.start), toMin(r.end)))
-        for (const r of sup) { r.status = 'superseded'; mail(r.email, lt('ui.slotModal.mailSupersededSubject'), lt('ui.slotModal.mailSupersededBody', { date: ld(r.date), start: r.start }), `/p/gwiazda/places/${place.slug || ''}`, lt('ui.slotModal.mailSupersededLink')) }
+        for (const r of sup) { r.status = 'superseded'; mail(r.email, lt('ui.slotModal.mailSupersededSubject'), lt('ui.slotModal.mailSupersededBody', { date: ld(r.date), start: r.start }), `/p/przyklad/places/${place.slug || ''}`, lt('ui.slotModal.mailSupersededLink')) }
         if (mode === 'group') {
           const g = group(String(fd.get('group')))
           const a: Activity = { id: uid('a'), group: g.id, name: String(fd.get('name')), type: String(fd.get('type')) as OccType, weekdays: [weekday(date)], start: fromMin(s), end: fromMin(e), place: placeId, coach: pid, from: date, to: date, oneOff: true, invited: fd.getAll('invited').map(String) }
@@ -3011,7 +3011,7 @@
         const token = uid('vt')
         const r: Rental = { id: uid('r'), place: placeId, renter: org, category: rate.category, contact: String(fd.get('contact')), email: em, phone: ph, date, start: fromMin(s), end: fromMin(e), units: u, amount: rate.price * u, status: 'pending_verification', via: 'online', purpose: String(fd.get('purpose') || ''), token, holdUntil: '' }
         db.rentals.push(r)
-        mail(em, lt('ui.publicRequestModal.mailSubject'), lt('ui.publicRequestModal.mailBody', { place: place.name, date: ld(date), start: r.start, end: r.end }), `/p/gwiazda/requests/verify/${token}`, lt('ui.publicRequestModal.mailLink'))
+        mail(em, lt('ui.publicRequestModal.mailSubject'), lt('ui.publicRequestModal.mailBody', { place: place.name, date: ld(date), start: r.start, end: r.end }), `/p/przyklad/requests/verify/${token}`, lt('ui.publicRequestModal.mailLink'))
         openModal({ title: t('ui.publicRequestModal.checkInboxTitle'), submitLabel: t('common.close'), body: `<div class="alert success"><strong>${t('ui.publicRequestModal.sentTo', { email: esc(em) })}</strong>${esc(t('ui.publicRequestModal.confirmWithin'))}</div><p class="small">${esc(t('ui.publicRequestModal.inMockup'))} <a href="#" data-action="drawer" data-which="mail">${esc(t('ui.publicRequestModal.openMailbox'))}</a>.</p>`, onSubmit: () => undefined })
         render()
         return { __keep: '' }

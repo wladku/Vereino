@@ -23,8 +23,8 @@
 
 | ID | Reference | Kind | Evidence | Checked |
 |---|---|---|---|---|
-| R01 | SportBM, as used by LKS Lotnik 1949 (guardian's phone account) | competing club app | `.ai/specs/research/2026-10-23-benchmark-sportbm.md` (four screenshots, not stored) | 2026-10-23 |
-| R02 | Guardian and coordinator interviews (another club's app, Messenger, WhatsApp) | user evidence | `.ai/specs/research/interviews/2026-10-23-interview-guardian-founder.md`, `…-guardian-multi-club.md`, `…-coordinator-2.md`; summary in `.ai/specs/product-brief.md` → Problems | 2026-10-23 |
+| R01 | SportBM, as used by another club (guardian's phone account) | competing club app | `.ai/specs/research/2026-10-23-benchmark-sportbm.md` (four screenshots, not stored) | 2026-10-23 |
+| R02 | Guardian and coordinator interviews (another club's app, Messenger, WhatsApp) | user evidence | `guardian interview note (not public)`, `further interview notes (not public)`, `further interview notes (not public)`; summary in `.ai/specs/product-brief.md` → Problems | 2026-10-23 |
 | R03 | Open Mercato 0.9.0 installed UI (AppShell, `CrudForm`, `DataTable`, tokens, Lucide icons) | platform Vereino builds on | `packages/app/src/app/globals.css`; `node_modules/@open-mercato/ui`; ENG-TEST-25 axe scan (PR #50); lesson `platform-crudform-labels-axe-baseline` | 2026-10-29 |
 | R04 | GOV.UK Design System — error message, error summary, button | public design system | https://design-system.service.gov.uk/components/error-message/ · https://design-system.service.gov.uk/components/button/ | 2026-10-29 |
 | R05 | Platform guidelines — Apple HIG accessibility, Android accessibility help, Material navigation bar | platform design guidelines | https://developer.apple.com/design/human-interface-guidelines/accessibility · https://support.google.com/accessibility/android/answer/7101858 · https://github.com/material-components/material-components-android/blob/master/docs/components/BottomNavigation.md | 2026-10-29 |

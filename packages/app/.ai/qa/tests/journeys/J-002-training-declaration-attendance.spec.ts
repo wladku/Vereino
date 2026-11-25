@@ -227,10 +227,10 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
     const settings = await updateClubSettings(request, admin, { ownAccountMinAge: 13 })
     expect(settings.status, JSON.stringify(settings.body)).toBe(200)
     await ensureDefaultPolicies(request, club)
-    // Two sections, the pitch under "Orlik 2024" (one group at a time) and the pool.
+    // Two sections, the pitch under "Orlik" (one group at a time) and the pool.
     const academy = await createStructure(request, admin, 'sections', { name: 'Akademia piłkarska' })
     const pool = await createStructure(request, admin, 'sections', { name: 'Basen' })
-    const orlik = await createStructure(request, admin, 'places', { name: 'Orlik 2024', kind: 'complex' })
+    const orlik = await createStructure(request, admin, 'places', { name: 'Orlik', kind: 'complex' })
     const pitch = await createStructure(request, admin, 'places', {
       name: PITCH,
       kind: 'pitch',
@@ -345,7 +345,7 @@ test('J-002 training with declaration and attendance on a fresh tenant, without 
       await fillActivityWizard(page, {
         group: /^Żaki \(/,
         name: TRAINING,
-        place: new RegExp(`^Orlik 2024 › ${PITCH}$`),
+        place: new RegExp(`^Orlik › ${PITCH}$`),
         coach: { lastName: 'Lis', fullName: 'Marek Lis' },
         startsOn: tomorrow,
         start: '17:00',

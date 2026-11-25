@@ -49,7 +49,7 @@ marked *agreement* before the agreement can be signed.
 
 | Id | Decision | Where | Needed for |
 |---|---|---|---|
-| PD-01 | Recurring share of the club subscription for a Registered partner (D-035 direction: about 20–25 %) | [`tiers.md`](tiers.md) | agreement |
+| PD-01 | Recurring share of the club subscription for a Registered partner | [`tiers.md`](tiers.md) | agreement |
 | PD-02 | Recurring share for a Certified partner ("a higher share") | [`tiers.md`](tiers.md) | agreement |
 | PD-03 | Gold margin on Enterprise licences, and its share of the subscriptions of clubs on dedicated instances | [`tiers.md`](tiers.md) | agreement |
 | PD-04 | Partner fees: a programme fee per tier (yearly, or none) and the certification and exam fee | [`tiers.md`](tiers.md), [`certification.md`](certification.md) | agreement |

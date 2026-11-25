@@ -19,7 +19,7 @@ import {
 
 const weekdays = (from, to) => [1, 2, 3, 4, 5].map((weekday) => ({ weekday, from, to }))
 const weekend = (from, to) => [6, 7].map((weekday) => ({ weekday, from, to }))
-/** The Orlik 2024 reference hours: Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30, all year. */
+/** The Orlik reference hours: Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30, all year. */
 const ORLIK = {
   seasons: [{ from: '01-01', to: '12-31', windows: [...weekdays('08:00', '22:00'), ...weekend('09:00', '20:30')] }],
 }

@@ -37,7 +37,7 @@ type AddedPlace = {
 
 type PlaceOption = { id: string; name: string; parentId: string | null; isExternal: boolean; isLeaf: boolean }
 
-const HALL = { name: 'Hala sportowa w Liszkach', address: 'ul. Szkolna 50, Liszki' }
+const HALL = { name: 'Hala sportowa w Zielonym Lesie', address: 'ul. Szkolna 50, Zielony Las' }
 
 test('TEST-T07 a coordinator adds an external place once; it stays on the list and stays the administrator’s', async ({
   request,
@@ -46,15 +46,15 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
   try {
     const admin = club.adminToken
     const setup = await scheduleFor(request, club)
-    const gmina = await create(request, admin, 'institutions', { name: 'Gmina Liszki', type: 'municipality' })
+    const gmina = await create(request, admin, 'institutions', { name: 'Gmina Zielony Las', type: 'municipality' })
 
     // An existing coordinator holds the new feature after the release's role sync (exit gate of phase 2).
     mercato(['auth', 'sync-role-acls', '--tenant', club.tenant.tenantId])
-    const wojtek = setup.coordinator
+    const rafal = setup.coordinator
     const addPlace = (token: string, data: Record<string, unknown>) =>
       call<AddedPlace>(request, 'POST', '/api/club_core/places/external', token, { data })
 
-    const added = await addPlace(wojtek, { ...HALL, ownerInstitutionId: gmina })
+    const added = await addPlace(rafal, { ...HALL, ownerInstitutionId: gmina })
     expect(added.status, JSON.stringify(added.body)).toBe(201)
     expect(added.body).toMatchObject({
       name: HALL.name,
@@ -92,7 +92,7 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
     })
 
     // Every place picker lists it, marked external.
-    const options = await call<{ items?: PlaceOption[] }>(request, 'GET', '/api/club_core/options/places', wojtek)
+    const options = await call<{ items?: PlaceOption[] }>(request, 'GET', '/api/club_core/options/places', rafal)
     expect(options.status).toBe(200)
     expect(options.body?.items?.find((item) => item.id === hallId)).toMatchObject({
       name: HALL.name,
@@ -105,27 +105,30 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
       request,
       'GET',
       '/api/activities/events/options',
-      wojtek,
+      rafal,
     )
     expect(eventOptions.status, JSON.stringify(eventOptions.body)).toBe(200)
     expect(eventOptions.body?.places).toContainEqual({ id: hallId, label: HALL.name, isExternal: true })
 
     // The same name and address — other case, spaces around — is the existing place (negative case).
-    const again = await addPlace(wojtek, { name: '  hala SPORTOWA w liszkach ', address: 'UL. SZKOLNA 50, LISZKI ' })
+    const again = await addPlace(rafal, {
+      name: '  hala SPORTOWA w zielonym lesie ',
+      address: 'UL. SZKOLNA 50, ZIELONY LAS ',
+    })
     expect(again.status, JSON.stringify(again.body)).toBe(409)
     expect(again.body?.code).toBe('external_place_exists')
     expect(again.body?.details).toEqual({ placeId: hallId, pickable: true })
     // The same name at another address is another venue.
-    const otherAddress = await addPlace(wojtek, { name: HALL.name, address: 'ul. Szkolna 5, Liszki' })
+    const otherAddress = await addPlace(rafal, { name: HALL.name, address: 'ul. Szkolna 5, Zielony Las' })
     expect(otherAddress.status, JSON.stringify(otherAddress.body)).toBe(201)
     // A place no picker lists — inactive, or divided into sub-places — is still the duplicate, but not pickable.
     const archived = await create(request, admin, 'places', {
       name: 'Stara hala',
       kind: 'hall',
-      address: 'ul. Długa 1, Liszki',
+      address: 'ul. Długa 1, Zielony Las',
       isActive: false,
     })
-    const archivedAgain = await addPlace(wojtek, { name: 'Stara hala', address: 'ul. Długa 1, Liszki' })
+    const archivedAgain = await addPlace(rafal, { name: 'Stara hala', address: 'ul. Długa 1, Zielony Las' })
     expect(archivedAgain.status, JSON.stringify(archivedAgain.body)).toBe(409)
     expect(archivedAgain.body?.details).toEqual({ placeId: archived, pickable: false })
     const complex = await create(request, admin, 'places', {
@@ -134,7 +137,7 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
       address: 'ul. Polna 2',
     })
     await create(request, admin, 'places', { name: 'Kort 1', kind: 'pitch', parentPlaceId: complex })
-    const complexAgain = await addPlace(wojtek, { name: 'kompleks', address: 'ul. polna 2' })
+    const complexAgain = await addPlace(rafal, { name: 'kompleks', address: 'ul. polna 2' })
     expect(complexAgain.status, JSON.stringify(complexAgain.body)).toBe(409)
     expect(complexAgain.body?.details).toEqual({ placeId: complex, pickable: false })
 
@@ -146,10 +149,10 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
       { name: 'Hala na Woli', address: HALL.address, isPublicSchedule: true },
       { name: 'Hala na Woli', address: HALL.address, parentPlaceId: setup.pitch },
     ]) {
-      const refused = await addPlace(wojtek, data)
+      const refused = await addPlace(rafal, data)
       expect(refused.status, `${JSON.stringify(data)} ${JSON.stringify(refused.body)}`).toBe(400)
     }
-    const ghostOwner = await addPlace(wojtek, {
+    const ghostOwner = await addPlace(rafal, {
       name: 'Hala na Woli',
       address: 'ul. Wolska 1, Kraków',
       ownerInstitutionId: '00000000-0000-4000-8000-000000000001',
@@ -161,12 +164,12 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
     const coach = await signedInStaff(request, club, { firstName: 'Kamil', lastName: 'Trener', role: 'coach' })
     const byCoach = await addPlace(coach.token, { name: 'Boisko w Skawinie', address: 'ul. Piłsudskiego 1, Skawina' })
     expect(byCoach.status, JSON.stringify(byCoach.body)).toBe(403)
-    const edit = await call(request, 'PUT', '/api/club_core/places', wojtek, {
-      data: { id: hallId, name: 'Hala w Liszkach' },
+    const edit = await call(request, 'PUT', '/api/club_core/places', rafal, {
+      data: { id: hallId, name: 'Hala w Zielonym Lesie' },
       headers: { [OPTIMISTIC_LOCK_HEADER]: String(stored?.updatedAt) },
     })
     expect(edit.status, JSON.stringify(edit.body)).toBe(403)
-    const removal = await call(request, 'DELETE', `/api/club_core/places?id=${hallId}`, wojtek)
+    const removal = await call(request, 'DELETE', `/api/club_core/places?id=${hallId}`, rafal)
     expect(removal.status, JSON.stringify(removal.body)).toBe(403)
     expect((await getOne(request, admin, 'places', hallId))?.name).toBe(HALL.name)
 
@@ -181,7 +184,7 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
 
     // A session at a place blocks the undo; an unused place is removed by it.
     const tournamentDay = addDays(calendarDate(), 10)
-    const tournament = await createEvent(request, wojtek, {
+    const tournament = await createEvent(request, rafal, {
       groupId: setup.zaki,
       type: 'tournament',
       name: 'Turniej w Tyńcu',
@@ -225,7 +228,7 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
     expect(elsewhere.status, JSON.stringify(elsewhere.body)).toBe(201)
     const otherId = String(elsewhere.body?.id)
     expect(otherId).not.toBe(hallId)
-    const ours = await call<{ items?: PlaceOption[] }>(request, 'GET', '/api/club_core/options/places', wojtek)
+    const ours = await call<{ items?: PlaceOption[] }>(request, 'GET', '/api/club_core/options/places', rafal)
     expect(ours.body?.items?.some((item) => item.id === otherId)).toBe(false)
   } finally {
     await club.cleanup()

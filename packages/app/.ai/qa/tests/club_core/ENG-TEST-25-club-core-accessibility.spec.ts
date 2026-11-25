@@ -17,7 +17,7 @@ test('ENG-TEST-25 club_core admin pages have no new critical or serious accessib
   try {
     const token = club.adminToken
     const sectionName = 'Akademia piłkarska'
-    const placeName = 'Orlik 2024'
+    const placeName = 'Orlik'
     const institutionName = 'Gmina Testowo'
     const section = await create(request, token, 'sections', { name: sectionName })
     const institution = await create(request, token, 'institutions', { name: institutionName, type: 'municipality' })

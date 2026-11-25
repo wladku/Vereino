@@ -124,11 +124,11 @@ describe('staff calendar window', () => {
 })
 
 describe('who may cancel a booking', () => {
-  const booking = { sectionId: 'football', bookedByPersonId: 'wojtek' }
+  const booking = { sectionId: 'football', bookedByPersonId: 'rafal' }
   const nobody = { personId: null, coordinatedSectionIds: [], clubAdmin: false }
 
   it('lets the booker, the section coordinator and the administrator cancel', () => {
-    expect(bookingCancellable(booking, { ...nobody, personId: 'wojtek' })).toBe(true)
+    expect(bookingCancellable(booking, { ...nobody, personId: 'rafal' })).toBe(true)
     expect(bookingCancellable(booking, { ...nobody, coordinatedSectionIds: ['football'] })).toBe(true)
     expect(bookingCancellable(booking, { ...nobody, clubAdmin: true })).toBe(true)
   })

@@ -53,7 +53,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
       isActive: false,
     })
     const away = await create(request, token, 'places', {
-      name: 'Boisko Wisły Liszki',
+      name: 'Boisko Wisły Brzezie',
       kind: 'pitch',
       isExternal: true,
     })
@@ -95,7 +95,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     const cells = page.getByTestId('place-name-cell')
     await expect(cells).toHaveCount(5)
     await expect(cells).toHaveText([
-      /^Boisko Wisły Liszki\s*(External|Zewnętrzne)$/,
+      /^Boisko Wisły Brzezie\s*(External|Zewnętrzne)$/,
       /^Hala sportowa$/,
       /^Orlik$/,
       /^↳\s*Boisko piłkarskie$/,
@@ -136,7 +136,7 @@ test('E06-S04 places list: kind, parent and active filters, owner and parent nam
     // A branch whose parent is elsewhere sorts by its own name ("piłkarskie" before "Wisły" in Polish order).
     await expect(cells).toHaveText([
       /^↳\s*Orlik ›\s*Boisko piłkarskie$/,
-      /^Boisko Wisły Liszki\s*(External|Zewnętrzne)$/,
+      /^Boisko Wisły Brzezie\s*(External|Zewnętrzne)$/,
     ])
     await page.reload()
     await expect(cells).toHaveCount(2)

@@ -2,12 +2,12 @@
 number: D-032
 date: 2026-11-18
 owner: Władek Kuć
-source: the owner's answers of 2026-11-18, after trying to enter the club's real tournament "Gwiazda Cup 2026" (four days, nine age-category tournaments, one external hall) in the sandbox
+source: the owner's answers of 2026-11-18, after trying to enter the club's real tournament "Przykład Cup 2026" (four days, nine age-category tournaments, one external hall) in the sandbox
 status: confirmed
 ---
 # D-032 The club can organise an event with parts: one tournament, many categories, days and groups
 
-The sandbox at `main` `3252cf4` offers only a one-off event for one group. A club-hosted tournament such as "Gwiazda Cup 2026" — Saturday and Sunday on two weekends, a separate tournament per age category (Orlik młodszy, Żak młodszy, Trampkarz, Żak starszy, Skrzat, Młodzik starszy, Orlik starszy, seniors, and a "Kids" match with parents), all in the municipal hall in Liszki — has to be entered as nine unrelated events, with no common page and no place for the teams of other clubs. The owner settled the shape of the feature:
+The sandbox at `main` `3252cf4` offers only a one-off event for one group. A club-hosted tournament such as "Przykład Cup 2026" — Saturday and Sunday on two weekends, a separate tournament per age category (Orlik młodszy, Żak młodszy, Trampkarz, Żak starszy, Skrzat, Młodzik starszy, Orlik starszy, seniors, and a "Kids" match with parents), all in the municipal hall in Zielony Las — has to be entered as nine unrelated events, with no common page and no place for the teams of other clubs. The owner settled the shape of the feature:
 
 1. **An event with parts.** One club event carries the shared facts — name, venue, poster, description, the organising club — and holds parts. Each part has its own day, start and end, category, the club's group that plays in it, and the visiting teams. A guardian sees in the calendar only the part of their own child's group.
 2. **Scope of the first version:**

@@ -20,7 +20,7 @@ test.describe.configure({ timeout: 600_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
 const BASE_URL = process.env.BASE_URL || 'http://localhost:3000'
-const VENUE = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+const VENUE = { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' }
 
 async function chooseOption(page: Page, trigger: string, name: string | RegExp): Promise<void> {
   await page.getByTestId(trigger).click()
@@ -36,7 +36,7 @@ test('TEST-A12 the coach creates a typed-venue sparring on the phone, sees the v
     const admin = club.adminToken
     const family = await familyFor(request, club)
     const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
-      data: { name: 'Wisła Liszki', clubName: 'Wisła Liszki' },
+      data: { name: 'Wisła Brzezie', clubName: 'Wisła Brzezie' },
     })
     expect(team.status, JSON.stringify(team.body)).toBe(201)
     const saturday = nextWeekday(addDays(calendarDate(), 7), 'SA')
@@ -60,7 +60,7 @@ test('TEST-A12 the coach creates a typed-venue sparring on the phone, sees the v
     await page.getByTestId('club-event-type-sparring').click()
     await expect(page.getByTestId('club-event-type-sparring').getByRole('radio')).toBeChecked()
     await expect(page.getByTestId('club-event-type-match')).toBeVisible()
-    await chooseOption(page, 'club-event-opponent', /Wisła Liszki/)
+    await chooseOption(page, 'club-event-opponent', /Wisła Brzezie/)
     await page.getByTestId('club-event-venue-mode-venue').click()
     // Another address ticks "away" (Q-A25); the club places are no longer asked for.
     await expect(page.getByTestId('club-event-away').getByRole('checkbox')).toBeChecked()
@@ -68,7 +68,7 @@ test('TEST-A12 the coach creates a typed-venue sparring on the phone, sees the v
     await expect(page.getByTestId('club-event-venue-address')).toHaveAccessibleDescription(
       uiText('activities.venue.address.help'),
     )
-    await page.getByTestId('club-event-name').fill('Sparing z Wisłą Liszki')
+    await page.getByTestId('club-event-name').fill('Sparing z Wisłą Zielony Las')
     await page.getByTestId('club-event-date').fill(saturday)
     await page.getByTestId('club-event-start').fill('09:00')
     await page.getByTestId('club-event-end').fill('10:30')
@@ -99,7 +99,7 @@ test('TEST-A12 the coach creates a typed-venue sparring on the phone, sees the v
     expect(body).toMatchObject({ placeId: null, venue: VENUE, isAway: true })
     const occurrenceId = String(body.occurrenceId)
     const stored = (await getOccurrence(request, admin, occurrenceId)).body
-    expect(stored).toMatchObject({ gatheringAt: zoneInstant(saturday, '08:30'), opponentName: 'Wisła Liszki' })
+    expect(stored).toMatchObject({ gatheringAt: zoneInstant(saturday, '08:30'), opponentName: 'Wisła Brzezie' })
 
     // --- The session page: the venue, its address and an OpenStreetMap search link; "Edit" for the coach ---
     await expect(page).toHaveURL(new RegExp(`/club/occurrences/${occurrenceId}\\?as=coach`))
@@ -116,7 +116,7 @@ test('TEST-A12 the coach creates a typed-venue sparring on the phone, sees the v
           'href',
           `https://www.openstreetmap.org/search?query=${encodeURIComponent(`${VENUE.name}, ${VENUE.address}`)}`,
         )
-        await expect(page.getByTestId('club-session-opponent'), label).toHaveText('Wisła Liszki')
+        await expect(page.getByTestId('club-session-opponent'), label).toHaveText('Wisła Brzezie')
         await expect(page.getByTestId('club-session-edit'), label).toHaveText(uiText('activities.club.session.edit'))
         await scan(`/club/occurrences/[id] (${label})`)
         await page.goto(editPath)

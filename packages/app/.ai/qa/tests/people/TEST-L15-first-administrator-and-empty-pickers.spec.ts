@@ -45,13 +45,13 @@ async function freshTenant(request: APIRequestContext, label: string): Promise<F
     })
     mercato(['entities', 'seed-encryption', '--tenant', tenant.tenantId])
     const password = `Vereino-${uniqueSuffix()}-Aa1!`
-    const email = `aneta-${uniqueSuffix()}@example.org`
+    const email = `joanna-${uniqueSuffix()}@example.org`
     const userId = await createUserFixture(request, superToken, {
       email,
       password,
       organizationId: tenant.organizationId,
       roles: [],
-      name: 'Aneta Nowak',
+      name: 'Joanna Nowak',
     })
     extraUsers.push(userId)
     const techToken = await getAuthToken(request, tenant.email, tenant.password)
@@ -160,7 +160,7 @@ test('TEST-L15 a new club is set up in the panel: first administrator, place wit
     await expect(page).toHaveURL(/\/backend\/people\/first-administrator$/)
     await page.getByTestId('people-first-administrator-user').getByRole('combobox').fill(fresh.future.email)
     await page.getByRole('option', { name: new RegExp(fresh.future.email.replace(/[.+]/g, '\\$&')) }).click()
-    await page.locator('[data-crud-field-id="firstName"] input').fill('Aneta')
+    await page.locator('[data-crud-field-id="firstName"] input').fill('Joanna')
     await page.locator('[data-crud-field-id="lastName"] input').fill('Nowak')
     await page
       .getByRole('button', { name: uiText('people.firstAdministrator.submit', { exact: true }) })
@@ -170,7 +170,7 @@ test('TEST-L15 a new club is set up in the panel: first administrator, place wit
 
     // The club has its administrator; a second call answers 409 naming her, and the page says who it is.
     const status = await firstAdministrator(request, fresh.techToken)
-    expect(status.body?.administrator).toMatchObject({ name: 'Aneta Nowak' })
+    expect(status.body?.administrator).toMatchObject({ name: 'Joanna Nowak' })
     const again = await firstAdministrator(request, fresh.techToken, {
       userId: fresh.tenant.userId,
       firstName: 'Drugi',
@@ -178,9 +178,9 @@ test('TEST-L15 a new club is set up in the panel: first administrator, place wit
     })
     expect(again.status).toBe(409)
     expect(again.body?.code).toBe('club_admin_exists')
-    expect(again.body?.administrator).toBe('Aneta Nowak')
+    expect(again.body?.administrator).toBe('Joanna Nowak')
     await page.goto('/backend/people/first-administrator')
-    await expect(page.getByTestId('people-first-administrator-exists')).toContainText('Aneta Nowak')
+    await expect(page.getByTestId('people-first-administrator-exists')).toContainText('Joanna Nowak')
     await page.goto('/backend/users')
     await expect(page.getByRole('heading', { level: 1 }).first()).toBeVisible()
     await expect(page.getByTestId('people-first-administrator-banner')).toHaveCount(0)

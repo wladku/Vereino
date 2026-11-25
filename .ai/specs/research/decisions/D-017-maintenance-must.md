@@ -2,7 +2,7 @@
 number: D-017
 date: 2026-10-23
 owner: Władek Kuć
-source: om-discover session 2026-10-23 — Władek's decision after `interviews/2026-10-23-interview-coordinator.md`
+source: om-discover session 2026-10-23 — Władek's decision after `coordinator interview note (not public)`
 status: confirmed
 ---
 # D-017 Facility maintenance and inspections (REQ-022) move from Could to Must

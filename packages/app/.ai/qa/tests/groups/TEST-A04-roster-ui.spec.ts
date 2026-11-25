@@ -46,7 +46,7 @@ test('TEST-A04 roster tab: views with totals in the URL, add by first name witho
     const team = await createGroup(request, token, { sectionId: academy, name: 'Orliki', kind: 'team' })
     const person = (firstName: string, lastName: string, age: number) =>
       createPerson(request, token, { firstName, lastName, birthDate: birthDateTurning(age) })
-    const coach = await person('Wojtek', 'Trener', 40)
+    const coach = await person('Rafał', 'Trener', 40)
     const kowalski = await person('Jan', 'Kowalski', 9)
     const nowak = await person('Jan', 'Nowak', 41)
     const ola = await person('Ola', 'Lis', 8)
@@ -103,7 +103,7 @@ test('TEST-A04 roster tab: views with totals in the URL, add by first name witho
     await expect(row(page, 'Jan Kowalski')).toBeVisible()
     // The coach is listed first; the new participant after the coaches.
     const names = await page.getByRole('row').allInnerTexts()
-    const coachAt = names.findIndex((text) => text.includes('Wojtek Trener'))
+    const coachAt = names.findIndex((text) => text.includes('Rafał Trener'))
     expect(coachAt).toBeGreaterThan(-1)
     expect(names.findIndex((text) => text.includes('Jan Kowalski'))).toBeGreaterThan(coachAt)
     await expect(viewTab(page, 'active')).toContainText('(3)')
@@ -201,7 +201,7 @@ test('TEST-A04 roster tab: views with totals in the URL, add by first name witho
             `roster ${locale} ${String(width)}`,
             async () => {
               await expect(viewTab(page, 'active')).toContainText(uiText('groups.memberships.views.active'))
-              await expect(page.getByText('Wojtek Trener')).toBeVisible()
+              await expect(page.getByText('Rafał Trener')).toBeVisible()
             },
             { platformBaseline: true },
           ),

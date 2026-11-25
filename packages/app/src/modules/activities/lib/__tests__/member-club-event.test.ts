@@ -20,11 +20,11 @@ import {
 
 const ZONE = 'Europe/Warsaw'
 
-// J-T01 (#380): Wojtek's "GWIAZDA CUP 2026" and its Orlik młodszy part, Saturday 21.11 09:00–14:00 in Warsaw (UTC+1),
+// J-T01 (#380): Rafał's "PRZYKŁAD CUP 2026" and its Orlik młodszy part, Saturday 21.11 09:00–14:00 in Warsaw (UTC+1),
 // gathering 08:30, confirm by Thursday 19.11 09:00.
 const stored = {
-  name: 'GWIAZDA CUP 2026',
-  publicSlug: 'gwiazda-cup-2026',
+  name: 'PRZYKŁAD CUP 2026',
+  publicSlug: 'przyklad-cup-2026',
   sectionId: 's-academy',
   placeId: 'p-hall',
   description: 'Halowy turniej piłki nożnej',
@@ -40,7 +40,7 @@ const groupPart: StoredPart = {
   groupId: 'g-orlik',
   startAt: '2026-11-21T08:00:00.000Z',
   endAt: '2026-11-21T13:00:00.000Z',
-  coachPersonId: 'p-wojtek',
+  coachPersonId: 'p-rafal',
   gatheringAt: '2026-11-21T07:30:00.000Z',
   confirmBy: '2026-11-19T08:00:00.000Z',
   visitingTeamIds: ['t-wisla', 't-orzel'],
@@ -86,8 +86,8 @@ describe('clubEventDraft', () => {
   it('reads a stored event, a whole-club one and one without texts or defaults', () => {
     const options = { wholeClub: false, sections: [] }
     expect(clubEventDraft(stored, options)).toEqual({
-      name: 'GWIAZDA CUP 2026',
-      publicSlug: 'gwiazda-cup-2026',
+      name: 'PRZYKŁAD CUP 2026',
+      publicSlug: 'przyklad-cup-2026',
       sectionId: 's-academy',
       placeId: 'p-hall',
       description: 'Halowy turniej piłki nożnej',
@@ -125,9 +125,9 @@ describe('clubEventDraftProblems and clubEventRequestBody', () => {
 
   it('accepts a complete draft and builds its body', () => {
     expect(clubEventDraftProblems(draft)).toEqual({})
-    expect(clubEventRequestBody({ ...draft, name: ' GWIAZDA CUP 2026 ', publicSlug: ' gwiazda-cup-2026 ' })).toEqual({
-      name: 'GWIAZDA CUP 2026',
-      publicSlug: 'gwiazda-cup-2026',
+    expect(clubEventRequestBody({ ...draft, name: ' PRZYKŁAD CUP 2026 ', publicSlug: ' przyklad-cup-2026 ' })).toEqual({
+      name: 'PRZYKŁAD CUP 2026',
+      publicSlug: 'przyklad-cup-2026',
       sectionId: 's-academy',
       placeId: 'p-hall',
       description: 'Halowy turniej piłki nożnej',
@@ -149,7 +149,7 @@ describe('clubEventDraftProblems and clubEventRequestBody', () => {
         confirmByHours: '',
       }),
     ).toEqual({
-      name: 'GWIAZDA CUP 2026',
+      name: 'PRZYKŁAD CUP 2026',
       sectionId: null,
       placeId: 'p-hall',
       description: null,
@@ -164,7 +164,7 @@ describe('clubEventDraftProblems and clubEventRequestBody', () => {
       clubEventDraftProblems({
         ...draft,
         name: ' ',
-        publicSlug: 'Gwiazda Cup',
+        publicSlug: 'Przykład Cup',
         sectionId: '',
         placeId: '',
         description: 'x'.repeat(4001),
@@ -222,7 +222,7 @@ describe('partDraft', () => {
       groupId: 'g-orlik',
       categoryLabel: 'Orlik młodszy',
       type: 'tournament',
-      coachPersonId: 'p-wojtek',
+      coachPersonId: 'p-rafal',
       gatheringMinutes: '30',
       confirmByHours: '48',
       visitingTeamIds: ['t-wisla', 't-orzel'],
@@ -318,7 +318,7 @@ describe('partRequestBody', () => {
       startsAt: '2026-11-21T08:00:00.000Z',
       endsAt: '2026-11-21T13:00:00.000Z',
       groupId: 'g-orlik',
-      coachPersonId: 'p-wojtek',
+      coachPersonId: 'p-rafal',
     })
   })
 

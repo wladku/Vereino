@@ -2,7 +2,7 @@
 number: D-016
 date: 2026-10-23
 owner: Władek Kuć
-source: om-discover session 2026-10-23, after `interviews/2026-10-23-interview-coordinator.md`; both choices were Claude's recommendations, accepted by Władek
+source: om-discover session 2026-10-23, after `coordinator interview note (not public)`; both choices were Claude's recommendations, accepted by Władek
 status: confirmed
 ---
 # D-016 Grants and training plans stay out of 1.0 after the coordinator interview

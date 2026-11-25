@@ -165,7 +165,7 @@ test('TEST-R05 renter search by scope: attendant of one pitch versus the adminis
     expect((await search(attendant.token, 'search=s')).status).toBe(400)
     expect((await search(admin, `search=${'x'.repeat(81)}`)).status).toBe(400)
     // A coach without `facilities.rentals.manage` is refused by the route's feature gate.
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     expect((await search(coach.token, 'search=ks')).status).toBe(403)
   } finally {
     await club.cleanup()

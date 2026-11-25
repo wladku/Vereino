@@ -14,6 +14,7 @@ import {
   expectRoles,
   getPerson,
   signInAs,
+  testEmailFor,
   uniqueSuffix,
   type Club,
 } from '../_fixtures/club'
@@ -49,7 +50,7 @@ async function personWithAccount(
   input: { firstName: string; lastName: string; birthDate: string; preferredLocale?: string },
 ) {
   const personId = await createPerson(request, club.adminToken, input)
-  const email = `${input.firstName.toLowerCase()}-${uniqueSuffix()}@example.org`
+  const email = testEmailFor(input.firstName)
   const account = await createAccount(request, club.adminToken, personId, email)
   expect(account.status, JSON.stringify(account.body)).toBe(201)
   const userId = String(account.body?.userId)

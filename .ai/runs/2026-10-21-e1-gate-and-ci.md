@@ -80,7 +80,7 @@ The `perf` job stays advisory (`continue-on-error: true`, no assertions). Compar
 
 - E1 stays `in_progress`: the exit gate needs a push, the E1 pull request, a green first CI run (incl. `browser-smoke` and `perf` baseline, ENG-TEST-17, ENG-TEST-23) and the repository settings from `docs/ops/github-settings.md`, then ENG-TEST-02. Pushing waits for the product owner's request.
 - The second maintainer's GitHub handle is unknown; `CODEOWNERS` lists `@wladku` only and "Require review from Code Owners" stays off.
-- Git uses an auto-generated identity (`wkuc@yosi.local`); set a real name and e-mail before DCO is enforced.
+- Git uses an auto-generated identity (`an auto-generated local identity`); set a real name and e-mail before DCO is enforced.
 - Platform log noise during test cleanup: `QueryIndexScopeError` when deleting a tenant's organization and role through the API (platform indexer, does not fail tests) — candidate for an upstream report.
 - `.agents/skills-quarantine/` holds the newer skill versions replaced by `yarn install-skills` (ignored).
 

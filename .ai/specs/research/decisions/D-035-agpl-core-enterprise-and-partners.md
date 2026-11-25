@@ -33,7 +33,7 @@ D12 chose the MIT licence with the repository. D-034 makes Vereino a hosted serv
 
    | Tier | What the partner does | What the partner earns |
    |---|---|---|
-   | Registered | after training and an exam: set-up, data import, training, first-line support | keeps 100% of its service fees, plus a recurring share of the subscriptions of the clubs it serves (about 20–25%) |
+   | Registered | after training and an exam: set-up, data import, training, first-line support | keeps 100% of its service fees, plus a recurring share of the subscriptions of the clubs it serves |
    | Certified | the same, plus configuration and own modules | a higher share and regional leads |
    | Gold | dedicated instances for municipalities, Enterprise resale | a margin on Enterprise licences |
 

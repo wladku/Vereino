@@ -7,7 +7,7 @@ status: confirmed
 ---
 # D-014 A guardian's view across several clubs is later, not 1.0
 
-**Idea (Władek, 2026-10-23):** guardians often have children in different clubs. Władek gave the example of a friend with six children: two in the football academy and four at dance classes. When several of those clubs run Vereino, the guardian could see all their children's information in one app.
+**Idea (Władek, 2026-10-23):** guardians often have children in different clubs. Władek gave the example of one family with children in a football academy and at dance classes. When several of those clubs run Vereino, the guardian could see all their children's information in one app.
 
 **Decision:** the cross-club view is recorded as a proposal for later. 1.0 does not build it, and 1.0 must not block it. Whether guardians actually struggle with children in several organisations is an open question for the parent interviews (the friend among them).
 

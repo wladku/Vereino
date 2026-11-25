@@ -5,7 +5,7 @@
 
 Extends: .ai/specs/2026-11-18-merge-throughput.md
 
-> Related: `.ai/specs/2026-11-24-cezar-stall-prevention.md` (split out of it on review); MT-D02 in `.ai/specs/2026-11-18-merge-throughput.md` (unchanged: a `risk-high` + `needs-qa` PR waits for the owner's `qa`); `SDLC.md` → "QA" and "The automation contract"; `scripts/merge-train.mjs` (QA hold comment, `QA_HOLD_MARKER`); `~/vereino-alerts/vereino_alerts.py` on cezar-ws (Resend transport); the owner's PR preview `node C:\Users\wkuc\vereino-sandbox-env\sandbox.mjs preview <PR>`. Identifiers: decisions `QM-D01…`, requirements `REQ-QM01…`, tests `QM-TEST-01…`, acceptance `QM-AC-01…`.
+> Related: `.ai/specs/2026-11-24-cezar-stall-prevention.md` (split out of it on review); MT-D02 in `.ai/specs/2026-11-18-merge-throughput.md` (unchanged: a `risk-high` + `needs-qa` PR waits for the owner's `qa`); `SDLC.md` → "QA" and "The automation contract"; `scripts/merge-train.mjs` (QA hold comment, `QA_HOLD_MARKER`); `~/vereino-alerts/vereino_alerts.py` on the build server (Resend transport); the owner's PR preview `node C:\Users\wkuc\vereino-sandbox-env\sandbox.mjs preview <PR>`. Identifiers: decisions `QM-D01…`, requirements `REQ-QM01…`, tests `QM-TEST-01…`, acceptance `QM-AC-01…`.
 
 ## 📝 TLDR
 
@@ -85,7 +85,7 @@ The merge train holds every `risk-high` PR with `needs-qa` until the owner tests
 ## 📋 Phasing
 
 - **Phase 1 — The instruction** (repository: rules, train hold reason, tests).
-- **Phase 2 — The e-mail** (ops on cezar-ws).
+- **Phase 2 — The e-mail** (ops on the build server).
 
 ## 📋 Implementation Plan
 

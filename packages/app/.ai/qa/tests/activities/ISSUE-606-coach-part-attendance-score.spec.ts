@@ -37,11 +37,11 @@ test('ISSUE-606 the coach of a club event part saves its attendance and records 
     const coach = family.coach
     const { hall } = await examplePlaces(request, club)
     const opponent = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', club.adminToken, {
-      data: { name: 'Wisła Liszki', clubName: 'Wisła Liszki' },
+      data: { name: 'Wisła Brzezie', clubName: 'Wisła Brzezie' },
     })
     expect(opponent.status, JSON.stringify(opponent.body)).toBe(201)
     const eventId = await clubEventId(request, family.academyCoordinator.token, {
-      name: 'GWIAZDA CUP 2026',
+      name: 'PRZYKŁAD CUP 2026',
       sectionId: family.academy,
       placeId: hall,
     })
@@ -65,7 +65,7 @@ test('ISSUE-606 the coach of a club event part saves its attendance and records 
 
     // --- Before the start: his part, without Edit and Cancel, and no score yet ---
     const before = await coachEntry()
-    expect(before.occurrence?.clubEvent?.name).toBe('GWIAZDA CUP 2026')
+    expect(before.occurrence?.clubEvent?.name).toBe('PRZYKŁAD CUP 2026')
     expect(before).toMatchObject({ mayEdit: false, mayCancel: false, mayScore: false })
 
     // --- The part session starts; the coach checks off the roster ---

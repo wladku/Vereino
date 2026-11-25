@@ -2,12 +2,12 @@
 
 > Status: discovery output. This file is NOT in SPEC-000 format. The real spec is authored from it via `om-spec-writing` as `.ai/specs/2026-10-20-vereino-club-management.md`. Module references in "Reuse" below come from the Open Mercato monorepo and must be re-checked against this app's `.ai/guides/module-facts.json`.
 
-**Status:** Draft v0.3 (discovery complete, pre-implementation) · **Owner:** Władek Kuć · **Tech:** Kacper Kuć
+**Status:** Draft v0.3 (discovery complete, pre-implementation) · **Owner:** Władek Kuć · **Tech:** Kacper
 **Language note:** domain content was originally drafted in Polish (the product's first market); entity and code names are English.
 
 ## Overview
 
-Vereino is an open-source club management system built on Open Mercato, targeted at small multi-section sports clubs (associations) whose main section is a football academy (indicatively up to ~200 players; not a system limit), alongside e.g. a swimming section and extra classes — typically suburban clubs playing on municipality-owned facilities (D-011). One Open Mercato tenant = one club. Pilot: KS Gwiazda Ściejowice, which also administers the "Orlik 2024" facility on behalf of Gmina Liszki.
+Vereino is an open-source club management system built on Open Mercato, targeted at small multi-section sports clubs (associations) whose main section is a football academy (indicatively up to ~200 players; not a system limit), alongside e.g. a swimming section and extra classes — typically suburban clubs playing on municipality-owned facilities (D-011). One Open Mercato tenant = one club. Pilot: KS Przykład Dolina, which also administers the "Orlik" facility on behalf of Gmina Zielony Las.
 
 Research inputs (business case, stakeholders, benchmark, decisions D-001…D-012, interview scripts) live in [`README.md`](README.md) (this folder). The visual system map is [`assets/vereino-system-map.html`](assets/vereino-system-map.html) (in this research folder).
 
@@ -23,7 +23,7 @@ Seven Open Mercato modules — `club_core`, `people`, `groups`, `activities`, `c
 
 ## 1. Goal
 
-A sports club management system (pilot: LKS Gwiazda), built on Open Mercato. One platform for: participants (players / people attending classes), legal guardians, coaches, section coordinators, the club administrator and the technical administrator. Eventually many clubs and disciplines.
+A sports club management system (pilot: LKS Przykład), built on Open Mercato. One platform for: participants (players / people attending classes), legal guardians, coaches, section coordinators, the club administrator and the technical administrator. Eventually many clubs and disciplines.
 
 ## 2. Decisions made
 
@@ -66,7 +66,7 @@ Convention: 1 Open Mercato tenant = 1 club. Table names in snake_case, `id` UUID
 ### 4.1 `club_core`
 - **club** — name, short_name, logo, address, settings (JSON: currency, time zone, age threshold for an own account = 13).
 - **section** — club_id, name, description, is_active. Examples: football academy, swimming pool, extra classes.
-- **place** — club_id, parent_place_id (hierarchy: complex → football pitch, multi-purpose pitch, locker room facilities), name, kind (complex / pitch / multi_pitch / hall / locker_room / pool / other), surface (synthetic_turf / polyurethane / …; it determines the required footwear), address, geo_lat, geo_lng, description, photos[], owner_institution_id (e.g. Gmina Liszki), managed_by_club (bool — the club is the administrator), is_external, opening_hours (JSON: Mon–Fri 8:00–22:00, Sat–Sun and holidays 9:00–20:30), closure_rules (e.g. "closed when there is snow"), regulations_document_id, contacts (administrator, attendant, owner, emergency numbers), is_active.
+- **place** — club_id, parent_place_id (hierarchy: complex → football pitch, multi-purpose pitch, locker room facilities), name, kind (complex / pitch / multi_pitch / hall / locker_room / pool / other), surface (synthetic_turf / polyurethane / …; it determines the required footwear), address, geo_lat, geo_lng, description, photos[], owner_institution_id (e.g. Gmina Zielony Las), managed_by_club (bool — the club is the administrator), is_external, opening_hours (JSON: Mon–Fri 8:00–22:00, Sat–Sun and holidays 9:00–20:30), closure_rules (e.g. "closed when there is snow"), regulations_document_id, contacts (administrator, attendant, owner, emergency numbers), is_active.
   Bookings and sessions point to a specific child place (pitch), not to the whole complex.
 
 ### 4.2 `people`
@@ -106,9 +106,9 @@ Rules:
 
 
 ### 4.7 `facilities` — sports facility administered by the club (Orlik)
-Source of the rules: Orlik 2024 Ściejowice regulations (§2–§6) and the note on the management agreement.
+Source of the rules: Orlik Dolina regulations (§2–§6) and the note on the management agreement.
 
-- **institution** (moved into the MVP from `projects`) — club_id, name, type (municipality / school / club / company / sponsor / other), address, contact, bank_account (to specify the payment recipient), notes. Gmina Liszki = owner; other clubs, schools, companies = renters.
+- **institution** (moved into the MVP from `projects`) — club_id, name, type (municipality / school / club / company / sponsor / other), address, contact, bank_account (to specify the payment recipient), notes. Gmina Zielony Las = owner; other clubs, schools, companies = renters.
 - **contract** (moved into the MVP, generalized) — party_type (person / institution), party_id, kind (coach / facility_management / rental / grant / other), valid_from, valid_to, terms (JSON), file. For `coach`: terms = { base_monthly, unit_rate (per training unit), unit_minutes (e.g. 90), match_rate, travel_rate }. A coach's monthly settlement report = base + Σ units from `done` sessions × unit_rate (+ matches, away trips) — in the MVP only calculation and export, no bookkeeping of payouts. The management agreement with the municipality = `facility_management`; the rates and the division of responsibilities follow from it.
 - **place_zone_rule** — place_id, weekday(s), time_from, time_to, zone (public_free / club_training / reservable_paid / closed), priority (school / municipal_event / club / rental / public), valid_from, valid_to. Defines the fixed weekly division of hours; from the rules + sessions + bookings the system generates the **monthly schedule** (§2(3)).
 - **place_closure** — place_id, date_from, date_to, reason (snow / maintenance / event / other). A closure blocks bookings and flags club sessions to be moved.
@@ -143,7 +143,7 @@ MVP screens for the module: public schedule; facility calendar for the attendant
 
 ## 7. Reference flow: one training session
 
-1. The coordinator creates the activity "Żaki training" (group Żaki, Tuesdays 17:00–18:30, Orlik, coach Wojtek, RRULE weekly until 30.06).
+1. The coordinator creates the activity "Żaki training" (group Żaki, Tuesdays 17:00–18:30, Orlik, coach Rafał, RRULE weekly until 30.06).
 2. The system generates sessions (1 per Tuesday).
 3. The role calendars fill up.
 4. The coach asks for confirmation; the guardian/participant declares attendance.
@@ -171,13 +171,13 @@ Variant: the renter cancels 10 h before → `cancelled_late`, charge `forfeited`
 
 ## 9. Open questions
 
-1. Sections: list and coordinators (academy — Wojtek?, pool — Aneta?, extra classes — ?). Are seniors a separate section?
+1. Sections: list and coordinators (academy — Rafał?, pool — Joanna?, extra classes — ?). Are seniors a separate section?
 2. The boundary between coordinator (what is happening) ↔ club administrator (money and people) — agreement on the proposal? (Confirmed: one person can have both roles.)
 3. Membership fees: monthly per group, per specific activity, or both? Is an adult their own payer? Manual recording in the MVP?
 4. Camp = an activity of type camp; a project only with external co-funding — agreed?
 5. PESEL and consents: are they needed in the MVP, who can see them, which consents does the guardian confirm?
 6. Announcements: only in-app + e-mail in the MVP? Is a "case" opened by the coordinator, or is it a flag on any thread?
-7. Multi-tenant right away, or one instance for Gwiazda?
+7. Multi-tenant right away, or one instance for Przykład?
 8. MVP as a PWA, native app later?
 9. Product name — resolved: Vereino (decision 8). Open: which domain (.org / .com / .app) and when to buy it.
 
@@ -227,7 +227,7 @@ klub → club · sekcja → section · miejsce → place · osoba → person · 
 
 ## Open Questions
 
-See section 9 above and `research/2026-10-20-stakeholders.md` (three decisions with owner "unknown").
+See section 9 above and `stakeholder note (not public)` (three decisions with owner "unknown").
 
 ## Changelog
 
