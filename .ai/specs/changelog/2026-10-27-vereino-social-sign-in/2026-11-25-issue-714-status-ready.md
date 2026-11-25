@@ -1,0 +1,1 @@
+| 2026-11-25 | Approval references completed (#714): the status line and the compliance report's approval row now cite the owner's approval of the spec as written, the `arctic` dependency and the spec's migrations on #566/#567 (2026-11-22) and DD-S07 on #631 (2026-11-23). The lifecycle state stays `In progress` (set by phase 1, #610). Docs only |
