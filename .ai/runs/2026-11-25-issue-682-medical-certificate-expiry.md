@@ -65,7 +65,15 @@ migration), `club_core` consent texts, `groups` / `activities` member pages and 
 
 ## Results
 
-(filled in at the end of the run)
+- `yarn test:integration:vereino --filter TEST-O02`: 1 passed (53.5 s) on the first run.
+- TEST-O03 and TEST-O04 failed on the first run because of test bugs, verbatim:
+  `{"reasons":[{"code":"account_open"}],"error":"This person cannot be anonymised yet.","code":"anonymize_blocked"}`
+  (the account closes the day after the last day; the test now closes it first) and `Expected: 200 Received: 201`
+  (a new declaration answers 201). After the fixes: TEST-O03 1 passed (45.9 s), TEST-O04 1 passed (48.7 s).
+- `yarn test:integration:vereino --filter TEST-O01`: 2 passed (1.0 m), and again after the last refactor.
+- `yarn verify`: the first run failed at `lint` (MikroORM imported in two routes, `no-restricted-imports`; a value import
+  used only as a type); fixed by moving the reads into `services/medical.ts`; then one full run, all 22 steps passed.
+- `yarn guard`: no blocking findings. `yarn test:integration:vereino --filter ISSUE-628`: 1 passed (2.2 m).
 
 ## Open problems / next steps
 
