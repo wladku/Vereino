@@ -1,0 +1,41 @@
+{
+  "routes": {
+    "/api/foundation/identity": {
+      "GET": [
+        { "probe": "read", "query": { "personId": "$A:memberPerson" } },
+        { "probe": "foreign-ref", "query": { "personId": "$B:memberPerson" } }
+      ]
+    },
+    "/api/foundation/identity/[id]": {
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": { "id": "$B:identityLink" },
+        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:identityLinkUpdatedAt" }
+      }
+    },
+    "/api/foundation/identity/[provider]/callback": {
+      "GET": {
+        "probe": "exempt",
+        "why": "The OAuth callback names no club record: it consumes a single-use state bound to an HttpOnly cookie and finds the link by (provider, subject), the approved system-scope lookup of D-027, which narrows to the linked user's tenant and organization. TEST-S01 covers it; without the provider round trip the probe engine can only reach the invalid-state redirect."
+      }
+    },
+    "/api/foundation/identity/[provider]/link": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Starts linking the caller's own account (the user is taken from the session); the request names only the provider, no record. It redirects to the provider, which the probe engine cannot follow. The seeded links are read back by the GET probes."
+      }
+    },
+    "/api/foundation/identity/[provider]/start": {
+      "GET": {
+        "probe": "exempt",
+        "why": "Sessionless sign-in start (or the caller's own link): the request names only the provider and a same-origin landing path, no record, and answers a redirect to the provider, which the probe engine cannot follow."
+      }
+    },
+    "/api/foundation/identity/me": {
+      "GET": { "probe": "read" }
+    },
+    "/api/foundation/identity/providers": {
+      "GET": { "probe": "read" }
+    }
+  }
+}

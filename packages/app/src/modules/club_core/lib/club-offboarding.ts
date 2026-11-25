@@ -24,9 +24,11 @@ const SHA256_PATTERN = /^[0-9a-f]{64}$/
 /**
  * How a table's rows belong to a club. `tenant`: the rows with the club's `tenant_id`. `user`: the rows whose
  * `user_id` is one of the club's users (sessions, password resets, user roles; *Deletion targets* step 3). `tenant_row`:
- * the club's own row of `tenants`.
+ * the club's own row of `tenants`. `tenant_or_user`: a user-owned platform row whose `tenant_id` is nullable (consents,
+ * sidebar preferences and variants; #681): the rows with the club's `tenant_id`, and the rows without one whose
+ * `user_id` is one of the club's users, so the deletion leaves none behind and none blocks the `users` delete.
  */
-export type ClubTableKey = 'tenant' | 'user' | 'tenant_row'
+export type ClubTableKey = 'tenant' | 'user' | 'tenant_or_user' | 'tenant_row'
 
 /**
  * What the export does with a table. `data`: exported and restored. `derived`: deleted, not exported — an index or a
@@ -55,16 +57,8 @@ function platform(module: string, kind: ClubTableKind, tables: string[], key: Cl
 export const PLATFORM_CLUB_TABLES: readonly ClubTable[] = [
   ...platform('directory', 'data', ['tenants'], 'tenant_row'),
   ...platform('directory', 'data', ['organizations']),
-  ...platform('auth', 'data', [
-    'users',
-    'roles',
-    'role_acls',
-    'user_acls',
-    'user_consents',
-    'role_sidebar_preferences',
-    'user_sidebar_preferences',
-    'sidebar_variants',
-  ]),
+  ...platform('auth', 'data', ['users', 'roles', 'role_acls', 'user_acls', 'role_sidebar_preferences']),
+  ...platform('auth', 'data', ['user_consents', 'user_sidebar_preferences', 'sidebar_variants'], 'tenant_or_user'),
   ...platform('auth', 'data', ['user_roles'], 'user'),
   ...platform('auth', 'secret', ['sessions', 'password_resets'], 'user'),
   ...platform('api_keys', 'secret', ['api_keys']),
@@ -346,7 +340,7 @@ function validTable(value: unknown): value is ManifestTable {
     isRecord(value) &&
     typeof value.module === 'string' &&
     typeof value.table === 'string' &&
-    (value.key === 'tenant' || value.key === 'user' || value.key === 'tenant_row') &&
+    (value.key === 'tenant' || value.key === 'user' || value.key === 'tenant_or_user' || value.key === 'tenant_row') &&
     isNonNegativeInteger(value.rows) &&
     Array.isArray(value.decrypted) &&
     value.decrypted.every((column) => typeof column === 'string')
@@ -456,6 +450,44 @@ export function redactExportRow(table: string, row: Record<string, unknown>): Re
  * club's exported (`data`) tables with the same module and key, every tenant-keyed row must carry the manifest's
  * tenant, the tenant row must be that tenant, and every user-keyed row must belong to one of the archive's users.
  */
+/** An archive written before a table became `tenant_or_user` lists it as `tenant` (#681); its rows still fit. */
+function sameKey(expected: ClubTableKey, archived: ClubTableKey): boolean {
+  return expected === archived || (expected === 'tenant_or_user' && archived === 'tenant')
+}
+
+function rowInScope(
+  key: ClubTableKey,
+  row: Record<string, unknown>,
+  tenantId: string,
+  userIds: ReadonlySet<unknown>,
+): boolean {
+  if (key === 'tenant_row') return row.id === tenantId
+  if (key === 'user') return userIds.has(row.user_id)
+  if (key === 'tenant_or_user' && (row.tenant_id === null || row.tenant_id === undefined)) {
+    return userIds.has(row.user_id)
+  }
+  return row.tenant_id === tenantId
+}
+
+/**
+ * The row keys an encryption map's field names stand for (#681): the field itself, or its snake_case or camelCase
+ * spelling — the candidates the platform's encryption service tries — taking the first one the row has, sorted. The
+ * export's fail-closed check reads these keys, so a map written in camelCase is checked like one in snake_case.
+ */
+export function encryptedRowKeys(fields: readonly string[], row: Record<string, unknown>): string[] {
+  const keys = new Set<string>()
+  for (const field of fields) {
+    const snake = field
+      .replace(/([A-Z])/g, '_$1')
+      .replace(/__/g, '_')
+      .toLowerCase()
+    const camel = field.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())
+    const key = [field, snake, camel].find((candidate) => Object.prototype.hasOwnProperty.call(row, candidate))
+    if (key) keys.add(key)
+  }
+  return [...keys].sort()
+}
+
 export function archiveScopeViolations(
   manifest: ClubArchiveManifest,
   rowsOf: (table: ManifestTable) => readonly Record<string, unknown>[],
@@ -468,18 +500,12 @@ export function archiveScopeViolations(
   const violations = new Set<string>()
   for (const table of manifest.tables) {
     const entry = exported.get(table.table)
-    if (!entry || entry.module !== table.module || entry.key !== table.key) {
+    if (!entry || entry.module !== table.module || !sameKey(entry.key, table.key)) {
       violations.add(`${table.table}: not a table of a club export`)
       continue
     }
     for (const row of rowsOf(table)) {
-      const inScope =
-        entry.key === 'tenant_row'
-          ? row.id === tenantId
-          : entry.key === 'user'
-            ? userIds.has(row.user_id)
-            : row.tenant_id === tenantId
-      if (!inScope) violations.add(`${table.table}: a row of another tenant`)
+      if (!rowInScope(entry.key, row, tenantId, userIds)) violations.add(`${table.table}: a row of another tenant`)
     }
   }
   return [...violations].sort()

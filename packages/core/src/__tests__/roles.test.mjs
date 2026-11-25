@@ -81,7 +81,15 @@ test('the treasurer holds the finance features only (payments spec DD-33, #245)'
 test('catalogueRoleFeatures returns copies keyed by auth role', () => {
   const features = catalogueRoleFeatures()
   assert.deepEqual(features.vereino_payer, ['payments.view_own', 'payments.pay_online', 'payments.orders.place'])
-  assert.deepEqual(features.vereino_member, ['people.self', 'activities.attendance.declare', 'communication.view'])
+  assert.deepEqual(features.vereino_member, [
+    'people.self',
+    'foundation.identity.self',
+    'activities.attendance.declare',
+    'communication.view',
+  ])
+  // Social sign-in (#566): own identities follow `people.self`; the club administrator manages anyone's.
+  assert.ok(features.vereino_coach.includes('foundation.identity.self'))
+  assert.ok(features.vereino_club_admin.includes('foundation.identity.manage'))
   assert.ok(features.vereino_club_admin.includes('people.*'))
   assert.ok(features.vereino_club_admin.includes('dashboards.view'))
   // Q-N03 (navigation spec REQ-N04, #260): the coordinator and the attendant open the dashboard; a coach does not.
