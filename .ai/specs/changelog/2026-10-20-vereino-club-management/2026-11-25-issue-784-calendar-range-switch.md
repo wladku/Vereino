@@ -1,0 +1,1 @@
+| 2026-11-25 | #784, D-040: UI row `/club/calendar` ("week/month calendar", upcoming list as default per #493) superseded by REQ-W06 of `2026-11-25-vereino-calendar-range-switch.md` (Najbliższe / Dzień / Tydzień / Miesiąc; a phone opens on Day) |

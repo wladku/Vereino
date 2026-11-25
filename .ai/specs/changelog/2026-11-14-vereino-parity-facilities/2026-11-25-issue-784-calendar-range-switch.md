@@ -1,0 +1,1 @@
+| 2026-11-25 | #784, D-040: REQ-R01…REQ-R03 and DD-R01 ("one day axis at every screen width") superseded for B-23 and M-11 by REQ-W05 of `2026-11-25-vereino-calendar-range-switch.md` (Week = seven axes on a desktop, a list on a phone; Month = a list); REQ-R16/Q-R17 by REQ-W04 (P-04 opens on Day on a phone) |
