@@ -37,7 +37,11 @@ import {
   type HandoverCandidate,
   type HandoverDecision,
 } from '../lib/cash-handovers'
-import { notifyHandoverOutcome, notifyHandoverSent, type HandoverNoticeSubject } from '../services/cash-handover-notices'
+import {
+  notifyHandoverOutcome,
+  notifyHandoverSent,
+  type HandoverNoticeSubject,
+} from '../services/cash-handover-notices'
 import { clubClock, type PaymentsScope } from '../services/directory'
 import { selfPersonId } from './cash'
 import {
@@ -240,7 +244,11 @@ const sendHandoverCommand: CommandHandler<Record<string, unknown>, CashHandoverR
       const scope = { tenantId, organizationId }
       const collector = selfPersonId(authorized.scope) as string
       const { payments, candidates } = await lockCandidates(em, scope, parsed.paymentIds)
-      const refusal = handoverRefusal({ collectorPersonId: collector, paymentIds: parsed.paymentIds, payments: candidates })
+      const refusal = handoverRefusal({
+        collectorPersonId: collector,
+        paymentIds: parsed.paymentIds,
+        payments: candidates,
+      })
       if (refusal) await paymentsErrors.throw(refusal)
 
       const number = await issueNumber(ctx, em, scope)

@@ -118,7 +118,8 @@ export const openApi: OpenApiRouteDoc = {
         },
         {
           status: 422,
-          description: '`cash_handover_payments_invalid` (a payment unknown, not cash with a receipt, or not the caller’s)',
+          description:
+            '`cash_handover_payments_invalid` (a payment unknown, not cash with a receipt, or not the caller’s)',
           schema: errorSchema,
         },
       ],

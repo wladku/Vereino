@@ -55,11 +55,31 @@ const events = [
   { id: 'payments.order.handed_over', label: 'Kit handed over', entity: 'order', category: 'custom' },
   { id: 'payments.bank_import.completed', label: 'Bank statement imported', entity: 'bank_import', category: 'custom' },
   // The cash handover (#118; its two-sided confirmation D-042, #791): ids only.
-  { id: 'payments.cash_handover.created', label: 'Cash settled without the collector', entity: 'cash_handover', category: 'custom' },
+  {
+    id: 'payments.cash_handover.created',
+    label: 'Cash settled without the collector',
+    entity: 'cash_handover',
+    category: 'custom',
+  },
   { id: 'payments.cash_handover.sent', label: 'Cash handover sent', entity: 'cash_handover', category: 'custom' },
-  { id: 'payments.cash_handover.withdrawn', label: 'Cash handover withdrawn', entity: 'cash_handover', category: 'custom' },
-  { id: 'payments.cash_handover.confirmed', label: 'Cash handover confirmed', entity: 'cash_handover', category: 'custom' },
-  { id: 'payments.cash_handover.rejected', label: 'Cash handover rejected', entity: 'cash_handover', category: 'custom' },
+  {
+    id: 'payments.cash_handover.withdrawn',
+    label: 'Cash handover withdrawn',
+    entity: 'cash_handover',
+    category: 'custom',
+  },
+  {
+    id: 'payments.cash_handover.confirmed',
+    label: 'Cash handover confirmed',
+    entity: 'cash_handover',
+    category: 'custom',
+  },
+  {
+    id: 'payments.cash_handover.rejected',
+    label: 'Cash handover rejected',
+    entity: 'cash_handover',
+    category: 'custom',
+  },
   {
     id: 'payments.bank_import.deleted',
     label: 'Bank statement import deleted',

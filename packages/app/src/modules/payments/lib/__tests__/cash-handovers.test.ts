@@ -103,7 +103,11 @@ describe('the two-sided handover (D-042, DD-31a)', () => {
 
   it('tells each administrator and treasurer once, never the collector', () => {
     expect(
-      handoverConfirmerIds({ admins: ['zofia', 'rafal', 'iwona'], treasurers: ['iwona', 'adam'], collectorPersonId: 'rafal' }),
+      handoverConfirmerIds({
+        admins: ['zofia', 'rafal', 'iwona'],
+        treasurers: ['iwona', 'adam'],
+        collectorPersonId: 'rafal',
+      }),
     ).toEqual(['adam', 'iwona', 'zofia'])
     expect(handoverConfirmerIds({ admins: [], treasurers: [], collectorPersonId: 'rafal' })).toEqual([])
   })

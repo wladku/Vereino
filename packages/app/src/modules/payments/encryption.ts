@@ -38,7 +38,10 @@ export const bankTitle = encryptedField({ entityId: BANK_TRANSACTION_ENTITY_ID, 
 export const CASH_HANDOVER_ENTITY_ID = 'payments:cash_handover'
 
 /** Why a cash handover was rejected: a free-text difference that may name a payer or a child (D-042, #791). */
-export const cashHandoverRejectionReason = encryptedField({ entityId: CASH_HANDOVER_ENTITY_ID, field: 'rejection_reason' })
+export const cashHandoverRejectionReason = encryptedField({
+  entityId: CASH_HANDOVER_ENTITY_ID,
+  field: 'rejection_reason',
+})
 
 export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   {

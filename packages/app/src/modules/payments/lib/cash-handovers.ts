@@ -68,10 +68,7 @@ export type HandoverCandidate = {
 }
 
 export type HandoverRefusal =
-  | 'cash_handover_payments_invalid'
-  | 'cash_already_settled'
-  | 'cash_handover_payment_pending'
-  | 'cash_payment_reversed'
+  'cash_handover_payments_invalid' | 'cash_already_settled' | 'cash_handover_payment_pending' | 'cash_payment_reversed'
 
 /**
  * Why sending or accepting a handover of `paymentIds` from `collectorPersonId` is refused, or null: every payment must

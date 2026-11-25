@@ -8,11 +8,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { CashHandover, Payment } from '../data/entities'
-import {
-  custodyByCollector,
-  type CashHandoverStatus,
-  type CollectorCustody,
-} from '../lib/cash-handovers'
+import { custodyByCollector, type CashHandoverStatus, type CollectorCustody } from '../lib/cash-handovers'
 import { receiptCharges } from './cash'
 import { findPersons, type PaymentsScope } from './directory'
 
