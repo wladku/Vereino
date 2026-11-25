@@ -1,7 +1,7 @@
 # Vereino social sign-in — Google and Facebook for account holders
 
 **Date**: 2026-10-27
-**Status**: Draft (design complete; waiting for the product owner's approval on the PR, the `arctic` dependency approval and V-S04)
+**Status**: Ready for implementation (approved as written by the product owner on 2026-11-22 on #566 and #567, with the `arctic` dependency and the migrations the spec defines; DD-S07 approved on 2026-11-23 on #631; V-S04 is checked first in phase 1)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -295,9 +295,9 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 | UI contracts identify references, canonical components, and theme/state coverage | pass | three surfaces with references, components, states and a mock-up |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | phases 1–2 |
 | Contracts of installed modules confirmed at the field and behavior level | pass (V-S04 open) | V-S01 (`AuthService.createSession` + `signJwt`, `autologin.ts`, `login.ts:186`), V-S02 (no OAuth in core `auth`; enterprise `sso` is OIDC/SAML only), V-S03 (`auth.login:form` spot); V-S04 (`arctic`) confirmed in phase 1 step 1 |
-| User approval for implementation | fail | pending: the product owner's approval on the PR; the `arctic` dependency (Ask First, S16.1 evidence) |
+| User approval for implementation | pass | the product owner approved the spec as written, the `arctic` dependency and the spec's migrations on #566 and #567 (2026-11-22), and DD-S07 on #631 (2026-11-23) |
 
-Verdict: `Blocked — the product owner's approval of the design on the PR, the arctic dependency approval, and V-S04`
+Verdict: `Ready for implementation — V-S04 is checked in phase 1 step 1 before the dependency lands (#566)`
 
 ## Open Questions
 

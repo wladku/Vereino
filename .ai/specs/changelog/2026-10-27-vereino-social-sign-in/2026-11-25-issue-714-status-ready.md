@@ -1,0 +1,1 @@
+| 2026-11-25 | Status set to Ready for implementation (#714): the owner approved the spec as written, the `arctic` dependency and the spec's migrations on #566/#567 (2026-11-22) and DD-S07 on #631 (2026-11-23); the compliance report's approval row and verdict follow. Docs only |
