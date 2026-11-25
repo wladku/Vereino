@@ -41,7 +41,13 @@ describe('isDocsPath', () => {
   })
 
   it('treats source, config and lockfiles as code', () => {
-    for (const file of ['packages/app/src/modules.ts', 'package.json', 'yarn.lock', '.ai/agentic.config.json', 'Dockerfile']) {
+    for (const file of [
+      'packages/app/src/modules.ts',
+      'package.json',
+      'yarn.lock',
+      '.ai/agentic.config.json',
+      'Dockerfile',
+    ]) {
       assert.equal(isDocsPath(file), false, file)
     }
   })
@@ -84,7 +90,11 @@ describe('main', () => {
     try {
       const outputFile = path.join(dir, 'output')
       const logged = []
-      const code = main(['b', 'h'], { run: () => 'SDLC.md\ndocs/ops/github-settings.md\n', outputFile, log: (line) => logged.push(line) })
+      const code = main(['b', 'h'], {
+        run: () => 'SDLC.md\ndocs/ops/github-settings.md\n',
+        outputFile,
+        log: (line) => logged.push(line),
+      })
       assert.equal(code, false)
       assert.equal(readFileSync(outputFile, 'utf8'), 'code=false\n')
       assert.match(logged[0], /^2 changed path\(s\); docs only/)
@@ -96,7 +106,11 @@ describe('main', () => {
 
   it('prints code=true when there is no output file and code changed', () => {
     const logged = []
-    const code = main(['b', 'h'], { run: () => 'SDLC.md\nscripts/x.mjs\n', outputFile: '', log: (line) => logged.push(line) })
+    const code = main(['b', 'h'], {
+      run: () => 'SDLC.md\nscripts/x.mjs\n',
+      outputFile: '',
+      log: (line) => logged.push(line),
+    })
     assert.equal(code, true)
     assert.match(logged[0], /code changed: the full suite runs/)
     assert.equal(logged[2], '  code  scripts/x.mjs')

@@ -43,7 +43,13 @@ checks `integration` and `browser-smoke` still report success. Pushes (`main`, `
 - `node --test --experimental-test-coverage --test-coverage-include=../../scripts/ci-changes.mjs
   scripts/__tests__/ci-changes.test.mjs scripts/__tests__/merge-train-plan.test.mjs` → 45 pass, ci-changes.mjs 100/100/100.
 - `actionlint` v1.7.7 (temporary binary, not added to the repo) on `.github/workflows/ci.yml` → no findings.
-- Dry run and `yarn verify`: see below.
+- Dry run of `scripts/ci-changes.mjs` on commits of `main`: 7456ec26 (#724 specs) and d4caa260 (#745 ops docs) →
+  `code=false`; efe9da9d (#772 qa fixture) and this branch's commit → `code=true`. A simulated PR merge commit (a
+  throwaway shared clone: `SDLC.md` + `.ai/runs/x.md` merged `--no-ff` into `main`) with `HEAD^1 HEAD` → `code=false`.
+  Over the last 60 commits of `main`, 9 are docs-only.
+- `yarn verify` first run: failed at `format:check` (`ci-changes.test.mjs is not formatted`); `yarn format`, resumed
+  `--from format:check` → all steps passed; then one full run → all 23 steps passed.
+- `yarn guard --base origin/main` → no blocking findings; warning: `.github/workflows/ci.yml` agent rule file changed.
 
 ## Open problems / next steps
 
