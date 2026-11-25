@@ -65,6 +65,8 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `OM_INIT_ADMIN_PASSWORD` | only for the one-time initialisation below; remove it afterwards |
 | `VEREINO_CLUB_DOMAIN` | optional; the club domain of an instance with many clubs (see *Club addresses* below). Unset: one club per instance |
 | `VEREINO_HOME_CLUB_SLUG` | **deprecated**; the public slug of the one club of an instance without `VEREINO_CLUB_DOMAIN`, which `/` leads a guest to. Ignored once `VEREINO_CLUB_DOMAIN` is set; kept as the single-club fallback |
+| `VEREINO_INSTANCE_ID` | optional; the id of this deployment that Vereino Enterprise licence keys are bound to (one for the shared cloud, its own for each dedicated instance). See *Enterprise licence keys* below |
+| `VEREINO_LICENCE_KEYS`, `VEREINO_LICENCE_KEYS_FILE` | optional, sealed; the installed Enterprise licence keys. Unset: every Enterprise feature is off |
 
 Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST`, `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
@@ -294,6 +296,35 @@ yarn mercato foundation restore-club-schedules --job payments:generate-charges
 runs, the per-club schedules left and the clubs, due, leased and failing counts. `yarn mercato foundation club-jobs
 sweep [--job <key>]` runs one sweep now. One club's job still runs by hand without the sweep, as before, for example
 `yarn mercato payments run-job --job generate-charges --tenant <id> --org <id>`.
+
+## Enterprise licence keys
+
+Vereino Enterprise features are switched on per tenant by a licence key (`.ai/specs/2026-11-23-vereino-enterprise-package.md`,
+DD-E04, DD-E05, DD-E07; #649). A key is `vereino-lic.v1.<payload>.<signature>`, signed offline by the owner with
+Ed25519 for one instance, one tenant, a list of features and an expiry; the app verifies it offline against the public
+keys compiled into `foundation/lib/licence-public-keys.ts`. No key, no variable and no Enterprise package: every
+Enterprise feature is off and the core works exactly as before.
+
+1. Set `VEREINO_INSTANCE_ID` once per environment (for example `cloud-eu-1`, `staging-1`); a key signed for another
+   instance id is rejected as `wrong_instance`. Never reuse an instance id for another deployment.
+2. Add the key to `VEREINO_LICENCE_KEYS` as a **sealed** Railway variable (newline- or comma-separated with the keys
+   already there), or to the file named by `VEREINO_LICENCE_KEYS_FILE`, on the app and the worker. Keys name customers:
+   never paste one into an issue, a pull request, a log or a run log; refer to a key by its `lid`.
+3. Restart (a redeploy does it). Keys are read once at boot; the app logs
+   `[foundation] licence keys: <n> valid of <m> installed; rejected: <lid> (<reason>)` — never the key.
+4. Check from a shell on the app service (`railway ssh` or the service's shell): `yarn mercato foundation licence-status` prints one JSON line: the instance id,
+   per valid key its `lid`, tenant, features with their state (`on`, `read_only`) and the expiry, and the rejected keys
+   by `lid` (or position) and reason (`unknown_kid`, `bad_signature`, `malformed`, `invalid_payload`, `wrong_prefix`,
+   `wrong_instance`). Without keys it prints `"message":"no licence keys installed"`.
+
+Expiry: a feature stays `on` until `expiresAt` plus the key's grace period (14 days), with a renewal notice from
+`expiresAt`; after that it is `read_only` — the club still reads and exports its data, writes answer 409
+`enterprise_feature_read_only`. **Keep an expired key installed**: removing the last key of a tenant turns its features
+`off` (404 `enterprise_feature_disabled`), so remove it only after the customer's export or termination. A renewal is a
+new key added next to the old one; the key whose grace period ends last wins.
+
+Staging and production never trust the committed test key pair (`packages/app/.ai/qa/fixtures/licence-test-key-pair.json`,
+kid `test-…`): a test-signed key shows as `unknown_kid` there. That is the exit check of phase 1a.
 
 ## Club addresses
 
