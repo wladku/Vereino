@@ -147,19 +147,32 @@ async function authorScope(container, authorUserId) {
   })
 }
 
+/**
+ * Takes the queued jobs that are due, like the local queue strategy does: a job enqueued with a delay (a club's paced
+ * e-mail, many-clubs DD-M10, #633) stays until its `availableAt`. `waitMs` is how long until the next one is due, or
+ * null when the queue is empty.
+ */
 function takeQueuedJobs() {
-  if (!fs.existsSync(queueFile)) return []
-  const jobs = JSON.parse(fs.readFileSync(queueFile, 'utf8') || '[]')
-  fs.writeFileSync(queueFile, '[]')
-  return jobs
+  if (!fs.existsSync(queueFile)) return { jobs: [], waitMs: null }
+  const all = JSON.parse(fs.readFileSync(queueFile, 'utf8') || '[]')
+  const now = Date.now()
+  const dueAt = (job) => (job.availableAt ? new Date(job.availableAt).getTime() : 0)
+  const jobs = all.filter((job) => dueAt(job) <= now)
+  const later = all.filter((job) => dueAt(job) > now)
+  fs.writeFileSync(queueFile, JSON.stringify(later))
+  return { jobs, waitMs: later.length > 0 ? Math.min(...later.map(dueAt)) - now : null }
 }
 
 /** Runs the queued jobs with the real worker, `concurrency` at a time; a job still running after `timeoutMs` is abandoned. */
 async function drain({ concurrency = 5, timeoutMs = 3000 } = {}) {
   const outcomes = []
   for (;;) {
-    const jobs = takeQueuedJobs()
-    if (jobs.length === 0) break
+    const { jobs, waitMs } = takeQueuedJobs()
+    if (jobs.length === 0) {
+      if (waitMs === null) break
+      await delay(waitMs + 10)
+      continue
+    }
     let index = 0
     const run = async () => {
       while (index < jobs.length) {
@@ -267,6 +280,8 @@ async function runStep(step) {
       }
     }
     case 'enqueue': {
+      // `step.scope`: another club's tenant and organization (many-clubs TEST-M08: two clubs in one drain).
+      const stepScope = step.scope ?? scope
       const container = await newContainer()
       const em = container.resolve('em').fork()
       const service = container.resolve('foundationDispatch')
@@ -286,12 +301,12 @@ async function runStep(step) {
               secrets: step.secrets ? new Map(Object.entries(step.secrets)) : undefined,
               actor: { userId: step.authorUserId ?? null, actingRole: step.authorUserId ? 'club_admin' : 'system' },
             },
-            { ...scope, scope: authorScopeValue },
+            { ...stepScope, scope: authorScopeValue },
           )
           if (step.rollback) throw Object.assign(new Error('probe rollback'), { probeRollback: true, enqueued })
           return enqueued
         })
-        if (step.publish !== false) await service.publish(result.dispatchId, scope)
+        if (step.publish !== false) await service.publish(result.dispatchId, stepScope)
         if (step.as) named.set(step.as, result.dispatchId)
         return result
       } catch (error) {

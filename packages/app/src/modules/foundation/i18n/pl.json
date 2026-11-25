@@ -27,6 +27,7 @@
   "foundation.errors.email_taken": "Ten adres e-mail jest już używany przez inne konto.",
   "foundation.errors.identity_already_linked": "To konto jest już połączone z Twoim kontem.",
   "foundation.errors.identity_last_method": "To jedyny sposób logowania tego konta i nie można go usunąć.",
+  "foundation.errors.import_running": "Trwa inny import w tym klubie. Spróbuj ponownie, gdy się zakończy.",
   "foundation.errors.identity_provider_disabled": "Ten sposób logowania jest niedostępny.",
   "foundation.errors.identity_unavailable": "Logowanie jest chwilowo niedostępne. Spróbuj za chwilę.",
   "foundation.errors.invalid_transition": "Taka zmiana statusu nie jest dozwolona.",

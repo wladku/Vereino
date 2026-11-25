@@ -24,6 +24,36 @@ export const LEASE_SECONDS = 120
 /** E-mails per second per process, below Resend's default 10/s (S12.4). */
 export const EMAIL_SENDS_PER_SECOND = 8
 
+/**
+ * E-mails per second one club may take of the process's `EMAIL_SENDS_PER_SECOND` (many-clubs spec DD-M10, Q-M04;
+ * #633): a club's announcement to 2,000 guardians leaves at this pace, and every other club's mail goes out between.
+ */
+export const CLUB_EMAIL_SENDS_PER_SECOND = 2
+
+/**
+ * The send times of `count` new e-mails of one club (DD-M10, #633), as milliseconds from `now`: one every
+ * `1000 / perSecond` ms, after the club's mail already queued for later (`backlogUntil`, the latest due time of its
+ * queued e-mails, or null). A club without a backlog sends its first `perSecond` e-mails at once, so a single
+ * invitation never waits. The dispatch writes the times on the delivery rows and enqueues each job with its delay, so
+ * a large dispatch never fills the queue ahead of another club's mail.
+ */
+export function paceClubEmails(
+  count: number,
+  now: number,
+  backlogUntil: number | null,
+  perSecond: number = CLUB_EMAIL_SENDS_PER_SECOND,
+): number[] {
+  const step = Math.ceil(1000 / perSecond)
+  const backlogged = backlogUntil !== null && backlogUntil > now
+  const start = backlogged ? backlogUntil - now + step : 0
+  const burst = backlogged ? 0 : perSecond
+  const delays: number[] = []
+  for (let index = 0; index < count; index += 1) {
+    delays.push(index < burst ? 0 : start + (index - burst + (backlogged ? 0 : 1)) * step)
+  }
+  return delays
+}
+
 /** `notificationService.createBatch` takes at most this many users per call. */
 export const IN_APP_BATCH_SIZE = 1000
 
@@ -187,5 +217,54 @@ export function createSendRateLimiter(options: {
       slots.push(Math.max(slot, current))
       if (slot > current) await sleep(slot - current)
     },
+  }
+}
+
+export type ClubSendRateLimiter = { acquire(clubKey: string): Promise<void>; size(): number }
+
+/**
+ * One `createSendRateLimiter` per club (many-clubs spec DD-M10, #633): at most `max` sends of one club in any window of
+ * `windowMs`, inside the process's own limit. The enqueue delays of `paceClubEmails` spread a club's jobs; this keeps
+ * the pace when jobs run late and several become due at once. A club with no caller waiting and whose last send left
+ * the window is forgotten once more than `maxIdleClubs` clubs are held, so the map stays small with 1,000 clubs.
+ */
+export function createClubSendRateLimiter(options: {
+  max: number
+  windowMs: number
+  maxIdleClubs?: number
+  now?: () => number
+  sleep?: (ms: number) => Promise<void>
+}): ClubSendRateLimiter {
+  const now = options.now ?? Date.now
+  const maxIdleClubs = options.maxIdleClubs ?? 100
+  const clubs = new Map<string, { limiter: SendRateLimiter; waiting: number; lastSent: number }>()
+  return {
+    async acquire(clubKey) {
+      const current = now()
+      if (clubs.size > maxIdleClubs) {
+        for (const [key, held] of clubs) {
+          if (held.waiting === 0 && current - held.lastSent > options.windowMs) clubs.delete(key)
+        }
+      }
+      let entry = clubs.get(clubKey)
+      if (!entry) {
+        const limiter = createSendRateLimiter({
+          max: options.max,
+          windowMs: options.windowMs,
+          now,
+          sleep: options.sleep,
+        })
+        entry = { limiter, waiting: 0, lastSent: current }
+        clubs.set(clubKey, entry)
+      }
+      entry.waiting += 1
+      try {
+        await entry.limiter.acquire()
+      } finally {
+        entry.waiting -= 1
+        entry.lastSent = now()
+      }
+    },
+    size: () => clubs.size,
   }
 }

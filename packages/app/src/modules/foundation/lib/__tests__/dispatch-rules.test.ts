@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import type { Recipient } from '@vereino/core'
 import {
+  CLUB_EMAIL_SENDS_PER_SECOND,
   DELIVERY_STATUSES,
   EMAIL_SENDS_PER_SECOND,
   FAILURE_CODES,
@@ -12,8 +13,10 @@ import {
   attemptOutcome,
   bareAddressKey,
   chunk,
+  createClubSendRateLimiter,
   createSendRateLimiter,
   failureCodeFor,
+  paceClubEmails,
   planAddressDeliveries,
   planDeliveries,
   primaryReason,
@@ -256,5 +259,105 @@ describe('createSendRateLimiter', () => {
     await limiter.acquire()
     await limiter.acquire()
     expect(Date.now() - started).toBeGreaterThanOrEqual(5)
+  })
+})
+
+describe('createClubSendRateLimiter (many-clubs DD-M10, #633)', () => {
+  function fakeTime() {
+    const state = { clock: 0, waits: [] as Array<number> }
+    return {
+      state,
+      now: () => state.clock,
+      sleep: (ms: number) => {
+        state.waits.push(ms)
+        return Promise.resolve()
+      },
+    }
+  }
+
+  it('paces each club on its own: late jobs of one club never send more than max in a window', async () => {
+    const time = fakeTime()
+    const limiter = createClubSendRateLimiter({ max: 2, windowMs: 1000, now: time.now, sleep: time.sleep })
+    // Four of club A's jobs due at once (they ran late) and one of club B's.
+    await Promise.all([
+      limiter.acquire('a'),
+      limiter.acquire('a'),
+      limiter.acquire('a'),
+      limiter.acquire('a'),
+      limiter.acquire('b'),
+    ])
+    expect(time.state.waits).toEqual([1001, 1001])
+    expect(limiter.size()).toBe(2)
+  })
+
+  it('forgets idle clubs once more than maxIdleClubs are held, never one with a caller waiting', async () => {
+    const time = fakeTime()
+    let release: () => void = () => undefined
+    const limiter = createClubSendRateLimiter({
+      max: 1,
+      windowMs: 1000,
+      maxIdleClubs: 1,
+      now: time.now,
+      sleep: () => new Promise<void>((resolve) => (release = resolve)),
+    })
+    await limiter.acquire('a')
+    const waiting = Promise.all([limiter.acquire('b'), limiter.acquire('b')])
+    expect(limiter.size()).toBe(2)
+    time.state.clock = 5000
+    // Club A left the window and is dropped; club B still has a caller waiting and stays.
+    await limiter.acquire('c')
+    expect(limiter.size()).toBe(2)
+    release()
+    await waiting
+    time.state.clock = 5500
+    // Club B sent within the window: it stays while club C (sent at 5000) is too recent as well.
+    await limiter.acquire('d')
+    expect(limiter.size()).toBe(3)
+  })
+
+  it('holds 100 idle clubs by default', async () => {
+    const time = fakeTime()
+    const limiter = createClubSendRateLimiter({ max: 1, windowMs: 1000, now: time.now, sleep: time.sleep })
+    for (let index = 0; index < 101; index += 1) await limiter.acquire(`club-${String(index)}`)
+    expect(limiter.size()).toBe(101)
+    time.state.clock = 2000
+    await limiter.acquire('last')
+    expect(limiter.size()).toBe(1)
+  })
+
+  it('defaults to the wall clock and a real timer', async () => {
+    const limiter = createClubSendRateLimiter({ max: 1, windowMs: 5 })
+    const started = Date.now()
+    await limiter.acquire('a')
+    await limiter.acquire('a')
+    expect(Date.now() - started).toBeGreaterThanOrEqual(5)
+  })
+})
+
+describe('paceClubEmails (many-clubs DD-M10, #633)', () => {
+  const now = 1_000_000
+
+  it('sends a club without a backlog its first e-mails at once, then two per second', () => {
+    expect(CLUB_EMAIL_SENDS_PER_SECOND).toBe(2)
+    expect(paceClubEmails(5, now, null)).toEqual([0, 0, 500, 1000, 1500])
+  })
+
+  it('treats a backlog in the past as none', () => {
+    expect(paceClubEmails(3, now, now - 10)).toEqual([0, 0, 500])
+    expect(paceClubEmails(1, now, now)).toEqual([0])
+  })
+
+  it('queues new mail after the club’s queued mail, without a burst', () => {
+    expect(paceClubEmails(3, now, now + 3000)).toEqual([3500, 4000, 4500])
+  })
+
+  it('takes another pace and answers nothing for no mail', () => {
+    expect(paceClubEmails(3, now, null, 1)).toEqual([0, 1000, 2000])
+    expect(paceClubEmails(0, now, null)).toEqual([])
+  })
+
+  it('spreads 5,000 e-mails over about 42 minutes', () => {
+    const delays = paceClubEmails(5000, now, null)
+    expect(delays[4999]).toBe(4998 * 500)
   })
 })

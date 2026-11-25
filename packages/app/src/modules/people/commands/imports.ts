@@ -42,6 +42,7 @@ import type { ActingRole, ScopeTarget } from '@vereino/core'
 import {
   authorizeScoped,
   foundationErrors,
+  holdClubImportSlot,
   scopeDenialCode,
   trustedScopeOf,
   type TargetLock,
@@ -678,6 +679,8 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         return rerunMemberships(em, ctx, record, authorized.actingRole, importer, written)
       }
       await assertOpen(record)
+      // One running import per club (many-clubs spec DD-M10, #633): 409 `import_running` instead of waiting.
+      await holdClubImportSlot(em, record.organizationId)
       const committedBy = actorPersonId(authorized.scope)
       if (!committedBy) return foundationErrors.throw(scopeDenialCode(authorized.scope))
       const scope = { tenantId: record.tenantId, organizationId: record.organizationId }
