@@ -80,3 +80,18 @@ migration), `club_core` consent texts, `groups` / `activities` member pages and 
 - The lawyer confirms the legal basis (Q-O06) before the production release.
 - The club privacy notice (`club_core.privacy`) does not mention the medical date yet — a follow-up.
 - An e-mail opt-out for the reminders waits for the foundation's opt-out mechanism.
+
+## Follow-up run: CI integration failures on PR #705 (2026-11-25)
+
+Trigger: required checks `integration (shard 4/6)`, `integration (shard 6/6)` and `integration` failed (run 45559952973).
+
+- Merged `origin/main` into the PR branch (no conflicts).
+- `ISSUE-629-retire-club-schedules` (TEST-M06) failed with `Expected: 20 Received: 21`: the new `people:medical-reminders`
+  job adds one sweep schedule. Test updated to 21 sweep schedules (real behaviour of this PR, not a regression).
+- `TEST-006` failed with `strict mode violation: getByRole('switch', { name: /coaches|trenerom/ }) resolved to 2
+  elements`: the new medical consent switch on `/club/profile` names the coaches too. The test now picks the
+  share-contact switch by its id `#club-consent-share-contact`.
+- `E20-S03-status-word-and-icon` failed once (`Expected: >= 4 Received: 0`) and passed on retry: a race in the test
+  (the tags are counted while the list refetches), unrelated to this PR; left as is.
+- Local: `yarn test:integration:vereino --filter ISSUE-629-retire-club-schedules`: 1 passed (1.3 m);
+  `--filter TEST-006`: 2 passed (1.1 m).
