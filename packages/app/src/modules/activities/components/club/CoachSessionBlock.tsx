@@ -14,6 +14,8 @@
 // coordinator reads the session as `as=coordinator` — and follows the read's `may*` flags: "Assign substitute" or
 // "Change coach" opens a bottom sheet (the panel dialog's picker), "Edit time or place" opens the edit form in the same
 // perspective; the buttons are full width with 44 px targets, "Cancel session" last; each action ends with a toast.
+// Training outlines and medical expiry spec M-O3 (#682): a match, sparring or tournament lists its squad with the
+// medical certificate chips and warns about the players without a valid one, blocking nothing (Q-O05).
 import * as React from 'react'
 import Link from 'next/link'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -27,6 +29,7 @@ import { CANCEL_REASON_LIMITS, cancelReasonProblem, needsCoach } from '../../lib
 import { errorCodeOf } from '@vereino/core'
 import { ScoreForm } from '../ScoreForm'
 import { AssignCoachSheet } from './AssignCoachSheet'
+import { MatchSquad, SQUAD_ACTIVITY_TYPES } from './MatchSquad'
 import { ReportAbsence } from './ReportAbsence'
 import {
   attendanceHref,
@@ -343,6 +346,12 @@ export function CoachSessionBlock({
         <p id="club-session-cancel-hint" className="text-muted-foreground text-xs">
           {t('activities.club.session.cancelHint')}
         </p>
+      ) : null}
+      {/* M-O3: the squad of a match, sparring or tournament with the medical chips; a warning, never a block. */}
+      {occurrence.status !== 'cancelled' &&
+      occurrence.activityType &&
+      SQUAD_ACTIVITY_TYPES.has(occurrence.activityType) ? (
+        <MatchSquad occurrenceId={occurrence.id} />
       ) : null}
       {/* REQ-A15: the score of a started match or sparring, also after the session is closed. */}
       {entry.mayScore === true ? (

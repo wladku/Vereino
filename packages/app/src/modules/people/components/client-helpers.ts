@@ -3,6 +3,7 @@
 import type { DataTableProps } from '@open-mercato/ui/backend/DataTable'
 import type { useT } from '@open-mercato/shared/lib/i18n/context'
 import { endsBefore, isActiveAt } from '@vereino/core'
+import type { MemberMedical } from './club/member-client'
 
 export type Translate = ReturnType<typeof useT>
 
@@ -65,6 +66,8 @@ export type PersonDetail = PersonListRow & {
   ownConsents?: Record<ConsentKind, OwnConsent>
   /** Full view: the person has a photo (`GET /api/people/persons/{id}/photo`, #312). */
   hasPhoto?: boolean
+  /** With `people.medical.manage` in scope: the sports medical certificate block (#682). */
+  medical?: MemberMedical
 }
 
 /** One own consent of an adult participant as `GET /api/people/persons/{id}` returns it (#309). */

@@ -173,3 +173,32 @@ export async function emitMedicalUpdated(ctx: Pick<CommandRuntimeContext, 'conta
   })
   await emitPeopleEvent('people.person.medical_updated', { id: person.id, ...scope }, { persistent: true, ...scope })
 }
+
+/**
+ * The medical certificate block of a member page (M-O4; #682): the date, its status, whether a `medical` consent is in
+ * force (BR-O1 — any guardian of a minor, or the adult), and the person's lock token for `PUT …/medical`.
+ */
+export type MemberMedicalView = {
+  validUntil: CalendarDate | null
+  status: MedicalStatusColor
+  state: MedicalStatusState
+  consentInForce: boolean
+  /** The person's lock token (`PUT /api/people/persons/{id}/medical`). */
+  updatedAt: string | null
+}
+
+export async function memberMedicalView(
+  em: EntityManager,
+  scope: ClubScope,
+  person: Pick<Person, 'id' | 'birthDate' | 'consents' | 'medicalValidUntil' | 'updatedAt'>,
+  today: CalendarDate,
+): Promise<MemberMedicalView> {
+  const status = medicalStatus(person.medicalValidUntil, today)
+  return {
+    validUntil: status.validUntil,
+    status: status.status,
+    state: status.state,
+    consentInForce: await medicalConsentOf(em, scope, person, today),
+    updatedAt: person.updatedAt ? new Date(person.updatedAt).toISOString() : null,
+  }
+}
