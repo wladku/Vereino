@@ -1,7 +1,7 @@
 # Vereino social sign-in — Google and Facebook for account holders
 
 **Date**: 2026-10-27
-**Status**: In progress (approved by the product owner on 2026-11-22 on #566, with the `arctic` dependency; V-S04 decided on #566)
+**Status**: In progress (approved by the product owner on 2026-11-22 on #566 and #567, with the `arctic` dependency and the migrations the spec defines; DD-S07 approved on 2026-11-23 on #631; V-S04 decided on #566)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -295,7 +295,7 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 | UI contracts identify references, canonical components, and theme/state coverage | pass | three surfaces with references, components, states and a mock-up |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | phases 1–2 |
 | Contracts of installed modules confirmed at the field and behavior level | pass | V-S01 (`AuthService.createSession` + `signJwt`, `autologin.ts`, `login.ts:186`), V-S02 (no OAuth in core `auth`; enterprise `sso` is OIDC/SAML only), V-S03 (`auth.login:form` spot); V-S04 (`arctic`) checked 2026-11-22, see *Open Questions* |
-| User approval for implementation | pass | the product owner approved the spec, the `arctic` dependency and the migration on #566 (2026-11-22) |
+| User approval for implementation | pass | the product owner approved the spec as written, the `arctic` dependency and the spec's migrations on #566 and #567 (2026-11-22), and DD-S07 on #631 (2026-11-23) |
 
 Verdict: `Approved — phase 1 built on #566; phase 2 (Facebook) waits for its external reviews`
 

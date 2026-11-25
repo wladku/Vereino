@@ -311,3 +311,65 @@ export const lifeCycleNoticeTemplates = [
   cameOfAgeAdminTemplate,
 ]
 export const accountAgeNoticeTemplates = [accountAgeReachedTemplate, accountAgeReachedAdminTemplate]
+
+// --- The medical certificate reminders (training outlines and medical expiry spec REQ-O03, DD-O04; #682) ---
+// A month before the "valid until" date and on the date, to the guardians of a minor and to an adult participant. They
+// name the person (first name) and the date, nothing else of the health data. `optOut: 'never'` until the foundation
+// offers an opt-out mechanism (`isOptOutAvailable`); the spec allows one, it is not built yet.
+
+const medicalReminderParams = z
+  .object({
+    personId: z.uuid(),
+    name: z.string().min(1).max(200),
+    validUntil: z.iso.date(),
+    /** True when the recipients are the guardians of a minor (the link opens the ward), false for the adult. */
+    ward: z.boolean(),
+  })
+  .strict()
+
+export type MedicalReminderParams = z.output<typeof medicalReminderParams>
+
+export const MEDICAL_EXPIRING_TEMPLATE = 'people.medical_expiring'
+export const MEDICAL_EXPIRED_TEMPLATE = 'people.medical_expired'
+
+const medicalLink = (params: MedicalReminderParams) =>
+  params.ward ? `/club/wards/${params.personId}` : '/club/profile'
+
+export const medicalExpiringTemplate = noticeTemplate<MedicalReminderParams>({
+  id: MEDICAL_EXPIRING_TEMPLATE,
+  params: medicalReminderParams,
+  copy: (t, params, locale) => {
+    const values = { name: params.name, date: formatDay(params.validUntil, locale) }
+    return {
+      subject: t('people.email.medicalExpiring.subject', "{name}'s medical certificate expires on {date}", values),
+      lead: t(
+        'people.email.medicalExpiring.lead',
+        "The sports medical certificate of {name} is valid until {date}. Book the doctor's visit in time and enter the new date in the app, so the coach sees that {name} may play.",
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.medical.action', 'Enter the new date'),
+  link: medicalLink,
+})
+
+export const medicalExpiredTemplate = noticeTemplate<MedicalReminderParams>({
+  id: MEDICAL_EXPIRED_TEMPLATE,
+  params: medicalReminderParams,
+  copy: (t, params, locale) => {
+    const values = { name: params.name, date: formatDay(params.validUntil, locale) }
+    return {
+      subject: t('people.email.medicalExpired.subject', "{name}'s medical certificate expires today", values),
+      lead: t(
+        'people.email.medicalExpired.lead',
+        'The sports medical certificate of {name} is valid until {date}. From tomorrow the coach sees it as expired. Enter the new date in the app once the doctor has issued it.',
+        values,
+      ),
+    }
+  },
+  actionLabel: (t) => t('people.email.medical.action', 'Enter the new date'),
+  link: medicalLink,
+})
+
+/** The medical certificate reminder templates, registered in `di.ts`. */
+export const medicalReminderTemplates = [medicalExpiringTemplate, medicalExpiredTemplate]

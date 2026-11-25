@@ -1,0 +1,62 @@
+{
+  "_comment": "GitHub REST responses for ST-TEST-02 (.ai/specs/2026-11-24-cezar-stall-prevention.md), in the shape of the GitHub REST API, trimmed to the fields the train reads; the PR numbers follow the 2026-11-24 stall (#643 on #563, #686 on #677), the branches are illustrative.",
+  "GET /repos/wladku/Vereino/pulls?state=open&per_page=100&page=1": [
+    {
+      "number": 643,
+      "head": { "ref": "feat/issue-602-follow-up", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "feat/issue-563-sessions" },
+      "labels": [{ "name": "feature" }]
+    },
+    {
+      "number": 686,
+      "head": { "ref": "fix/issue-681-club-deletion", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "feat/issue-677-offboarding" },
+      "labels": [{ "name": "bug" }]
+    },
+    {
+      "number": 690,
+      "head": { "ref": "feat/issue-688-exports", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "main" },
+      "labels": []
+    },
+    {
+      "number": 700,
+      "head": { "ref": "feat/issue-689-csv", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "feat/issue-688-exports" },
+      "labels": []
+    },
+    {
+      "number": 701,
+      "head": { "ref": "docs/release-notes", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "release/2026-11" },
+      "labels": []
+    },
+    {
+      "number": 702,
+      "head": { "ref": "patch-1", "repo": { "full_name": "someone/Vereino" } },
+      "base": { "ref": "feat/issue-563-sessions" },
+      "labels": []
+    }
+  ],
+  "GET /repos/wladku/Vereino/pulls?state=closed&head=wladku:feat%2Fissue-563-sessions&per_page=100&page=1": [
+    {
+      "number": 563,
+      "head": { "ref": "feat/issue-563-sessions", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "main" },
+      "merged_at": "2026-11-23T22:41:07Z"
+    }
+  ],
+  "GET /repos/wladku/Vereino/pulls?state=closed&head=wladku:feat%2Fissue-677-offboarding&per_page=100&page=1": [
+    {
+      "number": 677,
+      "head": { "ref": "feat/issue-677-offboarding", "repo": { "full_name": "wladku/Vereino" } },
+      "base": { "ref": "main" },
+      "merged_at": null
+    }
+  ],
+  "GET /repos/wladku/Vereino/pulls?state=closed&head=wladku:release%2F2026-11&per_page=100&page=1": [],
+  "GET /repos/wladku/Vereino/issues/643/comments?sort=created&per_page=100&page=1": [
+    { "body": "🤖 `om-auto-fix-issue` run complete." }
+  ],
+  "GET /repos/wladku/Vereino/issues/686/comments?sort=created&per_page=100&page=1": [{ "body": null }]
+}

@@ -1103,6 +1103,7 @@
   "activities.clubEvents.part.cancelOpen.text": "{title} zostanie w imprezie, przekreślona, z powodem.",
   "activities.occurrences.move.placeLocked": "Część odbywa się w miejscu imprezy klubowej; zmień miejsce imprezy, by przenieść wszystkie części.",
   "activities.club.nav.clubEvents": "Imprezy klubowe",
+  "activities.club.nav.outlines": "Konspekty treningów",
   "activities.clubEvents.club.list.intro": "Turnieje i inne imprezy klubowe, które organizujesz, z częściami według dni.",
   "activities.clubEvents.club.list.parts": "Części: {count}",
   "activities.clubEvents.club.list.noUpcoming": "Brak nadchodzących imprez klubowych.",
@@ -1162,5 +1163,14 @@
   "activities.reports.pzpn.attendance.columns.status": "Status",
   "activities.errors.report_period_invalid": "Wybierz okres nie dłuższy niż rok, który kończy się nie wcześniej niż zaczyna.",
   "activities.errors.report_group_not_found": "Nie znaleziono drużyny.",
-  "activities.club.pzpn.chooseTeam": "Wybierz drużynę"
+  "activities.club.pzpn.chooseTeam": "Wybierz drużynę",
+  "activities.club.medical.missing": "Orzeczenie: brak",
+  "activities.club.medical.unknown": "Orzeczenie: nieznane",
+  "activities.club.medical.expired": "Orzeczenie wygasło {date}",
+  "activities.club.medical.expiring": "Orzeczenie do {date} (wkrótce wygasa)",
+  "activities.club.medical.valid": "Orzeczenie do {date}",
+  "activities.club.medical.filter": "Orzeczenie: nieważne",
+  "activities.club.medical.filterEmpty": "Wszyscy tutaj mają ważne orzeczenie lekarskie.",
+  "activities.club.medical.squad.title": "Skład meczowy",
+  "activities.club.medical.squad.warning": "Zawodnicy bez ważnego orzeczenia lekarskiego ({count}): {names}"
 }

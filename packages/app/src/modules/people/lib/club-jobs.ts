@@ -26,4 +26,11 @@ export const PEOPLE_CLUB_JOBS: readonly ClubJobDeclaration[] = [
     schedule: { dailyAt: '04:00' },
     description: 'Delete the staged rows and the file of people imports 30 days after their commit or cancellation.',
   },
+  {
+    // Training outlines and medical expiry spec DD-O04 (#682): 07:00 club time, so a reminder arrives in the morning.
+    key: 'people:medical-reminders',
+    schedule: { dailyAt: '07:00' },
+    description:
+      'Medical certificate reminders a month before and on the date; dates without consent, of former persons or 12 months past are cleared.',
+  },
 ]

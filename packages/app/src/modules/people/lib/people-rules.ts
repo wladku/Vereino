@@ -257,8 +257,28 @@ export function firstOverlapping<T extends Validity>(candidate: Validity, existi
 export const GUARDIAN_RELATIONS = ['parent', 'grandparent', 'legal_guardian', 'other'] as const
 export type GuardianRelation = (typeof GUARDIAN_RELATIONS)[number]
 
-/** The consents of a guardianship (club spec glossary *Consents*). */
-export const CONSENT_KINDS = ['regulations', 'image', 'trips'] as const
+/**
+ * The consents of a guardianship (club spec glossary *Consents*) and of an adult participant. `medical` (training
+ * outlines and medical expiry spec DD-O01, BR-O1; #682) is the explicit consent (GDPR Art. 9(2)(a)) to keep the
+ * sports medical certificate's expiry date; only the person or a guardian gives it, never staff.
+ */
+export const CONSENT_KINDS = ['regulations', 'image', 'trips', 'medical'] as const
+
+/** The consents only the data subject or a guardian may give or withdraw — never the club's staff (BR-O1). */
+export const SUBJECT_ONLY_CONSENT_KINDS: readonly ConsentKind[] = ['medical']
+
+/** The subject-only kinds among the kinds a change actually changed (`applyConsentChanges(...).changed`). */
+export function subjectOnlyChanges(changed: readonly ConsentKind[]): ConsentKind[] {
+  return SUBJECT_ONLY_CONSENT_KINDS.filter((kind) => changed.includes(kind))
+}
+
+/** True when the change withdraws `kind` (an explicit `false`). */
+export function withdraws(
+  changes: { readonly [kind in ConsentKind]?: boolean } | undefined,
+  kind: ConsentKind,
+): boolean {
+  return changes?.[kind] === false
+}
 export type ConsentKind = (typeof CONSENT_KINDS)[number]
 
 /** One consent as `people_guardianships.consents` stores it: `{ granted, at, by_person_id }` (the spec's keys). */
@@ -302,7 +322,7 @@ export function consentsView(stored: StoredConsents): ConsentsView {
       ? { granted: entry.granted, at: entry.at, byPersonId: entry.by_person_id }
       : { granted: false, at: null, byPersonId: null }
   }
-  return { regulations: view('regulations'), image: view('image'), trips: view('trips') }
+  return { regulations: view('regulations'), image: view('image'), trips: view('trips'), medical: view('medical') }
 }
 
 function consentState(entry: StoredConsentEntry | undefined): ConsentState {
@@ -369,7 +389,12 @@ export function effectiveConsents(
     const decision = own?.[kind] ?? latestDecision(guardianships.map((consents) => consents[kind]))
     return decision?.granted ?? false
   }
-  return { regulations: given('regulations'), image: given('image'), trips: given('trips') }
+  return {
+    regulations: given('regulations'),
+    image: given('image'),
+    trips: given('trips'),
+    medical: given('medical'),
+  }
 }
 
 /**

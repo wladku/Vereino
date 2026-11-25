@@ -1103,6 +1103,7 @@
   "activities.clubEvents.part.cancelOpen.text": "{title} stays on the club event, struck through, with the reason.",
   "activities.occurrences.move.placeLocked": "A part takes place at the club event's place; change the event's place to move every part.",
   "activities.club.nav.clubEvents": "Club events",
+  "activities.club.nav.outlines": "Training outlines",
   "activities.clubEvents.club.list.intro": "The tournaments and other club events you organise, with their parts by day.",
   "activities.clubEvents.club.list.parts": "Parts: {count}",
   "activities.clubEvents.club.list.noUpcoming": "No upcoming club event.",
@@ -1162,5 +1163,14 @@
   "activities.reports.pzpn.attendance.columns.status": "Status",
   "activities.errors.report_period_invalid": "Choose a period of at most a year that ends on or after its first day.",
   "activities.errors.report_group_not_found": "Team not found.",
-  "activities.club.pzpn.chooseTeam": "Choose a team"
+  "activities.club.pzpn.chooseTeam": "Choose a team",
+  "activities.club.medical.missing": "Medical: missing",
+  "activities.club.medical.unknown": "Medical: unknown",
+  "activities.club.medical.expired": "Medical expired {date}",
+  "activities.club.medical.expiring": "Medical until {date} (expires soon)",
+  "activities.club.medical.valid": "Medical until {date}",
+  "activities.club.medical.filter": "Medical: not valid",
+  "activities.club.medical.filterEmpty": "Everyone here has a valid medical certificate.",
+  "activities.club.medical.squad.title": "Squad",
+  "activities.club.medical.squad.warning": "{count} players without a valid medical certificate: {names}"
 }
