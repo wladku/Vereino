@@ -97,9 +97,7 @@ test('TEST-046 B-33: cash held by a coach, a numbered handover, 409 on a settled
     expect(empty.status, JSON.stringify(empty.body)).toBe(200)
     expect(empty.body).toEqual({ items: [], total: 0 })
     expect((await custody(request, rafal.token)).status).toBe(403)
-    expect((await accept(request, rafal.token, { collectorPersonId: rafal.personId, paymentIds: [] })).status).toBe(
-      403,
-    )
+    expect((await accept(request, rafal.token, { collectorPersonId: rafal.personId, paymentIds: [] })).status).toBe(403)
 
     // Rafał takes PLN 200 + 200 + 135 in three acceptances: three KP receipts, PLN 535 with him.
     const receipts: string[] = []

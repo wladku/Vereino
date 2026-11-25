@@ -12,6 +12,7 @@ import {
   createPerson,
   getPerson,
   signInAs,
+  testEmailFor,
   uniqueSuffix,
   type Club,
 } from '../_fixtures/club'
@@ -45,7 +46,7 @@ async function invitedPerson(request: APIRequestContext, club: Club, firstName: 
     lastName: 'Konto L01',
     birthDate: birthDateTurning(30),
   })
-  const email = `${firstName.toLowerCase()}-${uniqueSuffix()}@example.org`
+  const email = testEmailFor(firstName)
   const created = await createAccount(request, club.adminToken, personId, email)
   expect(created.status, JSON.stringify(created.body)).toBe(201)
   const userId = String(created.body?.userId)

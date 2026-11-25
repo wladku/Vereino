@@ -111,7 +111,10 @@ test('TEST-T07 a coordinator adds an external place once; it stays on the list a
     expect(eventOptions.body?.places).toContainEqual({ id: hallId, label: HALL.name, isExternal: true })
 
     // The same name and address — other case, spaces around — is the existing place (negative case).
-    const again = await addPlace(rafal, { name: '  hala SPORTOWA w zielonym lesie ', address: 'UL. SZKOLNA 50, ZIELONY LAS ' })
+    const again = await addPlace(rafal, {
+      name: '  hala SPORTOWA w zielonym lesie ',
+      address: 'UL. SZKOLNA 50, ZIELONY LAS ',
+    })
     expect(again.status, JSON.stringify(again.body)).toBe(409)
     expect(again.body?.code).toBe('external_place_exists')
     expect(again.body?.details).toEqual({ placeId: hallId, pickable: true })

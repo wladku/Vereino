@@ -148,7 +148,8 @@ describe('publicClubEventView', () => {
       place: {
         name: 'Hala w Zielonym Lesie',
         address: 'ul. Szkolna 50, Zielony Las',
-        mapUrl: 'https://www.openstreetmap.org/search?query=Hala%20w%20Zielonym%20Lesie%2C%20ul.%20Szkolna%2050%2C%20Zielony%20Las',
+        mapUrl:
+          'https://www.openstreetmap.org/search?query=Hala%20w%20Zielonym%20Lesie%2C%20ul.%20Szkolna%2050%2C%20Zielony%20Las',
       },
       posterFileId: 'poster',
       funders: [

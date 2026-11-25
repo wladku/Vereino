@@ -170,9 +170,14 @@ describe('external place duplicates (club events spec REQ-T06, #377)', () => {
       { id: 'same', name: 'hala sportowa w zielonym lesie', address: ' ul. szkolna 50, zielony las' },
     ]
     expect(
-      duplicateExternalPlaceId({ name: 'Hala sportowa w Zielonym Lesie ', address: 'ul. Szkolna 50, Zielony Las' }, places),
+      duplicateExternalPlaceId(
+        { name: 'Hala sportowa w Zielonym Lesie ', address: 'ul. Szkolna 50, Zielony Las' },
+        places,
+      ),
     ).toBe('same')
-    expect(duplicateExternalPlaceId({ name: 'Hala w Krakowie', address: 'ul. Szkolna 50, Zielony Las' }, places)).toBeNull()
+    expect(
+      duplicateExternalPlaceId({ name: 'Hala w Krakowie', address: 'ul. Szkolna 50, Zielony Las' }, places),
+    ).toBeNull()
     expect(duplicateExternalPlaceId({ name: 'Hala', address: 'Adres 1' }, [])).toBeNull()
   })
 
