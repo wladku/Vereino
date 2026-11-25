@@ -133,9 +133,15 @@ describe('session copies (DD-O07)', () => {
   })
 
   it('tells an unedited copy from an edited one', () => {
-    expect(isUneditedCopy(content(), content())).toBe(true)
-    expect(isUneditedCopy(content({ topic: 'Inny temat' }), content())).toBe(false)
-    expect(isUneditedCopy(content(), null)).toBe(false)
+    const made = new Date('2026-11-20T10:00:00.000Z')
+    expect(isUneditedCopy({ sourceOutlineId: OWNER, createdAt: made, updatedAt: new Date(made) })).toBe(true)
+    expect(isUneditedCopy({ sourceOutlineId: OWNER, createdAt: new Date(made.getTime() + 4), updatedAt: made })).toBe(
+      true,
+    )
+    expect(
+      isUneditedCopy({ sourceOutlineId: OWNER, createdAt: made, updatedAt: new Date('2026-11-21T10:00:00.000Z') }),
+    ).toBe(false)
+    expect(isUneditedCopy({ sourceOutlineId: null, createdAt: made, updatedAt: made })).toBe(false)
   })
 })
 
@@ -148,6 +154,7 @@ describe('the PDF file name (REQ-O09)', () => {
 
   it('names an outline of no session and trims a long topic', () => {
     expect(outlineFileName({ language: 'en', topic: 'Rondo', date: null })).toBe('outline-rondo')
+    expect(outlineFileName({ language: 'pl', topic: 'Gra 1×1', date: null })).toBe('konspekt-gra-1-1')
     expect(outlineFileName({ language: 'en', topic: `${'a'.repeat(59)} bbbb`, date: null })).toBe(
       `outline-${'a'.repeat(59)}`,
     )

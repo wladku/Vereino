@@ -532,15 +532,9 @@ const syncSessionsCommand: CommandHandler<Record<string, unknown>, SessionSyncRe
       const removedIds = authorized.parsed.removedIds
       if (removedIds.length > 0) {
         const outlines = await em.find(Outline, { ...scope, occurrenceId: { $in: removedIds }, deletedAt: null })
-        const sourceIds = [...new Set(outlines.flatMap((row) => (row.sourceOutlineId ? [row.sourceOutlineId] : [])))]
-        const sources = sourceIds.length
-          ? new Map((await em.find(Outline, { ...scope, id: { $in: sourceIds } })).map((row) => [row.id, row]))
-          : new Map<string, Outline>()
         const now = new Date()
         for (const row of outlines) {
-          const source = row.sourceOutlineId ? (sources.get(row.sourceOutlineId) ?? null) : null
-          const unedited = isUneditedCopy(contentOf(row), source ? contentOf(source) : null)
-          if (unedited) {
+          if (isUneditedCopy(row)) {
             row.deletedAt = now
             counts.removed += 1
           } else {

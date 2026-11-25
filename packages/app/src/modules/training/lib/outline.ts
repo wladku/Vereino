@@ -179,13 +179,18 @@ export function outlineContent(row: OutlineContent): OutlineContent {
   }
 }
 
+/** A copy's two stamps are written by one insert; they may differ by the flush's milliseconds, never by a second. */
+export const COPY_STAMP_TOLERANCE_MS = 1000
+
 /**
- * Whether a session copy still holds its series outline's content: an unedited copy of a removed session is deleted,
- * an edited one is kept detached (DD-O07).
+ * Whether a session copy was never changed since it was made from its source: every write moves `updatedAt`, so an
+ * unedited copy still has it within the insert's tolerance of `createdAt`. An unedited copy of a removed session is
+ * deleted, an edited one is kept detached (DD-O07). Comparing with the source's content would not do — the series
+ * outline may have changed since.
  */
-export function isUneditedCopy(copy: OutlineContent, source: OutlineContent | null): boolean {
-  if (!source) return false
-  return JSON.stringify(outlineContent(copy)) === JSON.stringify(outlineContent(source))
+export function isUneditedCopy(copy: { sourceOutlineId?: string | null; createdAt: Date; updatedAt: Date }): boolean {
+  if (!copy.sourceOutlineId) return false
+  return Math.abs(copy.updatedAt.getTime() - copy.createdAt.getTime()) < COPY_STAMP_TOLERANCE_MS
 }
 
 /**
@@ -196,7 +201,7 @@ export function outlineFileName(input: { language: OutlineLanguage; topic: strin
   const slug = input.topic
     .normalize('NFKD')
     .replace(/[łŁ]/g, 'l')
-    .replace(/[^\x00-\x7f]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')

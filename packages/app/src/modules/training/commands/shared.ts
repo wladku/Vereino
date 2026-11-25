@@ -129,9 +129,13 @@ export function sessionOutline(
   authorPersonId: string,
   sourceOutlineId: string | null,
 ): Outline {
+  // Both stamps of one insert: a copy untouched since is recognisable (`isUneditedCopy`).
+  const now = new Date()
   const row = em.create(Outline, {
     id: randomUUID(),
     ...scope,
+    createdAt: now,
+    updatedAt: now,
     authorPersonId,
     sectionId: session.sectionId,
     groupId: session.groupId,
