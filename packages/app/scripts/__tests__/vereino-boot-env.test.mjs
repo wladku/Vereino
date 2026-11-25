@@ -1,7 +1,14 @@
 // Unit tests for the boot-time environment check (engineering standards S8.10, ENG-TEST-12; issue #462).
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { findBootEnvProblems, formatBootEnvProblems, REQUIRED_VARIABLES, runCli } from '../vereino-boot-env.mjs'
+import {
+  findBootEnvProblems,
+  findBootEnvWarnings,
+  formatBootEnvProblems,
+  RATE_LIMIT_RULES,
+  REQUIRED_VARIABLES,
+  runCli,
+} from '../vereino-boot-env.mjs'
 
 const SECRET_VALUE = 'postgres://owner:very-secret-password@db.internal:5432/vereino'
 
@@ -122,4 +129,71 @@ test('runCli defaults to process.env and stderr', (t) => {
   const code = runCli()
   assert.equal(code, 1)
   assert.match(writes.join(''), /DATABASE_URL is invalid/)
+})
+
+// Rate limits (#738): the platform limiter's settings a deployment must not run with.
+const RAILWAY = {
+  ...PRODUCTION,
+  RAILWAY_ENVIRONMENT_NAME: 'staging',
+  RATE_LIMIT_STRATEGY: 'redis',
+  RATE_LIMIT_TRUST_PROXY_DEPTH: '1',
+}
+
+test('a complete Railway environment has no rate-limit problems or warnings', () => {
+  assert.deepEqual(findBootEnvProblems(RAILWAY), [])
+  assert.deepEqual(findBootEnvWarnings(RAILWAY), [])
+})
+
+test('the redis strategy needs REDIS_URL itself, which is all the limiter reads', () => {
+  const { REDIS_URL: _unused, ...withoutRedis } = RAILWAY
+  assert.deepEqual(
+    findBootEnvProblems({ ...withoutRedis, CACHE_REDIS_URL: 'redis://cache:6379', QUEUE_REDIS_URL: 'redis://q:6379' }),
+    ['REDIS_URL is missing (the rate limiter reads it, because RATE_LIMIT_STRATEGY=redis)'],
+  )
+})
+
+test('an unknown strategy and a malformed proxy depth are invalid anywhere', () => {
+  assert.deepEqual(
+    findBootEnvProblems({ ...PRODUCTION, RATE_LIMIT_STRATEGY: 'disk', RATE_LIMIT_TRUST_PROXY_DEPTH: 'one' }),
+    [
+      'RATE_LIMIT_STRATEGY is invalid (expected memory or redis)',
+      'RATE_LIMIT_TRUST_PROXY_DEPTH is invalid (expected a whole number of trusted proxies)',
+    ],
+  )
+  assert.deepEqual(findBootEnvProblems({ ...PRODUCTION, RATE_LIMIT_TRUST_PROXY_DEPTH: ' 2 ' }), [])
+})
+
+test('Railway refuses the memory strategy, disabled limits and the integration-test switch', () => {
+  assert.deepEqual(
+    findBootEnvProblems({
+      ...RAILWAY,
+      RATE_LIMIT_STRATEGY: undefined,
+      RATE_LIMIT_ENABLED: 'false',
+      OM_INTEGRATION_TEST: 'true',
+    }),
+    [
+      'RATE_LIMIT_STRATEGY must be redis on Railway (shared counters that survive a deploy)',
+      'RATE_LIMIT_ENABLED must not be false on Railway',
+      'OM_INTEGRATION_TEST must not be set on Railway (it switches rate limits off)',
+    ],
+  )
+  assert.deepEqual(findBootEnvProblems({ ...RAILWAY, RATE_LIMIT_ENABLED: 'true', OM_INTEGRATION_TEST: 'false' }), [])
+})
+
+test('outside Railway the rate-limit settings stay free (local runs, the integration runner)', () => {
+  assert.deepEqual(findBootEnvProblems({ ...PRODUCTION, RATE_LIMIT_ENABLED: 'false', OM_INTEGRATION_TEST: 'true' }), [])
+  assert.deepEqual(findBootEnvWarnings(PRODUCTION), [])
+})
+
+test('an unset or zero proxy depth on Railway is a warning, not a stop', () => {
+  for (const depth of [undefined, '', '0']) {
+    const env = { ...RAILWAY, RATE_LIMIT_TRUST_PROXY_DEPTH: depth }
+    assert.deepEqual(findBootEnvProblems(env), [])
+    assert.equal(findBootEnvWarnings(env).length, 1)
+    assert.match(findBootEnvWarnings(env)[0], /RATE_LIMIT_TRUST_PROXY_DEPTH is unset or 0/)
+  }
+})
+
+test('every rate-limit rule names its problem', () => {
+  for (const rule of RATE_LIMIT_RULES) assert.ok(rule.problem.length > 0)
 })

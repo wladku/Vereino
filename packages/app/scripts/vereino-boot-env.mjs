@@ -44,6 +44,66 @@ export const REQUIRED_VARIABLES = [
   },
 ]
 
+/** @param {Record<string, string | undefined>} env */
+const onRailway = (env) => (env.RAILWAY_ENVIRONMENT_NAME ?? '').trim() !== ''
+/** @param {string | undefined} value */
+const isFalse = (value) => ['false', '0', 'no', 'off'].includes((value ?? '').trim().toLowerCase())
+/** @param {string | undefined} value */
+const isTrue = (value) => ['true', '1', 'yes', 'on'].includes((value ?? '').trim().toLowerCase())
+
+/**
+ * Rate-limit settings a deployment must not run with (#738). The platform limiter reads only `REDIS_URL`, falls back
+ * to per-process counters without a word when the strategy has no URL, and is switched off by `RATE_LIMIT_ENABLED`
+ * false or `OM_INTEGRATION_TEST`. On Railway (`RAILWAY_ENVIRONMENT_NAME`, set by the platform) the counters must live in
+ * Redis so they are shared by instances and survive a deploy.
+ * @type {ReadonlyArray<{ problem: string, when: (env: Record<string, string | undefined>) => boolean }>}
+ */
+export const RATE_LIMIT_RULES = [
+  {
+    problem: 'RATE_LIMIT_STRATEGY is invalid (expected memory or redis)',
+    when: (env) => env.RATE_LIMIT_STRATEGY !== undefined && !['memory', 'redis'].includes(env.RATE_LIMIT_STRATEGY),
+  },
+  {
+    problem: 'REDIS_URL is missing (the rate limiter reads it, because RATE_LIMIT_STRATEGY=redis)',
+    when: (env) => env.RATE_LIMIT_STRATEGY === 'redis' && (env.REDIS_URL ?? '').trim() === '',
+  },
+  {
+    problem: 'RATE_LIMIT_TRUST_PROXY_DEPTH is invalid (expected a whole number of trusted proxies)',
+    when: (env) => {
+      const depth = (env.RATE_LIMIT_TRUST_PROXY_DEPTH ?? '').trim()
+      return depth !== '' && !/^\d+$/.test(depth)
+    },
+  },
+  {
+    problem: 'RATE_LIMIT_STRATEGY must be redis on Railway (shared counters that survive a deploy)',
+    when: (env) => onRailway(env) && env.RATE_LIMIT_STRATEGY !== 'redis',
+  },
+  {
+    problem: 'RATE_LIMIT_ENABLED must not be false on Railway',
+    when: (env) => onRailway(env) && isFalse(env.RATE_LIMIT_ENABLED),
+  },
+  {
+    problem: 'OM_INTEGRATION_TEST must not be set on Railway (it switches rate limits off)',
+    when: (env) => onRailway(env) && isTrue(env.OM_INTEGRATION_TEST),
+  },
+]
+
+/**
+ * Settings that let the app start but weaken it, printed as warnings. The proxy depth is not a stop: it must be
+ * measured on the running environment (`docs/ops/deploy.md` → *Rate limits*), which needs the app up.
+ * @param {Record<string, string | undefined>} env
+ * @returns {string[]}
+ */
+export function findBootEnvWarnings(env) {
+  const depth = (env.RATE_LIMIT_TRUST_PROXY_DEPTH ?? '').trim()
+  if (onRailway(env) && (depth === '' || depth === '0')) {
+    return [
+      'RATE_LIMIT_TRUST_PROXY_DEPTH is unset or 0 behind the Railway proxy: every client shares one rate-limit counter (docs/ops/deploy.md, Rate limits)',
+    ]
+  }
+  return []
+}
+
 /**
  * Every required variable that is missing or malformed in `env`. Problems name variables only; values never leave
  * this function.
@@ -61,6 +121,7 @@ export function findBootEnvProblems(env) {
     }
     if (!schema.safeParse(env[setName]).success) problems.push(`${setName} is invalid (expected ${reason})`)
   }
+  for (const rule of RATE_LIMIT_RULES) if (rule.when(env)) problems.push(rule.problem)
   return problems
 }
 

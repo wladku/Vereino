@@ -29,7 +29,7 @@ read 2026-11-21).
 | V1.4 Memory, unmanaged code | — | — | n/a (TypeScript only) |
 | V1.5 Safe deserialization | Zod validators on every route body (`data/validators.ts`) | route integration tests | to verify |
 | V2.1–V2.3 Validation and business logic | Zod schemas per route; business rules in `lib/` with 100 % unit coverage (AGENTS.md); commands with optimistic locking and 409 on conflict | `yarn test`, module integration tests | partial — documentation of business-logic limits per flow is open |
-| V2.4 Anti-automation | rate limits through the platform `lib/ratelimit` on sessionless routes (S8.6): `facilities/api/public/**`, `payments/api/order-links/**`; honeypot and time trap on public forms | facilities and payments public-route integration tests | partial — the S8.6 limits are not yet applied to every public route; sign-in limits are the platform's |
+| V2.4 Anti-automation | rate limits through the platform `lib/ratelimit` on every sessionless and sign-in route (S8.6, #738): per client in each route's `metadata.rateLimit`, per token and per address within a club in the handlers, per account on sign-in and password reset; counters in Redis on Railway (boot check); see *Sessionless route inventory* below; honeypot and time trap on public forms | `ISSUE-738-sessionless-rate-limits` (429 with `Retry-After` on sign-in, password reset and each public route family); facilities and payments public-route integration tests; `vereino-boot-env` unit tests | met — the per-client counters separate clients only once `RATE_LIMIT_TRUST_PROXY_DEPTH` is measured and set per environment (A-6) |
 | V3.1–V3.2 Frontend documentation, content interpretation | upload rules S8.11 (no SVG; re-encoded images); `X-Content-Type-Options` | `next.config.ts` headers | to verify |
 | V3.3 Cookie setup | platform session cookie `Secure`, `HttpOnly`, `SameSite=Lax` (S8.5, checked in E3) | E3 spike notes (#448) | to verify on production |
 | V3.4 Browser security headers | CSP, `X-Frame-Options`, `Referrer-Policy` in `packages/app/next.config.ts` | `next.config.ts` | **gap** — `Strict-Transport-Security` and `Permissions-Policy` are not set yet and the production CSP still has `'unsafe-eval'` (S8.4, phase E4) |
@@ -40,7 +40,7 @@ read 2026-11-21).
 | V4.3 GraphQL, V4.4 WebSocket | — | — | n/a (none used) |
 | V5.1–V5.3 File upload and storage | S8.11: allowlisted MIME, extension and magic bytes, size limits, no SVG, bank statements only in the private attachments partition, file names never used as paths | attachments integration tests | to verify |
 | V5.4 File download | attachment access through the platform `attachments` module and its ACL | — | to verify |
-| V6.1–V6.3 Authentication documentation, passwords, general | platform `auth` only (S8.2); sign-in rate limits of the platform | E3 spike notes | to verify |
+| V6.1–V6.3 Authentication documentation, passwords, general | platform `auth` only (S8.2); sign-in rate limits of the platform (per client, per client and address) and Vereino's per-account limit (#738) | E3 spike notes | to verify |
 | V6.4 Factor lifecycle and recovery | platform password reset; Vereino personal links are not a sign-in factor (S8.7) | — | to verify |
 | V6.5–V6.7 Multi-factor, out-of-band, cryptographic authentication | none in 1.0: the platform's MFA is in the commercial enterprise module (ADR-023) | ENG-Q-09 (default: no MFA in 1.0) | **gap** — accepted risk pending the owner's ENG-Q-09 decision; level 2 expects MFA for administrators |
 | V6.8 Identity provider | social sign-in is not enabled in 1.0 | — | n/a until `.ai/specs/2026-10-27-vereino-social-sign-in.md` ships |
@@ -72,6 +72,30 @@ read 2026-11-21).
 | V16.5 Error handling | `reportError` with fingerprints (S15.2) | — | to verify |
 | V17 WebRTC | — | — | n/a (not used) |
 
+## Sessionless route inventory
+
+Every route a stranger can reach without a session, with its limits (#738; engineering standards S8.6). *Per client*
+is counted by the API dispatcher from the route's `metadata.rateLimit` and keyed by the client address
+(`RATE_LIMIT_TRUST_PROXY_DEPTH`); the other layers are counted in the handler through the foundation
+(`foundation/services/sessionless-limits.ts`), keyed by a SHA-256 hash of the token or address. Over a limit the answer
+is 429 with `Retry-After`, except where the route always answers a uniform 202: there the work is skipped silently.
+Refusals are logged with the limiter key prefix only — no address, token or e-mail.
+
+| Route family | Routes | Per client | Per subject |
+|---|---|---|---|
+| Sign-in (platform `auth`, `src/app/api/auth/login/route.ts`) | `POST /api/auth/login` | platform: 20 / min per client, 5 / min per client and address | 10 / 15 min per account from any client (cleared by a successful sign-in) |
+| Password reset (platform `auth`, `src/app/api/auth/reset/route.ts`) | `POST /api/auth/reset`; `POST /api/auth/reset/confirm`, `/validate` | platform: 10 / min per client, 3 / min per client and address; confirm and validate per client | 3 / hour per address from any client (request only) |
+| Social sign-in (`foundation`) | `GET /api/foundation/identity/providers`; `GET /api/foundation/identity/{provider}/start`, `/callback` | 120 / min; 20 / min; 20 / min | — |
+| Public club pages (`club_core`) | `GET /api/club_core/public/{clubSlug}` and its `logo`, `events`, `events/{eventSlug}` (+ `files/{fileId}`), `sections/{sectionSlug}` (+ `logo`, `materials/{materialId}`), `places/{placeSlug}/files/{fileId}`; the server-rendered `/p/{clubSlug}/**` pages through the same limits | 120 / min each | — |
+| Public places (`facilities`) | `GET /api/facilities/public/{clubSlug}/places`, `places/{placeSlug}/schedule` | 120 / min each | — |
+| Booking requests (`facilities`) | `POST /api/facilities/public/{clubSlug}/places/{placeSlug}/requests` | 10 / 10 min | 5 / hour per address (fails closed, V-10) |
+| Booking and rental links (`facilities`) | `POST /api/facilities/public/requests/verify`, `rentals/cancel/preview`, `rentals/cancel` | 30 / 10 min each | 30 / min per token (verify, cancel); 60 / min per token (preview) |
+| Public sessions (`activities`) | `GET /api/activities/public/{clubSlug}/sessions/{occurrenceId}` | 120 / min | — |
+| Declaration links (`activities`) | `POST /api/activities/declaration-links` (uniform 202); `GET`, `POST /api/activities/declaration-links/{token}` | 10 / 15 min; 60 / min; 30 / min | 3 / hour per address within a club (silent); 60 / min read, 30 / min write per token |
+| Order campaigns (`payments`) | `GET /api/payments/public/order-campaigns/{id}`; `POST …/{id}/link-request` (uniform 202) | 60 / min; 10 / 15 min | — ; 3 / hour per address within a club (silent) |
+| Order links (`payments`) | `GET /api/payments/order-links/{token}`; `POST …/{token}/orders`, `…/orders/{id}/cancel` | 60 / min; 30 / min | 60 / min read, 30 / min write per token |
+| Test only (`ratelimit_probe`, not a Vereino module) | `POST /api/ratelimit_probe/ping` | 3 / min | — |
+
 ## Open items
 
 | Id | What | Blocks |
@@ -81,3 +105,4 @@ read 2026-11-21).
 | A-3 | Cryptographic key inventory with rotation (session secret, Stripe keys, backup key, token hashing) | V11.1 met |
 | A-4 | HSTS, `Permissions-Policy`, CSP without `'unsafe-eval'` (S8.4, phase E4) | V3.4 met |
 | A-5 | Owner decisions ENG-Q-09 (MFA) and ENG-Q-12 (session lifetime) | V6.5, V7.3, V7.5 |
+| A-6 | Measure the Railway proxy depth on staging, set `RATE_LIMIT_TRUST_PROXY_DEPTH` on staging and production, and record two clients with separate sign-in counters in a run log (`docs/ops/deploy.md` → *Rate limits*; #738) | per-client limits in production |

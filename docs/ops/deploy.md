@@ -50,7 +50,8 @@ Required by the boot check (production and staging run with `NODE_ENV=production
 | `DATABASE_URL` | app, worker | `postgres://` URL of the environment's PostgreSQL (Railway reference variable) |
 | `JWT_SECRET` | app, worker | at least 32 characters, unique per environment (`openssl rand -hex 32`); the platform also rejects placeholders |
 | `APP_URL` | app, worker | public `https://` base URL of the environment, used in e-mailed links |
-| `REDIS_URL` | app, worker | required because the start scripts default to `CACHE_STRATEGY=redis` and `QUEUE_STRATEGY=async`; `CACHE_REDIS_URL` / `QUEUE_REDIS_URL` override it per subsystem |
+| `REDIS_URL` | app, worker | required because the start scripts default to `CACHE_STRATEGY=redis` and `QUEUE_STRATEGY=async`; `CACHE_REDIS_URL` / `QUEUE_REDIS_URL` override it per subsystem; the rate limiter reads only `REDIS_URL` |
+| `RATE_LIMIT_STRATEGY` | app, worker | `redis` (the start scripts' default): counters shared by instances and kept across deploys. On Railway anything else refuses to start (#738) |
 
 Also set per environment (not checked at boot, but the feature they serve fails without them):
 
@@ -68,9 +69,42 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `VEREINO_INSTANCE_ID` | optional; the id of this deployment that Vereino Enterprise licence keys are bound to (one for the shared cloud, its own for each dedicated instance). See *Enterprise licence keys* below |
 | `VEREINO_LICENCE_KEYS`, `VEREINO_LICENCE_KEYS_FILE` | optional, sealed; the installed Enterprise licence keys. Unset: every Enterprise feature is off |
 
-Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST`, `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
+| `RATE_LIMIT_TRUST_PROXY_DEPTH` | the number of proxies in front of the app, **measured** per environment (see *Rate limits* below). Unset or `0` behind Railway's proxy, every client shares one counter: one client can block sign-in for everyone. The app starts but warns at boot |
+| `RATE_LIMIT_ENABLED` | leave unset (on). On Railway `false` refuses to start |
+
+Never set in staging or production: `OM_TEST_MODE`, `OM_INTEGRATION_TEST` (it switches rate limits off; on Railway the boot check refuses it), `OM_AUTOLOGIN_*`, `OM_ALLOW_DEV_AUTH_SECRET`.
 No `VEREINO_*` variable is required at boot yet; a new one is added to the boot check, to `.env.example` and to this
 table in the same pull request.
+
+## Rate limits
+
+Railway's edge has no configurable rate limiting, so every limit is the app's (#738; inventory of the routes and their
+limits: `docs/compliance/asvs-checklist.md` → *Sessionless route inventory*). The platform limiter keys a client by its
+address, which it reads from `X-Forwarded-For` only as deep as `RATE_LIMIT_TRUST_PROXY_DEPTH` allows: with `0` (the
+default) it trusts no header and every client falls into one shared counter.
+
+Measure the depth on each environment, never assume it:
+
+1. Deploy with the depth unset. The boot log warns `RATE_LIMIT_TRUST_PROXY_DEPTH is unset or 0`.
+2. From your machine, open a public club page or call `GET /api/foundation/identity/providers` once without and once
+   with a made-up header: `curl -s -o /dev/null https://<host>/api/foundation/identity/providers` and the same with
+   `-H 'X-Forwarded-For: 192.0.2.1'`.
+3. In the app logs find `Client address unresolved behind a proxy` (component `sessionless-limits`, once per
+   `forwardedEntries` value; no address is logged). `forwardedEntries` of the request without the header is the number
+   of proxies that appended an address: that is the depth. When the request with the made-up header shows one entry
+   more, the proxy appends to the header, and the made-up entry is never trusted at that depth; when it shows the same
+   number, the proxy replaces the header, and the depth is the same.
+4. Set `RATE_LIMIT_TRUST_PROXY_DEPTH` to that number on the app and the worker, redeploy, and check that the boot
+   warning is gone.
+5. Prove it: from two networks (for example a phone on mobile data and a laptop), sign in with a wrong password on one
+   until it answers 429; the other still signs in. Restart the app service (or redeploy) and check that the first
+   client still gets 429 until `Retry-After` passes — the counters live in Redis. Record the depth and both results in
+   a run log (`.ai/runs/`).
+
+When Redis cannot be reached the platform limiter keeps counting per process in memory, which resets on every deploy;
+the app logs `Rate limiter store unreachable` once per outage (component `rate-limit-store-watch`) and
+`Rate limiter store reachable again` when it is back. A refusal is logged as `Sessionless request over its rate limit`
+with the limiter key prefix only.
 
 ## Production release
 
