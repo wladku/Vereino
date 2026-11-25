@@ -181,9 +181,14 @@ describe('MT-TEST-05: QA hold (MT-D02)', () => {
   it('comments on a held PR only the first time, and edits that comment when its text changes', () => {
     const wanted = `Merge train: held ${QA_HOLD_MARKER}`
     assert.deepEqual(qaHoldCommentAction([], wanted), { type: 'create' })
-    assert.deepEqual(qaHoldCommentAction([{ id: 1, body: 'Merge train: other' }, { id: 2 }], wanted), { type: 'create' })
+    assert.deepEqual(qaHoldCommentAction([{ id: 1, body: 'Merge train: other' }, { id: 2 }], wanted), {
+      type: 'create',
+    })
     assert.equal(qaHoldCommentAction([{ id: 1, body: wanted }], wanted), null)
-    const stale = [{ id: 7, body: `Merge train: old ${QA_HOLD_MARKER}` }, { id: 8, body: wanted }]
+    const stale = [
+      { id: 7, body: `Merge train: old ${QA_HOLD_MARKER}` },
+      { id: 8, body: wanted },
+    ]
     assert.deepEqual(qaHoldCommentAction(stale, wanted), { type: 'update', id: 7 })
   })
 })

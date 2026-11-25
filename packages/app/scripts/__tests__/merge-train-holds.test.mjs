@@ -122,7 +122,10 @@ describe('QM-TEST-02: the QA-hold comment', () => {
 
   it('fails loudly when GitHub refuses a read or a write', async () => {
     const down = async () => ({ status: 502, body: { message: 'Bad Gateway' } })
-    await assert.rejects(run(down, [{ pr: 601, reason: QA_HOLD_REASON, instruction: true }]), /GET .*601\/comments.* → 502/)
+    await assert.rejects(
+      run(down, [{ pr: 601, reason: QA_HOLD_REASON, instruction: true }]),
+      /GET .*601\/comments.* → 502/,
+    )
     const { api } = fakeApi(FIXTURES, () => 403)
     await assert.rejects(run(api, [{ pr: 602, reason: MISSING, instruction: false }]), /POST .*602\/comments → 403/)
   })
