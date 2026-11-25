@@ -9,6 +9,7 @@ import {
   FAMILY_MAPPING,
   SEED_DEFAULTS,
   SEED_PASSWORD,
+  newSeedPassword,
   childLastName,
   createClubCli,
   familiesCsv,
@@ -295,4 +296,9 @@ test('runSeed needs the superadmin e-mail and password', async () => {
     runSeed({ argv: [], env: { OM_INIT_SUPERADMIN_EMAIL: 'root@test' } }),
     /the superadmin e-mail and password are needed/,
   )
+})
+
+test('the seed password is random per run and meets the password policy', () => {
+  assert.equal(newSeedPassword(Buffer.from([1, 2, 3])), 'Capacity-AQID-Aa1!')
+  assert.match(SEED_PASSWORD, /^Capacity-[A-Za-z0-9_-]{16}-Aa1!$/)
 })

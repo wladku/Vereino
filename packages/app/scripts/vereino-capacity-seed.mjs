@@ -10,6 +10,7 @@
 // Usage (cwd = packages/app): node scripts/vereino-capacity-seed.mjs --base-url http://127.0.0.1:5101 \
 //   --clubs 100 --participants 150 --groups 6 --guardians 10 --state /tmp/vereino-capacity/state.json
 import { spawnSync } from 'node:child_process'
+import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -31,8 +32,13 @@ export const SEED_DEFAULTS = {
   cli: 'yarn',
 }
 
-/** Synthetic password of every seeded account (the stack is disposable and private to the test). */
-export const SEED_PASSWORD = 'Capacity-Seed-2026-Aa1!'
+/** A random password that meets the password policy (upper, lower, digit, symbol). */
+export function newSeedPassword(bytes = randomBytes(12)) {
+  return ['Capacity', bytes.toString('base64url'), 'Aa1!'].join('-')
+}
+
+/** The password of every account one seed run creates; never written anywhere (the state file keeps tokens only). */
+export const SEED_PASSWORD = newSeedPassword()
 
 /** The people import columns of `familiesCsv` (`people/lib/import-mapping.ts`). */
 export const FAMILY_MAPPING = {
