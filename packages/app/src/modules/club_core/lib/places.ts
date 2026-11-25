@@ -81,7 +81,7 @@ export const EXTERNAL_PLACE_DEFAULT_KIND: PlaceKind = 'other'
 
 /**
  * The duplicate key of a place: its name and address, trimmed and lower-cased (an absent address counts as empty),
- * so "Hala w Liszkach " and "hala w liszkach" at the same address are one place.
+ * so "Hala w Zielonym Lesie " and "hala w zielonym lesie" at the same address are one place.
  */
 export function externalPlaceKey(name: string, address: string | null | undefined): string {
   return `${name.trim().toLocaleLowerCase('pl')}\n${(address ?? '').trim().toLocaleLowerCase('pl')}`

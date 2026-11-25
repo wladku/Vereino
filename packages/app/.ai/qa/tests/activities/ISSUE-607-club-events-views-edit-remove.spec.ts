@@ -7,7 +7,7 @@ import { createGroup } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
 
 // Club events spec AC-T11, the parts TEST-T11 leaves out (REQ-T11; #607): B-T1 lists the club events by view, a part is
-// edited in the panel and an undeclared part is removed. The administrator has an upcoming "GWIAZDA CUP 2026" (two
+// edited in the panel and an undeclared part is removed. The administrator has an upcoming "PRZYKŁAD CUP 2026" (two
 // group parts next weekend), a past "Turniej Jesienny" (an open part yesterday) and a cancelled "Dzień klubu". Upcoming
 // lists only the first; Past and Cancelled each list only theirs, switched as tabs under `?view=` without a page reload.
 // On the record, Edit renames the Orlik part and sets its category (PUT 200, the row and the record show both); Remove
@@ -15,7 +15,7 @@ import { uiText } from '../_fixtures/ui-text'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const UPCOMING = 'GWIAZDA CUP 2026'
+const UPCOMING = 'PRZYKŁAD CUP 2026'
 const PAST = 'Turniej Jesienny 2026'
 const CANCELLED = 'Dzień klubu'
 const OPEN_ACTIONS = uiText('ui.rowActions.openActions')

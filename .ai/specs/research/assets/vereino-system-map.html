@@ -69,7 +69,7 @@ td code,li code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px
 <div class="wrap">
   <div class="eyebrow">Vereino · Open Mercato · meeting 1 (26.09.2026, WK + KK) · v0.3</div>
   <h1>Vereino System Map</h1>
-  <p class="lead">A shared picture of the sports club management system, using KS Gwiazda Ściejowice as the example: entities, relationships, roles and the boundary of the first release. Version 0.2 adds the sports facility (Orlik 2024) administered by the club on behalf of Gmina Liszki.</p>
+  <p class="lead">A shared picture of the sports club management system, using KS Przykład Dolina as the example: entities, relationships, roles and the boundary of the first release. Version 0.2 adds the sports facility (Orlik) administered by the club on behalf of Gmina Zielony Las.</p>
 
   <h2>1. Domain model</h2>
   <figure>
@@ -260,7 +260,7 @@ td code,li code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px
       </g>
       <!-- subtitles -->
       <g font-size="9.5" fill="var(--muted)" text-anchor="middle" font-family="Source Sans 3, system-ui, sans-serif">
-        <text x="110" y="85">LKS Gwiazda (tenant)</text>
+        <text x="110" y="85">LKS Przykład (tenant)</text>
         <text x="290" y="85">academy · pool · extra classes</text>
         <text x="470" y="85">complex → pitches, lockers; owner</text>
         <text x="650" y="85">guardian ↔ minor</text>
@@ -334,7 +334,7 @@ td code,li code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px
 
   <h2>4. How the calendar works (the path of one training session)</h2>
   <div class="flow">
-    <div class="step"><b>The coordinator creates an Activity</b><small>"Żaki training", group Żaki, Tuesdays 17:00–18:30, Orlik, coach Wojtek, rule: weekly until 30.06</small></div>
+    <div class="step"><b>The coordinator creates an Activity</b><small>"Żaki training", group Żaki, Tuesdays 17:00–18:30, Orlik, coach Rafał, rule: weekly until 30.06</small></div>
     <div class="step"><b>The system generates Sessions</b><small>One Session for every Tuesday; each has its own status, coach and place (they may differ from the defaults)</small></div>
     <div class="step"><b>The calendars fill up</b><small>The guardian sees the children's sessions, the participant their own, the coach their groups, the coordinator the whole section</small></div>
     <div class="step"><b>Attendance declaration</b><small>The guardian or a participant aged 13+ clicks "attending / not attending". Whether a child's declaration requires the guardian's confirmation – a club / group / activity type setting</small></div>
@@ -418,13 +418,13 @@ td code,li code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:13px
   </div>
 
   <h2>7. Questions to resolve before coding</h2>
-  <div class="q"><b>Sections: which ones and who is the coordinator?</b>Three emerge from the conversation: football academy (Wojtek?), swimming pool (Aneta?), extra classes. Are seniors a separate section? Without this, coordinator permissions cannot be granted.</div>
+  <div class="q"><b>Sections: which ones and who is the coordinator?</b>Three emerge from the conversation: football academy (Rafał?), swimming pool (Joanna?), extra classes. Are seniors a separate section? Without this, coordinator permissions cannot be granted.</div>
   <div class="q"><b>Boundary between coordinator ↔ club administrator.</b>Proposal: coordinator = "what is happening" (groups, activities, sessions, staffing), administrator = "money and people" (fee schedules, charges, roles, personal data, places). Agreed?</div>
   <div class="q"><b>Membership fees: settlement model.</b>A monthly fee per group, a fee for a specific activity (camp, away match), or both? Who is the payer for an adult participant (themselves)? In the MVP, does the administrator record payments manually, or do we go straight to a payment gateway?</div>
   <div class="q"><b>Camp: activity or project?</b>Proposal: an activity of type <code>camp</code> (multi-day, with a participant list and a fee), and a project only when there is external co-funding. Agreed?</div>
   <div class="q"><b>Personal data and GDPR.</b>Is PESEL really needed in the MVP (insurance, PZPN licenses)? Who has the right to see it? Which consents does the guardian confirm in the system (image, regulations, trip)?</div>
   <div class="q"><b>Announcements: replace WhatsApp or complement it?</b>For the MVP we propose: announcements only in the app, with an e-mail notification. Integration with messengers later. Should "cases" (complaints, conflicts) be opened manually by the coordinator, or can any thread be marked as a case?</div>
-  <div class="q"><b>Many clubs.</b>Multi-tenant right away (1 tenant = 1 club, as in Open Mercato), or one instance for Gwiazda to start with?</div>
+  <div class="q"><b>Many clubs.</b>Multi-tenant right away (1 tenant = 1 club, as in Open Mercato), or one instance for Przykład to start with?</div>
   <div class="q"><b>Platform.</b>Kacper mentioned a phone app. Open Mercato provides the web. Is the MVP = a responsive web app (PWA), with a native app later?</div>
   <div class="card" style="border-top:3px solid var(--accent);margin-block:8px"><h3>Product name: Vereino</h3><p>From German <i>Verein</i> (association, club). Rejected: CoolClub (working name), Clubio and Klubio (taken). Project set up in Lead Hub. To be decided: domain (.org / .com / .app) – purchase on hold.</p></div>
   <h3 style="margin-top:20px">From the Orlik regulations and management agreement</h3>

@@ -345,7 +345,7 @@ Public
 
 ### Journey J-N01 — The administrator enters the club's first place
 
-1. Aneta signs in. She has no ward and does not train, so she lands on `/backend`. The dashboard says "Dzień dobry, Aneta" with today's date.
+1. Joanna signs in. She has no ward and does not train, so she lands on `/backend`. The dashboard says "Dzień dobry, Joanna" with today's date.
 2. The sidebar shows Klub first: Sekcje, Miejsca, Instytucje i umowy, Ustawienia, Publikacja. She opens **Miejsca** and adds the pitch.
 3. The owner picker needs the municipality. She opens **Instytucje i umowy**, adds it on the Instytucje tab, switches to the Umowy tab and back without leaving the page.
 4. Failure: a coordinator opens `/backend/club/contracts` by URL without `club_core.contracts.manage` and gets the platform's 403. A person who may open Instytucje but not Umowy sees the page without the Umowy tab.
@@ -361,8 +361,8 @@ Public
 
 1. Anna only coaches. She lands on `/club` in the staff context. There is no switcher; Today shows her sessions; the calendar asks for `as=coach`.
 2. Her fourth tab is Obiekty, because she has no payments of her own. Więcej lists Profil, Moje jednostki, Płatności moich grup and Wyloguj.
-3. Wojtek coaches, coordinates the academy and has a child in the club. He gets the switcher "jako członek / opiekun" · "jako trener / koordynator"; the member context is the default and his last choice is remembered. In the member context his calendar lists his child's sessions and the sessions he coaches in one list. Więcej also lists Panel administracyjny.
-4. Failure: Wojtek's coordinator role ends. The stored staff context still fits (he coaches), and the label becomes "jako trener".
+3. Rafał coaches, coordinates the academy and has a child in the club. He gets the switcher "jako członek / opiekun" · "jako trener / koordynator"; the member context is the default and his last choice is remembered. In the member context his calendar lists his child's sessions and the sessions he coaches in one list. Więcej also lists Panel administracyjny.
+4. Failure: Rafał's coordinator role ends. The stored staff context still fits (he coaches), and the label becomes "jako trener".
 
 ### Journey J-N04 — The attendant opens the facility
 
@@ -373,9 +373,9 @@ Public
 
 ### Journey J-N05 — A guest goes from the club page to sign-in
 
-1. A parent opens `/p/gwiazda/places`. The header shows the club's logo and name, then Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj ("Wydarzenia" only when the club publishes events).
-2. **Sekcje** goes to the sections block of the club page. **Zaloguj** opens `/login?club=gwiazda`.
-3. The sign-in page shows the club's logo, "KS Gwiazda" and "Jedno konto dla rodzica, zawodnika i trenera" above the form. Having opened that branded page once, the phone remembers the club (the `vereino_club` cookie) for the next visit to `/login`.
+1. A parent opens `/p/przyklad/places`. The header shows the club's logo and name, then Klub · Sekcje · Obiekty · Wydarzenia · Zaloguj ("Wydarzenia" only when the club publishes events).
+2. **Sekcje** goes to the sections block of the club page. **Zaloguj** opens `/login?club=przyklad`.
+3. The sign-in page shows the club's logo, "KS Przykład" and "Jedno konto dla rodzica, zawodnika i trenera" above the form. Having opened that branded page once, the phone remembers the club (the `vereino_club` cookie) for the next visit to `/login`.
 4. Failure: the slug is unknown or the club does not publish a page. The sign-in page shows Vereino's name and the form; no club data is read.
 
 ## UI and Interaction Contracts
@@ -532,13 +532,13 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 
 ```text
 ┌──────────────────────────────────────────────────────────────────────┐
-│ ☰ KS Gwiazda          Panel › Instytucje i umowy   [Interfejs członkowski] 👤 │
+│ ☰ KS Przykład          Panel › Instytucje i umowy   [Interfejs członkowski] 👤 │
 ├───────────────┬──────────────────────────────────────────────────────┤
 │ Pulpit        │ Instytucje i umowy                    [Dodaj umowę]  │
 │ KLUB          │ [Instytucje] [Umowy]                                 │
 │  Sekcje       │ ─────────────────────────────────────────────────── │
 │  Miejsca      │ Osoba / instytucja   Rodzaj   Od      Podstawa  Za jednostkę  Mecz │
-│ ▸Instytucje…  │ Wojtek Malinowski    trener   01.09   1 200 zł  60 zł         80 zł│
+│ ▸Instytucje…  │ Rafał Malinowski    trener   01.09   1 200 zł  60 zł         80 zł│
 │  Ustawienia   │ Gmina Przykładowo    umowa…   01.01   —         —             —    │
 │  Publikacja   │                                                      │
 │ LUDZIE        │                                                      │
@@ -560,8 +560,8 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 
 ```text
 ┌──────────────────────────────┐   ┌──────────────────────────────┐
-│ ‹ Wstecz        ⚑ KS Gwiazda │   │                              │
-│ Dzień dobry, Wojtek          │   │  Więcej                      │
+│ ‹ Wstecz        ⚑ KS Przykład │   │                              │
+│ Dzień dobry, Rafał          │   │  Więcej                      │
 │ Kontekst [jako trener / ko▾] │   │  Profil                      │
 │                              │   │  Moje jednostki              │
 │  … page content …            │   │  Obiekty i rezerwacje        │
@@ -581,12 +581,12 @@ More lists its entries in the order of this table. Spec A's coordinator pages (s
 
 ```text
 ┌──────────────────────────────────────────────────────────────┐
-│ ⚑ Gwiazda         Klub·Sekcje·Obiekty·Wydarzenia·Zaloguj PL▾ │
+│ ⚑ Przykład         Klub·Sekcje·Obiekty·Wydarzenia·Zaloguj PL▾ │
 └──────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────┐
 │            ⚑                 │
-│        KS Gwiazda            │
+│        KS Przykład            │
 │ Jedno konto dla rodzica,     │
 │ zawodnika i trenera          │
 │ ┌──────────────────────────┐ │

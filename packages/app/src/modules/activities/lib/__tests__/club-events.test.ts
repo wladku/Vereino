@@ -22,7 +22,7 @@ import {
 // change moves, the copy prefill.
 describe('proposeClubEventSlug', () => {
   it('proposes a readable slug from the name', () => {
-    expect(proposeClubEventSlug('GWIAZDA CUP 2026')).toBe('gwiazda-cup-2026')
+    expect(proposeClubEventSlug('PRZYKŁAD CUP 2026')).toBe('przyklad-cup-2026')
     expect(proposeClubEventSlug('  Turniej Żaków — Łódź, Śląsk!  ')).toBe('turniej-zakow-lodz-slask')
   })
 
@@ -39,14 +39,14 @@ describe('proposeClubEventSlug', () => {
 
 describe('isClubEventSlug', () => {
   it('accepts lower-case words joined by single hyphens, 3–80 characters', () => {
-    expect(isClubEventSlug('gwiazda-cup-2026')).toBe(true)
+    expect(isClubEventSlug('przyklad-cup-2026')).toBe(true)
     expect(isClubEventSlug('abc')).toBe(true)
   })
 
   it('refuses other shapes and lengths', () => {
     expect(isClubEventSlug('ab')).toBe(false)
     expect(isClubEventSlug('a'.repeat(81))).toBe(false)
-    expect(isClubEventSlug('Gwiazda')).toBe(false)
+    expect(isClubEventSlug('Przykład')).toBe(false)
     expect(isClubEventSlug('a--b')).toBe(false)
     expect(isClubEventSlug('-abc')).toBe(false)
   })
@@ -121,9 +121,9 @@ describe('futurePlannedSessions', () => {
 
 describe('clubEventPublicPath', () => {
   it('links the tournament page only while the event is public and the club has a slug', () => {
-    expect(clubEventPublicPath('gwiazda', 'gwiazda-cup-2026', true)).toBe('/p/gwiazda/events/gwiazda-cup-2026')
-    expect(clubEventPublicPath('gwiazda', 'gwiazda-cup-2026', false)).toBeNull()
-    expect(clubEventPublicPath(null, 'gwiazda-cup-2026', true)).toBeNull()
+    expect(clubEventPublicPath('przyklad', 'przyklad-cup-2026', true)).toBe('/p/przyklad/events/przyklad-cup-2026')
+    expect(clubEventPublicPath('przyklad', 'przyklad-cup-2026', false)).toBeNull()
+    expect(clubEventPublicPath(null, 'przyklad-cup-2026', true)).toBeNull()
   })
 })
 

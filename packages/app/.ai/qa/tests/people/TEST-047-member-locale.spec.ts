@@ -8,7 +8,7 @@ import {
   createClub,
   createPerson,
   getPerson,
-  uniqueSuffix,
+  testEmailFor,
   type Club,
 } from '../_fixtures/club'
 import {
@@ -60,7 +60,7 @@ async function guardianWithWard(
     wardPersonId: wardId,
     validFrom: calendarDate(),
   })
-  const email = `${input.firstName.toLowerCase()}-${uniqueSuffix()}@example.org`
+  const email = testEmailFor(input.firstName)
   const account = await createAccount(request, club.adminToken, personId, email)
   expect(account.status, JSON.stringify(account.body)).toBe(201)
   const userId = String(account.body?.userId)

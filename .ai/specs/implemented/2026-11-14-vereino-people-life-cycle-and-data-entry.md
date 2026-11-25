@@ -280,43 +280,43 @@ B-11 Seasons tab -> POST /api/groups/seasons/rollover/preview -> groups + groups
 
 ### Journey J-L01 — The invitation expired
 
-1. Kasia tells Aneta, the administrator, that her link no longer works. Aneta opens Kasia on B-10, tab Account. The state reads "Invited on 3 November — not signed in yet".
-2. Aneta clicks "Send the invitation again". The command sends a new link valid 60 minutes (the V-L01 fallback); the tab says so. The tab shows "Sent again today".
-3. Kasia's address was mistyped: Aneta clicks "Change login e-mail", types the right one, saves. The invitation goes to the new address.
+1. Kasia tells Joanna, the administrator, that her link no longer works. Joanna opens Kasia on B-10, tab Account. The state reads "Invited on 3 November — not signed in yet".
+2. Joanna clicks "Send the invitation again". The command sends a new link valid 60 minutes (the V-L01 fallback); the tab says so. The tab shows "Sent again today".
+3. Kasia's address was mistyped: Joanna clicks "Change login e-mail", types the right one, saves. The invitation goes to the new address.
 4. Failures: the e-mail provider fails → a warning and the action stays available; Kasia has signed in meanwhile → 409 and the tab reloads as "Active"; a fourth attempt in five minutes → 429 with the wait time.
 
 ### Journey J-L02 — A family leaves the club
 
 1. Kasia opens `/club/profile` on the phone and taps "Leave the club". The page lists her and her two wards; she ticks both children, leaves "Also delete our data" unticked, picks the last day (30 November) and sends.
-2. Aneta gets a notice. On Kasia's record, tab Leaving, she opens the request and the preview: two participant memberships each, Kasia's guardianships, an open November charge for Jan (a warning), Kasia's account to be closed, Jan's father stays the guardian of nobody else and is offered too.
-3. Aneta confirms. On 30 November everything has `valid_to` set; on 1 December the job closes the accounts. Kasia gets the confirmation e-mail on the day of the decision.
+2. Joanna gets a notice. On Kasia's record, tab Leaving, she opens the request and the preview: two participant memberships each, Kasia's guardianships, an open November charge for Jan (a warning), Kasia's account to be closed, Jan's father stays the guardian of nobody else and is offered too.
+3. Joanna confirms. On 30 November everything has `valid_to` set; on 1 December the job closes the accounts. Kasia gets the confirmation e-mail on the day of the decision.
 4. Failures: the second ward stays and Kasia is their only guardian → blocker "Jan would have no guardian"; Kasia is the primary payer of a staying ward → the form asks for the next payer; a stale preview → 409 and a fresh preview.
 
 ### Journey J-L03 — A coach leaves in mid-season
 
-1. Wojtek tells the coordinator he stops at the end of the month and sends the request from `/club/profile/leave`.
-2. Aneta opens the preview: 14 planned sessions after the last day, two activities with Wojtek as default coach, a contract, a coordinator assignment, and 240 zł of cash held.
-3. The cash is a blocker. It links to B-33 (issue #118). After the cash is accepted there, Aneta opens the preview again.
+1. Rafał tells the coordinator he stops at the end of the month and sends the request from `/club/profile/leave`.
+2. Joanna opens the preview: 14 planned sessions after the last day, two activities with Rafał as default coach, a contract, a coordinator assignment, and 240 zł of cash held.
+3. The cash is a blocker. It links to B-33 (issue #118). After the cash is accepted there, Joanna opens the preview again.
 4. She chooses "hand the Żaki sessions to Marek" and "leave the Basen sessions unassigned". She confirms.
 5. From the day after the last day the Żaki sessions carry Marek, the Basen sessions appear under "needing a coach" on the coordinator's phone (spec A), the contract and the assignments end, and the groups' threads get no post (a hand-over is not a schedule change).
 6. Failure: Marek is not a coach of that group and the actor is a coordinator of another section → 403 on that choice.
 
 ### Journey J-L04 — A request to delete data
 
-1. A former member's parent writes to the club asking to delete the child's data. Aneta opens the child (perspective "Former"), tab Leaving, and records the request: who asked, when, and the note.
+1. A former member's parent writes to the club asking to delete the child's data. Joanna opens the child (perspective "Former"), tab Leaving, and records the request: who asked, when, and the note.
 2. She clicks "Anonymise" and types the last name to confirm. Contact data, PESEL, photo and birth date are gone at once. Because the family paid fees this year, the name stays until 31 December five years on, visible to the administrator only, with the date shown.
 3. Failures: an open charge → 409 with a link to the charge; the account still open → 409 "Close the account first".
 
 ### Journey J-L05 — Jan turns 18
 
-1. Thirty days before the birthday Kasia, Jan and Aneta get the notice: from that day Jan decides for himself, Kasia stops seeing his calendar and charges, and Jan needs an account or an e-mail address to get messages.
+1. Thirty days before the birthday Kasia, Jan and Joanna get the notice: from that day Jan decides for himself, Kasia stops seeing his calendar and charges, and Jan needs an account or an e-mail address to get messages.
 2. On the birthday the job ends Kasia's guardianship, copies the three consents to Jan, and gives Jan's account the payer role (built). Jan's profile shows "My consents", each marked "given by Kasia Kowalska on 2 September 2026".
 3. The November charge created earlier stays with Kasia. The December charge names Jan as payer.
 4. Jan has no account and no e-mail: the administrator's list "Adults without contact" shows him, and the December charge is flagged as it is today for a payer who cannot be reached.
 
 ### Journey J-L06 — A new season
 
-1. In August Aneta opens Groups → Seasons and clicks "Start a new season". She names it 2027/28 with its dates.
+1. In August Joanna opens Groups → Seasons and clicks "Start a new season". She names it 2027/28 with its dates.
 2. The table lists the 2026/27 groups. She sets "Żaki 2017" to rename ("Orliki 2017", category Orlik), "Skrzaty 2020" to continue, "Zumba wtorek" to close, and copies "Skrzaty 2020" as "Skrzaty 2021".
 3. For each continued group she keeps the training activities with "end and copy" and raises the fee from 120 to 130 zł.
 4. The preview shows what will be created and ended and one conflict: the copied Tuesday training collides with a rental. She moves it to 17:00 in the plan and applies.
@@ -325,15 +325,15 @@ B-11 Seasons tab -> POST /api/groups/seasons/rollover/preview -> groups + groups
 
 ### Journey J-L07 — A new coach
 
-1. Aneta adds Marek as a person. The Roles tab shows the checklist "Staff setup": Account — none; Role — none; Groups as coach — none; Contract — none.
+1. Joanna adds Marek as a person. The Roles tab shows the checklist "Staff setup": Account — none; Role — none; Groups as coach — none; Contract — none.
 2. She creates the account (invitation sent), assigns the role "coach", follows "Add to a group as coach" to the roster of Żaki (spec A's screen, opened with Marek preselected), and "Add a contract" to the contract form with Marek as party.
 3. Back on the record every row is green. Marek signs in and sees his sessions.
 4. A coordinator sees the same checklist without the Account and Contract actions.
 
 ### Journey J-L08 — The first day of a new club
 
-1. The technical administrator opens the panel. A banner says the club has no administrator and links to "First administrator". They pick Aneta's user, type her name and confirm.
-2. Aneta adds a place. The owner select is empty: it says "No institution yet" and offers "Add an institution"; she types the municipality's name in the dialog and it is selected.
+1. The technical administrator opens the panel. A banner says the club has no administrator and links to "First administrator". They pick Joanna's user, type her name and confirm.
+2. Joanna adds a place. The owner select is empty: it says "No institution yet" and offers "Add an institution"; she types the municipality's name in the dialog and it is selected.
 3. She adds a child, opens Guardians, searches for the mother, gets "No person found — Add 'Kasia Kowalska'", and creates her in place.
 4. A coordinator opening the group form with no section sees "No section yet. Ask the club administrator to add one" and no button.
 
@@ -348,7 +348,7 @@ B-11 Seasons tab -> POST /api/groups/seasons/rollover/preview -> groups + groups
 
 ### Journey J-L10 — The categories know their birth years
 
-1. Aneta, club administrator, opens Groups → **Age categories** (a tab next to Seasons). The nine PZPN categories show their "U" ranges and, for the current season 2026/27, the birth years: Orlik U10–U11 → 2016–2017.
+1. Joanna, club administrator, opens Groups → **Age categories** (a tab next to Seasons). The nine PZPN categories show their "U" ranges and, for the current season 2026/27, the birth years: Orlik U10–U11 → 2016–2017.
 2. She adds a category "Orlik młodszy" with the range U10–U10; it is created in the club's dictionary and gets its range in one step.
 3. Ewa, coordinator, creates the team "Orliki 2017" with the category Orlik młodszy. The team's public tab proposes "Wiek od 9, do 10" and shows "Rocznik 2017 w sezonie 2026/27"; she keeps it.
 4. In September, moving children to "Orliki 2017", the filter **Fits Orliki 2017** preselects the children born in 2017, whatever their birthday.

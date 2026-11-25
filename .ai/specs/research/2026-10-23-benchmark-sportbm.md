@@ -1,14 +1,14 @@
 ---
 type: benchmark
 checked-on: 2026-10-23
-author: Claude, from four screenshots a guardian (the interviewee of `interviews/2026-10-23-interview-guardian-multi-club.md`) sent to Władek Kuć
+author: Claude, from four screenshots a guardian (the interviewee of `guardian interview note (not public)`) sent to Władek Kuć
 question: How does another academy's club app present events, call-ups and payments to a guardian?
 tag: [BENCHMARK] — observed screens of one guardian's account in one club; the public product page and pricing are not yet checked
 ---
 
-# [BENCHMARK] SportBM, as used by LKS Lotnik 1949
+# [BENCHMARK] SportBM, as used by another club
 
-- **Product:** the app's header reads "sportbm". The club badge on the dashboard is LKS Lotnik 1949.
+- **Product:** the app's header reads "sportbm". The club badge on the dashboard is another club.
 - **Link:** not yet checked. The public page, pricing and the commission model are still on the collection plan.
 - **Source and limits:**
   - Four phone screenshots from one guardian account, taken on a day in September 2026, the week of 21–27 September.

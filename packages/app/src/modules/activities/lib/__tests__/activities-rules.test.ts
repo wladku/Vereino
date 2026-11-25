@@ -266,7 +266,7 @@ describe('the cancellation audience', () => {
   })
 
   it('adds the section coordinators of a coach cancellation, once each (#139)', () => {
-    const withCoordinators = { ...audience, coordinatorIds: ['wojtek', 'marek'] }
+    const withCoordinators = { ...audience, coordinatorIds: ['rafal', 'marek'] }
     expect(cancellationPersonIds(withCoordinators)).toEqual([
       'adult',
       'assistant',
@@ -275,8 +275,8 @@ describe('the cancellation audience', () => {
       'marek',
       'ola',
       'piotr',
+      'rafal',
       'unknown-age',
-      'wojtek',
     ])
     expect(cancellationNotifiedCount(withCoordinators, 'marek')).toBe(8)
   })

@@ -49,7 +49,7 @@ Tensions can occur between community members even when they are trying their bes
 When an incident does occur, it is important to report it promptly. To report a possible violation, contact one of the two Community Moderators privately:
 
 - **Władek Kuć** — product owner, maintainer ([@wladku](https://github.com/wladku))
-- **Kacper Kuć** — technology, maintainer
+- **Kacper** — technology, maintainer
 
 Use the e-mail address on a moderator's GitHub profile or any private channel you already share with them. If you cannot find one, open an issue titled "Code of conduct contact request" without any details of the incident, and a moderator will contact you privately. If a report concerns one of the moderators, send it to the other one only.
 

@@ -9,7 +9,7 @@ import { getMe, putMe, updateClubSettings } from '../_fixtures/members'
 
 // Issue #140 (club spec REQ-027, AC-027, TEST-034; *UI architecture* "New event"): a coach creates a one-off event for
 // their own group from the phone (375 px). Marek, the Żaki coach, opens "New event" from the coach tile of Today; the
-// form offers only Żaki and the club's bookable places; "Turniej o Puchar Gwiazdy" on Saturday 9:00–12:00 at Boisko A
+// form offers only Żaki and the club's bookable places; "Turniej o Puchar Przykładu" on Saturday 9:00–12:00 at Boisko A
 // with an invited team lands on its session page as the coach, and the Żaki families get it in their calendars with
 // "Attending / Not attending" (`confirm`). The same slot again is refused with 409, the colliding entry is named in the
 // page and nothing is created. The pool instructor's tournament for her class group is accepted and her sparring
@@ -36,7 +36,7 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
     const family = await familyFor(request, club)
     const admin = club.adminToken
     const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
-      data: { name: 'KS Gwiazda', clubName: 'KS Gwiazda' },
+      data: { name: 'KS Przykład', clubName: 'KS Przykład' },
     })
     expect(team.status, JSON.stringify(team.body)).toBe(201)
     const saturday = nextWeekday(addDays(calendarDate(), 2), 'SA')
@@ -100,12 +100,12 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
     // Żaki is the only group, so it is chosen already; the tournament with an invited team.
     await expect(page.getByTestId('club-event-group')).toContainText('Żaki')
     await expect(page.getByTestId('club-event-type-tournament').getByRole('radio')).toBeChecked()
-    await page.getByTestId('club-event-name').fill('Turniej o Puchar Gwiazdy')
+    await page.getByTestId('club-event-name').fill('Turniej o Puchar Przykładu')
     await chooseOption(page, 'club-event-place', 'Boisko A')
     await page.getByTestId('club-event-date').fill(saturday)
     await page.getByTestId('club-event-start').fill('09:00')
     await page.getByTestId('club-event-end').fill('12:00')
-    await page.getByTestId('club-event-teams').getByText('KS Gwiazda (KS Gwiazda)').click()
+    await page.getByTestId('club-event-teams').getByText('KS Przykład (KS Przykład)').click()
     const created = page.waitForResponse(
       (response) => response.url().endsWith('/api/activities/events') && response.request().method() === 'POST',
     )
@@ -118,7 +118,7 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
 
     // He lands on the event's session page as the coach.
     await expect(page).toHaveURL(new RegExp(`/club/occurrences/${occurrenceId}\\?as=coach`))
-    await expect(page.getByTestId('club-session-title')).toHaveText('Turniej o Puchar Gwiazdy')
+    await expect(page.getByTestId('club-session-title')).toHaveText('Turniej o Puchar Przykładu')
     await expect(page.getByTestId('club-session-coach')).toBeVisible()
 
     // The Żaki families have it in their calendars with "Attending / Not attending".
@@ -134,7 +134,7 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
     expect(annaEntry?.persons.map((person) => person.personId).sort()).toEqual(
       [family.younger.personId, family.elder.personId].sort(),
     )
-    expect(annaEntry?.occurrence.invitedTeamNames).toEqual(['KS Gwiazda'])
+    expect(annaEntry?.occurrence.invitedTeamNames).toEqual(['KS Przykład'])
     const otherEntries = await calendarItems(
       request,
       family.other.guardian.token,
@@ -160,7 +160,7 @@ test('ISSUE-140 a coach creates a one-off event for their group from the phone; 
     await page.getByTestId('club-event-submit').click()
     expect((await refused).status()).toBe(409)
     const conflicts = page.getByTestId('activities-conflicts')
-    await expect(conflicts).toContainText('Turniej o Puchar Gwiazdy')
+    await expect(conflicts).toContainText('Turniej o Puchar Przykładu')
     await expect(conflicts.getByRole('link')).toHaveCount(0)
     await expect(page).toHaveURL(/\/club\/events\/new$/)
     const zakiSessions = await listOccurrences(request, admin, `&groupId=${family.zaki}`)

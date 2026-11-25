@@ -268,7 +268,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await expect(page).toHaveURL(/\/backend\/club\/institutions$/)
       await expect(page.getByRole('row').filter({ hasText: 'Gmina Testowo' })).toBeVisible()
 
-      // `/backend/club/places`: the complex "Orlik 2024" owned by the municipality, its three children, a hall and an
+      // `/backend/club/places`: the complex "Orlik" owned by the municipality, its three children, a hall and an
       // outdoor pool (`is_external`).
       const places: {
         name: string
@@ -277,21 +277,21 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         owner?: string
         external?: boolean
       }[] = [
-        { name: 'Orlik 2024', kind: uiText('club_core.places.kind.complex', { exact: true }), owner: 'Gmina Testowo' },
+        { name: 'Orlik', kind: uiText('club_core.places.kind.complex', { exact: true }), owner: 'Gmina Testowo' },
         {
           name: 'Boisko piłkarskie',
           kind: uiText('club_core.places.kind.pitch', { exact: true }),
-          parent: 'Orlik 2024',
+          parent: 'Orlik',
         },
         {
           name: 'Boisko wielofunkcyjne',
           kind: uiText('club_core.places.kind.multi_pitch', { exact: true }),
-          parent: 'Orlik 2024',
+          parent: 'Orlik',
         },
         {
           name: 'Zaplecze szatniowe',
           kind: uiText('club_core.places.kind.locker_room', { exact: true }),
-          parent: 'Orlik 2024',
+          parent: 'Orlik',
         },
         { name: 'Hala sportowa', kind: uiText('club_core.places.kind.hall', { exact: true }) },
         { name: 'Basen odkryty', kind: uiText('club_core.places.kind.pool', { exact: true }), external: true },
@@ -327,7 +327,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
         club.adminToken,
       )
       const byName = new Map((storedPlaces.body?.items ?? []).map((item) => [item.name, item]))
-      const orlikId = byName.get('Orlik 2024')?.id
+      const orlikId = byName.get('Orlik')?.id
       expect(
         Object.fromEntries(
           [...byName.values()].map((item) => [
@@ -342,7 +342,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
           ]),
         ),
       ).toEqual({
-        'Orlik 2024': {
+        Orlik: {
           kind: 'complex',
           underOrlik: false,
           topLevel: true,

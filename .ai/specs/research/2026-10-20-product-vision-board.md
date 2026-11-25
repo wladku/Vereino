@@ -19,9 +19,9 @@ Paying customer: the association (club) board; in the open-source model it "pays
 5. Board: a record of difficult cases as protection.
 
 ## Business goals (with a measure)
-- Gwiazda runs on Vereino for the full 2027/28 season without going back to Messenger for attendance (measure: ≥80% of attendance declarations in the app). [ASSUMPTION: feasibility]
+- Przykład runs on Vereino for the full 2027/28 season without going back to Messenger for attendance (measure: ≥80% of attendance declarations in the app). [ASSUMPTION: feasibility]
 - 5 other academies on Vereino by the end of 2027 (measure: active instances). [ASSUMPTION]
-- Fee collection at Gwiazda rises from X% to Y% (X to be measured before rollout — [DATA: none]).
+- Fee collection at Przykład rises from X% to Y% (X to be measured before rollout — [DATA: none]).
 - An open-source repository with ≥3 contributors from outside the team (measure: GitHub). [ASSUMPTION]
 
 ## Product (3–5 distinguishing features)

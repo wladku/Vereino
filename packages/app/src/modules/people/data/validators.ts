@@ -364,10 +364,18 @@ export const personAnonymizeSchema = z
  */
 export const personRetentionAnonymizeSchema = z.object({ id: z.uuid(), reason: z.literal('retention_sweep') }).strict()
 
-/** The sweep's job input (`people:retention-sweep`, CLI `people retention-sweep`). */
+/**
+ * The sweep's job input (`people:retention-sweep`, CLI `people retention-sweep`). `today` is accepted only with
+ * `dryRun`: the anonymisation checks every candidate again against the club's real date, so a real run on another day
+ * would only report false failures (#564).
+ */
 export const retentionSweepJobSchema = z
   .object({ today: calendarDateSchema.optional(), dryRun: z.boolean().optional() })
   .strict()
+  .refine((value) => value.today === undefined || value.dryRun === true, {
+    message: 'today is accepted only with dryRun',
+    path: ['today'],
+  })
 
 /** `people.persons.delete` (`DELETE /api/people/persons/{id}`, REQ-L05; #308). */
 export const personDeleteSchema = z.object({ id: z.uuid() }).strict()

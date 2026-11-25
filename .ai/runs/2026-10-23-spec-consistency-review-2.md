@@ -8,7 +8,7 @@
 
 ## Goal
 
-Find contradictions and gaps left by the two revisions of 2026-10-23 that followed the discovery close: the D-022 club settings (DD-37), REQ-036…REQ-039 with DD-38/DD-39, the D-024 maintenance planner scope, and the D-025 replacement of KS Gwiazda by the example club "Dev Academy".
+Find contradictions and gaps left by the two revisions of 2026-10-23 that followed the discovery close: the D-022 club settings (DD-37), REQ-036…REQ-039 with DD-38/DD-39, the D-024 maintenance planner scope, and the D-025 replacement of KS Przykład by the example club "Dev Academy".
 
 ## Steps
 
@@ -50,7 +50,7 @@ Consistent: all ids defined once without gaps; every reference resolves; 0 table
 
 ### Minor (fixed in A unless noted)
 
-`/p/gwiazda…` slugs → `/p/dev-academy…`; "Piotr" → Bartek in the two mocks; the treasurer is now "Iwona" (Ewa stays the swimming-pool coordinator); glossary "pilot:" → "example club Dev Academy"; DD-37 marks `coach_settlement_model` and `show_called_up_children` defaults as the specification's choice where D-022 is silent and no longer says "match the pilot club"; `confirm` for `camp`/`other` stated as the spec's extension; `rented_by_club` on the places form; settlement model on the contract form and in the report header (AC-021); `people.import.committed` event row; `people:purge-import-rows` in the workers row and REQ-036 in the scheduler-targets row; V-13 write path reworded as pending; Open Questions header lists Q-044…Q-047; compliance report counts and verdict updated; the club-website note of D-023 added to Non-goals. Not changed: the phase/test splits REQ-002/TEST-021 and REQ-003/TEST-008 (deliberate, from the first review).
+`/p/przyklad…` slugs → `/p/dev-academy…`; "Piotr" → Bartek in the two mocks; the treasurer is now "Iwona" (Ewa stays the swimming-pool coordinator); glossary "pilot:" → "example club Dev Academy"; DD-37 marks `coach_settlement_model` and `show_called_up_children` defaults as the specification's choice where D-022 is silent and no longer says "match the pilot club"; `confirm` for `camp`/`other` stated as the spec's extension; `rented_by_club` on the places form; settlement model on the contract form and in the report header (AC-021); `people.import.committed` event row; `people:purge-import-rows` in the workers row and REQ-036 in the scheduler-targets row; V-13 write path reworded as pending; Open Questions header lists Q-044…Q-047; compliance report counts and verdict updated; the club-website note of D-023 added to Non-goals. Not changed: the phase/test splits REQ-002/TEST-021 and REQ-003/TEST-008 (deliberate, from the first review).
 
 ## Decisions and reasons
 

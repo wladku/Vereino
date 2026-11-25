@@ -115,7 +115,7 @@ describe('publicEventLists', () => {
   })
 
   it('names a typed venue and searches it on the map (#270)', () => {
-    const venue = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+    const venue = { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' }
     const lists = publicEventLists(
       [event('away', 's1', 'sparring'), event('nowhere')],
       [session('away', '2026-11-20', { placeId: null, venue }), session('nowhere', '2026-11-21', { placeId: null })],
@@ -125,9 +125,9 @@ describe('publicEventLists', () => {
       TODAY,
     )
     expect(lists.upcoming[0]).toMatchObject({
-      place: 'Stadion Wisły Liszki',
+      place: 'Stadion Wisły Brzezie',
       mapUrl:
-        'https://www.openstreetmap.org/search?query=Stadion%20Wis%C5%82y%20Liszki%2C%20ul.%20Sportowa%201%2C%20Liszki',
+        'https://www.openstreetmap.org/search?query=Stadion%20Wis%C5%82y%20Brzezie%2C%20ul.%20Sportowa%201%2C%20Zielony%20Las',
     })
     expect(lists.upcoming[1]).toMatchObject({ place: null, mapUrl: null })
   })

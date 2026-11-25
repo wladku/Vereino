@@ -140,11 +140,11 @@ export function cancelOpenPart(
 /** The external municipal hall of the example and a club place with capacity 1. */
 export async function examplePlaces(request: APIRequestContext, club: Club): Promise<{ hall: string; salka: string }> {
   const hall = await createStructure(request, club.adminToken, 'places', {
-    name: 'Hala sportowa w Liszkach',
+    name: 'Hala sportowa w Zielonym Lesie',
     kind: 'hall',
     capacityGroups: 1,
     isExternal: true,
-    address: 'ul. Szkolna 50, Liszki',
+    address: 'ul. Szkolna 50, Zielony Las',
   })
   const salka = await createStructure(request, club.adminToken, 'places', {
     name: 'Salka w budynku klubowym',
@@ -192,7 +192,7 @@ export async function partFamily(request: APIRequestContext, club: Club, family:
   const { hall } = await examplePlaces(request, club)
   const trampkarz = await createGroup(request, admin, { sectionId: family.academy, name: 'Trampkarz', kind: 'team' })
   const teams: string[] = []
-  for (const name of ['Wisła Liszki', 'Orzeł Kryspinów', 'CIS Czernichów']) {
+  for (const name of ['Wisła Brzezie', 'Orzeł Brzozów', 'UKS Sąsiedni']) {
     const team = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
       data: { name, clubName: name },
     })
@@ -213,7 +213,7 @@ export async function partFamily(request: APIRequestContext, club: Club, family:
   const ola = await memberAccount(request, club, olaId, 'ola')
   const coordinator = family.academyCoordinator.token
   const eventId = await clubEventId(request, coordinator, {
-    name: 'GWIAZDA CUP 2026',
+    name: 'PRZYKŁAD CUP 2026',
     sectionId: family.academy,
     placeId: hall,
   })

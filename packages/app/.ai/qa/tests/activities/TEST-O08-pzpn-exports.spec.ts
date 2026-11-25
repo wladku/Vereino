@@ -171,7 +171,7 @@ test('TEST-O08 PZPN schedule and attendance CSVs: columns, Polish values, locale
       groupId: family.zaki,
       name: 'Sparing z sąsiadami',
       type: 'sparring',
-      venue: { name: 'Stadion Miejski', address: 'ul. Polna 3, Liszki' },
+      venue: { name: 'Stadion Miejski', address: 'ul. Polna 3, Zielony Las' },
       startsOn: addDays(today, 4),
       startTime: '10:00',
       endTime: '11:30',

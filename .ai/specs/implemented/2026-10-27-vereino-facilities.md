@@ -5,7 +5,7 @@
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
-Sources: split from `2026-10-20-vereino-club-management.md` on 2026-10-27 by D-028 (`.ai/specs/research/decisions/D-028-split-specification-and-optional-rental-charge.md`); its Changelog holds the history of every row moved here. The product brief: D08, D17, D19, D24, D25, R05, R06; the Orlik 2024 regulations (`research/2026-10-20-business-case.md`); the architectural review of 2026-10-26 (`.ai/runs/2026-10-26-spec-architectural-review.md`) and its resolution for this module (#167, `.ai/runs/2026-11-05-facilities-review-findings.md`).
+Sources: split from `2026-10-20-vereino-club-management.md` on 2026-10-27 by D-028 (`.ai/specs/research/decisions/D-028-split-specification-and-optional-rental-charge.md`); its Changelog holds the history of every row moved here. The product brief: D08, D17, D19, D24, D25, R05, R06; the Orlik regulations (`business case (not public)`); the architectural review of 2026-10-26 (`.ai/runs/2026-10-26-spec-architectural-review.md`) and its resolution for this module (#167, `.ai/runs/2026-11-05-facilities-review-findings.md`).
 
 ## TLDR
 
@@ -181,7 +181,7 @@ Conventions (page shells, `DataTable`, `CrudForm`, option-source routes, states)
 
 ```text
 ┌──────────────────────────────────────────────┐
-│ ← Club facilities · Orlik 2024 · Boisko piłkarskie │
+│ ← Club facilities · Orlik · Boisko piłkarskie │
 │ November 2026  [<] [>]   Tel.: 600 000 000    │
 ├──────────────────────────────────────────────┤
 │ Wed 13.11 16:00–17:30 open to public          │
@@ -446,7 +446,7 @@ Questions and verifications that belong to the facility module; all resolutions 
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-008 | Orlik: actual opening hours and zone layout, N days for payment, amounts within the ranges (PLN 80–150 / 150–220 / 220–350), start of the winter season | the pilot club's accountable person / its municipality (open since D-025) | no (phase 5 data) | configuration in `facilities` and in the management agreement; the Orlik 2024 rules are the reference values |
+| Q-008 | Orlik: actual opening hours and zone layout, N days for payment, amounts within the ranges (PLN 80–150 / 150–220 / 220–350), start of the winter season | the pilot club's accountable person / its municipality (open since D-025) | no (phase 5 data) | configuration in `facilities` and in the management agreement; the Orlik rules are the reference values |
 | Q-009 | Who enters bookings, and does the attendant see the amounts? | Władek Kuć | no | default: attendant and administrator; amounts visible to the attendant |
 | Q-010 | Rental payments: only a "paid to the municipality's account" register? Does part of the revenue go back to the club? | Władek Kuć / municipality | no | default: register based on a confirmation; revenue split outside 1.0 |
 | Q-011 | Should a booking without payment after the deadline expire automatically? | Władek Kuć | no | default no — a "to be clarified" list; `auto_expire_unpaid` toggle in the agreement |

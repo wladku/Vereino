@@ -7,10 +7,11 @@
 
 1. Claimed #756 (assignee, `in-progress`, `🤖` comment naming this worktree).
 2. Read both failed runs the issue lists (`gh run view <id> --log-failed`). TEST-T11 fails at line 74 (`signedInStaff` → `createStaff`, `_fixtures/club.ts:268`): `POST /api/people/persons/:id/account` answers 400 `invalid_format` for the e-mail.
-3. On `main` the staff member is `Wojtek`, and `wojtek-<suffix>@example.org` matches the API's e-mail pattern (checked in node). The runs' branches: 45616729085 is PR #746 (a367b7bb), 45616841827 is PR #750, whose branch merged #746's branch (f8397971). #746 renames the test data to fictional Polish names (`Wojtek` → `Rafał`), so the fixture built `rafał-…@example.org`, which the pattern rejects.
+3. On `main` at the time the staff member had an ASCII first name, and `<name>-<suffix>@example.org` matched the API's e-mail pattern (checked in node). The runs' branches: 45616729085 is PR #746 (a367b7bb), 45616841827 is PR #750, whose branch merged #746's branch (f8397971). #746 renames the test data to fictional Polish names (the coordinator becomes `Rafał`), so the fixture built `rafał-…@example.org`, which the pattern rejects.
 4. #746 already carries the fix, 750ebe86 `test(qa): build test e-mail addresses from names in ASCII` (`testEmailFor`), with CI queued. `main` (d4caa260) has no T11 failure.
 5. All 19 ledger issues filed then (#752–#770) list the same two runs, so they share this cause.
 6. PR #773 conflicted with `main` (`mergeStateStatus` DIRTY): #772 (fix for #754) and #776 (ledger fix #774) had already rewritten the same lesson with the same case and added the lesson `ci-runs-are-independent-only-without-shared-branch-commits`. Merged `main` into the PR branch (no rebase, no force-push), kept `main`'s wording of the lesson and added one sentence tying #756 and its siblings to it.
+7. PR #773 conflicted again after #746 merged (it rewrote the same lesson paragraph to drop the real first name). Merged `main` once more, took `main`'s anonymised wording plus the #756 sentence, and removed the real first name from this log too.
 
 ## Decisions
 

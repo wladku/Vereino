@@ -24,8 +24,14 @@ async function setLocale(page: Page, locale: 'en' | 'pl') {
 async function expectWordAndIcon(scope: Locator, minimum: number) {
   const tags = scope.locator('[data-status-tag]')
   await expect(tags.first()).toBeVisible()
-  const count = await tags.count()
-  expect(count).toBeGreaterThanOrEqual(minimum)
+  // A list can refetch (and briefly drop its rows) between the visibility check and the count (#707), so poll.
+  let count = 0
+  await expect
+    .poll(async () => {
+      count = await tags.count()
+      return count
+    })
+    .toBeGreaterThanOrEqual(minimum)
   for (let index = 0; index < count; index += 1) {
     const tag = tags.nth(index)
     await expect(tag.locator('svg')).toHaveCount(1)

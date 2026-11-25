@@ -3,7 +3,7 @@
 **Date**: 2026-11-24
 **Status**: Ready for implementation — direction approved by the owner on 2026-11-24 (ST-Q5); this spec needs its own review before the changes land
 
-> Related: `.ai/specs/2026-11-24-cezar-stall-prevention.md` (split out of it on review); `.ai/specs/SPEC-000-template.md`; `SDLC.md` → Definition of Ready and "The automation contract"; the picker automations on cezar-ws; the decision session `vereino-sesja-decyzji`. Identifiers: decisions `PS-D01…`, requirements `REQ-PS01…`, tests `PS-TEST-01…`, acceptance `PS-AC-01…`.
+> Related: `.ai/specs/2026-11-24-cezar-stall-prevention.md` (split out of it on review); `.ai/specs/SPEC-000-template.md`; `SDLC.md` → Definition of Ready and "The automation contract"; the picker automations on the build server; the decision session `vereino-sesja-decyzji`. Identifiers: decisions `PS-D01…`, requirements `REQ-PS01…`, tests `PS-TEST-01…`, acceptance `PS-AC-01…`.
 
 ## 📝 TLDR
 

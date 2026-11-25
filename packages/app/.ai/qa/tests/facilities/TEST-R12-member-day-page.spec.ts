@@ -22,7 +22,7 @@ import { getMe, putMe } from '../_fixtures/members'
 import { uiText } from '../_fixtures/ui-text'
 
 // Issue #278 (E11-S04), facilities parity spec phase 4, TEST-R12 (REQ-R12, J-R03, AC-R08): the member day page M-11 on
-// the day axis. Wojtek, the Żaki coach, opens Boisko A at 375 px, picks Saturday and taps 09:00: the slot dialog opens
+// the day axis. Rafał, the Żaki coach, opens Boisko A at 375 px, picks Saturday and taps 09:00: the slot dialog opens
 // at once on "For a group (event)" with 09:00–10:30 and the staff line; he saves a tournament, which is on the axis and
 // in "Wpisy dnia" after a reload, and a tap on it opens the details sheet. A rental of KS Sąsiedzi shows the renter's
 // name but no phone number (DD-R18). His own general booking is cancelled after a confirmation. Four parallel entries
@@ -63,7 +63,7 @@ test('TEST-R12 member day page: one tap books a tournament, details sheet, renta
       })
     }
 
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
       personId: coach.personId,
@@ -142,7 +142,7 @@ test('TEST-R12 member day page: one tap books a tournament, details sheet, renta
         return top !== null && button.contains(top)
       }),
     ).toBe(true)
-    await dialog.getByTestId('facilities-slot-name').fill('Turniej o Puchar Gwiazdy')
+    await dialog.getByTestId('facilities-slot-name').fill('Turniej o Puchar Przykładu')
     await submit.click()
     await expect(dialog).toBeHidden()
     await expect(page.getByText(uiText('facilities.slot.saved.group')).first()).toBeVisible()
@@ -151,16 +151,16 @@ test('TEST-R12 member day page: one tap books a tournament, details sheet, renta
     await page.reload()
     const tournamentLine = page
       .locator('[data-testid^="facilities-day-entry-"][data-kind="session"]')
-      .filter({ hasText: 'Turniej o Puchar Gwiazdy' })
+      .filter({ hasText: 'Turniej o Puchar Przykładu' })
     await expect(tournamentLine).toHaveCount(1)
     await expect(tournamentLine).toContainText('09:00–10:30')
     const tournamentBlock = page
       .locator('[data-testid^="facilities-axis-entry-"][data-kind="session"]')
-      .filter({ hasText: 'Turniej o Puchar Gwiazdy' })
+      .filter({ hasText: 'Turniej o Puchar Przykładu' })
     await tournamentBlock.click()
     const details = page.getByTestId('club-place-entry-details')
     await expect(details).toBeVisible()
-    await expect(details).toContainText('Turniej o Puchar Gwiazdy')
+    await expect(details).toContainText('Turniej o Puchar Przykładu')
     await expect(details.getByTestId('club-place-entry-details-time')).toContainText('09:00–10:30')
     await expect(details.getByTestId('club-place-entry-details-place')).toHaveText('Boisko A')
     await expect(details.getByTestId('club-place-entry-details-group')).toHaveText('Żaki')

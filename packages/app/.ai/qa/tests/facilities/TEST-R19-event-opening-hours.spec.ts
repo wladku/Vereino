@@ -77,7 +77,12 @@ test('TEST-R19 a one-off event outside the pitch opening hours is refused with t
     const away = await createEvent(
       request,
       coordinator,
-      event({ venue: { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' } }, '07:00', '09:00', 'Wyjazd'),
+      event(
+        { venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' } },
+        '07:00',
+        '09:00',
+        'Wyjazd',
+      ),
     )
     expect(away.status, JSON.stringify(away.body)).toBe(201)
 
@@ -100,7 +105,7 @@ test('TEST-R19 a one-off event outside the pitch opening hours is refused with t
     expect(seriesSessions.items.length).toBe(series.sessionsCreated + regenerated.created)
 
     // The coach's phone: the slot dialog shows the refusal with the day's hours at the start field, in both locales.
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: zaki,
       personId: coach.personId,

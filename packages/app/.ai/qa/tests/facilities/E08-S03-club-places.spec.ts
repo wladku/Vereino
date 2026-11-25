@@ -10,11 +10,11 @@ import { getMe, putMe } from '../_fixtures/members'
 import { uiText } from '../_fixtures/ui-text'
 
 // Issue #123 (E08-S03; README M-11 "Facilities and booking"), moved to the day axis by #278 (E11-S04): the staff
-// facility pages from a phone. Wojtek, the Żaki coach, opens `/club/places`, sees Boisko A among the club's facilities
+// facility pages from a phone. Rafał, the Żaki coach, opens `/club/places`, sees Boisko A among the club's facilities
 // with today's occupancy, opens it, moves to a Saturday with "Other day", taps the free 09:00 and books it for a
 // general purpose in the slot dialog; the entry appears on the axis and in "Wpisy dnia" with "purpose · booker". A
 // booking from 11:00 runs into the coordinator's booking: 409, the dialog lists the collision by name, nothing is
-// booked. Wojtek opens his own booking's details and cancels it after a confirmation (the booking's version travels as
+// booked. Rafał opens his own booking's details and cancels it after a confirmation (the booking's version travels as
 // the lock token). Both pages reflow at 320 and 375 px in English and in Polish, without console errors.
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
@@ -33,10 +33,10 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     const admin = club.adminToken
     const setup = await rentalPitch(request, club)
     const today = calendarDate()
-    const wojtek = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const rafal = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
-      personId: wojtek.personId,
+      personId: rafal.personId,
       role: 'coach',
       validFrom: addDays(today, -30),
     })
@@ -53,11 +53,11 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     expect(meeting.status, JSON.stringify(meeting.body)).toBe(201)
     const meetingId = String(meeting.body?.id)
 
-    // Signing in the browser sets a new password, so Wojtek's API calls below use a fresh token.
-    const password = await signInBrowser(page, request, club, wojtek.userId, wojtek.email)
-    const wojtekToken = await getAuthToken(request, wojtek.email, password)
-    const me = await getMe(request, wojtekToken)
-    const english = await putMe(request, wojtekToken, { preferredLocale: 'en' }, me.body?.person.updatedAt)
+    // Signing in the browser sets a new password, so Rafał's API calls below use a fresh token.
+    const password = await signInBrowser(page, request, club, rafal.userId, rafal.email)
+    const rafalToken = await getAuthToken(request, rafal.email, password)
+    const me = await getMe(request, rafalToken)
+    const english = await putMe(request, rafalToken, { preferredLocale: 'en' }, me.body?.person.updatedAt)
     expect(english.status, JSON.stringify(english.body)).toBe(200)
 
     const consoleErrors: string[] = []
@@ -81,7 +81,7 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     await expect(page.getByTestId('club-place-title')).toHaveText('Boisko A')
     await expect(page.getByTestId('club-place-hint')).toHaveText(uiText('facilities.places.clickHint', { exact: true }))
 
-    // "Other day" moves to Saturday; the axis shows the zone legend and the coordinator's entry; Wojtek may not cancel it.
+    // "Other day" moves to Saturday; the axis shows the zone legend and the coordinator's entry; Rafał may not cancel it.
     await page.getByTestId('facilities-calendar-other-day').fill(saturday)
     await expect(page).toHaveURL(new RegExp(`date=${saturday}`))
     await expect(page.getByTestId('facilities-axis-legend')).toContainText(
@@ -100,7 +100,7 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     await page.keyboard.press('Escape')
     await expect(details).toBeHidden()
 
-    // One tap on 09:00 opens the slot dialog: "For a group" first (Wojtek coaches Żaki), 09:00–10:30; he switches to
+    // One tap on 09:00 opens the slot dialog: "For a group" first (Rafał coaches Żaki), 09:00–10:30; he switches to
     // the general purpose and books it.
     const dialog = page.getByTestId('facilities-slot-dialog')
     const kind = dialog.getByTestId('facilities-slot-kind')
@@ -124,7 +124,7 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     })
     await expect(ownLine).toHaveCount(1)
     await expect(ownLine).toContainText('09:00–10:30')
-    await expect(ownLine).toContainText('Trening dodatkowy · Wojtek Trener')
+    await expect(ownLine).toContainText('Trening dodatkowy · Rafał Trener')
     await expect(
       page.locator('[data-testid^="facilities-axis-entry-"]').filter({ hasText: 'Trening dodatkowy' }),
     ).toHaveCount(1)
@@ -146,7 +146,7 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     await page.keyboard.press('Escape')
     await expect(dialog).toBeHidden()
     const calendarQuery = `from=${encodeURIComponent(zoneInstant(saturday, '00:00'))}&to=${encodeURIComponent(zoneInstant(addDays(saturday, 1), '00:00'))}&placeId=${setup.pitch}`
-    const afterRefusal = await staffCalendar(request, wojtekToken, calendarQuery)
+    const afterRefusal = await staffCalendar(request, rafalToken, calendarQuery)
     expect(afterRefusal.status, JSON.stringify(afterRefusal.body)).toBe(200)
     expect(
       (afterRefusal.body?.entries ?? []).filter((entry) => entry.kind === 'booking').map((entry) => entry.label),
@@ -156,7 +156,7 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 375, height: 812 })
 
-    // Wojtek opens his own booking and cancels it after the confirmation.
+    // Rafał opens his own booking and cancels it after the confirmation.
     await ownLine.getByRole('button').first().click()
     await expect(details).toBeVisible()
     await expect(details.getByTestId('club-place-entry-details-time')).toContainText('09:00–10:30')
@@ -167,14 +167,14 @@ test('E08-S03 club places: facility cards, day axis, one-tap general booking, co
       page.getByText(uiText('facilities.places.cancel.done', { params: { label: 'Trening dodatkowy' } })),
     ).toBeVisible()
     await expect(ownLine).toHaveCount(0)
-    const afterCancel = await staffCalendar(request, wojtekToken, calendarQuery)
+    const afterCancel = await staffCalendar(request, rafalToken, calendarQuery)
     expect(
       (afterCancel.body?.entries ?? []).filter((entry) => entry.kind === 'booking').map((entry) => entry.label),
     ).toEqual(['Zebranie zarządu'])
 
     // Polish: both pages render in Polish and reflow at 320 px.
-    const current = await getMe(request, wojtekToken)
-    const polish = await putMe(request, wojtekToken, { preferredLocale: 'pl' }, current.body?.person.updatedAt)
+    const current = await getMe(request, rafalToken)
+    const polish = await putMe(request, rafalToken, { preferredLocale: 'pl' }, current.body?.person.updatedAt)
     expect(polish.status, JSON.stringify(polish.body)).toBe(200)
     await page.goto('/club/places')
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Obiekty')

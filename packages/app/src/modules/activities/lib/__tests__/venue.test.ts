@@ -43,7 +43,7 @@ describe('placeLine', () => {
 
 // #270 (REQ-A08, DD-A03, Q-A25): a club place or a typed venue, its map link, and "away" by default.
 describe('chooseLocation', () => {
-  const venue = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+  const venue = { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' }
 
   it('takes a club place or a typed venue', () => {
     expect(chooseLocation({ placeId: 'p1' })).toEqual({ ok: true, location: { placeId: 'p1', venue: null } })
@@ -87,7 +87,7 @@ describe('awayByDefault', () => {
 })
 
 describe('cardMapHref (E10-S07, REQ-A13)', () => {
-  const away = { name: 'Stadion', address: 'ul. Sportowa 1, Liszki', geoLat: null, geoLng: null }
+  const away = { name: 'Stadion', address: 'ul. Sportowa 1, Zielony Las', geoLat: null, geoLng: null }
 
   it('links the map of an external place or a typed venue', () => {
     expect(cardMapHref({ ...away, placeExternal: true })).toBe(placeMapHref(away))

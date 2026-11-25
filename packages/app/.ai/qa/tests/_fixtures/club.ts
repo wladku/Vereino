@@ -122,6 +122,23 @@ export function uniqueSuffix(): string {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
 }
 
+/**
+ * A unique test e-mail address for a person: the first name in ASCII lower case.
+ * The account API accepts no letters with diacritics in the address, and the
+ * test data uses Polish names (`Rafał`, `Paweł`); `ł` does not decompose under NFD.
+ */
+export function testEmailFor(firstName: string): string {
+  const local = firstName
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .replace(/ł/g, 'l')
+    .replace(/Ł/g, 'L')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+  return `${local || 'person'}-${uniqueSuffix()}@example.org`
+}
+
 export type Club = {
   tenant: IsolatedTenant
   superToken: string
@@ -256,18 +273,6 @@ export async function signInAs(request: APIRequestContext, club: Club, userId: s
   return getAuthToken(request, email, password)
 }
 
-/** An ASCII email local part from a first name: the account API rejects `rafał-…@example.org` as an invalid email,
- * so Polish letters are folded (`Rafał` → `rafal`, `Żaneta` → `zaneta`) and anything else non-alphanumeric dropped
- * (#754). */
-function emailLocalPart(firstName: string): string {
-  const folded = firstName
-    .toLowerCase()
-    .replace(/ł/g, 'l')
-    .normalize('NFKD')
-    .replace(/[^a-z0-9]/g, '')
-  return folded || 'staff'
-}
-
 /** A person with an account the test can sign in as. */
 export async function createStaff(
   request: APIRequestContext,
@@ -275,7 +280,7 @@ export async function createStaff(
   input: { firstName: string; lastName: string; birthDate: string },
 ): Promise<{ personId: string; userId: string; email: string }> {
   const personId = await createPerson(request, club.adminToken, input)
-  const email = `${emailLocalPart(input.firstName)}-${uniqueSuffix()}@example.org`
+  const email = testEmailFor(input.firstName)
   const account = await createAccount(request, club.adminToken, personId, email)
   expect(account.status, `create account ${JSON.stringify(account.body)}`).toBe(201)
   const userId = String(account.body?.userId)

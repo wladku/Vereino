@@ -733,7 +733,7 @@
   "club_core.picker.person.add": "Dodaj osobę",
   "club_core.externalPlace.title": "Dodaj obiekt",
   "club_core.externalPlace.description": "Dodaj obiekt, którego brakuje na liście. Zostanie oznaczony jako zewnętrzny i zostanie na liście na następny raz; później zmienić go może tylko administrator.",
-  "club_core.externalPlace.fields.name.help": "Nazwa, pod którą wszyscy znają obiekt, np. „Hala sportowa w Liszkach”.",
+  "club_core.externalPlace.fields.name.help": "Nazwa, pod którą wszyscy znają obiekt, np. „Hala sportowa w Zielonym Lesie”.",
   "club_core.externalPlace.fields.address.help": "Adres obiektu, nie adres prywatny: strona publiczna łączy go z mapą.",
   "club_core.externalPlace.fields.owner.help": "Opcjonalnie: instytucja, do której należy obiekt.",
   "club_core.externalPlace.submit": "Dodaj obiekt",

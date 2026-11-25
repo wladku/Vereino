@@ -75,7 +75,7 @@ test('TEST-T08 a club event keeps one poster and up to 12 named funder logos, ch
     const fitness = await createStructure(request, admin, 'sections', { name: 'Ogólnorozwojowe' })
     const { hall } = await examplePlaces(request, club)
     const eventId = await clubEventId(request, admin, {
-      name: 'GWIAZDA CUP 2026',
+      name: 'PRZYKŁAD CUP 2026',
       sectionId: academy,
       placeId: hall,
     })
@@ -151,7 +151,7 @@ test('TEST-T08 a club event keeps one poster and up to 12 named funder logos, ch
     expect(tooLarge.body?.code).toBe('club_event_file_too_large')
     const logoTooLarge = await upload(request, admin, path, jpeg(3, 'logo.jpg'), {
       kind: 'funder_logo',
-      funderName: 'Gmina Liszki',
+      funderName: 'Gmina Zielony Las',
     })
     expect(logoTooLarge.body?.code).toBe('club_event_file_too_large')
     const badKind = await upload(request, admin, path, logo(0), { kind: 'flyer' })
@@ -240,7 +240,7 @@ test('TEST-T11 files steps: the Files tab shows the poster with Replace, the nam
     const admin = club.adminToken
     const academy = await createStructure(request, admin, 'sections', { name: 'Akademia piłkarska' })
     const { hall } = await examplePlaces(request, club)
-    const eventId = await clubEventId(request, admin, { name: 'GWIAZDA CUP 2026', sectionId: academy, placeId: hall })
+    const eventId = await clubEventId(request, admin, { name: 'PRZYKŁAD CUP 2026', sectionId: academy, placeId: hall })
 
     page.setDefaultTimeout(30_000)
     const consoleErrors: string[] = []
@@ -286,7 +286,7 @@ test('TEST-T11 files steps: the Files tab shows the poster with Replace, the nam
     const logoUpload = page.getByTestId('club-event-logo-upload')
     const nameInput = page.getByLabel(uiText('activities.clubEventFiles.logos.funderName', { exact: true }))
     await expect(logoUpload.locator('input[type="file"]')).toBeDisabled()
-    for (const [index, funder] of ['Gmina Liszki', 'Ministerstwo Sportu i Turystyki'].entries()) {
+    for (const [index, funder] of ['Gmina Zielony Las', 'Ministerstwo Sportu i Turystyki'].entries()) {
       await nameInput.fill(funder)
       await logoUpload.locator('input[type="file"]').setInputFiles({
         name: `logo-${String(index)}.png`,
@@ -296,7 +296,7 @@ test('TEST-T11 files steps: the Files tab shows the poster with Replace, the nam
       await expect(page.getByTestId('club-event-logos').getByRole('listitem')).toHaveCount(index + 1)
       await expect(nameInput).toHaveValue('')
     }
-    await expect(page.getByTestId('club-event-logos').getByRole('img', { name: 'Gmina Liszki' })).toBeVisible()
+    await expect(page.getByTestId('club-event-logos').getByRole('img', { name: 'Gmina Zielony Las' })).toBeVisible()
 
     // Both locales, light and dark, desktop and 1024 px: no blocking axe violation.
     for (const locale of ['en', 'pl'] as const) {
@@ -323,7 +323,7 @@ test('TEST-T11 files steps: the Files tab shows the poster with Replace, the nam
     await page.goto(`/backend/activities/club-events/${eventId}?tab=files`)
     await page
       .getByRole('button', {
-        name: uiText('activities.clubEventFiles.actions.removeLogo', { params: { name: 'Gmina Liszki' } }),
+        name: uiText('activities.clubEventFiles.actions.removeLogo', { params: { name: 'Gmina Zielony Las' } }),
       })
       .click()
     await page

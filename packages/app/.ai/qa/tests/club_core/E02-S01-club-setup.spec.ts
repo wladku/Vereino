@@ -72,7 +72,7 @@ test('E02-S01 a session or booking pointed at a complex with children is refused
 }) => {
   const club = await createClub(request, 'e02-s01-leaf')
   try {
-    const orlik = await create(request, club.adminToken, 'places', { name: 'Orlik 2024', kind: 'complex' })
+    const orlik = await create(request, club.adminToken, 'places', { name: 'Orlik', kind: 'complex' })
     // A complex without children is still a leaf.
     expect(checkBookablePlace(club, orlik)).toEqual({ bookable: true })
     const children = []

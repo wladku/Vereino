@@ -27,7 +27,7 @@ The places list (B-06) gets filters for kind, parent and active state, an Owner 
 ## Decisions
 
 - **Slice (a) only, `Refs #86`:** the regulations and photos need an unapproved migration. The PR does not close the issue; slice (b) stays on #86.
-- **External = outside the club.** The UX parity spec, the issue and the mockup (`place.external` on "Boisko Wisły Liszki") all read `is_external` this way. The form had labelled it "Outdoor place", and the club spec's J-001 narrative calls the outdoor pool `is_external`. No behaviour reads the flag, so the form label now matches the spec, and the PR asks the owner to confirm.
+- **External = outside the club.** The UX parity spec, the issue and the mockup (`place.external` on "Boisko Wisły Brzezie") all read `is_external` this way. The form had labelled it "Outdoor place", and the club spec's J-001 narrative calls the outdoor pool `is_external`. No behaviour reads the flag, so the form label now matches the spec, and the PR asks the owner to confirm.
 - **`parentName` from the server** instead of the second client request the table used to make; additive.
 - **Parent filter options** are the places with sub-places, taken from `/api/club_core/options/places`, which already exists.
 - **The Parent column was dropped**, because the hierarchy now sits in the name cell (spec wireframe: Place, Kind, Owner, Capacity, plus Status).
@@ -50,7 +50,7 @@ The places list (B-06) gets filters for kind, parent and active state, an Owner 
 - `yarn verify`: failed at `ds:check` (`PlacesTable.tsx:71:13 [inline-style] Use shared components and design tokens instead of inline style props.`). Fixed: the indent per depth now uses static Tailwind classes (`ps-5` … `ps-20`).
 - `yarn verify`: failed at `lessons:check` (`.ai/lessons.md` rows out of order). The cause was already on `main` and was fixed there by #156. Committed the slice, merged `origin/main`, and the next run passed.
 - `yarn verify` (after the merge): all 13 steps passed.
-- `yarn test:integration:vereino --filter E06-S04`, run 1: failed with `TimeoutError: locator.click … getByRole('dialog').getByRole('combobox')`, because the filter overlay is an inline panel, not a dialog. Run 2 hit `SyntaxError … Unexpected token (134:0)`, because a scripted edit had truncated the file; the tail was restored from the commit. Run 3 failed on the expected row order: an orphan branch sorts by its own name, so "Boisko piłkarskie" comes before "Boisko Wisły Liszki". The expectation was corrected. Run 4: **1 passed (2.1 min)**.
+- `yarn test:integration:vereino --filter E06-S04`, run 1: failed with `TimeoutError: locator.click … getByRole('dialog').getByRole('combobox')`, because the filter overlay is an inline panel, not a dialog. Run 2 hit `SyntaxError … Unexpected token (134:0)`, because a scripted edit had truncated the file; the tail was restored from the commit. Run 3 failed on the expected row order: an orphan branch sorts by its own name, so "Boisko piłkarskie" comes before "Boisko Wisły Brzezie". The expectation was corrected. Run 4: **1 passed (2.1 min)**.
 - `yarn test:integration:vereino --filter ENG-TEST-25` (the existing `club_core` accessibility test over the changed places pages): **1 passed (2.0 min)**.
 
 ## Open problems

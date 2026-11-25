@@ -74,7 +74,7 @@ async function seed(request: APIRequestContext, label: string): Promise<Fixture>
     birthDate: birthDateTurning(38),
   })
   const coachByRole = await createPerson(request, token, {
-    firstName: 'Wojtek',
+    firstName: 'Rafał',
     lastName: 'Nowak',
     birthDate: birthDateTurning(41),
   })

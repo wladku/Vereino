@@ -28,7 +28,7 @@ import { publicGet, publish } from '../_fixtures/publication'
 test.describe.configure({ timeout: 300_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const VENUE = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+const VENUE = { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' }
 
 test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for a team, is refused for a class group, another coach’s team, both or neither location and a series venue, and edits and cancels only the own one-off event', async ({
   request,
@@ -43,13 +43,13 @@ test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for
     const classC = await createGroup(request, admin, { sectionId: fitness, name: 'Gimnastyka C', kind: 'class_group' })
     const pitch = await createStructure(request, admin, 'places', { name: 'Boisko główne', kind: 'pitch' })
     const opponent = await call<{ id?: string }>(request, 'POST', '/api/groups/external-teams', admin, {
-      data: { name: 'Wisła Liszki', clubName: 'Wisła Liszki' },
+      data: { name: 'Wisła Brzezie', clubName: 'Wisła Brzezie' },
     })
     expect(opponent.status, JSON.stringify(opponent.body)).toBe(201)
     const opponentId = String(opponent.body?.id)
 
     const today = calendarDate()
-    const coach = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const coach = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     const otherCoach = await signedInStaff(request, club, { firstName: 'Ola', lastName: 'Trenerka', role: 'coach' })
     const coordinator = await signedInStaff(request, club, {
       firstName: 'Kasia',
@@ -71,7 +71,7 @@ test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for
     const sparring = await createEvent(request, coach.token, {
       groupId: teamA,
       type: 'sparring',
-      name: 'Sparing z Wisłą Liszki',
+      name: 'Sparing z Wisłą Zielony Las',
       venue: VENUE,
       opponentExternalTeamId: opponentId,
       startsAt: zoneInstant(saturday, '09:00'),
@@ -100,7 +100,7 @@ test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for
       placeAddress: VENUE.address,
       venue: VENUE,
       gatheringAt: zoneInstant(saturday, '08:30'),
-      opponentName: 'Wisła Liszki',
+      opponentName: 'Wisła Brzezie',
     })
 
     // The coach reads it as a session they may edit; the calendar and the sessions list read a session without a place.
@@ -207,7 +207,7 @@ test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for
       {
         startAt: zoneInstant(saturday, '10:00'),
         endAt: zoneInstant(saturday, '11:30'),
-        venue: { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 3, Liszki' },
+        venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 3, Zielony Las' },
       },
       (stored.body as { updatedAt?: string } | null)?.updatedAt,
     )
@@ -217,7 +217,7 @@ test('TEST-A11 a coach creates a typed-venue sparring and a club-place match for
     expect(after.body).toMatchObject({
       startAt: zoneInstant(saturday, '10:00'),
       placeId: null,
-      venue: { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 3, Liszki' },
+      venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 3, Zielony Las' },
       // DD-43: the gathering keeps its offset.
       gatheringAt: zoneInstant(saturday, '09:30'),
     })

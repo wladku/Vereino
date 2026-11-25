@@ -13,7 +13,7 @@ import { chargeOf, createFee, generate, listCharges, periodFromNow, type CodedBo
 import { actionLogEntries } from '../_fixtures/people'
 import { uiText } from '../_fixtures/ui-text'
 
-// People life-cycle spec phase L5 (#307; REQ-L04, J-L03, AC-L05): TEST-L06 — coach Wojtek leads the Żaki training and
+// People life-cycle spec phase L5 (#307; REQ-L04, J-L03, AC-L05): TEST-L06 — coach Rafał leads the Żaki training and
 // the pool class (default coach of both, sessions in both groups after the last day), has a contract, maintains the
 // pitch and holds cash he took from a parent. The preview shows the cash as a blocker with the amount and a link to
 // B-33, the contract and the maintainer row among what ends, and both groups under "Sessions and activities"; the
@@ -113,10 +113,10 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     const since = addDays(today, -30)
     const lastDay = addDays(today, 10)
 
-    // Wojtek coaches both groups and is the default coach of both series.
-    const wojtek = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Odchodzi', role: 'coach' })
+    // Rafał coaches both groups and is the default coach of both series.
+    const rafal = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Odchodzi', role: 'coach' })
     for (const groupId of [family.zaki, family.poolGroup]) {
-      await addMembership(request, admin, { groupId, personId: wojtek.personId, role: 'coach', validFrom: since })
+      await addMembership(request, admin, { groupId, personId: rafal.personId, role: 'coach', validFrom: since })
     }
     const until = `${String(Number(today.slice(0, 4)) + 1)}0630`
     const zakiTraining = await createActivity(request, admin, {
@@ -124,7 +124,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
       name: 'Trening L06',
       type: 'training',
       placeId: family.pitch,
-      coachPersonId: wojtek.personId,
+      coachPersonId: rafal.personId,
       recurrenceRule: `FREQ=WEEKLY;BYDAY=TU;UNTIL=${until}`,
       startsOn: today,
       startTime: '17:00',
@@ -135,7 +135,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
       name: 'Basen L06',
       type: 'training',
       placeId: family.poolPlace,
-      coachPersonId: wojtek.personId,
+      coachPersonId: rafal.personId,
       recurrenceRule: `FREQ=WEEKLY;BYDAY=TH;UNTIL=${until}`,
       startsOn: today,
       startTime: '18:00',
@@ -146,19 +146,19 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     const zakiBefore = (await coaches(club, zakiTraining.id)).filter((row) => row.day <= lastDay)
     expect(zakiAfter.length).toBeGreaterThan(0)
     expect(poolAfter.length).toBeGreaterThan(0)
-    expect([...zakiAfter, ...poolAfter, ...zakiBefore].every((row) => row.coach === wojtek.personId)).toBe(true)
+    expect([...zakiAfter, ...poolAfter, ...zakiBefore].every((row) => row.coach === rafal.personId)).toBe(true)
 
     // A contract and a place maintainer row.
     const contract = await call<{ id?: string }>(request, 'POST', '/api/club_core/contracts', admin, {
-      data: { partyType: 'person', partyId: wojtek.personId, kind: 'other', validFrom: since },
+      data: { partyType: 'person', partyId: rafal.personId, kind: 'other', validFrom: since },
     })
     expect(contract.status, JSON.stringify(contract.body)).toBe(201)
     const contractId = String(contract.body?.id)
-    const maintainer = await addMaintainer(request, admin, { placeId: family.pitch, personId: wojtek.personId })
+    const maintainer = await addMaintainer(request, admin, { placeId: family.pitch, personId: rafal.personId })
     expect(maintainer.status, JSON.stringify(maintainer.body)).toBe(201)
     const maintainerId = String(maintainer.body?.id)
 
-    // Wojtek takes PLN 150 in cash for Kuba's Żaki fee: cash he holds.
+    // Rafał takes PLN 150 in cash for Kuba's Żaki fee: cash he holds.
     const fee = await createFee(request, admin, {
       name: 'Żaki L06',
       groupId: family.zaki,
@@ -170,7 +170,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     const period = periodFromNow(0)
     expect((await generate(request, admin, period)).status).toBe(200)
     const kubaFee = chargeOf(await listCharges(request, admin, `&period=${period}`), family.elder.personId, fee)
-    const taken = await call<CodedBody>(request, 'POST', '/api/payments/group-charges/cash', wojtek.token, {
+    const taken = await call<CodedBody>(request, 'POST', '/api/payments/group-charges/cash', rafal.token, {
       data: {
         groupId: family.zaki,
         participantPersonId: family.elder.personId,
@@ -182,7 +182,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     expect(taken.status, JSON.stringify(taken.body)).toBe(201)
 
     // The preview: the cash blocker with the amount; the contract and the maintainer row; both groups to hand over.
-    const blockedPlan = await previewOk(request, admin, wojtek.personId, lastDay)
+    const blockedPlan = await previewOk(request, admin, rafal.personId, lastDay)
     expect(blockedPlan.blocked).toBe(true)
     const person = blockedPlan.persons[0]
     expect(person.blockers).toEqual([
@@ -206,22 +206,22 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
       { groupId: family.poolGroup, toPersonId: null },
     ]
     const blocked = await depart(request, admin, {
-      personIds: [wojtek.personId],
+      personIds: [rafal.personId],
       lastDay,
       previewToken: blockedPlan.previewToken,
       handOver,
     })
     expect(blocked.status).toBe(409)
     expect(blocked.body?.code).toBe('departure_blocked')
-    expect(await leftOn(request, admin, wojtek.personId)).toBeNull()
+    expect(await leftOn(request, admin, rafal.personId)).toBeNull()
 
     // The Leaving tab shows the same refusal (AC-L05, #598): the cash blocker names the amount, "Confirm leaving" stays
-    // disabled, and the link opens B-33 "Cash to settle" with Wojtek's cash on it. `signInBrowser` ends the admin's API
+    // disabled, and the link opens B-33 "Cash to settle" with Rafał's cash on it. `signInBrowser` ends the admin's API
     // token, so a fresh one is taken from the returned password.
     const adminPassword = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     admin = await getAuthToken(request, club.tenant.email, adminPassword)
     club.adminToken = admin
-    await page.goto(`/backend/people/persons/${wojtek.personId}?tab=leaving`)
+    await page.goto(`/backend/people/persons/${rafal.personId}?tab=leaving`)
     const blockers = page.getByTestId('people-leaving-blockers')
     await expect(blockers).toBeVisible()
     await expect(blockers).toContainText(uiText('people.leaving.preview.blocks'))
@@ -242,17 +242,17 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
       '/api/payments/cash-custody',
       admin,
     )
-    const held = custody.body?.items?.find((item) => item.collectorPersonId === wojtek.personId)
+    const held = custody.body?.items?.find((item) => item.collectorPersonId === rafal.personId)
     const settled = await call<CodedBody>(request, 'POST', '/api/payments/cash-handovers', admin, {
-      data: { collectorPersonId: wojtek.personId, paymentIds: held?.payments.map((payment) => payment.paymentId) },
+      data: { collectorPersonId: rafal.personId, paymentIds: held?.payments.map((payment) => payment.paymentId) },
     })
     expect(settled.status, JSON.stringify(settled.body)).toBe(201)
-    const plan = await previewOk(request, admin, wojtek.personId, lastDay)
+    const plan = await previewOk(request, admin, rafal.personId, lastDay)
     expect(plan.blocked).toBe(false)
 
     // No choice: 422 naming both groups. A coordinator: 403. A target who is not a coach: 422. Nothing changes.
     const noChoice = await depart(request, admin, {
-      personIds: [wojtek.personId],
+      personIds: [rafal.personId],
       lastDay,
       previewToken: plan.previewToken,
     })
@@ -261,7 +261,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     expect(JSON.stringify(noChoice.body)).toContain(family.zaki)
     expect(JSON.stringify(noChoice.body)).toContain(family.poolGroup)
     const coordinator = await depart(request, family.poolCoordinator.token, {
-      personIds: [wojtek.personId],
+      personIds: [rafal.personId],
       lastDay,
       previewToken: plan.previewToken,
       handOver: [
@@ -271,7 +271,7 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     })
     expect(coordinator.status).toBe(403)
     const notCoach = await depart(request, admin, {
-      personIds: [wojtek.personId],
+      personIds: [rafal.personId],
       lastDay,
       previewToken: plan.previewToken,
       handOver: [
@@ -281,14 +281,14 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     })
     expect(notCoach.status).toBe(422)
     expect(notCoach.body?.code).toBe('departure_handover_coach_invalid')
-    expect(await leftOn(request, admin, wojtek.personId)).toBeNull()
+    expect(await leftOn(request, admin, rafal.personId)).toBeNull()
     expect(await contractEnd(club, contractId)).toBeNull()
-    expect(await maintainerRows(club, wojtek.personId)).toEqual([maintainerId])
-    expect((await coaches(club, zakiTraining.id)).every((row) => row.coach === wojtek.personId)).toBe(true)
+    expect(await maintainerRows(club, rafal.personId)).toEqual([maintainerId])
+    expect((await coaches(club, zakiTraining.id)).every((row) => row.coach === rafal.personId)).toBe(true)
 
     // Żaki to Marek, the pool left unassigned.
     const confirmed = await depart(request, admin, {
-      personIds: [wojtek.personId],
+      personIds: [rafal.personId],
       lastDay,
       previewToken: plan.previewToken,
       handOver,
@@ -297,9 +297,9 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     const zakiNow = await coaches(club, zakiTraining.id)
     const poolNow = await coaches(club, poolClass.id)
     for (const row of zakiNow) {
-      expect(row.coach).toBe(row.day > lastDay ? family.coach.personId : wojtek.personId)
+      expect(row.coach).toBe(row.day > lastDay ? family.coach.personId : rafal.personId)
     }
-    for (const row of poolNow) expect(row.coach).toBe(row.day > lastDay ? null : wojtek.personId)
+    for (const row of poolNow) expect(row.coach).toBe(row.day > lastDay ? null : rafal.personId)
     const handed = [...zakiAfter, ...poolAfter].map((row) => row.id)
     const written = await entries(club, handed)
     expect(written).toHaveLength(handed.length)
@@ -308,8 +308,8 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
     expect(await defaultCoach(club, zakiTraining.id)).toBe(family.coach.personId)
     expect(await defaultCoach(club, poolClass.id)).toBeNull()
     expect(await contractEnd(club, contractId)).toBe(lastDay)
-    expect(await maintainerRows(club, wojtek.personId)).toEqual([])
-    expect(await leftOn(request, admin, wojtek.personId)).toBe(lastDay)
+    expect(await maintainerRows(club, rafal.personId)).toEqual([])
+    expect(await leftOn(request, admin, rafal.personId)).toBe(lastDay)
     const needing = await listOccurrences(request, family.poolCoordinator.token, '&unassigned=1')
     expect(needing.items.map((item: OccurrenceItem) => item.id)).toEqual(
       expect.arrayContaining(poolAfter.map((row) => row.id)),
@@ -331,29 +331,29 @@ test('TEST-L06 a leaving coach: cash blocks, sessions handed over or freed, cont
 
     // The undo restores the coaches, the default coaches, the contract and the maintainer row; the entries stay and
     // each restored session gets a `coach_restored` entry.
-    const log = (await actionLogEntries(request, admin, wojtek.personId)).find(
+    const log = (await actionLogEntries(request, admin, rafal.personId)).find(
       (entry) => entry.commandId === 'people.persons.depart',
     )
     expect(log?.undoToken).toBeTruthy()
     const undone = await undoByToken(request, admin, String(log?.undoToken))
     expect(undone.status(), await undone.text()).toBe(200)
-    for (const row of await coaches(club, zakiTraining.id)) expect(row.coach).toBe(wojtek.personId)
+    for (const row of await coaches(club, zakiTraining.id)) expect(row.coach).toBe(rafal.personId)
     for (const row of await coaches(club, poolClass.id)) {
-      expect(row.coach).toBe(row.id === firstPool?.id ? family.instructor.personId : wojtek.personId)
+      expect(row.coach).toBe(row.id === firstPool?.id ? family.instructor.personId : rafal.personId)
     }
-    expect(await defaultCoach(club, zakiTraining.id)).toBe(wojtek.personId)
-    expect(await defaultCoach(club, poolClass.id)).toBe(wojtek.personId)
+    expect(await defaultCoach(club, zakiTraining.id)).toBe(rafal.personId)
+    expect(await defaultCoach(club, poolClass.id)).toBe(rafal.personId)
     expect(await contractEnd(club, contractId)).toBeNull()
-    expect(await maintainerRows(club, wojtek.personId)).toEqual([maintainerId])
-    expect(await leftOn(request, admin, wojtek.personId)).toBeNull()
+    expect(await maintainerRows(club, rafal.personId)).toEqual([maintainerId])
+    expect(await leftOn(request, admin, rafal.personId)).toBeNull()
     const restored = (await entries(club, handed)).filter((entry) => entry.kind === 'coach_restored')
     expect(restored).toHaveLength(handed.length - 1)
-    expect(restored.every((entry) => entry.new_coach_person_id === wojtek.personId)).toBe(true)
+    expect(restored.every((entry) => entry.new_coach_person_id === rafal.personId)).toBe(true)
 
     // The Leaving tab: both groups under "Sessions and activities"; "Confirm leaving" waits for both choices.
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     await prepareForAccessibilityScan(page)
-    await page.goto(`/backend/people/persons/${wojtek.personId}?tab=leaving`)
+    await page.goto(`/backend/people/persons/${rafal.personId}?tab=leaving`)
     const table = page.getByTestId('people-leaving-handover')
     await expect(table).toBeVisible()
     await expect(table).toContainText(uiText('people.leaving.handOver.title'))

@@ -5,7 +5,7 @@
 
 Extends: .ai/specs/2026-11-18-merge-throughput.md
 
-> Related: `.ai/specs/2026-11-24-qa-request-email.md` and `.ai/specs/2026-11-24-phase-level-story-start.md` (split out of this spec on review, 2026-11-24); `.ai/specs/2026-11-18-merge-throughput.md`; `SDLC.md` → "The automation contract"; `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs`. Operations outside the repository: `~/vereino-alerts/vereino_alerts.py` and the Cezar picker on cezar-ws, the scheduled decision session on the owner's laptop. Identifiers: decisions `ST-D01…`, requirements `REQ-ST01…`, tests `ST-TEST-01…`, acceptance `ST-AC-01…`, questions `ST-Q1…`.
+> Related: `.ai/specs/2026-11-24-qa-request-email.md` and `.ai/specs/2026-11-24-phase-level-story-start.md` (split out of this spec on review, 2026-11-24); `.ai/specs/2026-11-18-merge-throughput.md`; `SDLC.md` → "The automation contract"; `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs`. Operations outside the repository: `~/vereino-alerts/vereino_alerts.py` and the Cezar picker on the build server, the scheduled decision session on the owner's laptop. Identifiers: decisions `ST-D01…`, requirements `REQ-ST01…`, tests `ST-TEST-01…`, acceptance `ST-AC-01…`, questions `ST-Q1…`.
 
 ## 📝 TLDR
 
@@ -24,7 +24,7 @@ Evidence from 2026-11-20…24 (server outbox, `gh`, Cezar run history):
 
 - **North star:** hours per day in which Cezar has no run queued or running while open work exists, ≤ 2 (baseline 24.11: about 8).
 - **Leading indicators:** a stall push reaches the owner within 10 min; no stacked PR targets a merged branch for longer than one train run.
-- **Measured by:** Cezar's run history and the alerts log on cezar-ws, train run logs, for 7 days after each phase.
+- **Measured by:** Cezar's run history and the alerts log on the build server, train run logs, for 7 days after each phase.
 
 ## Non-goals
 
@@ -94,7 +94,7 @@ Evidence from 2026-11-20…24 (server outbox, `gh`, Cezar run history):
 ## 📋 Phasing
 
 - **Phase 1 — Decision session** (ops, done 2026-11-24).
-- **Phase 2 — Phone alerts and low-backlog warning** (ops on cezar-ws).
+- **Phase 2 — Phone alerts and low-backlog warning** (ops on the build server).
 - **Phase 3 — Stacked PRs** (owner setting + train code).
 
 ## 📋 Implementation Plan

@@ -39,9 +39,9 @@ test('TEST-T03 a guardian and a participant see only their own part with its clu
     expect(parts.map((entry) => entry.occurrence.id)).toEqual([zakiSession])
     expect(guardianItems.some((entry) => entry.occurrence.id === trampkarzPart.occurrenceId)).toBe(false)
     const part = entryOf(guardianItems, zakiSession)
-    expect(clubEventOf(part)).toEqual({ id: eventId, name: 'GWIAZDA CUP 2026', publicPath: null })
+    expect(clubEventOf(part)).toEqual({ id: eventId, name: 'PRZYKŁAD CUP 2026', publicPath: null })
     expect(part.occurrence.invitedTeamNames).toEqual(
-      expect.arrayContaining(['Wisła Liszki', 'Orzeł Kryspinów', 'CIS Czernichów']),
+      expect.arrayContaining(['Wisła Brzezie', 'Orzeł Brzozów', 'UKS Sąsiedni']),
     )
     expect(part.declarationKind).toBe('confirm')
 
@@ -56,7 +56,7 @@ test('TEST-T03 a guardian and a participant see only their own part with its clu
     expect(published.status, JSON.stringify(published.body)).toBe(200)
     expect(clubEventOf(published.body as CalendarEntry)).toEqual({
       id: eventId,
-      name: 'GWIAZDA CUP 2026',
+      name: 'PRZYKŁAD CUP 2026',
       publicPath: `/p/${String(settings.publicSlug)}/events/${eventSlug}`,
     })
 
@@ -78,7 +78,7 @@ test('TEST-T03 a guardian and a participant see only their own part with its clu
 
     // --- The group's coach: his part, without Edit and Cancel ---
     const coachItems = await calendarItems(request, family.coach.token, `${window}&as=coach`)
-    expect(clubEventOf(entryOf(coachItems, zakiSession))?.name).toBe('GWIAZDA CUP 2026')
+    expect(clubEventOf(entryOf(coachItems, zakiSession))?.name).toBe('PRZYKŁAD CUP 2026')
     const coachEntry = await readCalendarItem(request, family.coach.token, zakiSession, 'as=coach')
     expect(coachEntry.status, JSON.stringify(coachEntry.body)).toBe(200)
     expect(coachEntry.body).toMatchObject({ mayEdit: false, mayCancel: false })

@@ -111,3 +111,20 @@ export type RetentionSweepCounts = {
 export function emptyRetentionSweepCounts(): RetentionSweepCounts {
   return { candidates: 0, anonymized: 0, kept: 0, failed: 0 }
 }
+
+/**
+ * Whether a failed anonymisation is the rule refusing the person on the locked row (409 `anonymize_blocked`, its
+ * reasons including `already_anonymized`), not a fault: another run (the CLI next to the 03:00 schedule) anonymised
+ * them first, or a record, charge or guardianship appeared since the candidates were read. The sweep counts that
+ * person as kept and reports no error (#564).
+ */
+export function isRetentionRefusal(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false
+  const { status, body } = error as { status?: unknown; body?: unknown }
+  return (
+    status === 409 &&
+    typeof body === 'object' &&
+    body !== null &&
+    (body as { code?: unknown }).code === 'anonymize_blocked'
+  )
+}

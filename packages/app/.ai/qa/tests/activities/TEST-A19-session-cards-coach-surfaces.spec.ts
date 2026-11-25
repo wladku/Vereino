@@ -15,7 +15,7 @@ import { uiText } from '../_fixtures/ui-text'
 test.describe.configure({ timeout: 360_000 })
 test.use({ timezoneId: 'Europe/Warsaw' })
 
-const VENUE = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+const VENUE = { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' }
 
 test('TEST-A19 the session cards and the session page show the dot, the map, the substitute and the badges; the coach card opens the session page with the attendance list, the message composer and the history', async ({
   page,

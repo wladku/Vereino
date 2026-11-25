@@ -64,9 +64,9 @@ describe('publicSession', () => {
   })
 
   it('names the typed venue of a session without a club place (#270)', () => {
-    const venue = { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' }
+    const venue = { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' }
     expect(publicSession(session('2026-11-12', { placeId: null, venue }), places, ZONE)).toMatchObject({
-      place: 'Stadion Wisły Liszki',
+      place: 'Stadion Wisły Brzezie',
     })
     expect(publicSession(session('2026-11-12', { placeId: null, venue: null }), places, ZONE)).toMatchObject({
       place: null,

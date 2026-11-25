@@ -1,7 +1,7 @@
 ---
 number: D-010
 date: 2026-10-19 (confirmed 2026-10-20)
-owner: Władek Kuć (A); Kacper Kuć co-owner for the gateway choice (technology — RACI); commission model: unknown
+owner: Władek Kuć (A); Kacper co-owner for the gateway choice (technology — RACI); commission model: unknown
 source: PTU benchmark + segment decision; Claude's proposal; confirmed in the spec's Q-003 (2026-10-20)
 status: confirmed
 ---

@@ -29,7 +29,7 @@ The price of this choice is a shared blast radius and the need to prove isolatio
 |---|---|
 | One tenant or one organization per club | E22-S01 (#627) |
 | The address scheme | E22-S01 (#627) |
-| The Railway plan (Hobby → Pro before real club data is recommended) | ENG-Q-03 stands; the owner acts |
+| The Railway plan (Hobby → Pro before real club data is recommended) | answered 2026-11-25 by D-039: Railway Pro in EU West, Google Cloud in Warsaw on named triggers |
 | The entity that invoices clubs and signs their processing agreements | open DPA signer |
 | The price list and business model | its own decision later |
 

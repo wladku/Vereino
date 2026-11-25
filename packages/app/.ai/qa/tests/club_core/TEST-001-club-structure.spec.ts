@@ -169,7 +169,7 @@ test('TEST-001 places: hierarchy, cycle 422, references, contacts, clear, stale 
     const token = club.adminToken
     const municipality = await create(request, token, 'institutions', { name: 'Gmina Testowo', type: 'municipality' })
     const orlik = await create(request, token, 'places', {
-      name: 'Orlik 2024',
+      name: 'Orlik',
       kind: 'complex',
       ownerInstitutionId: municipality,
       managedByClub: true,
@@ -190,7 +190,7 @@ test('TEST-001 places: hierarchy, cycle 422, references, contacts, clear, stale 
 
     const complex = await getOne(request, token, 'places', orlik)
     expect(complex).toMatchObject({
-      name: 'Orlik 2024',
+      name: 'Orlik',
       kind: 'complex',
       parentPlaceId: null,
       ownerInstitutionId: municipality,

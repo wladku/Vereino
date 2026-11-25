@@ -61,7 +61,7 @@ export type BulkResult = CodedError & {
   warnings?: { clubOccurrencesInWindows: number; pendingRequestsOutside: number }
 }
 
-/** The Orlik 2024 rules (§2): Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30, all year. */
+/** The Orlik rules (§2): Mon–Fri 8:00–22:00, Sat–Sun 9:00–20:30, all year. */
 export const ORLIK_HOURS = {
   seasons: [
     {

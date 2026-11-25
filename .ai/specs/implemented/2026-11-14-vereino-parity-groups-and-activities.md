@@ -285,12 +285,12 @@ The five parity specs of 2026-11-14 are N (navigation and naming, `Ready for imp
 
 ### Journey J-A02 — A coach sets up an away sparring with a deadline
 
-1. On Monday Wojtek taps "New event" on `/club`, chooses the group "Orliki młodsze", the type Sparring, the opponent "Wisła Liszki", the venue **Other address**: "Stadion Wisły Liszki", "ul. Sportowa 1, Liszki", Saturday 09:00–10:30, gathering 08:30, confirm by Thursday 12:00.
+1. On Monday Rafał taps "New event" on `/club`, chooses the group "Orliki młodsze", the type Sparring, the opponent "Wisła Brzezie", the venue **Other address**: "Stadion Wisły Brzezie", "ul. Sportowa 1, Zielony Las", Saturday 09:00–10:30, gathering 08:30, confirm by Thursday 12:00.
 2. The session page opens. Guardians get the usual declaration surfaces: the card on `/club` reads "Confirm by Thu 13.11, 12:00" with a map link.
 3. Kasia confirms for Jaś on Wednesday. On Thursday at 12:01 Marta's card reads "Deadline passed Thu 13.11, 12:00 — if the child can come after all, write to the coach" and Staś reads "no answer".
-4. Wojtek opens the attendance list from the session page: "8 coming · 1 not coming · 3 no answer", with the three names first. He taps "Message the group" to chase them.
-5. On Friday the host moves the kick-off to 10:00. Wojtek opens **Edit** on the session page, changes the time and saves. Every guardian gets the notice of J-A03; the gathering and the deadline keep their offsets, and because the deadline is already in the past the form asked him to set a new one or none.
-6. Failures: a class group cannot take a sparring (422 `activity_type_requires_team`); Wojtek's own colliding session answers 409 with the list and saves nothing; a declaration through a personal link after the deadline shows the same "deadline passed" text.
+4. Rafał opens the attendance list from the session page: "8 coming · 1 not coming · 3 no answer", with the three names first. He taps "Message the group" to chase them.
+5. On Friday the host moves the kick-off to 10:00. Rafał opens **Edit** on the session page, changes the time and saves. Every guardian gets the notice of J-A03; the gathering and the deadline keep their offsets, and because the deadline is already in the past the form asked him to set a new one or none.
+6. Failures: a class group cannot take a sparring (422 `activity_type_requires_team`); Rafał's own colliding session answers 409 with the list and saves nothing; a declaration through a personal link after the deadline shows the same "deadline passed" text.
 
 ### Journey J-A03 — A session moves and everyone is told
 
@@ -413,9 +413,9 @@ Add / Edit dialog: Person* (search "First Last (age N)") · Role* · From* · To
 ### Session card with a deadline (M-02, M-03)
 
 ```text
-17:00  ● Sparing: Wisła Liszki — Gwiazda
+17:00  ● Sparing: Wisła Brzezie — Przykład
 18:30  ⏱ Gathering 08:30
-       Orliki młodsze · Akademia · Stadion Wisły Liszki · map
+       Orliki młodsze · Akademia · Stadion Wisły Brzezie · map
        Confirm by Thu 13.11, 12:00            ← before the deadline
        Jaś   [Coming] [Not coming]
        ──────────────────────────────────────

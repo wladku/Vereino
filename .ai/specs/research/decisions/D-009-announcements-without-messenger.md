@@ -10,4 +10,4 @@ status: confirmed
 **Confirmation (2026-10-20, Q-002, DD-15):** push is dropped from 1.0 — the module facts have no web push for a PWA; push returns together with a native app. In 1.0 the channels are in-app notifications and e-mail (REQ-009).
 **Why:** no official API for Messenger/WhatsApp groups; WhatsApp Business 1:1 is paid and template-based.
 **To change:** a group API becoming available, or interview results showing that parents will not click the link (H6).
-**Revisit:** after testing the magic link in one Gwiazda group.
+**Revisit:** after testing the magic link in one Przykład group.

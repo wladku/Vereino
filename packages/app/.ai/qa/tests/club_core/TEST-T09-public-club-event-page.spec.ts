@@ -8,7 +8,7 @@ import { png, publicGet, publish, putSectionPublic, upload, type PublicationBloc
 
 // Club events spec TEST-T09 (REQ-T09, REQ-T08 public files, DD-T11, DD-T12, AC-T09, AC-T08 public part; #381): the
 // tournament page `GET /api/club_core/public/{clubSlug}/events/{eventSlug}` and its files. Club A publishes its page
-// and the `events` block; "GWIAZDA CUP 2026" is public with a poster and two funder logos, four days of parts at the
+// and the `events` block; "PRZYKŁAD CUP 2026" is public with a poster and two funder logos, four days of parts at the
 // external hall: a part of the public Orlik group (coach Marek, three visiting teams with a contact), a part of the
 // non-public Rezerwy group, the open seniors' part and a cancelled Orlik part. The page shows the poster, the place
 // with its map link, the four days, our team with its section for the public group and the club's name for the
@@ -63,14 +63,14 @@ async function makeGroupPublic(request: APIRequestContext, token: string, id: st
   expect(saved.status, JSON.stringify(saved.body)).toBe(200)
 }
 
-/** Club B: a published page with a public club event `turniej-b` and one with the slug `gwiazda-cup-2026`. */
+/** Club B: a published page with a public club event `turniej-b` and one with the slug `przyklad-cup-2026`. */
 async function clubB(request: APIRequestContext, club: Club, slug: string) {
   const admin = club.adminToken
   const section = await create(request, admin, 'sections', { name: 'Sekcja B' })
   const group = await createGroup(request, admin, { sectionId: section, name: 'Drużyna B', kind: 'team' })
   const { hall } = await examplePlaces(request, club)
   const day = addDays(calendarDate(), 9)
-  for (const name of ['Turniej B', 'GWIAZDA CUP 2026']) {
+  for (const name of ['Turniej B', 'PRZYKŁAD CUP 2026']) {
     const eventId = await clubEventId(request, admin, { name, sectionId: section, placeId: hall })
     await partIds(request, admin, eventId, {
       title: `${name} – część`,
@@ -108,14 +108,14 @@ test('TEST-T09 the public tournament page shows the published club event without
       validFrom: addDays(calendarDate(), -30),
     })
     const teams = [
-      await externalTeam(request, admin, 'Wisła Liszki', 'kontakt-wisla@example.org'),
-      await externalTeam(request, admin, 'Orzeł Kryspinów', '+48 600 100 200'),
-      await externalTeam(request, admin, 'CIS Czernichów', 'trener.cis@example.org'),
+      await externalTeam(request, admin, 'Wisła Brzezie', 'kontakt-wisla@example.org'),
+      await externalTeam(request, admin, 'Orzeł Brzozów', '+48 600 100 200'),
+      await externalTeam(request, admin, 'UKS Sąsiedni', 'trener.cis@example.org'),
     ]
 
     // The event: four days of parts at the external hall.
     const eventId = await clubEventId(request, admin, {
-      name: 'GWIAZDA CUP 2026',
+      name: 'PRZYKŁAD CUP 2026',
       sectionId: academy,
       placeId: hall,
       description: 'Halowy turniej piłki nożnej dzieci i młodzieży.',
@@ -165,7 +165,7 @@ test('TEST-T09 the public tournament page shows the published club event without
     const files = `/api/activities/club-events/${eventId}/files`
     const poster = await upload(request, admin, files, png([200, 40, 40], 32), { kind: 'poster' })
     expect(poster.status, JSON.stringify(poster.body)).toBe(201)
-    for (const [index, name] of ['Gmina Liszki', 'Powiat Krakowski'].entries()) {
+    for (const [index, name] of ['Gmina Zielony Las', 'Powiat Krakowski'].entries()) {
       const logo = await upload(request, admin, files, png([40, 90 + index * 40, 200], 16), {
         kind: 'funder_logo',
         funderName: name,
@@ -173,7 +173,7 @@ test('TEST-T09 the public tournament page shows the published club event without
       expect(logo.status, JSON.stringify(logo.body)).toBe(201)
     }
     const eventSlug = await makePublic(request, admin, eventId)
-    expect(eventSlug).toBe('gwiazda-cup-2026')
+    expect(eventSlug).toBe('przyklad-cup-2026')
 
     // An unpublished event with a part and a poster; a public event without parts.
     const hiddenId = await clubEventId(request, admin, { name: 'Ukryty turniej', sectionId: academy, placeId: hall })
@@ -196,29 +196,29 @@ test('TEST-T09 the public tournament page shows the published club event without
     const emptyId = await clubEventId(request, admin, { name: 'Pusty turniej', sectionId: academy, placeId: hall })
     await makePublic(request, admin, emptyId)
     await clubB(request, other, slugB)
-    await publish(request, admin, slug, BLOCKS, { shortName: 'LKS Gwiazda' })
+    await publish(request, admin, slug, BLOCKS, { shortName: 'LKS Przykład' })
 
     // --- The page ---
     const read = await publicGet(request, `/api/club_core/public/${slug}/events/${eventSlug}`)
     expect(read.status, JSON.stringify(read.body)).toBe(200)
     expect(read.headers['cache-control']).toContain('public')
     const page = read.body as unknown as ClubEventPage
-    expect(page.club).toMatchObject({ name: 'LKS Gwiazda', slug, nav: { events: true } })
+    expect(page.club).toMatchObject({ name: 'LKS Przykład', slug, nav: { events: true } })
     expect(page.event).toMatchObject({
-      name: 'GWIAZDA CUP 2026',
-      slug: 'gwiazda-cup-2026',
+      name: 'PRZYKŁAD CUP 2026',
+      slug: 'przyklad-cup-2026',
       status: 'planned',
       dateFrom: day1,
       dateTo: day4,
       description: 'Halowy turniej piłki nożnej dzieci i młodzieży.',
       place: {
-        name: 'Hala sportowa w Liszkach',
-        address: 'ul. Szkolna 50, Liszki',
+        name: 'Hala sportowa w Zielonym Lesie',
+        address: 'ul. Szkolna 50, Zielony Las',
         mapUrl: expect.stringContaining('openstreetmap.org'),
       },
-      poster: { url: `/api/club_core/public/${slug}/events/gwiazda-cup-2026/files/${String(poster.body?.id)}` },
+      poster: { url: `/api/club_core/public/${slug}/events/przyklad-cup-2026/files/${String(poster.body?.id)}` },
     })
-    expect(page.event.funders.map((funder) => funder.name)).toEqual(['Gmina Liszki', 'Powiat Krakowski'])
+    expect(page.event.funders.map((funder) => funder.name)).toEqual(['Gmina Zielony Las', 'Powiat Krakowski'])
     expect(page.event.days.map((day) => day.date)).toEqual([day1, day2, day3, day4])
     const [first, second, third, fourth] = page.event.days.map((day) => day.parts[0])
     expect(first).toEqual({
@@ -231,12 +231,12 @@ test('TEST-T09 the public tournament page shows the published club event without
       cancelled: false,
       ourTeam: { groupName: 'Orlik młodszy', section: { name: 'Akademia piłkarska', slug: 'akademia' } },
       visitingTeams: [
-        { name: 'Wisła Liszki', clubName: 'Wisła Liszki KS' },
-        { name: 'Orzeł Kryspinów', clubName: 'Orzeł Kryspinów KS' },
-        { name: 'CIS Czernichów', clubName: 'CIS Czernichów KS' },
+        { name: 'Wisła Brzezie', clubName: 'Wisła Brzezie KS' },
+        { name: 'Orzeł Brzozów', clubName: 'Orzeł Brzozów KS' },
+        { name: 'UKS Sąsiedni', clubName: 'UKS Sąsiedni KS' },
       ],
     })
-    expect(second).toMatchObject({ title: 'Turniej Rezerw', ourTeam: { clubName: 'LKS Gwiazda' } })
+    expect(second).toMatchObject({ title: 'Turniej Rezerw', ourTeam: { clubName: 'LKS Przykład' } })
     expect(third).toMatchObject({ title: 'Turniej Drużyn – Seniorzy (16+)', startTime: '08:30', ourTeam: null })
     expect(fourth).toMatchObject({ title: 'Turniej Orlika – rewanż', cancelled: true })
     const text = JSON.stringify(read.body)
@@ -259,9 +259,9 @@ test('TEST-T09 the public tournament page shows the published club event without
       expect(answer.body, missing).toMatchObject({ code: 'public_club_event_not_found' })
     }
     // Club B's own event of the same slug is B's.
-    const fromB = await publicGet(request, `/api/club_core/public/${slugB}/events/gwiazda-cup-2026`)
+    const fromB = await publicGet(request, `/api/club_core/public/${slugB}/events/przyklad-cup-2026`)
     expect(fromB.status, JSON.stringify(fromB.body)).toBe(200)
-    expect((fromB.body as unknown as ClubEventPage).event.days[0]?.parts[0]?.title).toBe('GWIAZDA CUP 2026 – część')
+    expect((fromB.body as unknown as ClubEventPage).event.days[0]?.parts[0]?.title).toBe('PRZYKŁAD CUP 2026 – część')
     expect(JSON.stringify(fromB.body)).not.toContain('Orlik')
     expect((await publicGet(request, `/api/club_core/public/no-such-club-t09/events/${eventSlug}`)).body).toMatchObject(
       {
@@ -273,10 +273,10 @@ test('TEST-T09 the public tournament page shows the published club event without
     const hiddenFileId = String(hiddenPoster.body?.id)
     for (const path of [
       `/api/club_core/public/${slug}/events/ukryty-turniej/files/${hiddenFileId}`,
-      `/api/club_core/public/${slug}/events/gwiazda-cup-2026/files/${hiddenFileId}`,
+      `/api/club_core/public/${slug}/events/przyklad-cup-2026/files/${hiddenFileId}`,
       `/api/club_core/public/${slug}/events/pusty-turniej/files/${String(poster.body?.id)}`,
-      `/api/club_core/public/${slugB}/events/gwiazda-cup-2026/files/${String(poster.body?.id)}`,
-      `/api/club_core/public/${slug}/events/gwiazda-cup-2026/files/not-a-uuid`,
+      `/api/club_core/public/${slugB}/events/przyklad-cup-2026/files/${String(poster.body?.id)}`,
+      `/api/club_core/public/${slug}/events/przyklad-cup-2026/files/not-a-uuid`,
     ]) {
       const answer = await publicGet(request, path)
       expect(answer.status, path).toBe(404)

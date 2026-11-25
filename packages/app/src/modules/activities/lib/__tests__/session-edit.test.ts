@@ -16,7 +16,7 @@ const atVenue: EditableSession = {
   startAt: '2026-11-21T08:00:00.000Z',
   endAt: '2026-11-21T09:30:00.000Z',
   placeId: null,
-  venue: { name: 'Stadion Wisły Liszki', address: 'ul. Sportowa 1, Liszki' },
+  venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Sportowa 1, Zielony Las' },
   gatheringAt: '2026-11-21T07:30:00.000Z',
   confirmBy: '2026-11-19T11:00:00.000Z',
 }
@@ -36,8 +36,8 @@ describe('sessionEditDraft', () => {
       endTime: '10:30',
       venueMode: 'venue',
       placeId: '',
-      venueName: 'Stadion Wisły Liszki',
-      venueAddress: 'ul. Sportowa 1, Liszki',
+      venueName: 'Stadion Wisły Brzezie',
+      venueAddress: 'ul. Sportowa 1, Zielony Las',
       gatheringTime: '08:30',
       confirmByDate: '2026-11-19',
       confirmByTime: '12:00',
@@ -119,7 +119,7 @@ describe('sessionEditBody', () => {
           ...initial,
           startTime: '10:00',
           endTime: '11:30',
-          venueName: ' Orlik Liszki ',
+          venueName: ' Orlik Zielony Las ',
           gatheringTime: '09:15',
           confirmByDate: '2026-11-20',
           confirmByTime: '18:00',
@@ -131,7 +131,7 @@ describe('sessionEditBody', () => {
     ).toEqual({
       startAt: '2026-11-21T09:00:00.000Z',
       endAt: '2026-11-21T10:30:00.000Z',
-      venue: { name: 'Orlik Liszki', address: 'ul. Sportowa 1, Liszki' },
+      venue: { name: 'Orlik Zielony Las', address: 'ul. Sportowa 1, Zielony Las' },
       gatheringAt: '2026-11-21T08:15:00.000Z',
       confirmBy: '2026-11-20T17:00:00.000Z',
     })
@@ -162,8 +162,10 @@ describe('sessionEditBody', () => {
         ZONE,
       ),
     ).toMatchObject({ venue: { name: 'Hala', address: 'ul. Długa 2' } })
-    expect(sessionEditBody({ ...initial, venueAddress: 'ul. Polna 3, Liszki' }, initial, atVenue, ZONE)).toMatchObject({
-      venue: { name: 'Stadion Wisły Liszki', address: 'ul. Polna 3, Liszki' },
+    expect(
+      sessionEditBody({ ...initial, venueAddress: 'ul. Polna 3, Zielony Las' }, initial, atVenue, ZONE),
+    ).toMatchObject({
+      venue: { name: 'Stadion Wisły Brzezie', address: 'ul. Polna 3, Zielony Las' },
     })
   })
 

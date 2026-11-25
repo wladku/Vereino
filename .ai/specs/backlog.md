@@ -18,7 +18,7 @@ Last filed: 2026-10-24
 | E01-T03 | [#13](https://github.com/wladku/Vereino/issues/13) | Find out how the coordinator and coaches run attendance, urgent changes and call-ups | #10 | — | no |
 | E01-T04 | [#14](https://github.com/wladku/Vereino/issues/14) | Find out what other clubs use, who decides, and whether they administer a facility | #10 | — | no |
 | E01-T05 | [#15](https://github.com/wladku/Vereino/issues/15) | Check SportBM beyond the four screens | #10 | — | no |
-| E01-T06 | [#16](https://github.com/wladku/Vereino/issues/16) | Find out how grant settlement works and whether it is a problem beyond KS Gwiazda | #10 | — | no |
+| E01-T06 | [#16](https://github.com/wladku/Vereino/issues/16) | Find out how grant settlement works and whether it is a problem beyond KS Przykład | #10 | — | no |
 | E01-T07 | [#17](https://github.com/wladku/Vereino/issues/17) | Check ProTrainUp's facilities module in a demo | #10 | — | no |
 | E01-T08 | [#18](https://github.com/wladku/Vereino/issues/18) | Count attendance declarations in one Messenger group for 4 weeks | #10 | — | no |
 | E01-T09 | [#20](https://github.com/wladku/Vereino/issues/20) | Find out what the separately built club website will do | #10 | — | no |

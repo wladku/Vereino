@@ -47,10 +47,10 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     })
     expect(publicZone.status, JSON.stringify(publicZone.body)).toBe(201)
 
-    const wojtek = await signedInStaff(request, club, { firstName: 'Wojtek', lastName: 'Trener', role: 'coach' })
+    const rafal = await signedInStaff(request, club, { firstName: 'Rafał', lastName: 'Trener', role: 'coach' })
     await addMembership(request, admin, {
       groupId: setup.zaki,
-      personId: wojtek.personId,
+      personId: rafal.personId,
       role: 'coach',
       validFrom: addDays(today, -30),
     })
@@ -78,12 +78,12 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
       }).id,
     )
 
-    // AC 1 — "For a group": Wojtek books Saturday 9:00–12:00 for Żaki as a tournament; the event is in the group's
+    // AC 1 — "For a group": Rafał books Saturday 9:00–12:00 for Żaki as a tournament; the event is in the group's
     // sessions and on the pitch's timeline, and the held request is superseded.
-    const tournament = await createEvent(request, wojtek.token, {
+    const tournament = await createEvent(request, rafal.token, {
       groupId: setup.zaki,
       type: 'tournament',
-      name: 'Turniej o Puchar Gwiazdy',
+      name: 'Turniej o Puchar Przykładu',
       placeId: setup.pitch,
       startsAt: zoneInstant(saturday, '09:00'),
       endsAt: zoneInstant(saturday, '12:00'),
@@ -93,7 +93,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     expect(sessions.items.map((session) => session.id)).toContain(tournament.body?.occurrenceId)
     const saturdayView = await staffCalendar(
       request,
-      wojtek.token,
+      rafal.token,
       `placeId=${setup.pitch}&from=${encodeURIComponent(zoneInstant(saturday, '00:00'))}&to=${encodeURIComponent(zoneInstant(sunday, '00:00'))}`,
     )
     expect(saturdayView.status, JSON.stringify(saturdayView.body)).toBe(200)
@@ -103,7 +103,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
       expect.objectContaining({
         id: tournament.body?.occurrenceId,
         kind: 'session',
-        label: 'Turniej o Puchar Gwiazdy',
+        label: 'Turniej o Puchar Przykładu',
       }),
     )
     await expect
@@ -111,7 +111,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
       .toBe('superseded')
 
     // AC 4 — a group outside the coach's scope: 403.
-    const outside = await createEvent(request, wojtek.token, {
+    const outside = await createEvent(request, rafal.token, {
       groupId: setup.orliki,
       type: 'tournament',
       name: 'Turniej Orlików',
@@ -122,7 +122,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     expect(outside.status, JSON.stringify(outside.body)).toBe(403)
 
     // AC 2 — the slot taken: 409 with the conflicts and their names (staff).
-    const taken = await postInternalBooking(request, wojtek.token, {
+    const taken = await postInternalBooking(request, rafal.token, {
       placeId: setup.pitch,
       startsAt: zoneInstant(saturday, '10:00'),
       endsAt: zoneInstant(saturday, '11:00'),
@@ -132,11 +132,11 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     expect(taken.status, JSON.stringify(taken.body)).toBe(409)
     expect(taken.body?.code).toBe('rental_conflict')
     expect(taken.body?.conflicts).toContainEqual(
-      expect.objectContaining({ kind: 'session', label: 'Turniej o Puchar Gwiazdy' }),
+      expect.objectContaining({ kind: 'session', label: 'Turniej o Puchar Przykładu' }),
     )
 
     // AC 3 — outside the opening hours (Saturday opens at 9:00) and during a closure: 409 `place_closed`.
-    const early = await postInternalBooking(request, wojtek.token, {
+    const early = await postInternalBooking(request, rafal.token, {
       placeId: setup.pitch,
       startsAt: zoneInstant(saturday, '08:00'),
       endsAt: zoneInstant(saturday, '09:00'),
@@ -152,7 +152,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
       reason: 'municipal_event',
     })
     expect(closure.status, JSON.stringify(closure.body)).toBe(201)
-    const closed = await postInternalBooking(request, wojtek.token, {
+    const closed = await postInternalBooking(request, rafal.token, {
       placeId: setup.pitch,
       startsAt: zoneInstant(wednesday, '11:00'),
       endsAt: zoneInstant(wednesday, '12:00'),
@@ -171,7 +171,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
         endsAt: zoneInstant(sunday, '11:30'),
       }).id,
     )
-    const sundayBooking = await postInternalBooking(request, wojtek.token, {
+    const sundayBooking = await postInternalBooking(request, rafal.token, {
       placeId: setup.pitch,
       startsAt: zoneInstant(sunday, '10:00'),
       endsAt: zoneInstant(sunday, '12:00'),
@@ -276,7 +276,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
       `placeId=${setup.pitch}&from=${encodeURIComponent(zoneInstant(sunday, '00:00'))}&to=${encodeURIComponent(zoneInstant(monday, '00:00'))}`,
     )
     const seenByOla = sundayView.body?.entries?.find((entry) => entry.id === sundayBooking.body?.id)
-    expect(seenByOla).toMatchObject({ kind: 'booking', own: false, canCancel: false, bookedByName: 'Wojtek Trener' })
+    expect(seenByOla).toMatchObject({ kind: 'booking', own: false, canCancel: false, bookedByName: 'Rafał Trener' })
     const refused = await cancelInternalBooking(
       request,
       ola.token,
@@ -294,7 +294,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     expect(byCoordinator.body?.status).toBe('cancelled')
     const again = await cancelInternalBooking(
       request,
-      wojtek.token,
+      rafal.token,
       String(sundayBooking.body?.id),
       byCoordinator.body?.updatedAt,
     )
@@ -305,7 +305,7 @@ test('TEST-033 coaches book at once in any zone; conflicts, closures and opening
     // The cards of `/club/places`: every live place with its entries.
     const cards = await staffCalendar(
       request,
-      wojtek.token,
+      rafal.token,
       `from=${encodeURIComponent(zoneInstant(saturday, '00:00'))}&to=${encodeURIComponent(zoneInstant(sunday, '00:00'))}`,
     )
     expect(cards.status, JSON.stringify(cards.body)).toBe(200)
