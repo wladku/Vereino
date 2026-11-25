@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 280`, issue labelled `cezar`). Build phase 6 of the facilities
   parity spec: B-25 as a card per request (DD-R16), the owner in the approval intro, the extended queue response.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 6 (REQ-R08; TEST-R10; AC-R06;
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 6 (REQ-R08; TEST-R10; AC-R06;
   J-R02 steps 3–5); #280 (epic #253, depends on #275, merged); `feat/issue-280-admin-booking-request-card`.
 - **Approval:** the spec is `Ready for implementation` (owner decisions on #253, 2026-11-16). Its *Compatibility* line
   approves additive API changes ("new response fields"), which covers the issue's Ask First item (the new fields of

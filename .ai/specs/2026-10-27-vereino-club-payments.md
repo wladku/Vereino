@@ -1,7 +1,7 @@
 # Vereino — club payments (phase 4)
 
 **Date**: 2026-10-27
-**Status**: In progress — approved by the product owner (phase 4, 2026-11-04, D30; the treasurer role on 2026-11-19, #245); left: AC-012 (no Stripe sandbox run) and phase 4 step 1's Stripe sandbox run (close-out #452)
+**Status**: In progress — approved by the product owner (phase 4, 2026-11-04, D30; the treasurer role on 2026-11-19, #245); every other acceptance criterion ticked (close-out IV #719); left: only AC-012 with phase 4 step 1's Stripe test-mode run, which needs the owner's Stripe test account (#594)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 

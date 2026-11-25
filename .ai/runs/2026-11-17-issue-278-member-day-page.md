@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue 278`, issue labelled `cezar`). Build phase 4 of the facilities
   parity spec: the member day page M-11 on the day axis, the slot dialog and an entry details sheet.
-- **Spec / issue / branch:** `.ai/specs/2026-11-14-vereino-parity-facilities.md` phase 4 (REQ-R12; TEST-R12; AC-R08;
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` phase 4 (REQ-R12; TEST-R12; AC-R08;
   J-R03); #278 (epic #253, depends on #277, merged); `feat/issue-278-one-tap-hour-booking`.
 - **Approval:** the spec is `Ready for implementation` (owner decisions on #253, 2026-11-16). No migration, no
   dependency, no new module, no route or contract change; Q-R22 answered (coordinators see renters' names).

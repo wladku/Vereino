@@ -1,6 +1,6 @@
 # Run: issue #279 — E11-S05 the rental as a record (B-24 and the rental page)
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 279`, label `cezar`): build phase 5 of `.ai/specs/2026-11-14-vereino-parity-facilities.md` (REQ-R04, REQ-R05; TEST-R06, TEST-R07; AC-R03).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 279`, label `cezar`): build phase 5 of `.ai/specs/implemented/2026-11-14-vereino-parity-facilities.md` (REQ-R04, REQ-R05; TEST-R06, TEST-R07; AC-R03).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #253: the `facilities` routes, commands, codes and additive fields are Ask First item 6, approved; Q-R08 confirmed); issue #279; depends on #275 (closed); branch `feat/issue-279-rental-correction-admin`.
 
 ## Steps

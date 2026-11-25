@@ -1,7 +1,7 @@
 # Run log — issue #606: the coach saves attendance and records a score on his club event part (AC-T04)
 
 - **Trigger:** Cezar run 7af12ab4 (`om-auto-fix-issue`), issue labelled `cezar`.
-- **Issue:** #606 (epic #565). **Spec:** `.ai/specs/2026-11-18-vereino-club-events-with-parts.md`, AC-T04 (coach half).
+- **Issue:** #606 (epic #565). **Spec:** `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md`, AC-T04 (coach half).
 - **Branch:** `test/issue-606-coach-attendance-score`.
 - **Route:** `direct` (test only, no product code), `testing`.
 

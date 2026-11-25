@@ -1,6 +1,6 @@
 # Run: issue #303 — E13-S01 account state, invitation again, login e-mail, block
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 303`, label `cezar`): build phase L1 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L01, REQ-L02; TEST-L01, TEST-L02, TEST-L19 account state, TEST-L20 these routes).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 303`, label `cezar`): build phase L1 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L01, REQ-L02; TEST-L01, TEST-L02, TEST-L19 account state, TEST-L20 these routes).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #255, Ask First items 7 — the new events — and 12 — the V-L01 fallback — approved); issue #303; branch `feat/issue-303-admin-account-state-controls`.
 
 ## Steps

@@ -1,7 +1,7 @@
 # Run — issue #589: the expiry job reports `skipped` for a row a command moved first
 
 - **Trigger**: `cezar` label on #589 (cezar run, `om-auto-fix-issue`), 2026-11-22.
-- **Issue / spec**: #589 (epic #565); `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` — AC-G02, TEST-G03 (declaration part).
+- **Issue / spec**: #589 (epic #565); `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` — AC-G02, TEST-G03 (declaration part).
 - **Branch**: `test/issue-589-job-status-skipped-rows`.
 
 ## Goal
@@ -34,7 +34,7 @@ An integration test that moves a declaration by a command after the expiry job r
 
 - `packages/app/.ai/qa/tests/activities/TEST-G03-expiry-race-skipped.spec.ts` (new)
 - `packages/app/.ai/qa/tests/_fixtures/attendance.ts` (`runExpiryAsync`)
-- `.ai/specs/2026-10-27-vereino-foundation-scheduling-primitives.md` (AC-G02 evidence)
+- `.ai/specs/implemented/2026-10-27-vereino-foundation-scheduling-primitives.md` (AC-G02 evidence)
 - `.ai/specs/changelog/2026-10-27-vereino-foundation-scheduling-primitives/2026-11-22-issue-589-expiry-race-test.md`
 - `.ai/lessons/race-tests-hold-a-row-lock-and-watch-from-a-second-connection.md`
 

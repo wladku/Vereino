@@ -1,6 +1,6 @@
 # Run: issue #305 — E13-S03 a new club is set up in the panel; every empty picker says what is missing
 
-- **Goal and trigger:** cezar task (`om-auto-fix-issue 305`, label `cezar`): build phase L3 of `.ai/specs/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L13, REQ-L14; TEST-L14, TEST-L15, TEST-L20; AC-L14; J-L08).
+- **Goal and trigger:** cezar task (`om-auto-fix-issue 305`, label `cezar`): build phase L3 of `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L13, REQ-L14; TEST-L14, TEST-L15, TEST-L20; AC-L14; J-L08).
 - **Spec / issue / branch:** spec `Ready for implementation` (owner approval 2026-11-16 on #255: Ask First item 8 — both new routes — and item 13 — the "Kids (U4–U5)" seed — approved); issue #305; branch `feat/issue-305-club-setup-picker-guidance`.
 
 ## Steps
