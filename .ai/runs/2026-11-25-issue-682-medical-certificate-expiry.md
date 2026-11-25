@@ -98,3 +98,16 @@ Trigger: required checks `integration (shard 4/6)`, `integration (shard 6/6)` an
 - The CI gate then failed at `qa-texts:check` (the TEST-006 locator change removed hardcoded texts; the baseline only
   shrinks): `TEST-006 ... has 9 hardcoded UI text(s) now; lower its entry to 9`. Baseline lowered 11 → 9;
   `yarn verify --from qa-texts:check`: all remaining steps passed.
+
+## Merge of main after #683 (2026-11-25)
+
+Trigger: PR #705 became `CONFLICTING`/`DIRTY` after #706 (training outlines) merged into `main`. The owner is testing
+the PR, so the feature stays unchanged.
+
+- Worked on a detached HEAD at `origin/feat/issue-682-medical-certificate-expiry`, merged `origin/main` (no rewrite,
+  no force-push).
+- Conflicts only in `groups/i18n/en.json` and `pl.json` (both sides appended keys at the end): kept this PR's
+  `groups.club.medical.*` keys and main's `groups.club.nav.outlines`. `packages/core/src/roles.ts`, the activities and
+  people catalogs merged automatically.
+- `yarn verify`: all 22 steps passed. `yarn test:integration:vereino --filter TEST-O01` (roster medical chips and
+  filter, the area of the conflict): 2 passed (1.1 m).
