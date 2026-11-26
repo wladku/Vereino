@@ -1,0 +1,1 @@
+| 2026-11-26 | #578: ENG-TEST-19 Linux half recorded in `docs/ops/clean-clone-setup.md` — clean clone to a running app in about 2.5 min once inotify limits are raised; the documented path failed (webpack fallback, #808), so `CONTRIBUTING.md` now asks Linux/WSL2 contributors to raise the limits first and says where to sign in. The Windows 11 half stays open on #578 |
