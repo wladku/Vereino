@@ -19,4 +19,4 @@ Walking the demo sandbox before the first club demo, the owner found that the ca
 
 **Not changed:** what any reader may see (the switch changes the range only), the zone week preview (B-26), the dashboard tiles and the "upcoming" lists of the public club and section pages.
 
-Specified in `.ai/specs/2026-11-25-vereino-calendar-range-switch.md` (ids `W`).
+Specified in `.ai/specs/implemented/2026-11-25-vereino-calendar-range-switch.md` (ids `W`).

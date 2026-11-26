@@ -18,7 +18,6 @@ export type RangeLinkComponent = React.ComponentType<{
   className?: string
   children: React.ReactNode
   'data-testid'?: string
-  'aria-label'?: string
 }>
 
 /** "pon. 24.11" / "Mon 24.11": a week column's heading. */
@@ -81,10 +80,14 @@ export function WeekAxes({
               <Link
                 href={dayHref(day.date)}
                 className={`text-primary min-h-11 text-sm font-medium underline-offset-2 hover:underline sm:min-h-6 ${day.date === today ? 'underline' : ''}`}
-                aria-label={t('facilities.calendar.range.openDay', { day: formatDayHeading(day.date, locale) })}
                 data-testid={`facilities-week-day-open-${day.date}`}
               >
                 {shortDayLabel(day.date, locale)}
+                {/* The visible text starts the accessible name (WCAG 2.5.3); the long date follows for readers. */}
+                <span className="sr-only">
+                  {' '}
+                  {t('facilities.calendar.range.openDay', { day: formatDayHeading(day.date, locale) })}
+                </span>
               </Link>
               <DayAxis
                 date={day.date}

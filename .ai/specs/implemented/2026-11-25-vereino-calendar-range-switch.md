@@ -1,7 +1,7 @@
 # Vereino — Day / Week / Month range switch on calendar views
 
 **Date**: 2026-11-25
-**Status**: Ready for implementation — every blocking question answered by the product owner on 2026-11-25 ([owner answers on #784](https://github.com/wladku/Vereino/issues/784#issuecomment-7175962616)); the one contract change (REQ-W03, additive `from`/`to` on the public schedule read) is approved there (Q-W04)
+**Status**: Implemented — every phase landed on PR #796 (#784); designed and approved on #784 and PR #785 (owner answers of 2026-11-25)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -157,10 +157,10 @@ Proposal visuals — screenshots of the updated mockup (the design authority, D-
 
 | Screen | Image |
 |---|---|
-| P-04 Week on a desktop (seven day cells) | [mockup-01-p04-week-desktop.jpg](assets/vereino-calendar-range-switch/mockup-01-p04-week-desktop.jpg) |
-| M-03 Day on the phone (Najbliższe · Dzień · Tydzień · Miesiąc) | [mockup-02-m03-day-phone.jpg](assets/vereino-calendar-range-switch/mockup-02-m03-day-phone.jpg) |
-| B-23 Week in the panel (seven day axes) | [mockup-03-b23-week-desktop.jpg](assets/vereino-calendar-range-switch/mockup-03-b23-week-desktop.jpg) |
-| B-15 Calendar, Week (Dzień · Tydzień · Miesiąc · Agenda) | [mockup-04-b15-calendar-week.jpg](assets/vereino-calendar-range-switch/mockup-04-b15-calendar-week.jpg) |
+| P-04 Week on a desktop (seven day cells) | [mockup-01-p04-week-desktop.jpg](../assets/vereino-calendar-range-switch/mockup-01-p04-week-desktop.jpg) |
+| M-03 Day on the phone (Najbliższe · Dzień · Tydzień · Miesiąc) | [mockup-02-m03-day-phone.jpg](../assets/vereino-calendar-range-switch/mockup-02-m03-day-phone.jpg) |
+| B-23 Week in the panel (seven day axes) | [mockup-03-b23-week-desktop.jpg](../assets/vereino-calendar-range-switch/mockup-03-b23-week-desktop.jpg) |
+| B-15 Calendar, Week (Dzień · Tydzień · Miesiąc · Agenda) | [mockup-04-b15-calendar-week.jpg](../assets/vereino-calendar-range-switch/mockup-04-b15-calendar-week.jpg) |
 
 The mockup routes: `#/p/przyklad/places/orlik-boisko?range=week&date=2026-11-18`, `#/club/calendar`, `#/backend/facilities/calendar?place=pl-boisko&range=week`, `#/club/places/pl-boisko?range=week`, `#/backend/activities/occurrences?view=calendar`. The mockup's shared helpers are `calRange`, `rangeDays`, `shiftAnchor`, `rangeLabel` and `rangeSwitch` in `app.ts`.
 
@@ -276,13 +276,13 @@ No migration and no flag. Each phase ships on its own; rolling one back restores
 
 ## Acceptance Criteria
 
-- [ ] AC-W01 — the four views use one `CalendarRangeSwitch` with identical labels and order.
-- [ ] AC-W02 — the public schedule read answers `from`/`to` per the contract; `?month=` unchanged.
-- [ ] AC-W03 — P-04 opens on Day at 375 px and Week at 1280 px; an old `?month=` link opens that month.
-- [ ] AC-W04 — B-23 shows a week as seven axes on a desktop and a list on a phone; Month is a list; M-11 the same on a phone.
-- [ ] AC-W05 — M-03 offers Najbliższe / Dzień / Tydzień / Miesiąc and opens on Day on a phone.
-- [ ] AC-W06 — B-15's view, date and section survive a reload and a shared link.
-- [ ] AC-W07 — the mockup shows the switch on P-04, M-03, B-23/M-11 and B-15.
+- [x] AC-W01 — the four views use one `CalendarRangeSwitch` with identical labels and order.
+- [x] AC-W02 — the public schedule read answers `from`/`to` per the contract; `?month=` unchanged.
+- [x] AC-W03 — P-04 opens on Day at 375 px and Week at 1280 px; an old `?month=` link opens that month.
+- [x] AC-W04 — B-23 shows a week as seven axes on a desktop and a list on a phone; Month is a list; M-11 the same on a phone.
+- [x] AC-W05 — M-03 offers Najbliższe / Dzień / Tydzień / Miesiąc and opens on Day on a phone.
+- [x] AC-W06 — B-15's view, date and section survive a reload and a shared link.
+- [x] AC-W07 — the mockup shows the switch on P-04, M-03, B-23/M-11 and B-15.
 
 ## Final Compliance Report
 
