@@ -37,7 +37,7 @@ import {
   type GroupListState,
   type GroupPerspective,
 } from '../lib/group-list'
-import { GROUP_KINDS } from '../lib/groups-rules'
+import { GROUP_KINDS, placesText } from '../lib/groups-rules'
 import { GroupsNav } from './GroupsNav'
 import {
   GROUPS_HREF,
@@ -114,7 +114,7 @@ function buildColumns(t: Translate): TableColumns<GroupListRow> {
       meta: { priority: 2 },
       cell: ({ row }) => (
         <span className="block text-right tabular-nums" data-testid="group-participant-count">
-          {row.original.participantCount ?? 0}
+          {placesText(row.original.participantCount ?? 0, row.original.placesLimit ?? null)}
         </span>
       ),
     },
