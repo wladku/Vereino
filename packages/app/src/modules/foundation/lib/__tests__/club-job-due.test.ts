@@ -66,6 +66,25 @@ describe('assertClubJobDeclaration', () => {
       }).toThrow(RangeError)
     }
   })
+
+  it('accepts a round report function and rejects anything else in its place (#852)', () => {
+    expect(() => {
+      assertClubJobDeclaration({
+        key: 'a:b',
+        schedule: { dailyAt: '03:00' },
+        description: 'x',
+        afterSweep: async () => {},
+      })
+    }).not.toThrow()
+    expect(() => {
+      assertClubJobDeclaration({
+        key: 'a:b',
+        schedule: { dailyAt: '03:00' },
+        description: 'x',
+        afterSweep: 'ping' as unknown as () => Promise<void>,
+      })
+    }).toThrow(RangeError)
+  })
 })
 
 describe('clubJobOffsetMs', () => {

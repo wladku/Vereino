@@ -19,6 +19,7 @@ import { z } from 'zod'
 import {
   claimDueClubJobs,
   clubJobCounts,
+  clubJobRunState,
   clubJobsOf,
   clubsWithJobState,
   deleteClubJobs,
@@ -47,12 +48,21 @@ import {
 import {
   CLUB_JOB_CLAIM_KEY,
   clubJobErrorCode,
+  clubJobProblemCode,
   parseClubJobClaim,
   runClaimedClubJob,
   serializeClubJobClaim,
   sweepClubJobs,
   type ClaimedRunOutcome,
 } from '../lib/club-job-run'
+import {
+  ROUND_CHECK_DELAY_MS,
+  clubJobRoundDeadline,
+  judgeClubJobRound,
+  serializeClubJobRound,
+  type ClubJobRound,
+  type ClubJobRoundOutcome,
+} from '../lib/club-job-round'
 import { registerModuleSchedule, stableScheduleUuid, type SchedulerServiceLike } from './register-module-schedule'
 import { verifyScheduledJobScope } from './scheduled-job-scope'
 
@@ -63,6 +73,10 @@ export const CLUB_JOB_SWEEP_QUEUE = 'foundation-club-job-sweep'
 export const CLUB_JOB_SWEEP_WORKER = 'foundation:club-job-sweep'
 /** How often a job type's sweep runs: every 5 minutes (a club's run starts at most this late). */
 export const CLUB_JOB_SWEEP_INTERVAL = '5m' as const
+
+/** The queue and worker of the round checks: one per sweep run of a job type that declares `afterSweep` (#852). */
+export const CLUB_JOB_ROUND_QUEUE = 'foundation-club-job-round'
+export const CLUB_JOB_ROUND_WORKER = 'foundation:club-job-round'
 
 /** The per-club dispatch sweeper of the old setup and its system-scope replacement (DD-M07 (b)), every 2 minutes. */
 export const DISPATCH_SWEEP_KEY = 'foundation:dispatch-sweep'
@@ -283,7 +297,12 @@ export type ClubJobSweepResult = {
   claimed: number
   enqueued: Array<ClubJobScope & { dueAt: string }>
   failed: Array<ClubJobScope & { dueAt: string }>
+  /** The round of this sweep run when the job type declares `afterSweep` and the run enqueued or failed a club. */
+  round: ClubJobRound | null
 }
+
+/** Where a sweep run's round check goes: on the round queue (the schedule), or back to the caller (`--round return`). */
+export type SweepRoundMode = 'queue' | 'return'
 
 const listed = (rows: ClaimedClubJob[]) =>
   rows.map((row) => ({
@@ -300,10 +319,12 @@ export async function sweepClubJobType(
   container: AwilixContainer,
   key: string,
   now: Date = new Date(),
+  options: { round?: SweepRoundMode } = {},
 ): Promise<ClubJobSweepResult> {
-  if (!clubJobDeclaration(key)) {
+  const declaration = clubJobDeclaration(key)
+  if (!declaration) {
     logger.warn('Club job sweep for an undeclared job type; skipped', { jobKey: key })
-    return { job: key, passes: 0, claimed: 0, enqueued: [], failed: [] }
+    return { job: key, passes: 0, claimed: 0, enqueued: [], failed: [], round: null }
   }
   const em = forkEm(container)
   const leaseUntil = new Date(now.getTime() + ENQUEUE_LEASE_MS)
@@ -328,12 +349,14 @@ export async function sweepClubJobType(
     },
     { batchSize: SWEEP_BATCH_SIZE, maxPasses: MAX_SWEEP_PASSES },
   )
+  const round = await startClubJobRound(declaration, outcome.enqueued, outcome.failed.length, options.round ?? 'queue')
   const result = {
     job: key,
     passes: outcome.passes,
     claimed: outcome.claimed,
     enqueued: listed(outcome.enqueued),
     failed: listed(outcome.failed),
+    round,
   }
   // Counts only (no club names); the ids are in the operator's CLI output.
   logger.info('Club job sweep finished', {
@@ -345,10 +368,72 @@ export async function sweepClubJobType(
   return result
 }
 
+// --- The round of a sweep run (#852) ---
+
+/**
+ * The round of a sweep run for a job type that declares `afterSweep`: the clubs it enqueued (the scope the claim
+ * returned) and a deadline after both leases. Queued with a delay on the round queue, or returned to the caller.
+ */
+async function startClubJobRound(
+  declaration: ClubJobDeclaration,
+  enqueued: readonly ClaimedClubJob[],
+  enqueueFailed: number,
+  mode: SweepRoundMode,
+): Promise<ClubJobRound | null> {
+  if (!declaration.afterSweep || enqueued.length + enqueueFailed === 0) return null
+  // Real time, not the sweep's `now`: the runs record their real finish time.
+  const enqueuedAt = new Date()
+  const round: ClubJobRound = {
+    jobKey: declaration.key,
+    enqueuedAt,
+    deadline: clubJobRoundDeadline(enqueuedAt, ENQUEUE_LEASE_MS, runLeaseMs(declaration)),
+    clubs: enqueued.map((row) => ({ tenantId: row.tenantId, organizationId: row.organizationId })),
+    enqueueFailed,
+  }
+  if (mode === 'queue') await enqueueClubJobRound(round)
+  return round
+}
+
+/** Puts the round check on the round queue, to run after `ROUND_CHECK_DELAY_MS`. */
+export async function enqueueClubJobRound(round: ClubJobRound): Promise<void> {
+  await queueOf(CLUB_JOB_ROUND_QUEUE).enqueue(serializeClubJobRound(round), { delayMs: ROUND_CHECK_DELAY_MS })
+}
+
+/**
+ * One look at a round: reads each club's own row in that club's scope (never a system-scope read) and judges it.
+ * When the round is done, hands the outcome to the job type's `afterSweep` (an error there is logged, never thrown).
+ */
+export async function stepClubJobRound(
+  container: AwilixContainer,
+  round: ClubJobRound,
+  now: Date = new Date(),
+): Promise<{ done: false } | { done: true; outcome: ClubJobRoundOutcome }> {
+  const declaration = clubJobDeclaration(round.jobKey)
+  if (!declaration?.afterSweep) {
+    logger.warn('Club job round of a job type without afterSweep; skipped', { jobKey: round.jobKey })
+    return { done: true, outcome: { jobKey: round.jobKey, clubs: 0, failing: 0, unfinished: 0 } }
+  }
+  const em = forkEm(container)
+  const states = []
+  for (const club of round.clubs) states.push(await clubJobRunState(em, club, round.jobKey))
+  const judged = judgeClubJobRound(round, states, now)
+  if (!judged.done) return judged
+  logger.info('Club job round finished', { ...judged.outcome })
+  try {
+    await declaration.afterSweep(judged.outcome)
+  } catch (error: unknown) {
+    logger.warn('Club job round report failed', { jobKey: round.jobKey, err: error })
+  }
+  return judged
+}
+
 // --- The run ---
 
-/** What a wrapped worker may return (anything else counts as nothing): its own next due time, capped (DD-M06). */
-export type ClubJobRunResult = { nextDueAt?: Date | null }
+/**
+ * What a wrapped worker may return (anything else counts as nothing): its own next due time, capped (DD-M06), and a
+ * problem code when the run finished but found something wrong (stored as `last_error`, the schedule goes on; #852).
+ */
+export type ClubJobRunResult = { nextDueAt?: Date | null; problem?: string }
 
 /** The `nextDueAt` a handler returned, or null. */
 function requestedNextDue(result: unknown): Date | null {
@@ -415,7 +500,7 @@ export async function runClubJobClaim(
         scope,
         key,
         runLeaseUntil,
-        { nextDueAt: dueAfterRun(declaration.schedule, clock, requested), error: null },
+        { nextDueAt: dueAfterRun(declaration.schedule, clock, requested), error: clubJobProblemCode(result) },
         now,
       )
     },

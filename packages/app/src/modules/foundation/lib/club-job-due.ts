@@ -5,6 +5,7 @@
 // the spring gap moves forward by the gap, a repeated autumn time takes its first occurrence (`zonedInstant`). An
 // interval job gets a stable offset within its interval. Pure: the caller passes the instant (S3.5).
 import { createHash } from 'node:crypto'
+import type { ClubJobRoundOutcome } from './club-job-round'
 import { addCalendarDays, calendarDateInZone, isLocalTime, zonedInstant, type ModuleScheduleSpec } from '@vereino/core'
 
 const MINUTE_MS = 60_000
@@ -40,6 +41,11 @@ export type ClubJobDeclaration = {
   readonly schedule: ClubJobSchedule
   readonly description: string
   readonly timeoutMinutes?: number
+  /**
+   * Called once per run of the job type's sweep, after every club it enqueued has finished (or the runs' leases are
+   * over), with the round's counts (`lib/club-job-round.ts`; the payments invariants heartbeat, #852). Optional.
+   */
+  readonly afterSweep?: (outcome: ClubJobRoundOutcome) => Promise<void>
 }
 
 /** What the due time of one club depends on. */
@@ -66,6 +72,9 @@ export function assertClubJobDeclaration(declaration: ClubJobDeclaration): void 
   const timeout = declaration.timeoutMinutes
   if (timeout !== undefined && (!Number.isInteger(timeout) || timeout < 1)) {
     throw new RangeError(`[internal] ${declaration.key}: timeoutMinutes must be a whole number of at least 1`)
+  }
+  if (declaration.afterSweep !== undefined && typeof declaration.afterSweep !== 'function') {
+    throw new RangeError(`[internal] ${declaration.key}: afterSweep must be a function`)
   }
 }
 
