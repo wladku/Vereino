@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
+import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { familyFor } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
-import { actionLogs, createClub, signInAs } from '../_fixtures/club'
+import { createClub, signInAs } from '../_fixtures/club'
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'
 import { invitedGuardianOf, linkFor, pendingFamilies } from '../_fixtures/invitation-links'
 import { uiText } from '../_fixtures/ui-text'
@@ -36,10 +37,20 @@ test('TEST-IL02 a coach and a coordinator share a family invitation link on the 
       expect(JSON.stringify(list.body)).not.toContain('@')
       expect(await linkFor(request, staff.token, guardian.personId)).toMatch(/\/club\/i\//)
     }
-    const logged = (await actionLogs(request, club.adminToken, guardian.personId)).filter(
-      (entry) => entry.commandId === 'people.persons.share_invitation',
-    )
-    expect(logged.map((entry) => entry.context?.actingRole).sort()).toEqual(['coach', 'coordinator'])
+    // Each link is in the audit log with the staff member who took it. The administrator's audit view lists only
+    // their own actions, and `command_id` is encrypted at rest (lesson `action-log-columns-encrypted-at-rest`): count
+    // the unencrypted actor and resource columns. The entries are written after the response: wait for both.
+    await expect
+      .poll(async () => {
+        const result = await withClient((client) =>
+          client.query<{ actor_user_id: string }>(
+            'select actor_user_id from action_logs where resource_id = $1 and actor_user_id = any($2::uuid[])',
+            [guardian.personId, [family.coach.userId, family.academyCoordinator.userId]],
+          ),
+        )
+        return [...new Set(result.rows.map((row) => row.actor_user_id))].sort()
+      })
+      .toEqual([family.coach.userId, family.academyCoordinator.userId].sort())
 
     // The coach on the phone: the group page links to the families of the group; a family opens the QR code.
     await page.setViewportSize({ width: 375, height: 812 })
