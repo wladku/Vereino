@@ -33,4 +33,7 @@ function passwordCheck(targetCommand: 'auth.users.create' | 'auth.users.update')
   }
 }
 
-export const interceptors: CommandInterceptor[] = [passwordCheck('auth.users.create'), passwordCheck('auth.users.update')]
+export const interceptors: CommandInterceptor[] = [
+  passwordCheck('auth.users.create'),
+  passwordCheck('auth.users.update'),
+]

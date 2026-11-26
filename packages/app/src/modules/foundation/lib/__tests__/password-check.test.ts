@@ -21,7 +21,12 @@ const common = new Set(['password1234', 'qwertyuiop12'])
 const input = {
   meetsPolicy: productionPolicy,
   isCommon: (value: string) => common.has(value),
-  contextWords: contextWords([...PRODUCT_CONTEXT_WORDS, 'Klub Sportowy Orzeł', 'orzel-krakow', 'jan.kowalski@example.com']),
+  contextWords: contextWords([
+    ...PRODUCT_CONTEXT_WORDS,
+    'Klub Sportowy Orzeł',
+    'orzel-krakow',
+    'jan.kowalski@example.com',
+  ]),
 }
 
 describe('normalizeForWords', () => {
@@ -93,7 +98,9 @@ describe('checkPassword', () => {
 
   it('applies the platform policy check it is given', () => {
     expect(checkPassword('short pass', input)).toBe('password_policy')
-    expect(checkPassword('correct horse battery staple', { ...input, meetsPolicy: platformDefault })).toBe('password_policy')
+    expect(checkPassword('correct horse battery staple', { ...input, meetsPolicy: platformDefault })).toBe(
+      'password_policy',
+    )
   })
 
   it('refuses a password on the common list in any letter case', () => {

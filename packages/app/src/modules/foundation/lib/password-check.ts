@@ -33,16 +33,18 @@ export type PasswordCheckInput = {
 
 /** Lower case, accents dropped, letters and digits only: `Orzeł-Kraków 1923` → `orzelkrakow1923`. */
 export function normalizeForWords(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize('NFKD')
-    .replace(/\p{M}/gu, '')
-    // Letters the decomposition keeps whole (no combining mark to drop).
-    .replace(/ł/g, 'l')
-    .replace(/ø/g, 'o')
-    .replace(/đ/g, 'd')
-    .replace(/ß/g, 'ss')
-    .replace(/[^a-z0-9]/g, '')
+  return (
+    value
+      .toLowerCase()
+      .normalize('NFKD')
+      .replace(/\p{M}/gu, '')
+      // Letters the decomposition keeps whole (no combining mark to drop).
+      .replace(/ł/g, 'l')
+      .replace(/ø/g, 'o')
+      .replace(/đ/g, 'd')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-z0-9]/g, '')
+  )
 }
 
 /**

@@ -63,10 +63,16 @@ export async function passwordContext(container: AwilixContainer, target: Passwo
   const em = container.resolve<EntityManager>('em').fork()
   let organizationId = target.organizationId ?? null
   if (target.userId) {
-    const user = await findOneWithDecryption(em, User, { id: target.userId, tenantId, deletedAt: null }, {}, {
-      tenantId,
-      organizationId,
-    })
+    const user = await findOneWithDecryption(
+      em,
+      User,
+      { id: target.userId, tenantId, deletedAt: null },
+      {},
+      {
+        tenantId,
+        organizationId,
+      },
+    )
     if (user) {
       words.push(user.email, user.name)
       organizationId ??= user.organizationId ?? null

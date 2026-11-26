@@ -12,7 +12,9 @@ import { uiText } from '../_fixtures/ui-text'
 test.describe.configure({ timeout: 180_000 })
 
 async function expectServerPolicy(page: Page): Promise<void> {
-  await expect(page.getByText(uiText('auth.password.requirements.minLength', { params: { min: 12 } })).first()).toBeVisible()
+  await expect(
+    page.getByText(uiText('auth.password.requirements.minLength', { params: { min: 12 } })).first(),
+  ).toBeVisible()
   await expect(page.getByText(uiText('auth.password.requirements.digit'))).toHaveCount(0)
   await expect(page.getByText(uiText('auth.password.requirements.uppercase'))).toHaveCount(0)
   await expect(page.getByText(uiText('auth.password.requirements.special'))).toHaveCount(0)
@@ -65,7 +67,10 @@ test('TEST-PW02 the reset and change-password forms use the server password poli
     await page.locator('[data-crud-field-id="currentPassword"] input').fill(resetPassword)
     await passwordInput.fill(changed)
     await page.locator('[data-crud-field-id="confirmPassword"] input').fill(changed)
-    await page.getByRole('button', { name: uiText('auth.profile.form.save', { exact: true }) }).first().click()
+    await page
+      .getByRole('button', { name: uiText('auth.profile.form.save', { exact: true }) })
+      .first()
+      .click()
     await expect(page.getByText(uiText('auth.profile.form.success')).first()).toBeVisible()
     expect(await getAuthToken(request, email, changed)).toBeTruthy()
   } finally {
