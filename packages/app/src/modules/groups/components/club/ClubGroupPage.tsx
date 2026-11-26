@@ -31,7 +31,13 @@ import {
   useClubToday,
   type MedicalStatusItem,
 } from '@vereino/ui'
-import { ROSTER_VIEWS, membershipActions, type MembershipAction, type PeriodStatus } from '../../lib/groups-rules'
+import {
+  ROSTER_VIEWS,
+  membershipActions,
+  placesText,
+  type MembershipAction,
+  type PeriodStatus,
+} from '../../lib/groups-rules'
 import {
   OWN_FORBIDDEN_STATE,
   personName,
@@ -219,6 +225,8 @@ function Roster({ group }: { group: GroupDetail }) {
       queryClient.invalidateQueries({ queryKey: ['groups-club-roster', group.id] }),
       queryClient.invalidateQueries({ queryKey: ['groups-club-roster-counts', group.id] }),
       queryClient.invalidateQueries({ queryKey: ['groups-club-groups'] }),
+      // The header shows the places "x / limit" (sign-up form spec REQ-J01).
+      queryClient.invalidateQueries({ queryKey: ['groups-club-group', group.id] }),
     ])
   }, [queryClient, group.id])
   const endInstead = React.useCallback((row: MembershipRow) => {
@@ -329,6 +337,11 @@ function Roster({ group }: { group: GroupDetail }) {
           {group.name}
         </h1>
         {group.sectionName ? <p className="text-muted-foreground text-sm">{group.sectionName}</p> : null}
+        <p className="text-muted-foreground text-sm" data-testid="group-places">
+          {t('groups.groups.places', {
+            places: placesText(group.participantCount ?? 0, group.placesLimit ?? null),
+          })}
+        </p>
         {/* The team's PZPN schedule and attendance exports (training outlines spec M-O9, #684), team preselected. */}
         <Link
           href={`/club/reports/pzpn?groupId=${encodeURIComponent(group.id)}`}

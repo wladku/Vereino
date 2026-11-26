@@ -1,5 +1,10 @@
 // Command interceptors of `foundation` (UMES). No `registerCommand` here: `di.ts` may never load a command file.
 //
+// `foundation.password-check.*` (#779, spec 2026-11-26-vereino-password-check, REQ-PW01): every new password that
+// reaches the platform's user commands — `POST`/`PUT /api/auth/users` and `PUT /api/auth/profile` — passes the Vereino
+// password check first; a refusal answers 422 with its code and nothing is stored. No `features`: it applies to every
+// caller, the super administrator included.
+//
 // `foundation.email-change-confirmation` (S8.5, ENG-Q-12 answered 2026-11-26; #737): an `auth.users.update` that changes
 // the actor's own login e-mail runs only when `PUT /api/foundation/profile/email` confirmed it with the current password
 // (`isEmailChangeConfirmed`). Every other own change — the platform's `PUT /api/auth/profile`, the users admin form or
@@ -13,7 +18,35 @@ import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { isOwnEmailChange } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
 import { isEmailChangeConfirmed } from '../lib/email-change'
+import { passwordContext, passwordRefusalError, refuseNewPassword } from '../services/password-check'
 
+function text(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null
+}
+
+function passwordCheck(targetCommand: 'auth.users.create' | 'auth.users.update'): CommandInterceptor {
+  return {
+    id: `foundation.password-check.${targetCommand === 'auth.users.create' ? 'create' : 'update'}`,
+    targetCommand,
+    priority: 10,
+    async beforeExecute(input, context) {
+      const fields = (input ?? {}) as Record<string, unknown>
+      const password = text(fields.password)
+      if (!password) return { ok: true }
+      const words = await passwordContext(context.container, {
+        tenantId: context.auth?.tenantId ?? null,
+        userId: targetCommand === 'auth.users.update' ? text(fields.id) : null,
+        organizationId: text(fields.organizationId),
+        email: text(fields.email),
+        name: text(fields.name),
+      })
+      const refusal = await refuseNewPassword(password, words)
+      if (!refusal) return { ok: true }
+      const error = await passwordRefusalError(refusal)
+      return { ok: false, message: String(error.body.error), status: error.status, body: error.body }
+    },
+  }
+}
 const emailChangeConfirmation: CommandInterceptor = {
   id: 'foundation.email-change-confirmation',
   targetCommand: 'auth.users.update',
@@ -39,7 +72,10 @@ const emailChangeConfirmation: CommandInterceptor = {
     return { ok: false, status: error.status, body: error.body, message: String(error.body.error) }
   },
 }
-
-export const interceptors: CommandInterceptor[] = [emailChangeConfirmation]
+export const interceptors: CommandInterceptor[] = [
+  passwordCheck('auth.users.create'),
+  passwordCheck('auth.users.update'),
+  emailChangeConfirmation,
+]
 
 export default interceptors

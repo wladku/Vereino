@@ -43,6 +43,13 @@ export const errorCodes = [
   { code: 'enterprise_feature_read_only', status: 409, messageKey: 'foundation.errors.enterprise_feature_read_only' },
   // Many-clubs spec DD-M10 (#633): one running import per club; a second one answers at once instead of waiting.
   { code: 'import_running', status: 409, messageKey: 'foundation.errors.import_running' },
+  // The Vereino password check (#779, spec 2026-11-26-vereino-password-check): a new password that breaks one of its
+  // rules (`lib/password-check.ts`), answered by the `auth` command interceptor and the reset-confirm route.
+  { code: 'password_whitespace', status: 422, messageKey: 'foundation.errors.password_whitespace' },
+  { code: 'password_too_long', status: 422, messageKey: 'foundation.errors.password_too_long' },
+  { code: 'password_policy', status: 422, messageKey: 'foundation.errors.password_policy' },
+  { code: 'password_too_common', status: 422, messageKey: 'foundation.errors.password_too_common' },
+  { code: 'password_context_word', status: 422, messageKey: 'foundation.errors.password_context_word' },
   // ENG-Q-12 (#737): an own login e-mail change outside `PUT /api/foundation/profile/email` (the command interceptor
   // `foundation.email-change-confirmation`), and a wrong current password on that route.
   {

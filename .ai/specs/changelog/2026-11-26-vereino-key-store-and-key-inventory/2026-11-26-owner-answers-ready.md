@@ -1,0 +1,1 @@
+| 2026-11-26 | Owner answered Q-K01…Q-K05 as recommended (PR #803): online rotation of the Vault barrier key and app token only, DEKs on compromise; the first club keeps its derived key; auto-unseal from 2 Shamir shares in sealed variables; upstream report plus Vereino's fail-closed guard in phase 2; shell-only tenant-id listing; status set to `Ready for implementation` |

@@ -20,6 +20,7 @@ import type { PaymentMethod } from '../lib/charge-ledger'
 import type { CheckoutStatus } from '../lib/checkout-rules'
 import type { CampaignStatus, OrderStatus, ProductKind } from '../lib/order-campaigns'
 import type { BankFormat, ColumnProfile } from '../lib/bank-statement'
+import type { CashHandoverStatus } from '../lib/cash-handovers'
 import type { BankSkipReason, BankTransactionStatus, MatchReason } from '../lib/bank-matching'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
@@ -242,6 +243,10 @@ export class Charge extends ScopedEntityBase {
 @Index({ name: 'payments_payments_org_bank_transaction_idx', properties: ['organizationId', 'bankTransactionId'] })
 @Index({ name: 'payments_payments_org_cash_handover_idx', properties: ['organizationId', 'cashHandoverId'] })
 @Index({
+  name: 'payments_payments_org_pending_cash_handover_idx',
+  properties: ['organizationId', 'pendingCashHandoverId'],
+})
+@Index({
   name: 'payments_payments_reverses_unique',
   expression:
     'create unique index "payments_payments_reverses_unique" on "payments_payments" ("reverses_payment_id") where reverses_payment_id is not null and gateway_refund_id is null and deleted_at is null',
@@ -270,6 +275,7 @@ export class Payment extends ScopedEntityBase {
     | 'receiptNumber'
     | 'bankTransactionId'
     | 'cashHandoverId'
+    | 'pendingCashHandoverId'
 
   @Property({ name: 'charge_id', type: 'uuid' })
   chargeId!: string
@@ -340,6 +346,14 @@ export class Payment extends ScopedEntityBase {
    */
   @Property({ name: 'cash_handover_id', type: 'uuid', nullable: true })
   cashHandoverId?: string | null
+
+  /**
+   * The pending handover the collector sent with this payment (D-042, DD-31a, #791): set when the handover is sent,
+   * cleared when it is withdrawn or rejected, and replaced by `cash_handover_id` when it is confirmed. One payment is
+   * in at most one pending handover; the payment stays held by its collector until the confirmation.
+   */
+  @Property({ name: 'pending_cash_handover_id', type: 'uuid', nullable: true })
+  pendingCashHandoverId?: string | null
 }
 
 /**
@@ -356,8 +370,20 @@ export class Payment extends ScopedEntityBase {
 })
 @Index({ name: 'payments_cash_handovers_org_created_idx', properties: ['organizationId', 'createdAt'] })
 @Index({ name: 'payments_cash_handovers_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+@Index({ name: 'payments_cash_handovers_org_status_sent_idx', properties: ['organizationId', 'status', 'sentAt'] })
 export class CashHandover extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'receivedByPersonId' | 'receivedByUserId'
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'receivedByPersonId'
+    | 'receivedByUserId'
+    | 'status'
+    | 'startedByPersonId'
+    | 'startedByUserId'
+    | 'sentAt'
+    | 'decidedAt'
+    | 'decidedByPersonId'
+    | 'decidedByUserId'
+    | 'rejectionReason'
 
   /** `RG/YYYY/MM/NNN`. */
   @Property({ name: 'number', type: 'text' })
@@ -378,6 +404,39 @@ export class CashHandover extends ScopedEntityBase {
 
   @Property({ name: 'payment_ids', type: 'text[]', columnType: 'uuid[]' })
   paymentIds!: string[]
+
+  /**
+   * `pending` (sent by the collector, waiting for the treasurer or administrator), `confirmed` (the club holds the
+   * cash), `rejected` (with a reason; the payments went back to the collector) or `withdrawn` by the collector (D-042,
+   * DD-31a, #791). The one-sided fallback and every handover before D-042 are `confirmed`.
+   */
+  @Property({ name: 'status', type: 'text', default: 'confirmed' })
+  status: CashHandoverStatus = 'confirmed'
+
+  /** The collector who sent the handover; null when the club settled the cash without the collector's step. */
+  @Property({ name: 'started_by_person_id', type: 'uuid', nullable: true })
+  startedByPersonId?: string | null
+
+  @Property({ name: 'started_by_user_id', type: 'uuid', nullable: true })
+  startedByUserId?: string | null
+
+  @Property({ name: 'sent_at', type: Date, nullable: true })
+  sentAt?: Date | null
+
+  /** When it was confirmed, rejected or withdrawn (a fallback handover: when it was accepted). */
+  @Property({ name: 'decided_at', type: Date, nullable: true })
+  decidedAt?: Date | null
+
+  /** Who confirmed, rejected or withdrew it. */
+  @Property({ name: 'decided_by_person_id', type: 'uuid', nullable: true })
+  decidedByPersonId?: string | null
+
+  @Property({ name: 'decided_by_user_id', type: 'uuid', nullable: true })
+  decidedByUserId?: string | null
+
+  /** Why the treasurer or administrator rejected it (encrypted, `encryption.ts`). */
+  @Property({ name: 'rejection_reason', type: 'text', nullable: true })
+  rejectionReason?: string | null
 }
 
 /**

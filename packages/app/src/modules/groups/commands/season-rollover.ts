@@ -452,6 +452,8 @@ function applyGroups(
         ageFrom: group.ageFrom ?? null,
         ageTo: group.ageTo ?? null,
         levelLabel: group.levelLabel ?? null,
+        placesLimit: group.placesLimit ?? null,
+        acceptsApplications: group.acceptsApplications,
       })
       em.persist(copy)
       written.createdGroups.push(copy)

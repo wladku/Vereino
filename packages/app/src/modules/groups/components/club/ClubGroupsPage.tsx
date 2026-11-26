@@ -11,6 +11,7 @@ import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { CLUB_GROUPS_HREF, MemberSkeleton } from '@vereino/ui'
+import { placesText } from '../../lib/groups-rules'
 import { personName, type GroupListRow } from '../client-helpers'
 import { useCanManageGroups } from '../useCanManageGroups'
 import { GroupsClubFrame } from './GroupsClubFrame'
@@ -53,7 +54,9 @@ function GroupCard({ group }: { group: GroupListRow }) {
       <span className="text-muted-foreground text-sm break-words">
         {[
           group.sectionName,
-          t('groups.club.list.participants', { count: String(group.participantCount ?? 0) }),
+          t('groups.club.list.participants', {
+            count: placesText(group.participantCount ?? 0, group.placesLimit ?? null),
+          }),
           coaches.length > 0 ? t('groups.club.list.coaches', { names: coaches.join(', ') }) : null,
         ]
           .filter((part): part is string => Boolean(part))

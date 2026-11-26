@@ -1,7 +1,7 @@
 // payments records of the cross-club isolation guard (#628): two monthly fees of Żaki and a custom discount rule, the
 // current period's generation (two charges each for the adult member and the child), a transfer and the
-// administrator's cash on the member's first charge, the coach's cash on the child's first charge (held until a
-// handover), the guardian's online payment of the child's second charge through the test gateway, and a bank statement
+// administrator's cash on the member's first charge, the coach's cash on the child's first charge (held, in a
+// pending handover the coach sent, #791), the guardian's online payment of the child's second charge through the test gateway, and a bank statement
 // whose payer-code transfer books the member's second charge, one unmatched transfer and one skipped transfer, and a
 // charge entered by hand for a child without a guardian (no payer yet).
 import { expect } from '@playwright/test'
@@ -102,6 +102,14 @@ export const seedPayments: ModuleSeed = async ({ request, seeded, api }) => {
   const held = custody.body?.items?.find((item) => item.collectorPersonId === refs.coachPerson)
   refs.cashPayment = String(held?.payments.find((payment) => payment.chargeId === refs.childCharge)?.paymentId)
   expect(held, `club ${seeded.label}: the coach holds the cash`).toBeTruthy()
+  // The coach sends it in a handover that waits for the treasurer (D-042, #791): the pending handover the confirm,
+  // reject and withdraw probes address.
+  const sent = await api<{ id?: string }>('POST', '/api/payments/my-cash-handovers', {
+    token: tokens.coach,
+    data: { paymentIds: [refs.cashPayment] },
+    status: 201,
+  })
+  refs.pendingHandover = String(sent.body?.id)
 
   // The guardian pays the child's second charge online; the refresh books the captured payment.
   const started = await checkout(request, tokens.guardian, [refs.onlineCharge])

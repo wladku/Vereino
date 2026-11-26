@@ -235,7 +235,8 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     clubs.push(clubB)
 
     // Club A's data: a person with encrypted columns, a logo file, a published page.
-    const password = `Vereino-${suffix}-Aa1!`
+    // A suffix of its own: `emailA` carries `suffix`, and a password made of the address is refused (#779).
+    const password = `Vereino-${uniqueSuffix()}-Aa1!`
     const tokenA = await signIn(request, superToken, clubA, emailA, password)
     const personId = await createPerson(request, tokenA, { firstName: 'Zofia', lastName: 'Wiśniewska' })
     const settings = await getSettings(request, tokenA)

@@ -4,7 +4,9 @@
 // per person, and the handover history with the `RG` numbers. When nobody holds cash: "All accepted cash is with the
 // treasurer". The club administrator's until the treasurer role (#245). An empty list is a heading and a sentence, not
 // an empty `DataTable`, and each history row links to the collector's record, so no table is a scroll region without
-// anything focusable at 375 px (lesson `empty-datatable-axe-at-375`).
+// anything focusable at 375 px (lesson `empty-datatable-axe-at-375`). Since D-042 (REQ-033a, #791) the handovers the
+// collectors sent wait under "Handovers to confirm" (Confirm / Reject), a payment of a pending handover is marked and
+// cannot be accepted one-sided, and the history shows each handover's state.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -14,7 +16,9 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { TableLoadError } from '@vereino/ui'
 import { formatMoney, personName, type TableColumns, type Translate } from '../client-helpers'
 import { usePeopleRecordAccess } from '../useRecordLinks'
+import { StatusTag } from '@vereino/ui'
 import { AcceptHandoverDialog, formatDay } from './AcceptHandoverDialog'
+import { PendingHandovers } from './PendingHandovers'
 import {
   CASH_CUSTODY_QUERY_KEY,
   HANDOVER_PAGE_SIZE,
@@ -54,6 +58,12 @@ function custodyColumns(
               {' · '}
               <span className="tabular-nums">{formatMoney(payment.amount, locale)}</span>
               {payment.payer ? <span className="text-muted-foreground"> · {personName(payment.payer)}</span> : null}
+              {payment.pendingHandoverId ? (
+                <span className="text-muted-foreground" data-testid="custody-receipt-pending">
+                  {' · '}
+                  {t('payments.cashCustody.inPendingHandover')}
+                </span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -98,6 +108,14 @@ function custodyColumns(
   ]
 }
 
+const STATUS_TONES = {
+  pending: 'warning',
+  confirmed: 'success',
+  settled: 'success',
+  rejected: 'error',
+  withdrawn: 'neutral',
+} as const
+
 function historyColumns(t: Translate, locale: string, linkPersons: boolean): TableColumns<HandoverRow> {
   return [
     {
@@ -110,6 +128,24 @@ function historyColumns(t: Translate, locale: string, linkPersons: boolean): Tab
           {row.original.number}
         </span>
       ),
+    },
+    {
+      accessorKey: 'status',
+      header: t('payments.cashCustody.history.columns.status'),
+      enableSorting: false,
+      meta: { priority: 1 },
+      cell: ({ row }) => {
+        const { status, sentByCollector, rejectionReason } = row.original
+        const key = status === 'confirmed' && !sentByCollector ? 'settled' : status
+        return (
+          <span className="flex flex-col gap-0.5" data-testid="handover-status" data-status={key}>
+            <StatusTag status={STATUS_TONES[key]}>{t(`payments.cashCustody.history.status.${key}`)}</StatusTag>
+            {status === 'rejected' && rejectionReason ? (
+              <span className="text-muted-foreground text-sm">{rejectionReason}</span>
+            ) : null}
+          </span>
+        )
+      },
     },
     {
       accessorKey: 'createdAt',
@@ -235,6 +271,7 @@ export function CashCustodyPage() {
           </p>
         ) : null}
       </section>
+      <PendingHandovers headingLevel={2} emptyText={null} />
       <section data-testid="handover-history">
         {handovers.data && handovers.data.total === 0 ? (
           <EmptyList title={t('payments.cashCustody.history.title')} level={2} testId="handover-history-empty">

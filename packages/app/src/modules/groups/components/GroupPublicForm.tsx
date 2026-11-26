@@ -5,14 +5,21 @@
 // (`/backend/club/publication`); this tab only fills the group's part. An age range with the youngest age above the
 // oldest answers 422 `group_age_range_inverted`, shown on the "Age to" field. A team whose age category has a "U" range
 // gets "Age from" = u_from − 1 and "Age to" = u_to proposed while both fields are empty (never overwriting a value) and
-// reads the category's birth years in its season (people life-cycle spec REQ-L16, Q-L26; #384).
+// reads the category's birth years in its season (people life-cycle spec REQ-L16, Q-L26; #384). The limit of places
+// (empty = no limit) and "Accepts applications" prepare the section sign-up form (sign-up form spec REQ-J01, B-J2).
 import * as React from 'react'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { updateCrud } from '@open-mercato/ui/backend/utils/crud'
 import { createCrudFormError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { parseAgeInput, proposedAgeRange, shouldProposeAgeRange } from '../lib/groups-rules'
+import {
+  GROUP_PLACES_LIMIT_MAX,
+  parseAgeInput,
+  parsePlacesLimitInput,
+  proposedAgeRange,
+  shouldProposeAgeRange,
+} from '../lib/groups-rules'
 import { birthYearsText, useAgeCategoryRange, type AgeCategoryRangeLookup } from './AgeCategoryHint'
 import { textOrNull, type GroupDetail, type Translate } from './client-helpers'
 
@@ -73,6 +80,19 @@ function usePublicFields(t: Translate, hint: string | null) {
         maxLength: 100,
         description: t('groups.groups.fields.levelLabel.help'),
       },
+      {
+        id: 'placesLimit',
+        label: t('groups.groups.fields.placesLimit'),
+        type: 'number',
+        layout: 'half',
+        description: t('groups.groups.fields.placesLimit.help', { max: GROUP_PLACES_LIMIT_MAX }),
+      },
+      {
+        id: 'acceptsApplications',
+        label: t('groups.groups.fields.acceptsApplications'),
+        type: 'checkbox',
+        description: t('groups.groups.fields.acceptsApplications.help'),
+      },
     ],
     [t, hint],
   )
@@ -91,6 +111,8 @@ function usePublicFields(t: Translate, hint: string | null) {
           'ageTo',
           'ageCategoryYears',
           'levelLabel',
+          'placesLimit',
+          'acceptsApplications',
         ],
       },
     ],
@@ -111,6 +133,8 @@ function toFormValues(
     ageFrom: group.ageFrom ?? proposal?.ageFrom ?? '',
     ageTo: group.ageTo ?? proposal?.ageTo ?? '',
     levelLabel: group.levelLabel ?? '',
+    placesLimit: group.placesLimit ?? '',
+    acceptsApplications: group.acceptsApplications ?? true,
     updatedAt: group.updatedAt ?? null,
   }
 }
@@ -119,10 +143,14 @@ function toFormValues(
 function toPayload(values: PublicFormValues, t: Translate) {
   const ageFrom = parseAgeInput(values.ageFrom)
   const ageTo = parseAgeInput(values.ageTo)
+  const placesLimit = parsePlacesLimitInput(values.placesLimit)
   const fieldErrors: Record<string, string> = {}
   if (ageFrom === 'invalid') fieldErrors.ageFrom = t('groups.groups.errors.age')
   if (ageTo === 'invalid') fieldErrors.ageTo = t('groups.groups.errors.age')
-  if (ageFrom === 'invalid' || ageTo === 'invalid') {
+  if (placesLimit === 'invalid') {
+    fieldErrors.placesLimit = t('groups.groups.errors.placesLimit', { max: GROUP_PLACES_LIMIT_MAX })
+  }
+  if (ageFrom === 'invalid' || ageTo === 'invalid' || placesLimit === 'invalid') {
     throw createCrudFormError(t('groups.groups.errors.invalid'), fieldErrors)
   }
   return {
@@ -132,6 +160,8 @@ function toPayload(values: PublicFormValues, t: Translate) {
     ageFrom,
     ageTo,
     levelLabel: textOrNull(values.levelLabel),
+    placesLimit,
+    acceptsApplications: values.acceptsApplications === true,
   }
 }
 

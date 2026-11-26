@@ -1,0 +1,1 @@
+| 2026-11-26 | E25-S02 (#736): ENG-Q-09 superseded by the owner's decision of 2026-11-26 — administrators and treasurers sign in with Google or a password plus an e-mail code; S8.2 points at the new spec `2026-11-26-vereino-staff-second-factor.md` |

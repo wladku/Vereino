@@ -26,7 +26,7 @@ import {
   PAYMENT_METHODS,
 } from '../lib/charge-ledger'
 import { CASH_ORIGINS, MAX_CASH_CHARGES } from '../lib/cash'
-import { MAX_HANDOVER_PAYMENTS } from '../lib/cash-handovers'
+import { CASH_HANDOVER_STATUSES, MAX_HANDOVER_PAYMENTS, MAX_REJECTION_REASON } from '../lib/cash-handovers'
 import { BANK_FORMATS } from '../lib/bank-statement'
 import { BANK_SKIP_REASONS, BANK_TRANSACTION_STATUSES, MAX_SKIP_NOTE_LENGTH } from '../lib/bank-matching'
 import {
@@ -242,7 +242,35 @@ export const cashHandoverAcceptSchema = z
 export const cashHandoverListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.enum(CASH_HANDOVER_STATUSES).optional().describe('Only handovers in this state (D-042)'),
 })
+
+/** `POST /api/payments/my-cash-handovers`: the collector sends the selected cash payments they hold (D-042, #791). */
+export const cashHandoverSendSchema = z
+  .object({
+    paymentIds: z
+      .array(z.uuid())
+      .min(1)
+      .max(MAX_HANDOVER_PAYMENTS)
+      .refine((ids) => new Set(ids).size === ids.length, { message: 'Each payment may be selected once' })
+      .describe('The cash payments with a KP receipt handed over'),
+  })
+  .strict()
+
+/** The command input of withdrawing, confirming or rejecting a pending handover (the id from the route). */
+export const cashHandoverDecisionSchema = z
+  .object({
+    id: z.uuid(),
+    reason: z.string().trim().min(1).max(MAX_REJECTION_REASON).optional(),
+  })
+  .strict()
+
+/** `POST /api/payments/cash-handovers/{id}/reject`: the difference the confirmer found. */
+export const cashHandoverRejectSchema = z
+  .object({
+    reason: z.string().trim().min(1).max(MAX_REJECTION_REASON).describe('What does not match, shown to the collector'),
+  })
+  .strict()
 
 // --- "My groups' payments" (#117, REQ-033, DD-31, DD-32) ---
 

@@ -34,6 +34,9 @@ export type GroupItem = {
   levelLabel?: string | null
   ageFrom?: number | null
   ageTo?: number | null
+  /** The sign-up fields (sign-up form spec REQ-J01, #798). */
+  placesLimit?: number | null
+  acceptsApplications?: boolean
   updatedAt: string | null
   coaches?: { personId: string; firstName: string; lastName: string }[]
   participantCount?: number
