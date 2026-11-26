@@ -12,7 +12,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import type { ScheduleRange, ScheduleViewMode } from '@open-mercato/ui/backend/schedule'
+import type { ScheduleRange } from '@open-mercato/ui/backend/schedule'
 import type { ScheduleCalendarProps } from '@open-mercato/ui/backend/schedule/ScheduleCalendar'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -266,7 +266,7 @@ export function CoordinatorCalendar() {
         <div className="schedule-calendar border-border bg-card overflow-x-auto rounded-xl border shadow-xs">
           <ScheduleCalendar
             items={items}
-            view={view as ScheduleViewMode}
+            view={view}
             range={grid}
             onViewChange={(next) => {
               pendingView.current = next

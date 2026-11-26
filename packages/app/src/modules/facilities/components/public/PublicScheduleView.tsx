@@ -486,10 +486,10 @@ function SchedulePage({
   const [target, setTarget] = React.useState<RequestTarget | null>(null)
   // A new key per opening starts the dialog fresh.
   const [targetKey, setTargetKey] = React.useState(0)
-  const openRequest = React.useCallback((next: RequestTarget) => {
+  const openRequest = (next: RequestTarget) => {
     setTargetKey((current) => current + 1)
     setTarget(next)
-  }, [])
+  }
   return (
     <RequestContext.Provider value={place.acceptsOnlineRequests ? openRequest : null}>
       <PublicFacilitiesFrame club={page.club} wide>

@@ -74,7 +74,7 @@ export function WeekAxes({
         aria-label={t('facilities.calendar.range.weekAxes')}
         className="focus-visible:focus-indicator max-w-full overflow-x-auto"
       >
-        <ol className="grid grid-cols-7 gap-2" style={{ minWidth: 7 * 120 }}>
+        <ol className="grid min-w-3xl grid-cols-7 gap-2">
           {days.map((day) => (
             <li key={day.date} className="flex min-w-0 flex-col gap-2" data-testid={`facilities-week-day-${day.date}`}>
               <Link
@@ -100,7 +100,13 @@ export function WeekAxes({
                 redacted={redacted}
                 canBook={canBook}
                 pastFrom={pastFrom}
-                onBookHour={onBookHour ? (time) => onBookHour(day.date, time) : undefined}
+                onBookHour={
+                  onBookHour
+                    ? (time) => {
+                        onBookHour(day.date, time)
+                      }
+                    : undefined
+                }
                 onEntry={onEntry}
                 bounds={bounds}
                 legend={false}

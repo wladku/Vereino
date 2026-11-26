@@ -384,16 +384,13 @@ function Calendar({
     for (const read of failed) void read.refetch()
   }
   const memberAs = memberScope?.as ?? null
-  const items = React.useMemo(
-    () =>
-      mergeCalendarEntries([
-        memberAs ? (memberQuery.data?.items ?? []).map((entry) => ({ entry, as: memberAs })) : [],
-        coaching ? (coachQuery.data?.items ?? []).map((entry) => ({ entry, as: 'coach' as const })) : [],
-        inSection ? (sectionQuery.data?.items ?? []).map((entry) => ({ entry, as: 'coordinator' as const })) : [],
-      ]).map(({ entry, as }) => toCalendarItem(entry, as, t, (at) => formatDeadline(at, locale, timeZone))),
-    [memberQuery.data, coachQuery.data, sectionQuery.data, memberAs, coaching, inSection, t, locale, timeZone],
-  )
-  const days = React.useMemo(() => groupCalendarItemsByDay(items, timeZone), [items, timeZone])
+  // The React Compiler memoizes these (#784: a manual memo here could not be preserved).
+  const items = mergeCalendarEntries([
+    memberAs ? (memberQuery.data?.items ?? []).map((entry) => ({ entry, as: memberAs })) : [],
+    coaching ? (coachQuery.data?.items ?? []).map((entry) => ({ entry, as: 'coach' as const })) : [],
+    inSection ? (sectionQuery.data?.items ?? []).map((entry) => ({ entry, as: 'coordinator' as const })) : [],
+  ]).map(({ entry, as }) => toCalendarItem(entry, as, t, (at) => formatDeadline(at, locale, timeZone)))
+  const days = groupCalendarItemsByDay(items, timeZone)
 
   const onAction = async (itemId: string, id: string) => {
     const action = parseActionId(id)
