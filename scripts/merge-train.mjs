@@ -24,10 +24,12 @@ import {
   batchesAlone,
   checksState,
   judgeBatch,
+  isSameRepoHead,
   linkedIssue,
   parseBatchSize,
   planBatch,
   planMergeTrain,
+  sameRepoPulls,
   trainQueue,
   verdictOf,
 } from './merge-train-plan.mjs'
@@ -125,7 +127,7 @@ async function changedFiles(number) {
 // What the batch plan reads besides today's fields: the dry run and the batch train (size 2 or more) need it.
 async function batchFields(pull) {
   const statuses = await ok('GET', `/repos/${repo}/commits/${pull.head.sha}/statuses?per_page=100`)
-  return { fork: false, files: await changedFiles(pull.number), verdict: verdictOf(statuses) }
+  return { fork: !isSameRepoHead(pull, repo), files: await changedFiles(pull.number), verdict: verdictOf(statuses) }
 }
 
 function logBatch(prs, suspects = null) {
@@ -145,8 +147,8 @@ async function readQueue(baseBranch, required, withBatchFields = dryRun) {
   const pulls = await ok('GET', `/repos/${repo}/pulls?state=open&base=${baseBranch}&per_page=100&sort=created`)
   const baseSha = (await ok('GET', `/repos/${repo}/branches/${baseBranch}`)).commit.sha
   const prs = []
-  for (const pull of pulls) {
-    if (pull.head.repo?.full_name !== repo) continue
+  // A PR whose head is in a fork never enters the queue: the train does not update, build, merge or label it (#823).
+  for (const pull of sameRepoPulls(pulls, repo)) {
     const detail = await ok('GET', `/repos/${repo}/pulls/${pull.number}`)
     const compare = await ok('GET', `/repos/${repo}/compare/${baseSha}...${pull.head.sha}`)
     prs.push({
