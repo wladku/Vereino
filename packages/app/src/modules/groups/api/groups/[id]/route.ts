@@ -11,7 +11,8 @@ import {
   trustedScopeOf,
 } from '@/modules/foundation'
 import { ageCategoryNames } from '../../../services/age-categories'
-import { findGroup, sectionNames, seasonNames } from '../../../services/groups-read'
+import { clubToday } from '../../../services/club-clock'
+import { findGroup, rosterSummaries, sectionNames, seasonNames } from '../../../services/groups-read'
 import { GROUP_READ_KINDS, errorSchema, groupDetailSchema } from '../../shared'
 
 export const metadata = {
@@ -35,10 +36,11 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       sectionId: group.sectionId,
       groupId: group.id,
     })
-    const [sections, seasons, categories] = await Promise.all([
+    const [sections, seasons, categories, rosters] = await Promise.all([
       sectionNames(ctx.container, scope, [group.sectionId]),
       seasonNames(ctx.container, scope, group.seasonId ? [group.seasonId] : []),
       ageCategoryNames(ctx.container, scope, group.ageCategoryEntryId ? [group.ageCategoryEntryId] : []),
+      clubToday(ctx.container, scope).then((today) => rosterSummaries(ctx.container, scope, [group.id], today)),
     ])
     return Response.json({
       id: group.id,
@@ -59,6 +61,9 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       ageFrom: group.ageFrom ?? null,
       ageTo: group.ageTo ?? null,
       levelLabel: group.levelLabel ?? null,
+      placesLimit: group.placesLimit ?? null,
+      acceptsApplications: group.acceptsApplications,
+      participantCount: rosters.get(group.id)?.participantCount ?? 0,
       createdAt: group.createdAt.toISOString(),
       updatedAt: group.updatedAt.toISOString(),
       actingRole,

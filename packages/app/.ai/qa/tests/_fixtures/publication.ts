@@ -90,6 +90,8 @@ export type SectionView = {
   isPublic: boolean
   publicSlug: string | null
   logoAttachmentId: string | null
+  /** The sign-up switch (sign-up form spec REQ-J01, #798). */
+  acceptsApplications?: boolean
   updatedAt: string | null
 }
 

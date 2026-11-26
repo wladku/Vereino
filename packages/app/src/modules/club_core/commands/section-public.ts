@@ -41,6 +41,8 @@ export type SectionPublicSnapshot = {
   publicContactPhone: string | null
   /** Absent in log entries written before the short description existed. */
   shortDescription?: string | null
+  /** Absent in log entries written before the sign-up switch existed (REQ-J01). */
+  acceptsApplications?: boolean
 }
 
 export type SectionPublicResult = StructureCommandResult<Section, SectionPublicSnapshot>
@@ -58,6 +60,7 @@ export function sectionPublicSnapshot(row: Section): SectionPublicSnapshot {
     publicContactEmail: row.publicContactEmail ?? null,
     publicContactPhone: row.publicContactPhone ?? null,
     shortDescription: row.shortDescription ?? null,
+    acceptsApplications: row.acceptsApplications,
   }
 }
 
@@ -71,6 +74,7 @@ function restorePublic(row: Section, before: SectionPublicSnapshot): void {
   row.publicContactPhone = before.publicContactPhone
   // A log entry written before the short description existed carries no value: keep the current one.
   if (before.shortDescription !== undefined) row.shortDescription = before.shortDescription
+  if (before.acceptsApplications !== undefined) row.acceptsApplications = before.acceptsApplications
   row.updatedAt = new Date()
 }
 
@@ -139,6 +143,7 @@ const updateSectionPublicCommand: CommandHandler<Record<string, unknown>, Sectio
         if (patch.publicContactEmail !== undefined) row.publicContactEmail = patch.publicContactEmail
         if (patch.publicContactPhone !== undefined) row.publicContactPhone = patch.publicContactPhone
         if (patch.shortDescription !== undefined) row.shortDescription = patch.shortDescription
+        if (patch.acceptsApplications !== undefined) row.acceptsApplications = patch.acceptsApplications
         const problem = sectionPublicationProblem({ isPublic: row.isPublic, publicSlug: row.publicSlug ?? null })
         if (problem) await clubCoreErrors.throw(problem)
         row.updatedAt = new Date()

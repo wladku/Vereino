@@ -1,5 +1,5 @@
 import { OptionalProps } from '@mikro-orm/core'
-import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
+import { Check, Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
 import {
   ScopedEntityBase,
   decorateScopedEntityBase,
@@ -46,6 +46,7 @@ export class Season extends ScopedEntityBase {
  * relation).
  */
 @Entity({ tableName: 'groups_groups' })
+@Check({ name: 'groups_groups_places_limit_check', expression: 'places_limit between 1 and 500' })
 @Index({ name: 'groups_groups_org_section_active_idx', properties: ['organizationId', 'sectionId', 'isActive'] })
 @Index({ name: 'groups_groups_org_season_idx', properties: ['organizationId', 'seasonId'] })
 @Index({ name: 'groups_groups_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
@@ -63,6 +64,8 @@ export class Group extends ScopedEntityBase {
     | 'ageFrom'
     | 'ageTo'
     | 'levelLabel'
+    | 'placesLimit'
+    | 'acceptsApplications'
 
   @Property({ name: 'section_id', type: 'uuid' })
   sectionId!: string
@@ -114,6 +117,17 @@ export class Group extends ScopedEntityBase {
   /** E.g. "beginners". */
   @Property({ name: 'level_label', type: 'text', nullable: true })
   levelLabel?: string | null
+
+  /**
+   * The limit of participant places (sign-up form spec, REQ-J01; 1–500); null = no limit. It binds online
+   * applications only: a manual roster add beyond it is allowed and the roster shows "19 / 18" (DD-J10a).
+   */
+  @Property({ name: 'places_limit', type: 'smallint', nullable: true })
+  placesLimit?: number | null
+
+  /** Whether the section's sign-up form offers this group (REQ-J01); the group must also be public and active. */
+  @Property({ name: 'accepts_applications', type: 'boolean', default: true })
+  acceptsApplications: boolean = true
 }
 
 /**

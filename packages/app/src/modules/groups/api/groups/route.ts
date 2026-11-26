@@ -104,6 +104,8 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       'age_from',
       'age_to',
       'level_label',
+      'places_limit',
+      'accepts_applications',
       'tenant_id',
       'organization_id',
       'created_at',

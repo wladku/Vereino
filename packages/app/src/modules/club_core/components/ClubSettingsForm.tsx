@@ -9,7 +9,9 @@
 // was last changed; a consent given before a change stays valid and reads "given to an earlier wording". Since #486 the
 // group "Club" holds the club's colour (a hex colour; empty uses the default), painting the member header bar, the public
 // hero and the fallback logo. Since #471 (club spec REQ-041) the group "Data retention" holds the months after which a
-// former participant is anonymised.
+// former participant is anonymised. Since #798 (sign-up form spec REQ-J02, B-J2) the group "Online applications" holds
+// the age reference day (day and month) and the answer time, and the group "Consent texts" ends with the "Information
+// for applicants" (not a consent text: up to 6000 characters, no "earlier wording"; empty uses the built-in text).
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
@@ -21,6 +23,8 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { formatBankAccount } from '@vereino/core'
 import {
   ACTIVITY_TYPES,
+  APPLICATION_ANSWER_DAYS_RANGE,
+  APPLICATION_INFORMATION_MAX_LENGTH,
   AVAILABLE_ORDER_SALES_DOCUMENTS,
   CALLED_UP_CHILDREN_VISIBILITY,
   OUTLINE_LIBRARY_LEVELS,
@@ -29,6 +33,8 @@ import {
   FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE,
   ONLINE_FEE_MODES,
   OWN_ACCOUNT_MIN_AGE_RANGE,
+  monthDayOf,
+  parseMonthDay,
   timeZoneOptions,
   type ClubSettingsValues,
 } from '../lib/settings'
@@ -58,6 +64,11 @@ type SettingsResponse = ClubSettingsValues & {
 type FormValues = Record<string, unknown> & { updatedAt: string | null }
 
 const kindField = (type: string) => `declarationKind_${type}`
+/** The age reference day is one setting (`MM-DD`) edited as a day and a month. */
+const REFERENCE_DAY_FIELD = 'applicationAgeReferenceDayOfMonth'
+const REFERENCE_MONTH_FIELD = 'applicationAgeReferenceMonth'
+const DAYS = Array.from({ length: 31 }, (_, index) => index + 1)
+const MONTHS = Array.from({ length: 12 }, (_, index) => index + 1)
 const consentTextField = (key: ConsentTextKey) => `consentText_${key}`
 
 /** The API names a too-long text `consentTexts.<key>`; the form's field is `consentText_<key>`. */
@@ -69,7 +80,9 @@ function remapConsentTextErrors(error: unknown, fallback: string): unknown {
     Object.entries(fieldErrors).map(([field, message]) => [
       field.startsWith('consentTexts.')
         ? consentTextField(field.slice('consentTexts.'.length) as ConsentTextKey)
-        : field,
+        : field === 'applicationAgeReferenceDay'
+          ? REFERENCE_DAY_FIELD
+          : field,
       message,
     ]),
   )
@@ -82,6 +95,7 @@ function supportedTimeZones(): string[] {
 }
 
 function toFormValues(settings: SettingsResponse): FormValues {
+  const referenceDay = parseMonthDay(settings.applicationAgeReferenceDay) ?? { month: 9, day: 1 }
   const values: FormValues = {
     clubName: settings.clubName ?? '',
     shortName: settings.shortName ?? '',
@@ -99,6 +113,10 @@ function toFormValues(settings: SettingsResponse): FormValues {
     coachMayCancel: settings.coachMayCancel,
     orderSalesDocument: settings.orderSalesDocument,
     formerParticipantRetentionMonths: settings.formerParticipantRetentionMonths,
+    [REFERENCE_DAY_FIELD]: String(referenceDay.day),
+    [REFERENCE_MONTH_FIELD]: String(referenceDay.month),
+    applicationAnswerDays: settings.applicationAnswerDays,
+    applicationInformation: settings.applicationInformation ?? '',
     bankAccount: settings.bankAccount ? formatBankAccount(settings.bankAccount) : '',
     accentColor: settings.accentColor ?? '',
     updatedAt: settings.updatedAt,
@@ -108,7 +126,15 @@ function toFormValues(settings: SettingsResponse): FormValues {
   return values
 }
 
-function toPayload(values: Record<string, unknown>) {
+/** The reference day as `MM-DD`; a day the month lacks (31 April, 29 February) is refused on the day field. */
+function referenceDayOf(values: Record<string, unknown>, t: (key: string) => string): string {
+  const day = monthDayOf(Number(values[REFERENCE_MONTH_FIELD]), Number(values[REFERENCE_DAY_FIELD]))
+  if (day) return day
+  const message = t('club_core.settings.errors.applicationAgeReferenceDay')
+  throw createCrudFormError(message, { [REFERENCE_DAY_FIELD]: message })
+}
+
+function toPayload(values: Record<string, unknown>, t: (key: string) => string) {
   const declarationKinds = Object.fromEntries(ACTIVITY_TYPES.map((type) => [type, values[kindField(type)]]))
   const fixed = numberOrNull(values.onlineFeeFixed)
   const clubName = textOrNull(values.clubName)
@@ -129,6 +155,10 @@ function toPayload(values: Record<string, unknown>) {
     coachMayCancel: values.coachMayCancel === true,
     orderSalesDocument: values.orderSalesDocument,
     formerParticipantRetentionMonths: numberOrNull(values.formerParticipantRetentionMonths) ?? undefined,
+    applicationAgeReferenceDay: referenceDayOf(values, t),
+    applicationAnswerDays: numberOrNull(values.applicationAnswerDays) ?? undefined,
+    // An empty text uses the built-in information of the sign-up form.
+    applicationInformation: textOrNull(values.applicationInformation),
     bankAccount: textOrNull(values.bankAccount),
     accentColor: textOrNull(values.accentColor),
     // An empty text restores the built-in one; an unchanged text keeps its "last changed" date (DD-L11).
@@ -211,6 +241,35 @@ export function ClubSettingsForm() {
           'club_core.settings.fields.formerParticipantRetentionMonths.description',
           FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE,
         ),
+        required: true,
+      },
+      {
+        id: REFERENCE_DAY_FIELD,
+        label: t('club_core.settings.fields.applicationAgeReferenceDay'),
+        type: 'select',
+        layout: 'half',
+        options: DAYS.map((day) => ({ value: String(day), label: String(day) })),
+        required: true,
+      },
+      {
+        id: REFERENCE_MONTH_FIELD,
+        label: t('club_core.settings.fields.applicationAgeReferenceMonth'),
+        type: 'select',
+        layout: 'half',
+        options: MONTHS.map((month) => ({
+          value: String(month),
+          label: new Intl.DateTimeFormat(locale, { month: 'long', timeZone: 'UTC' }).format(
+            new Date(Date.UTC(2001, month - 1, 1)),
+          ),
+        })),
+        description: t('club_core.settings.fields.applicationAgeReferenceDay.description'),
+        required: true,
+      },
+      {
+        id: 'applicationAnswerDays',
+        label: t('club_core.settings.fields.applicationAnswerDays'),
+        type: 'number',
+        description: t('club_core.settings.fields.applicationAnswerDays.description', APPLICATION_ANSWER_DAYS_RANGE),
         required: true,
       },
       ...ACTIVITY_TYPES.map<CrudField>((type) => ({
@@ -300,6 +359,15 @@ export function ClubSettingsForm() {
             : t('club_core.settings.consentTexts.builtInInUse'),
         }
       }),
+      {
+        id: 'applicationInformation',
+        label: t('club_core.settings.fields.applicationInformation'),
+        type: 'textarea',
+        rows: 6,
+        maxLength: APPLICATION_INFORMATION_MAX_LENGTH,
+        showCount: true,
+        description: t('club_core.settings.fields.applicationInformation.description'),
+      },
     ]
   }, [t, currentTimeZone, consentTexts, locale])
 
@@ -342,7 +410,14 @@ export function ClubSettingsForm() {
         title: t('club_core.settings.groups.consentTexts'),
         description: t('club_core.settings.groups.consentTexts.description'),
         column: 1,
-        fields: CONSENT_TEXT_KEYS.map(consentTextField),
+        fields: [...CONSENT_TEXT_KEYS.map(consentTextField), 'applicationInformation'],
+      },
+      {
+        id: 'applications',
+        title: t('club_core.settings.groups.applications'),
+        description: t('club_core.settings.groups.applications.description'),
+        column: 2,
+        fields: [REFERENCE_DAY_FIELD, REFERENCE_MONTH_FIELD, 'applicationAnswerDays'],
       },
     ],
     [t],
@@ -368,7 +443,7 @@ export function ClubSettingsForm() {
               {
                 method: 'PUT',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify(toPayload(values)),
+                body: JSON.stringify(toPayload(values, t)),
               },
               { errorMessage: t('club_core.settings.errors.save') },
             )

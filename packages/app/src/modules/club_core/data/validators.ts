@@ -130,6 +130,7 @@ export const sectionPublicUpdateSchema = z
     publicContactEmail: nullableEmail.optional(),
     publicContactPhone: nullableText(50).optional(),
     shortDescription: nullableText(160).optional(),
+    acceptsApplications: z.boolean().optional(),
   })
   .strict()
 

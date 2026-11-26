@@ -197,6 +197,8 @@ export function RosterPanel({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: ['groups-roster', groupId] }),
       queryClient.invalidateQueries({ queryKey: ['groups-roster-counts', groupId] }),
+      // The record header shows the places "x / limit" (sign-up form spec REQ-J01).
+      queryClient.invalidateQueries({ queryKey: ['groups-group', groupId] }),
     ])
   }, [queryClient, groupId])
 

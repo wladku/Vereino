@@ -16,6 +16,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
+import { placesText } from '../lib/groups-rules'
 import { GroupDetailsForm } from './GroupForm'
 import { GroupPublicForm } from './GroupPublicForm'
 import { RosterPanel } from './RosterPanel'
@@ -179,6 +180,11 @@ export function GroupRecord({ id }: { id: string }) {
           <h1 className="text-2xl font-semibold break-words">{group.name ?? t('groups.groups.record.title')}</h1>
           <span className="text-muted-foreground text-sm">
             {[kindLabel(t, group.kind), group.sectionName].filter(Boolean).join(' · ')}
+          </span>
+          <span className="text-muted-foreground text-sm" data-testid="group-places">
+            {t('groups.groups.places', {
+              places: placesText(group.participantCount ?? 0, group.placesLimit ?? null),
+            })}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-2">
