@@ -139,6 +139,34 @@
   const dLong = (d: string): string => fmtDate(d, 'date.fmtLong')
   const fmtMonth = (ym: string): string => fmtDate(`${ym}-01`, 'date.fmtMonth') // 'YYYY-MM' → e.g. "listopad 2026" / "November 2026"
   const mondayOf = (d: string): string => addDays(d, 1 - weekday(d))
+  // Day / Week / Month range rules (calendar range switch spec REQ-W01, DD-W02, DD-W04; D-040): the address carries
+  // `range` and `date` (any day inside the range); a week starts on Monday; a month is the calendar month.
+  const RANGES = ['day', 'week', 'month']
+  function calRange(q: URLSearchParams, fallback: string, extra: string[] = []): { range: string; anchor: string } {
+    const r = q.get('range') || ''
+    return { range: [...RANGES, ...extra].includes(r) ? r : fallback, anchor: q.get('date') || TODAY }
+  }
+  function rangeDays(range: string, anchor: string): string[] {
+    if (range === 'day') return [anchor]
+    if (range === 'week') { const m = mondayOf(anchor); return Array.from({ length: 7 }, (_, i) => addDays(m, i)) }
+    const out: string[] = []
+    for (let d = `${anchor.slice(0, 7)}-01`; d.slice(0, 7) === anchor.slice(0, 7); d = addDays(d, 1)) out.push(d)
+    return out
+  }
+  function shiftAnchor(range: string, anchor: string, dir: number): string {
+    if (range === 'day') return addDays(anchor, dir)
+    if (range === 'week') return addDays(anchor, 7 * dir)
+    const x = parseDate(anchor); const day = x.getUTCDate()
+    const first = new Date(Date.UTC(x.getUTCFullYear(), x.getUTCMonth() + dir, 1))
+    const last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0)).getUTCDate()
+    first.setUTCDate(Math.min(day, last))
+    return iso(first)
+  }
+  function rangeLabel(range: string, anchor: string): string {
+    if (range === 'day') return dLong(anchor)
+    if (range === 'week') { const days = rangeDays('week', anchor); return `${dShort(days[0])} – ${dShort(days[6])}` }
+    return fmtMonth(anchor.slice(0, 7))
+  }
   const ageOn = (birth: string, on: string = TODAY): number => {
     const b = parseDate(birth); const o = parseDate(on)
     let a = o.getUTCFullYear() - b.getUTCFullYear()
@@ -964,23 +992,26 @@
     return `<div class="tiles">${cal}${att}${msg}</div>${shortcuts ? `<div class="section-title">${esc(t('m.screenToday.shortcuts'))}</div><div class="tiles">${shortcuts}</div>` : ''}`
   }
 
+  // M-03 (REQ-W06): Najbliższe · Dzień · Tydzień · Miesiąc; the phone opens on Day (Q-W02); Najbliższe is today and
+  // the next 13 days; a week or a month is a list of the days that have sessions (DD-W05).
   function screenCalendar(q: URLSearchParams): string {
     const pid = me()
-    const week = q.get('week') === 'next' ? 1 : 0
-    const from = addDays(mondayOf(TODAY), week * 7)
+    const { range, anchor } = calRange(q, 'day', ['upcoming'])
     const filter = q.get('who') || 'all'
+    const days = range === 'upcoming' ? Array.from({ length: 14 }, (_, i) => addDays(TODAY, i)) : rangeDays(range, anchor)
+    const href = (r: string, d: string, who = filter): string => `/club/calendar?range=${r}&date=${d}&who=${who}`
     const people = [pid, ...wardsOf(pid)].filter((x) => x === pid ? (hasMemberRole(x) || isCoachPersona()) : true)
-    const items = memberCalendarItems(from, addDays(from, 6), filter)
-    const chips = people.length > 1 ? `<div class="chips" role="group" aria-label="${esc(t('m.screenCalendar.personFilter'))}"><a class="chip ${filter === 'all' ? 'on' : ''}" href="#/club/calendar?week=${week ? 'next' : 'this'}&who=all">${t('m.screenCalendar.everyone')}</a>${people.map((p) => `<a class="chip ${filter === p ? 'on' : ''}" href="#/club/calendar?week=${week ? 'next' : 'this'}&who=${p}">${esc(p === pid ? t('m.screenCalendar.me') : personById(db, p).first)}</a>`).join('')}</div>` : ''
+    const items = memberCalendarItems(days[0], days[days.length - 1], filter)
+    const chips = people.length > 1 ? `<div class="chips" role="group" aria-label="${esc(t('m.screenCalendar.personFilter'))}"><a class="chip ${filter === 'all' ? 'on' : ''}" href="#${href(range, anchor, 'all')}">${t('m.screenCalendar.everyone')}</a>${people.map((p) => `<a class="chip ${filter === p ? 'on' : ''}" href="#${href(range, anchor, p)}">${esc(p === pid ? t('m.screenCalendar.me') : personById(db, p).first)}</a>`).join('')}</div>` : ''
     let body = ''
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(from, i)
+    for (const d of days) {
       const day = items.filter((x) => x.o.date === d)
-      if (day.length) body += `<div class="day-head">${dShort(d)}${d === TODAY ? ` (${t('common.todayLower')})` : ''}</div>${day.map((x) => occCard(x)).join('')}`
+      if (day.length) body += `${range === 'day' ? '' : `<div class="day-head">${dShort(d)}${d === TODAY ? ` (${t('common.todayLower')})` : ''}</div>`}${day.map((x) => occCard(x)).join('')}`
     }
-    return `<div class="row between" style="margin-bottom:8px"><div class="seg" role="group" aria-label="${esc(t('m.screenCalendar.week'))}"><button type="button" class="${week ? '' : 'on'}" data-action="nav" data-href="/club/calendar?week=this&who=${filter}">${t('m.screenCalendar.thisWeek')}</button><button type="button" class="${week ? 'on' : ''}" data-action="nav" data-href="/club/calendar?week=next&who=${filter}">${t('m.screenCalendar.next')}</button></div><span class="small muted">${dShort(from)} – ${dShort(addDays(from, 6))}</span></div>
+    const later = RANGES.includes(range) ? link(t('ui.rangeSwitch.later'), href(range, shiftAnchor(range, anchor, 1)), 'btn') : ''
+    return `${rangeSwitch(href, range, anchor, { extra: [['upcoming', t('m.screenCalendar.upcoming')]] })}
       ${chips}<div class="legend"><span><span class="dot sec-akad"></span>Akademia</span><span><span class="dot sec-basen"></span>Basen</span><span><span class="dot sec-zumba"></span>Zumba</span><span><span class="dot sec-szachy"></span>Szachy</span><span><span class="dot sec-cheer"></span>Cheerleader</span></div>
-      ${body || empty(t('m.screenCalendar.emptyTitle'), t('m.screenCalendar.emptyText'), link(t('m.screenCalendar.nextWeek'), '/club/calendar?week=next', 'btn'))}`
+      ${body || empty(t('m.screenCalendar.emptyTitle'), t('m.screenCalendar.emptyText'), later)}`
   }
 
   function screenOccurrence(p: Record<string, string>): string {
@@ -1144,7 +1175,7 @@
         ${btn(t('m.screenProfile.signOut'), 'logout', {}, 'block')}</div>`
   }
 
-  function timeline(pid: string, date: string, opts: { clickable: boolean; showNames: boolean }): string {
+  function timeline(pid: string, date: string, opts: { clickable: boolean; showNames: boolean; legend?: boolean }): string {
     const open = openingFor(pid, date)
     const startH = 8, endH = 22
     const zones = zonesFor(pid, date)
@@ -1162,10 +1193,25 @@
     const lanes = occ.map((o) => { let l = laneEnds.findIndex((end) => end <= o.from); if (l < 0) { l = laneEnds.length; laneEnds.push(0) } laneEnds[l] = o.to; return l })
     const nl = Math.max(1, laneEnds.length)
     const blocks = occ.map((o, i) => `<div class="tl-block blk-${o.kind}" style="top:${pos(o.from)};height:${hgt(o.from, o.to)};left:calc(16px + (100% - 24px) * ${lanes[i]} / ${nl});right:auto;width:calc((100% - 24px) / ${nl} - 4px)"><strong>${fromMin(o.from)}–${fromMin(o.to)}</strong>${esc(opts.showNames ? o.label : o.publicLabel)}${o.own ? ` <button type="button" class="btn sm" data-action="cancel-booking" data-id="${o.ref}">${t('common.cancel')}</button>` : ''}</div>`).join('')
-    return `<div class="legend"><span><i class="z-public_free"></i>${zoneLabel('public_free')}</span><span><i class="z-club_training"></i>${zoneLabel('club_training')}</span><span><i class="z-reservable_paid"></i>${zoneLabel('reservable_paid')}</span><span><i class="blk-occ"></i>${t('ui.timeline.legendSessions')}</span><span><i class="blk-int"></i>${t('ui.timeline.legendClubBooking')}</span><span><i class="blk-rent"></i>${t('ui.timeline.legendRental')}</span><span><i class="blk-pend"></i>${t('ui.timeline.legendRequest')}</span></div>
+    return `${opts.legend === false ? '' : timelineLegend()}
       <div class="timeline">${rows}<div class="tl-layer">${zoneEls}${blocks}</div></div>${!open ? `<p class="small muted">${t('ui.timeline.closedDay')}</p>` : ''}`
   }
+  const timelineLegend = (): string => `<div class="legend"><span><i class="z-public_free"></i>${zoneLabel('public_free')}</span><span><i class="z-club_training"></i>${zoneLabel('club_training')}</span><span><i class="z-reservable_paid"></i>${zoneLabel('reservable_paid')}</span><span><i class="blk-occ"></i>${t('ui.timeline.legendSessions')}</span><span><i class="blk-int"></i>${t('ui.timeline.legendClubBooking')}</span><span><i class="blk-rent"></i>${t('ui.timeline.legendRental')}</span><span><i class="blk-pend"></i>${t('ui.timeline.legendRequest')}</span></div>`
   const zoneLabel = (z: Zone): string => t(({ public_free: 'ui.zoneLabel.publicFree', club_training: 'ui.zoneLabel.clubTraining', reservable_paid: 'ui.zoneLabel.bookable', closed: 'ui.zoneLabel.closed' } as Record<string, string>)[z])
+
+  // The shared range switch (REQ-W02, DD-W01): Dzień / Tydzień / Miesiąc after a view's own extra tabs, then
+  // Earlier / Today / Later and the range label. Today is hidden when the range already holds today; Earlier is off
+  // before `min`. A view's own extra tab (Upcoming before, Agenda after) has no arrows.
+  function rangeSwitch(hrefFor: (r: string, d: string) => string, range: string, anchor: string, opts: { extra?: [string, string][]; after?: [string, string][]; min?: string } = {}): string {
+    const views: [string, string][] = [...(opts.extra || []), ['day', t('ui.rangeSwitch.day')], ['week', t('ui.rangeSwitch.week')], ['month', t('ui.rangeSwitch.month')], ...(opts.after || [])]
+    const seg = `<div class="seg" role="group" aria-label="${esc(t('ui.rangeSwitch.label'))}">${views.map(([r, l]) => `<button type="button" class="${r === range ? 'on' : ''}" ${r === range ? 'aria-current="page"' : ''} data-action="nav" data-href="${hrefFor(r, anchor)}">${esc(l)}</button>`).join('')}</div>`
+    if (!RANGES.includes(range)) return `<div class="range-bar">${seg}</div>`
+    const prev = shiftAnchor(range, anchor, -1)
+    const prevOff = !!opts.min && rangeDays(range, prev).slice(-1)[0] < opts.min
+    const today = rangeDays(range, anchor).includes(TODAY) ? '' : `<button type="button" data-action="nav" data-href="${hrefFor(range, TODAY)}">${esc(t('ui.rangeSwitch.today'))}</button>`
+    const nav = `<div class="seg"><button type="button" data-action="nav" data-href="${hrefFor(range, prevOff ? anchor : prev)}" ${prevOff ? 'disabled' : ''}>${esc(t('ui.rangeSwitch.earlier'))}<span class="sr-only"> (${esc(t(`ui.rangeSwitch.prev.${range}`))})</span></button>${today}<button type="button" data-action="nav" data-href="${hrefFor(range, shiftAnchor(range, anchor, 1))}">${esc(t('ui.rangeSwitch.later'))}<span class="sr-only"> (${esc(t(`ui.rangeSwitch.next.${range}`))})</span></button></div>`
+    return `<div class="range-bar">${seg}${nav}<span class="small muted" aria-live="polite">${esc(rangeLabel(range, anchor))}</span></div>`
+  }
 
   function dateChips(hrefFor: (d: string) => string, current: string, n = 7): string {
     return `<div class="chips" role="group" aria-label="${esc(t('common.day'))}">${Array.from({ length: n }, (_, i) => addDays(TODAY, i)).map((d) => `<a class="chip ${d === current ? 'on' : ''}" href="#${hrefFor(d)}" ${d === current ? 'aria-current="date"' : ''}>${dShort(d)}</a>`).join('')}</div>`
@@ -1180,15 +1226,25 @@
 
   function screenPlace(p: Record<string, string>, q: URLSearchParams, backend = false): string {
     const place = db.places.find((x) => x.id === p.id) || db.places.find((x) => x.id === (q.get('place') || 'pl-boisko')) as Place
-    const date = q.get('date') || TODAY
+    const { range, anchor } = calRange(q, backend ? 'week' : 'day')
+    const date = anchor
     const day = occupancy(place.id, date)
     // The page opens with facilities.view; booking a free hour (M-11 / B-23) requires facilities.bookings.create.
     const canBook = can('facilities.bookings.create')
-    const hrefFor = (d: string): string => backend ? `/backend/facilities/calendar?place=${place.id}&date=${d}` : `/club/places/${place.id}?date=${d}`
-    const placeSel = backend ? `<div class="chips" style="margin-bottom:8px" role="group" aria-label="${esc(t('common.place'))}">${db.places.filter((x) => !x.external && !db.places.some((c) => c.parent === x.id)).map((x) => `<a class="chip ${x.id === place.id ? 'on' : ''}" href="#/backend/facilities/calendar?place=${x.id}&date=${date}">${esc(x.name)}</a>`).join('')}</div>` : ''
-    return `${backend ? pageHead(t('m.screenPlace.title'), t('m.screenPlace.subtitle'), can('facilities.manage') ? btn(t('m.screenPlace.setAvailability'), 'availability', { place: place.id }, 'primary') : '') : ''}${placeSel}
+    const rangeHref = (r: string, d: string): string => backend ? `/backend/facilities/calendar?place=${place.id}&range=${r}&date=${d}` : `/club/places/${place.id}?range=${r}&date=${d}`
+    const hrefFor = (d: string): string => rangeHref('day', d)
+    const placeSel = backend ? `<div class="chips" style="margin-bottom:8px" role="group" aria-label="${esc(t('common.place'))}">${db.places.filter((x) => !x.external && !db.places.some((c) => c.parent === x.id)).map((x) => `<a class="chip ${x.id === place.id ? 'on' : ''}" href="#/backend/facilities/calendar?place=${x.id}&range=${range}&date=${date}">${esc(x.name)}</a>`).join('')}</div>` : ''
+    // Week in the panel: seven day axes side by side, each header opens that day (DD-W06). Week on the phone and every
+    // Month: a list of the days that have entries, each heading opening the day (DD-W05).
+    const dayLink = (d: string): string => `<a href="#${hrefFor(d)}" aria-label="${esc(t('ui.rangeSwitch.openDay', { day: dLong(d) }))}">${dShort(d)}${d === TODAY ? ` (${t('common.todayLower')})` : ''}</a>`
+    const listOf = (days: string[]): string => { const html = days.map((d) => { const occ = occupancy(place.id, d); return occ.length ? `<div class="day-head">${dayLink(d)}</div><ul class="list small">${occ.map((o) => `<li>${fromMin(o.from)}–${fromMin(o.to)} · ${esc(o.label)}</li>`).join('')}</ul>` : '' }).join(''); return html || `<p class="muted">${t('ui.rangeSwitch.noEntries')}</p>` }
+    const head = `${backend ? pageHead(t('m.screenPlace.title'), t('m.screenPlace.subtitle'), can('facilities.manage') ? btn(t('m.screenPlace.setAvailability'), 'availability', { place: place.id }, 'primary') : '') : ''}${placeSel}
       ${backend && can('facilities.manage') ? availabilityCard(place) : ''}
-      <div class="row between"><div><div class="item-title">${esc(place.name)}</div><div class="small muted">${esc(dLong(date))} · ${t('m.screenPlace.capacity', { n: place.capacity })}</div></div></div>
+      <div class="row between"><div><div class="item-title">${esc(place.name)}</div><div class="small muted">${t('m.screenPlace.capacity', { n: place.capacity })}</div></div></div>
+      ${rangeSwitch(rangeHref, range, anchor)}`
+    if (range === 'week' && backend) return `${head}${timelineLegend()}<div class="week-axes">${rangeDays('week', anchor).map((d) => `<div class="wk-col"><div class="day-head">${dayLink(d)}</div>${timeline(place.id, d, { clickable: canBook, showNames: true, legend: false })}</div>`).join('')}</div>`
+    if (range !== 'day') return `${head}${listOf(rangeDays(range, anchor))}`
+    return `${head}
       ${dateChips(hrefFor, date)}
       ${canBook ? `<p class="small muted">${backend ? t('m.screenPlace.clickHintBackend') : t('m.screenPlace.clickHintMember')}</p>` : ''}
       ${timeline(place.id, date, { clickable: canBook, showNames: true })}
@@ -1570,8 +1626,21 @@
     if (view === 'all') rows = rows.filter((o) => o.date >= addDays(TODAY, -7) && o.date <= addDays(TODAY, 14))
     rows.sort((a, b) => (a.date + a.start).localeCompare(b.date + b.start))
     const base = `/backend/activities/occurrences${act ? `?activity=${act}&` : '?'}`
+    const tabs: [string, string, boolean][] = [[t('b.screenOccurrences.tabUpcoming'), `${base}view=all`, view === 'all'], [t('b.screenOccurrences.tabUnassigned'), `${base}view=unassigned`, view === 'unassigned'], [t('b.screenOccurrences.tabUnsettled'), `${base}view=unsettled`, view === 'unsettled'], [t('b.screenOccurrences.tabCancelled'), `${base}view=cancelled`, view === 'cancelled'], [t('b.screenOccurrences.tabCalendar'), `${base}view=calendar`, view === 'calendar']]
+    if (view === 'calendar') {
+      // The coordinator's calendar (REQ-W07): the panel opens on Week; Agenda is the next 14 days as a list.
+      const { range, anchor } = calRange(q, 'week', ['agenda'])
+      const rangeHref = (r: string, d: string): string => `${base}view=calendar&range=${r}&date=${d}`
+      const days = range === 'agenda' ? Array.from({ length: 14 }, (_, i) => addDays(TODAY, i)) : rangeDays(range, anchor)
+      const mine = db.occurrences.filter((o) => (isAdmin() || secs.includes(group(o.group).section)) && (!act || o.activity === act) && o.status !== 'cancelled')
+      const list = days.map((d) => { const occ = mine.filter((o) => o.date === d).sort((a, b) => a.start.localeCompare(b.start)); return occ.length ? `<div class="day-head">${dShort(d)}${d === TODAY ? ` (${t('common.todayLower')})` : ''}</div><ul class="list small">${occ.map((o) => `<li>${o.start}–${o.end} · <a href="#/club/occurrences/${o.id}">${esc(o.name)}</a> · ${esc(group(o.group).name)} · ${esc(placeName(db, o.place))}</li>`).join('')}</ul>` : '' }).join('')
+      return `${pageHead(t('b.screenOccurrences.title'), t('b.screenOccurrences.sub'))}
+        <div class="dt-tabs">${tabs.map(([l, h, on]) => `<a href="#${h}" class="${on ? 'active' : ''}">${l}</a>`).join('')}</div>
+        ${rangeSwitch(rangeHref, range, anchor, { after: [['agenda', t('b.screenOccurrences.agenda')]] })}
+        ${list || `<p class="muted">${esc(t('ui.rangeSwitch.noEntries'))}</p>`}`
+    }
     return `${pageHead(t('b.screenOccurrences.title'), t('b.screenOccurrences.sub'))}
-      ${table({ tabs: [[t('b.screenOccurrences.tabUpcoming'), `${base}view=all`, view === 'all'], [t('b.screenOccurrences.tabUnassigned'), `${base}view=unassigned`, view === 'unassigned'], [t('b.screenOccurrences.tabUnsettled'), `${base}view=unsettled`, view === 'unsettled'], [t('b.screenOccurrences.tabCancelled'), `${base}view=cancelled`, view === 'cancelled']],
+      ${table({ tabs,
         cols: [
           { label: t('common.date'), cell: (o: Occurrence) => `${dShort(o.date)} ${o.start}` },
           { label: t('b.screenOccurrences.colActivity'), cell: (o: Occurrence) => `<a class="row-link" href="#/club/occurrences/${o.id}">${esc(o.name)}</a>${o.detached ? ` ${badge(t('b.screenOccurrences.edited'), 'neutral')}` : ''}` },
@@ -2014,15 +2083,19 @@
   function screenPublicPlace(p: Record<string, string>, q: URLSearchParams): string {
     const place = db.places.find((x) => x.slug === p.slug && x.publicSchedule)
     if (!pub().enabled || !pub().places_calendar || !place) return empty(t('p.screenSectionPage.notFound'), t('p.screenPublicPlace.notFoundText'), link(t('p.screenPublicPlaces.title'), '/p/przyklad/places'), 'ban')
-    const start = q.get('from') || TODAY
-    const days = Array.from({ length: 10 }, (_, i) => addDays(start, i))
+    // REQ-W04: Day / Week / Month (DD-W03: a phone opens on Day, a wider screen on Week); an old `?month=` link opens
+    // that month (DD-W08). The days before today are not offered (the mockup's readable window starts today).
+    const monthLink = q.get('month')
+    const { range, anchor } = monthLink && !q.get('range') ? { range: 'month', anchor: `${monthLink}-01` } : calRange(q, window.matchMedia('(min-width: 768px)').matches ? 'week' : 'day')
+    const days = rangeDays(range, anchor).filter((d) => d >= TODAY)
+    const rangeHref = (r: string, d: string): string => `/p/przyklad/places/${place.slug}?range=${r}&date=${d}`
     const canReq = pub().online_requests && place.acceptsRequests
     return `<div class="crumbs small"><a href="#/p/przyklad">${esc(db.settings.short)}</a> › <a href="#/p/przyklad/places">${esc(t('p.screenClubPage.facilities'))}</a> › ${esc(place.name)}</div>
       <div class="hero" style="margin-top:8px"><h1>${esc(place.name)}</h1><p>${esc(place.address)} · ${esc(t(canReq ? 'p.screenPublicPlace.bookingsOnline' : 'p.screenPublicPlace.bookings', { phone: db.settings.phone }))}</p></div>
       ${canReq ? `<div class="alert info">${t('p.screenPublicPlace.onlineNotice', { owner: esc(facilityOwnerName()) })}</div>` : ''}
-      <div class="row between"><div class="seg"><button type="button" data-action="nav" data-href="/p/przyklad/places/${place.slug}?from=${addDays(start, -10) < TODAY ? TODAY : addDays(start, -10)}" ${start <= TODAY ? 'disabled' : ''}>${esc(t('p.screenPublicPlace.earlier'))}</button><button type="button" data-action="nav" data-href="/p/przyklad/places/${place.slug}?from=${addDays(start, 10)}">${esc(t('p.screenPublicPlace.later'))}</button></div><span class="small muted">${dShort(days[0])} – ${dShort(days[9])}</span></div>
+      ${rangeSwitch(rangeHref, range, anchor, { min: TODAY })}
       <div class="legend"><span><i class="z-public_free"></i>${esc(t('p.screenPublicPlace.legendPublic'))}</span><span><i class="z-club_training"></i>${esc(t('p.screenPublicPlace.legendClub'))}</span><span><i class="z-reservable_paid"></i>${esc(t('p.screenPublicPlace.legendBookable'))}</span><span><i class="blk-rent"></i>${esc(t('p.screenPublicPlace.legendBooked'))}</span><span><i class="blk-pend"></i>${esc(t('p.screenPublicPlace.legendPending'))}</span><span><i class="z-closed"></i>${esc(t('p.screenPublicPlace.legendClosed'))}</span></div>
-      ${days.map((d) => { const segs = publicSegments(place.id, d); return `<div class="day-head">${dShort(d)}${d === TODAY ? ` (${esc(t('common.todayLower'))})` : ''}</div>${segs.length ? `<ul class="slotlist">${segs.map((s) => { const cls = s.kind === 'rent' ? 'blk-rent' : s.kind === 'pend' ? 'blk-pend' : s.kind === 'closed' ? 'z-closed' : s.kind === 'occ' || s.kind === 'int' ? 'z-club_training' : `z-${s.kind}`; const past = d === TODAY && s.from < toMin(NOW); return `<li class="${cls}"><b>${fromMin(s.from)}–${fromMin(s.to)}</b><span>${esc(s.label)}</span>${s.canRequest && canReq && !past && s.to - s.from >= 90 ? btn(t('p.screenPublicPlace.requestBooking'), 'public-request', { place: place.id, date: d, from: String(s.from), to: String(s.to) }, 'sm primary') : '<span></span>'}</li>` }).join('')}</ul>` : `<p class="small muted">${esc(t('p.screenPublicPlace.closed'))}</p>`}` }).join('')}
+      ${days.length ? '' : `<p class="muted">${esc(t('ui.rangeSwitch.noEntries'))}</p>`}<div class="${range === 'week' ? 'week-cells' : ''}">${days.map((d) => { const segs = publicSegments(place.id, d); return `<div><div class="day-head">${dShort(d)}${d === TODAY ? ` (${esc(t('common.todayLower'))})` : ''}</div>${segs.length ? `<ul class="slotlist">${segs.map((s) => { const cls = s.kind === 'rent' ? 'blk-rent' : s.kind === 'pend' ? 'blk-pend' : s.kind === 'closed' ? 'z-closed' : s.kind === 'occ' || s.kind === 'int' ? 'z-club_training' : `z-${s.kind}`; const past = d === TODAY && s.from < toMin(NOW); return `<li class="${cls}"><b>${fromMin(s.from)}–${fromMin(s.to)}</b><span>${esc(s.label)}</span>${s.canRequest && canReq && !past && s.to - s.from >= 90 ? btn(t('p.screenPublicPlace.requestBooking'), 'public-request', { place: place.id, date: d, from: String(s.from), to: String(s.to) }, 'sm primary') : '<span></span>'}</li>` }).join('')}</ul>` : `<p class="small muted">${esc(t('p.screenPublicPlace.closed'))}</p>`}</div>` }).join('')}</div>
       <div class="section-title">${esc(t('p.screenPublicPlace.rates'))}</div><ul class="list small">${db.rates.filter((r) => r.place === place.id).map((r) => `<li class="row between"><span>${esc(r.label)}</span><b>${zl(r.price)}</b></li>`).join('') || `<li class="muted">${esc(t('p.screenPublicPlace.noRates'))}</li>`}</ul>`
   }
 

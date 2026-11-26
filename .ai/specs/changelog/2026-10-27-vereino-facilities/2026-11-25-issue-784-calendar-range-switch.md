@@ -1,0 +1,1 @@
+| 2026-11-25 | #784, D-040: P-04 "month grid wide, day list on a phone" and the month-only schedule read superseded by REQ-W03, REQ-W04 of `2026-11-25-vereino-calendar-range-switch.md` (Day / Week / Month; optional `from`/`to` on the public read) |
