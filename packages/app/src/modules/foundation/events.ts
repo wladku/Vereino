@@ -27,6 +27,22 @@ const events = [
     entity: 'identity_link',
     category: 'custom',
   },
+  // Staff second factor (#736): ids only — `{ id, userId, tenantId, organizationId, method }`, and `actorUserId` on
+  // `reset` (S4.6); never a code, a challenge id or an address.
+  {
+    id: 'foundation.second_factor.challenged',
+    label: 'Second factor challenged',
+    entity: 'second_factor',
+    category: 'custom',
+  },
+  { id: 'foundation.second_factor.verified', label: 'Second factor verified', entity: 'second_factor', category: 'custom' },
+  {
+    id: 'foundation.second_factor.locked',
+    label: 'Second factor challenge locked',
+    entity: 'second_factor',
+    category: 'custom',
+  },
+  { id: 'foundation.second_factor.reset', label: 'Second factor reset', entity: 'second_factor', category: 'custom' },
 ] as const
 
 export const eventsConfig = createModuleEvents({ moduleId: 'foundation', events })

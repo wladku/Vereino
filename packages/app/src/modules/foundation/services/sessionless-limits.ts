@@ -135,13 +135,14 @@ async function emailFromForm(request: Request): Promise<string | null> {
 /**
  * Runs a platform sign-in or password-reset handler behind the per-account limit (`SIGN_IN_EMAIL_LIMIT`,
  * `PASSWORD_RESET_EMAIL_LIMIT`): the address is read from a copy of the body, so the handler still reads the original.
- * With `resetOnSuccess` a successful answer clears the account's counter, as the platform does with its own.
+ * With `resetOnSuccess` a successful answer clears the account's counter, as the platform does with its own; a
+ * predicate decides per answer (a second-factor challenge is not a finished sign-in, #736).
  */
 export async function withAccountEmailLimit(
   request: Request,
   config: typeof SIGN_IN_EMAIL_LIMIT | typeof PASSWORD_RESET_EMAIL_LIMIT,
   handler: (request: Request) => Promise<Response>,
-  options: { resetOnSuccess?: boolean } = {},
+  options: { resetOnSuccess?: boolean | ((response: Response) => boolean) } = {},
 ): Promise<Response> {
   const email = await emailFromForm(request.clone())
   if (email === null) return handler(request)
@@ -149,7 +150,9 @@ export async function withAccountEmailLimit(
   const limited = await enforceSessionlessLimits(request, [limit])
   if (limited) return limited
   const response = await handler(request)
-  if (options.resetOnSuccess && response.ok) {
+  const reset =
+    typeof options.resetOnSuccess === 'function' ? options.resetOnSuccess(response) : options.resetOnSuccess === true
+  if (reset && response.ok) {
     try {
       await (await sessionlessRateLimiter(request))?.delete(limit.key, limit.config)
     } catch (error: unknown) {

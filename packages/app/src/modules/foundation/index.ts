@@ -188,6 +188,7 @@ export {
   type PersonDeliveriesExport,
   type PersonDeliveryExportRow,
 } from './services/data-export'
+export { PROVISIONAL_HEADER, withSecondFactor } from './second-factor/gate'
 export { EMAIL_SENDER_TOKEN, defaultEmailSender, type EmailSender } from './services/email-sender'
 export {
   clubText,

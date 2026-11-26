@@ -43,6 +43,23 @@ export const errorCodes = [
   { code: 'enterprise_feature_read_only', status: 409, messageKey: 'foundation.errors.enterprise_feature_read_only' },
   // Many-clubs spec DD-M10 (#633): one running import per club; a second one answers at once instead of waiting.
   { code: 'import_running', status: 409, messageKey: 'foundation.errors.import_running' },
+  // Staff second factor (#736, spec *API, Command, and Error Contracts*): the sign-in gate, the completion routes and
+  // the reset. The login page shows `error`, so each carries a whole sentence.
+  { code: 'second_factor_use_google', status: 403, messageKey: 'foundation.errors.second_factor_use_google' },
+  { code: 'second_factor_unavailable', status: 503, messageKey: 'foundation.errors.second_factor_unavailable' },
+  {
+    code: 'second_factor_challenges_limited',
+    status: 429,
+    messageKey: 'foundation.errors.second_factor_challenges_limited',
+  },
+  { code: 'second_factor_code_invalid', status: 400, messageKey: 'foundation.errors.second_factor_code_invalid' },
+  {
+    code: 'second_factor_challenge_expired',
+    status: 401,
+    messageKey: 'foundation.errors.second_factor_challenge_expired',
+  },
+  { code: 'second_factor_resend_limited', status: 429, messageKey: 'foundation.errors.second_factor_resend_limited' },
+  { code: 'second_factor_reset_self', status: 403, messageKey: 'foundation.errors.second_factor_reset_self' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

@@ -23,6 +23,11 @@ import { createTokenLinkService } from './services/token-link'
 import { advanceWhere, assertTransition } from './services/transitions'
 import { registerClubDataContributor } from './services/club-data'
 import { FOUNDATION_CLUB_TABLES } from './lib/club-tables'
+import { registerSecondFactorRoutes } from './second-factor/routes'
+
+// Staff second factor V-2F02 (#736): the completion routes accept a provisional token in every process that loads the
+// module registrars, before any request is dispatched.
+registerSecondFactorRoutes()
 
 /**
  * DI token of the record-scope provider. The foundation does not register it: the `people` module registers its

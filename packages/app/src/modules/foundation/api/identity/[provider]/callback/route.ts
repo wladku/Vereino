@@ -5,7 +5,9 @@
 // provider error, a timeout or a failed claim → `identity=failed`. Then:
 // - `sign_in`: the one system-scope lookup of (`provider`, `subject`) (DD-S03, D-027); found → the platform session
 //   cookies and a redirect to the marker's landing path; not found (or the user is gone or blocked) →
-//   `/login?identity=unlinked`. The three `/login` outcomes render one sentence (no enumeration).
+//   `/login?identity=unlinked`. The three `/login` outcomes render one sentence (no enumeration). A user holding
+//   `foundation.second_factor.required` with a provider other than Google → `/login?second_factor=use_google`, no
+//   session (staff second factor DD-2F06, #736).
 // - `link`: the session must still be the user who started the round trip (else `/login?identity=invalid`); the
 //   command `foundation.identity.link` inserts the link → `/club/profile?identity=linked`; any failure, including a
 //   subject bound to another user, → `/club/profile?identity=failed` with a fingerprint and nothing revealed.
@@ -38,6 +40,9 @@ import {
   stateMatchesCookie,
 } from '../../../../services/identity'
 import { exchangeCode, providerConfig } from '../../../../services/identity-providers'
+import { SECOND_FACTOR_USE_GOOGLE_PATH, providerCountsAsSecondFactor } from '../../../../lib/second-factor'
+import { reportSecondFactor } from '../../../../second-factor/challenge'
+import { holdsSecondFactorRequirement } from '../../../../second-factor/gate'
 import { commandContextForRequest } from '../../../../services/route-context'
 import { providerParamsSchema } from '../../shared'
 
@@ -82,6 +87,15 @@ async function consumedMarker(request: Request, provider: IdentityProvider): Pro
 async function signIn(request: Request, provider: IdentityProvider, identity: ProviderIdentity, marker: StateMarker) {
   const container = await createRequestContainer()
   const link = await findLinkForSignIn(container, provider, identity.subject)
+  // Staff second factor (DD-2F06; #736): a user holding the requirement signs in only with Google.
+  if (
+    link &&
+    !providerCountsAsSecondFactor(provider) &&
+    (await holdsSecondFactorRequirement(container, link.userId, link))
+  ) {
+    reportSecondFactor('foundation.second_factor.provider_refused', { provider, userId: link.userId })
+    return finish(request, SECOND_FACTOR_USE_GOOGLE_PATH)
+  }
   const response = link ? await issueSession(container, request, link, marker.redirect) : null
   if (!response) {
     reportIdentityFailure('foundation.identity.not_linked', { provider, reason: link ? 'user_unavailable' : 'no_link' })
