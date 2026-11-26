@@ -1,7 +1,7 @@
 # Vereino staff second factor — Google sign-in or an e-mail code for administrators and treasurers
 
 **Date**: 2026-11-26
-**Status**: Draft
+**Status**: Ready for implementation (the owner answered Q-2F01…Q-2F05 and approved the spec on #805, 2026-11-26)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -25,7 +25,7 @@ Paths `src/...` are relative to `packages/app/`; `@om/*` means `packages/app/nod
 
 ## TLDR
 
-A club administrator or treasurer can no longer reach the back office with a password alone. A staff member with a connected Google account signs in with Google (#566), and the Google account carries the second factor. A staff member without one signs in with the password and then a six-digit code e-mailed to the account's address. Coordinators, coaches, guardians and members sign in as today. The requirement is an ACL feature, `foundation.second_factor.required`, seeded on `vereino_club_admin` and `vereino_treasurer`, so no code checks a role name.
+A club administrator or treasurer can no longer reach the back office with a password alone. A staff member with a connected Google account signs in with Google (#566), and the Google account carries the second factor. A staff member without one signs in with the password and then a six-digit code e-mailed to the account's address. Coordinators, coaches, guardians and members sign in as today. The requirement is an ACL feature, `foundation.second_factor.required`, seeded on `vereino_club_admin` and `vereino_treasurer`, so no code checks a role name. The platform super-admin is challenged the same way (Q-2F02).
 
 The gate sits in the login wrapper Vereino already has (#738). After a correct password it replaces the platform's full session cookies with a provisional `mfa_pending` token for the same platform session. The installed open-source platform already refuses such a token everywhere except the completion routes an app registers (a seam built for the commercial MFA module). No new table, no migration and no dependency. A lost factor is reset by a club administrator, or from the shell by the operator for the last administrator.
 
@@ -49,7 +49,7 @@ ENG-Q-09 accepted "no MFA in 1.0" for a single club and said to revisit it befor
 
 - **REQ-2F01** (Must) — A user holding `foundation.second_factor.required` who signs in with a password gets no usable session until they enter a single-use code e-mailed to the account's address. Until then every staff API, page and the session refresh refuse them.
 - **REQ-2F02** (Must) — Google sign-in (#566) satisfies the requirement; no other social provider does. A required user with a connected Google identity must use it: password sign-in is refused with a pointer to the Google button.
-- **REQ-2F03** (Must) — The requirement covers the club administrator and the treasurer, and nobody else by default. A user who gains it during a session is signed out. Coordinators, coaches, guardians, members and payers sign in unchanged.
+- **REQ-2F03** (Must) — The requirement covers the club administrator, the treasurer and the platform super-admin (Q-2F02), and nobody else by default. A user who gains it during a session is signed out. Coordinators, coaches, guardians, members and payers sign in unchanged.
 - **REQ-2F04** (Must) — Recovery: a club administrator, after verifying the person, resets another staff member's second factor. The reset unlinks their social identities, ends their sessions and is audited with a note. The operator does the same from the shell for the last administrator.
 - **REQ-2F05** (Must) — The challenge fails closed. If the code store, the lock or the e-mail send is down, no session is issued. Codes are hashed, expire, are single use and are attempt-limited per challenge and per user.
 
@@ -59,7 +59,6 @@ ENG-Q-09 accepted "no MFA in 1.0" for a single club and said to revisit it befor
 - TOTP, passkeys, SMS or recovery codes (ENG-Q-09 options 2 and 3). A later spec can add one as another `secondFactor.method` without changing the challenge contract.
 - Checking whether the Google account itself has 2-Step Verification on (Q-2F04).
 - A "remember this device" option. Session lifetime and "remember me" stay with ENG-Q-12 (#737).
-- The platform super-admin (the operator's account): Q-2F02.
 
 ## Proposed Solution
 
@@ -118,7 +117,7 @@ Vereino adds one slice to the `foundation` module, `src/modules/foundation/secon
 | Club administrator | reset another person's second factor | `club_admin` through `authorizeScoped` | `foundation.second_factor.reset` (seeded on `vereino_club_admin`) |
 | Operator (shell) | reset any user's second factor in a named tenant and organization | shell only, never from a request; the arguments name the scope | — |
 | Coordinator, coach, guardian, member, payer | sign in as today | unchanged | — |
-| Platform super-admin | sign in as today (Q-2F02, an accepted risk) | unchanged | — |
+| Platform super-admin (the operator's account) | the same gate as a club administrator: password + e-mail code (Q-2F02, owner's decision 2026-11-26: not exempt) | its own tenant and organization from the issued token | none to seed: the RBAC check is unrestricted for a super-admin, so `userHasAllFeatures` answers yes for `foundation.second_factor.required`; recovery only through the operator CLI reset |
 
 `vereino_club_admin` gets the module wildcards of DD-33 plus the two new exact features. No Vereino role holds `api_keys.*`, so no required user can create an API key that skips the sign-in. A catalogue unit test asserts this. `OM_AUTOLOGIN_*` stays forbidden in production (`docs/ops/deploy.md`); the deploy check gains a line for it.
 
@@ -144,7 +143,8 @@ Vereino adds one slice to the `foundation` module, `src/modules/foundation/secon
 /login ── POST /api/auth/login  (Vereino wrapper, #738)
    ├─ account limit (withAccountEmailLimit) ── platform login.ts: password, limits, createSession(sid), signJwt, member-landing redirect
    └─ second-factor gate (on the platform's 200 Response)
-        ├─ user lacks foundation.second_factor.required, or is super-admin (Q-2F02) → platform response unchanged; account counter cleared
+        ├─ user lacks foundation.second_factor.required → platform response unchanged; account counter cleared
+        │    (the super-admin holds it through the unrestricted RBAC check and is challenged, Q-2F02)
         ├─ [phase 2] user has a Google identity link → delete session sid; 403 second_factor_use_google; no cookies
         └─ else, under the user lock: hourly cap (5) → 429 second_factor_challenges_limited, delete sid
                 challengeId = 32 random bytes; code = randomInt(0, 10^6)
@@ -303,12 +303,12 @@ Tests live in `packages/app/.ai/qa/tests/foundation/second-factor/`. They are se
 
 | Test ID | Level | Setup / fixture | Actions | Assertions | Requirement IDs |
 |---|---|---|---|---|---|
-| TEST-2F01-staff-email-code | integration + security | a club with an administrator, a treasurer, a coordinator and a coach; a coach later made treasurer | (1) Password sign-in of each. (2) With the provisional token: call a staff API, `/backend` and `GET /api/auth/session/refresh`. (3) Wrong code ×4, then the right one. (4) Reuse the code. (5) A fresh challenge with 5 wrong codes. (6) Two resends within 60 s. (7) Six password sign-ins in an hour. (8) Assign the coach the treasurer role while signed in. | (1) The administrator and treasurer get `secondFactor`, a provisional token and no `session_token`; the coordinator and coach sign in directly. (2) Staff API 401, `/backend` → `/login`, refresh refused. (3) `attemptsLeft` counts down; the right code issues a session that reaches `/backend`. (4) The reused code gets 401. (5) The 5th wrong code ends the challenge and its session. (6) The second resend gets 429. (7) The 6th sign-in gets 429 `second_factor_challenges_limited`. (8) The coach's old session gets 401. | REQ-2F01, REQ-2F03, REQ-2F05 |
+| TEST-2F01-staff-email-code | integration + security | a club with an administrator, a treasurer, a coordinator and a coach; a coach later made treasurer | (1) Password sign-in of each. (2) With the provisional token: call a staff API, `/backend` and `GET /api/auth/session/refresh`. (3) Wrong code ×4, then the right one. (4) Reuse the code. (5) A fresh challenge with 5 wrong codes. (6) Two resends within 60 s. (7) Six password sign-ins in an hour. (8) Assign the coach the treasurer role while signed in. (9) Password sign-in of the platform super-admin. | (1) The administrator and treasurer get `secondFactor`, a provisional token and no `session_token`; the coordinator and coach sign in directly. (2) Staff API 401, `/backend` → `/login`, refresh refused. (3) `attemptsLeft` counts down; the right code issues a session that reaches `/backend`. (4) The reused code gets 401. (5) The 5th wrong code ends the challenge and its session. (6) The second resend gets 429. (7) The 6th sign-in gets 429 `second_factor_challenges_limited`. (8) The coach's old session gets 401. (9) The super-admin gets `secondFactor` and a provisional token, and completes with the code. | REQ-2F01, REQ-2F03, REQ-2F05 |
 | TEST-2F02-second-factor-page | UI | an administrator | browser: `/login` → `/login/second-factor`, code from the capture; en and pl; 375 px; axe; keyboard only | the page renders the masked address; the wrong-code line is announced; Enter submits; the resend countdown shows; success lands on `/backend`; no console errors | REQ-2F01 |
 | TEST-2F03-google-and-reset | integration + security | administrator A; a treasurer T with a Google link (fake) and a Facebook link; a second club B | (1) T signs in with Google. (2) T signs in with Facebook. (3) A resets T. (4) T's old session is used. (5) T signs in with the password. (6) A resets A. (7) A resets a club B user. (8) The operator CLI resets A. (9) Phase 2: T, linked to Google again, signs in with the password. | (1) The Google session reaches `/backend`. (2) Facebook is refused (`use_google`), with no session. (3) The reset removes T's links. (4) The old session gets 401. (5) The password then needs the e-mail code. (6) Self-reset gets 403. (7) Club B gets 404. (8) The CLI reset ends A's sessions. (9) 403 `second_factor_use_google` and no session. | REQ-2F02, REQ-2F04 |
 | TEST-2F04-reset-dialog | UI | administrator, a treasurer, a coach | browser: person record → "Sign-in methods" → "Reset second factor" | the action is hidden on the administrator's own record and for the coach; the dialog requires the note and the checkbox; success flash; en and pl, 375 px, axe | REQ-2F04 |
 
-The existing suite exercises every path that signs a required user in. Phase 1 makes `_fixtures/auth.ts` export a `getAuthToken` with the platform helper's signature that completes the challenge. It also changes `signInBrowser` (`_fixtures/club-structure.ts`) and every direct `POST /api/auth/login` in the suite to do the same. The 60 s resend spacing, the 3-resend cap and the hourly cap's window are unit-tested in `lib/second-factor.ts` with an injected clock; integration tests do not wait.
+The existing suite exercises every path that signs a required user in. Phase 1 makes `_fixtures/auth.ts` export a `getAuthToken` with the platform helper's signature that completes the challenge. It also changes `signInBrowser` (`_fixtures/club-structure.ts`) and every direct `POST /api/auth/login` in the suite to do the same. The super-admin is challenged too (Q-2F02), so `club.superToken` (`_fixtures/club.ts`) comes from the same wrapper. The 60 s resend spacing, the 3-resend cap and the hourly cap's window are unit-tested in `lib/second-factor.ts` with an injected clock; integration tests do not wait.
 
 ## Implementation Phases
 
@@ -316,7 +316,7 @@ Validation for every phase: `yarn verify` (the single gate) and `yarn test:integ
 
 ### Phase 1 — E-mail code, Google-only social sign-in, reset
 
-- **Depends on:** the owner's approval of this spec (status `Ready for implementation`, or `phase-ready` on the phase 1 story with Q-2F02 and Q-2F03 answered).
+- **Depends on:** the owner's approval of this spec (given 2026-11-26: status `Ready for implementation`; Q-2F02 and Q-2F03 answered).
 - **Outcome:** J-2F01, J-2F03 and J-2F04. No password-only and no non-Google session for a required user; the support path for a lost factor exists.
 - **Why this order / value delivered:** it closes the ASVS V6.3.3 gap and gives the recovery that a mandatory mailbox needs. Making Google mandatory for those who have it is a refinement.
 - **Deliverables:**
@@ -333,18 +333,18 @@ Validation for every phase: `yarn verify` (the single gate) and `yarn test:integ
   2. Session issuer refactor; Google sign-in unchanged (TEST-S01 still green).
   3. Gate in the wrapper, challenge, lock, e-mail (TEST-2F01, sign-in half).
   4. `verify`, `resend`, session end on the role grant, Google-only callback branch (TEST-2F01, TEST-2F03 items 1–2).
-  5. Fixture wrapper; switch `getAuthToken`, `signInBrowser` and direct logins; run the affected tests.
+  5. Fixture wrapper; switch `getAuthToken` (including the super-admin token), `signInBrowser` and direct logins; run the affected tests.
   6. Page and sentences (TEST-2F02).
   7. Reset command, route, CLI, dialog (TEST-2F03 items 3–8, TEST-2F04).
   8. `end-sessions`, `deploy.md`, ASVS rows.
 - **Independent slices / estimated commits:** about 8 commits in the step order. Step 5 needs step 4. Step 6 is independent of step 7.
 - **Requirements closed:** REQ-2F01, REQ-2F03, REQ-2F04, REQ-2F05
 - **Tests:** TEST-2F01, TEST-2F02, TEST-2F03 (items 1–8), TEST-2F04, and the existing suite through the fixtures.
-- **Exit gate:** on staging, an administrator and a treasurer sign in with password and e-mail code, and a coach signs in without one. A provisional token reaches no staff API. A reset works from the dialog and from the CLI. `/login/second-factor` is checked in light and dark at 375 px in en and pl.
+- **Exit gate:** on staging, an administrator, a treasurer and the super-admin sign in with password and e-mail code, and a coach signs in without one. A provisional token reaches no staff API. A reset works from the dialog and from the CLI. `/login/second-factor` is checked in light and dark at 375 px in en and pl.
 
 ### Phase 2 — Google required when connected
 
-- **Depends on:** the phase 1 exit gate; Q-2F01 answered.
+- **Depends on:** the phase 1 exit gate; Q-2F01 answered (2026-11-26: refuse).
 - **Outcome:** J-2F02.
 - **Why this order / value delivered:** Google becomes the only way in for everyone who has it, which removes the e-mail code as an attack path for them.
 - **Deliverables:**
@@ -389,7 +389,7 @@ Validation for every phase: `yarn verify` (the single gate) and `yarn test:integ
 | The e-mail provider is down | staff without Google cannot sign in | 503 with retry; Google sign-in still works; the fingerprint alerts | accepted: fail closed (DD-2F09) |
 | E-mail is a weak second channel (same mailbox as password reset) | a phished mailbox defeats both | Google required when connected (DD-2F06, phase 2); the owner's decision | accepted by the owner (option 1) |
 | The Google account itself has no 2-Step Verification | Google sign-in is one factor in practice | the profile line asks staff to turn it on (Q-2F04) | accepted by the owner |
-| The platform super-admin is exempt (Q-2F02) | the account with the widest reach has one factor | Railway and operator controls (#735); the open question records it as an explicit risk acceptance | ⚠ the owner's call |
+| The platform super-admin is challenged too (Q-2F02) | the operator needs a working mailbox to sign in; a lost one needs the shell | operator CLI reset (DD-2F07) with shell access; the e-mail provider prerequisite | low |
 | The platform's MFA-pending gate or the login handler changes in an upgrade | the challenge silently stops | TEST-2F01 fails in CI; the wrapper is a recorded local patch (#738) | low |
 | A role later gains `api_keys.*` | a required user creates a key that skips sign-in | catalogue unit test (phase 1) | low |
 | Suite-wide fixture change | many integration tests touched in one PR | one wrapper with the platform signature; mechanical import switch; the affected tests run before the PR | review effort |
@@ -397,7 +397,7 @@ Validation for every phase: `yarn verify` (the single gate) and `yarn test:integ
 
 ## Acceptance Criteria
 
-- [ ] **AC-2F01** — A club administrator or treasurer who signs in with a password reaches no staff API, back-office page or session refresh until they enter the e-mailed code. The right code issues a session that reaches `/backend`. A used, expired or sixth code does not.
+- [ ] **AC-2F01** — A club administrator, treasurer or the platform super-admin who signs in with a password reaches no staff API, back-office page or session refresh until they enter the e-mailed code. The right code issues a session that reaches `/backend`. A used, expired or sixth code does not.
 - [ ] **AC-2F02** — A required user signs in with Google. A non-Google provider is refused. In phase 2, a required user with a Google link is refused password sign-in with the Google pointer and no session.
 - [ ] **AC-2F03** — Coordinators, coaches, guardians, members and payers sign in exactly as before. A user who gains the requirement is signed out.
 - [ ] **AC-2F04** — An administrator resets another club member's second factor with a note: the links are removed, their sessions end, and the reset is in the command log. Resetting oneself and a person of another club are refused. The operator resets from the shell.
@@ -417,9 +417,9 @@ Validation for every phase: `yarn verify` (the single gate) and `yarn test:integ
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | phases 1–2 |
 | Contracts of installed modules confirmed at the field and behavior level | pass | V-2F01 confirmed by code read; V-2F02 is the first step of phase 1 |
 | Architectural review | pass | fresh-context review of 2026-11-26: C1, H1–H4, M1–M6 and the low findings applied (run log) |
-| User approval for implementation | **fail** | waiting for the owner: the open questions below and approval of the spec |
+| User approval for implementation | pass | the owner answered Q-2F01…Q-2F05 and approved the spec on #805 (2026-11-26) |
 
-Verdict: `Blocked — owner approval of the spec and answers to Q-2F01…Q-2F03`
+Verdict: `Ready for implementation`
 
 ## Open Questions
 
@@ -429,11 +429,11 @@ Already decided by the owner on 2026-11-26 (#736): option 1 (Google, fallback pa
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-2F01 | A required user who has connected Google: refuse password sign-in entirely (DD-2F06), or allow password + e-mail code as a second path? | Władek Kuć | phase 2 | pending — default: refuse; the password path would make the weaker e-mail code the attack path |
-| Q-2F02 | The platform super-admin (the operator's account): exempt in 1.0, or also challenged? | Władek Kuć | phase 1 | pending — ⚠ default: exempt, as an explicit risk acceptance. It is the account with the widest reach (D-034), and #735 (Railway lock-down) is not yet delivered. Challenging it is a small change (the same gate; fixtures that use `club.superToken` complete the code too) |
-| Q-2F03 | Codes: 6 digits, 10 minutes; 5 attempts and 3 resends 60 s apart per challenge; 5 challenges per user per hour (DD-2F05) — accept? | Władek Kuć | phase 1 | pending — default: accept |
-| Q-2F04 | Google sign-in counts as the second factor although Vereino cannot check that the Google account has 2-Step Verification on (ASVS V6.8.4 stays partial). Accept, with the profile line asking staff to turn it on? | Władek Kuć | no | pending — default: accept (follows from the owner's option 1) |
-| Q-2F05 | End every required user's sessions at rollout (`end-sessions`), or let pre-release sessions run out (up to `REMEMBER_ME_DAYS`)? | Władek Kuć | no | pending — default: end them |
+| Q-2F01 | A required user who has connected Google: refuse password sign-in entirely (DD-2F06), or allow password + e-mail code as a second path? | Władek Kuć | phase 2 | **Decided 2026-11-26 (#805):** refuse — Google only for a required user who has connected Google (DD-2F06) |
+| Q-2F02 | The platform super-admin (the operator's account): exempt in 1.0, or also challenged? | Władek Kuć | phase 1 | **Decided 2026-11-26 (#805):** also challenged, not exempt — the same gate; the unrestricted RBAC check gives it the requirement, and fixtures that use `club.superToken` complete the code too |
+| Q-2F03 | Codes: 6 digits, 10 minutes; 5 attempts and 3 resends 60 s apart per challenge; 5 challenges per user per hour (DD-2F05) — accept? | Władek Kuć | phase 1 | **Decided 2026-11-26 (#805):** accepted as written (DD-2F05) |
+| Q-2F04 | Google sign-in counts as the second factor although Vereino cannot check that the Google account has 2-Step Verification on (ASVS V6.8.4 stays partial). Accept, with the profile line asking staff to turn it on? | Władek Kuć | no | **Decided 2026-11-26 (#805):** accepted — Google counts; the profile line asks staff to turn on 2-Step Verification; V6.8.4 stays partial |
+| Q-2F05 | End every required user's sessions at rollout (`end-sessions`), or let pre-release sessions run out (up to `REMEMBER_ME_DAYS`)? | Władek Kuć | no | **Decided 2026-11-26 (#805):** end every required user's sessions at rollout |
 
 Contract verifications:
 
