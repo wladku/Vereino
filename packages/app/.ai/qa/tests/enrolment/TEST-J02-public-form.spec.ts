@@ -136,22 +136,27 @@ test('TEST-J02 the public form: matching groups, the outside warning, full group
       await apply.click()
       await expect(page).toHaveURL(new RegExp(`/p/${clubSlug}/sections/${sectionSlug}/apply`))
       await expect(page.getByTestId('enrolment-apply-form')).toBeVisible()
-      await fillStepOne(page, `${String(birthYear)}-03-14`)
-
       // Step 2: the team matches by birth year; the age groups are outside; the full group says so.
-      const matching = page.getByTestId('enrolment-groups-matching')
-      await expect(matching.locator(`[data-group-id="${team}"]`)).toHaveAttribute('data-fit', 'fits')
-      const toggle = page.getByTestId('enrolment-groups-toggle')
-      if (await toggle.isVisible()) await toggle.click()
-      await page.locator(`[data-group-id="${ages}"]`).click()
-      await expect(page.getByTestId('enrolment-outside-warning')).toBeVisible()
-      await expect(page.getByTestId('enrolment-group-choose-for-us')).toBeVisible()
+      const toOutsideGroup = async (): Promise<void> => {
+        await fillStepOne(page, `${String(birthYear)}-03-14`)
+        const matching = page.getByTestId('enrolment-groups-matching')
+        await expect(matching.locator(`[data-group-id="${team}"]`)).toHaveAttribute('data-fit', 'fits')
+        const toggle = page.getByTestId('enrolment-groups-toggle')
+        if (await toggle.isVisible()) await toggle.click()
+        await page.locator(`[data-group-id="${ages}"]`).click()
+        await expect(page.getByTestId('enrolment-outside-warning')).toBeVisible()
+        await expect(page.getByTestId('enrolment-group-choose-for-us')).toBeVisible()
+      }
+      await toOutsideGroup()
       await expectNoPageOverflow(page, 375)
       Object.assign(
         violations,
-        await scanInColorSchemes(page, testInfo, `/p/[club]/sections/[section]/apply step 2 (${locale})`, async () => {
-          await expect(page.getByTestId('enrolment-outside-warning')).toBeVisible()
-        }),
+        await scanInColorSchemes(
+          page,
+          testInfo,
+          `/p/[club]/sections/[section]/apply step 2 (${locale})`,
+          toOutsideGroup,
+        ),
       )
       await page.locator(`[data-group-id="${team}"]`).click()
       await page.getByTestId('enrolment-next').click()

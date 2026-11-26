@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { calendarDate, createClub, createPerson, uniqueSuffix } from '../_fixtures/club'
 import { create as createStructure } from '../_fixtures/club-structure'
-import { emailsTo } from '../_fixtures/communication'
+import { awaitEmails, emailsTo } from '../_fixtures/communication'
 import { publicCall } from '../_fixtures/declaration-links'
 import {
   CONFIRM_SUBJECT,
@@ -117,7 +117,7 @@ test('TEST-J03 confirmation link, waiting list on a full group, honeypot and the
     const again = await confirmApplication(clubSlug, second)
     expect(again.status, again.text).toBe(410)
     expect(again.body?.code).toBe('token_link_used')
-    const received = emailsTo(email, RECEIVED_SUBJECT)
+    const received = await awaitEmails(email, RECEIVED_SUBJECT)
     expect(received).toHaveLength(1)
     expect(received[0].text).toContain('number 1')
     const waiting = await listApplications(request, admin, { tab: 'waiting' })
@@ -155,7 +155,7 @@ test('TEST-J03 confirmation link, waiting list on a full group, honeypot and the
       statuses.push(result.status)
     }
     expect(statuses).toEqual([202, 202, 202, 202, 202, 429])
-    expect(emailsTo(flood, CONFIRM_SUBJECT).length).toBeGreaterThanOrEqual(5)
+    expect((await awaitEmails(flood, CONFIRM_SUBJECT, 5)).length).toBeGreaterThanOrEqual(5)
   } finally {
     await other.cleanup()
     await club.cleanup()
