@@ -4,7 +4,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { Session, User } from '@open-mercato/core/modules/auth/data/entities'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import { holdsSecondFactorRequirement } from './gate'
+import { holdsSecondFactorRequirement } from './requirement'
 
 export type OperatorScope = { tenantId: string; organizationId: string }
 

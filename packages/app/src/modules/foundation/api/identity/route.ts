@@ -11,7 +11,7 @@ import { listIdentities } from '../../services/identity-links'
 import { providerConfig } from '../../services/identity-providers'
 import { commandContextForRequest, errorResponse } from '../../services/route-context'
 import { resolveScope } from '../../services/scope-contract'
-import { holdsSecondFactorRequirement } from '../../second-factor/gate'
+import { holdsSecondFactorRequirement } from '../../second-factor/requirement'
 import { identityErrorSchema, identityListSchema, sessionHasFeatures } from './shared'
 
 export const metadata = {

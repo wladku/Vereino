@@ -36,6 +36,24 @@
     },
     "/api/foundation/identity/providers": {
       "GET": { "probe": "read" }
+    },
+    "/api/foundation/second-factor/resend": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Mails a new code for the caller's own sign-in challenge: it accepts only a provisional mfa_pending token, whose challenge marker must match its user, session, tenant and organization, and names no record. TEST-2F01 covers it."
+      }
+    },
+    "/api/foundation/second-factor/reset": {
+      "POST": {
+        "probe": "foreign-id",
+        "body": { "userId": "$B:treasurerUser", "note": "isolation probe" }
+      }
+    },
+    "/api/foundation/second-factor/verify": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Completes the caller's own sign-in challenge: it accepts only a provisional mfa_pending token, whose challenge marker must match its user, session, tenant and organization; the body holds only the six-digit code. TEST-2F01 covers it."
+      }
     }
   }
 }

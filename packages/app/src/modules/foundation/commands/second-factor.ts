@@ -17,7 +17,7 @@ import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { SECOND_FACTOR_METHOD } from '../lib/second-factor'
 import { authorizeScoped } from '../services/authorize-scoped'
-import { holdsSecondFactorRequirement } from '../second-factor/gate'
+import { holdsSecondFactorRequirement } from '../second-factor/requirement'
 
 export const SECOND_FACTOR_RESOURCE_KIND = 'foundation.second_factor'
 

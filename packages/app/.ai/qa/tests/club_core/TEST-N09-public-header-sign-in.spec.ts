@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { capturedCount, finishSignInOnPage, getAuthToken } from '../_fixtures/auth'
 import { listOccurrences, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { call, createClub, uniqueSuffix } from '../_fixtures/club'
@@ -227,7 +227,10 @@ test('TEST-N09 public header on every public page and the club on the sign-in pa
     expect(reset.status, JSON.stringify(reset.body)).toBe(200)
     await page.locator('#email').fill(club.tenant.email)
     await page.locator('#password').fill(password)
+    const since = capturedCount(club.tenant.email)
     await page.locator('form[data-auth-ready="1"] button[type="submit"]').click()
+    // The club administrator finishes with the e-mailed code (staff second factor, #736).
+    await finishSignInOnPage(page, club.tenant.email, since)
     await expect(page).not.toHaveURL(/\/login/)
     expect((await clubCookie(page))?.value).toBe(slug)
     // A new password ends the user's API tokens (lesson `sign-in-browser-ends-the-api-token`).

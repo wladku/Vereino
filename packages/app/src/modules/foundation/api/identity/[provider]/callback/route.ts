@@ -42,7 +42,7 @@ import {
 import { exchangeCode, providerConfig } from '../../../../services/identity-providers'
 import { SECOND_FACTOR_USE_GOOGLE_PATH, providerCountsAsSecondFactor } from '../../../../lib/second-factor'
 import { reportSecondFactor } from '../../../../second-factor/challenge'
-import { holdsSecondFactorRequirement } from '../../../../second-factor/gate'
+import { holdsSecondFactorRequirement } from '../../../../second-factor/requirement'
 import { commandContextForRequest } from '../../../../services/route-context'
 import { providerParamsSchema } from '../../shared'
 

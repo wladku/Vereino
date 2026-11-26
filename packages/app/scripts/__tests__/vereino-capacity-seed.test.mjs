@@ -22,6 +22,8 @@ import {
   runSeed,
   seedClub,
   signIn,
+  captureText,
+  latestSignInCode,
   waitForRole,
 } from '../vereino-capacity-seed.mjs'
 import { createApi } from '../vereino-capacity-lib.mjs'
@@ -127,6 +129,51 @@ test('signIn posts the form and answers the token; a non-200 answer throws', asy
   await assert.rejects(signIn(call, 'a@b.test', 'x'), /sign in a@b\.test: HTTP 401 \{"error":"bad"\}/)
   const ok = createApi({ baseUrl: 'http://app', fetchImpl: fakeApp().fetchImpl })
   assert.equal(await signIn(ok, 'a@b.test', 'x'), 'tok:a@b.test')
+})
+
+test('latestSignInCode answers the newest code of the address, or null (#736)', () => {
+  const lines = [
+    JSON.stringify({ to: 'a@b.test', subject: 'Your Vereino sign-in code: 111 111' }),
+    'not json',
+    JSON.stringify({ to: 'other@b.test', subject: 'Your Vereino sign-in code: 999 999' }),
+    JSON.stringify({ to: 'a@b.test', subject: 'Welcome' }),
+    JSON.stringify({ to: 'a@b.test', subject: 'Twój kod logowania do Vereino: 222 333' }),
+  ].join('\n')
+  assert.equal(latestSignInCode(lines, 'a@b.test'), '222333')
+  assert.equal(latestSignInCode(lines, 'none@b.test'), null)
+})
+
+test('captureText reads the capture file of the environment, empty when it is missing', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'capacity-capture-'))
+  const file = path.join(dir, 'capture.jsonl')
+  assert.equal(captureText({ OM_TEST_EMAIL_CAPTURE_PATH: file }), '')
+  fs.writeFileSync(file, 'line\n')
+  assert.equal(captureText({ OM_TEST_EMAIL_CAPTURE_PATH: ` ${file} ` }), 'line\n')
+  assert.equal(typeof captureText({}), 'string')
+  fs.rmSync(dir, { recursive: true, force: true })
+})
+
+test('signIn completes a second-factor challenge with the captured code (#736)', async () => {
+  const capture = JSON.stringify({ to: 'admin@b.test', subject: 'Your Vereino sign-in code: 482 913' })
+  const app = fakeApp({
+    'POST /api/auth/login': () => reply(200, { token: 'provisional', secondFactor: { method: 'email_code' } }),
+    'POST /api/foundation/second-factor/verify': (_url, init) => {
+      assert.equal(init.headers.authorization, 'Bearer provisional')
+      assert.deepEqual(JSON.parse(init.body), { code: '482913' })
+      return reply(200, { ok: true, token: 'full' })
+    },
+  })
+  const call = createApi({ baseUrl: 'http://app', fetchImpl: app.fetchImpl })
+  assert.equal(await signIn(call, 'admin@b.test', 'x', () => capture), 'full')
+  await assert.rejects(signIn(call, 'admin@b.test', 'x', () => ''), /no sign-in code in the e-mail capture/)
+  const refused = createApi({
+    baseUrl: 'http://app',
+    fetchImpl: fakeApp({
+      'POST /api/auth/login': () => reply(200, { token: 'provisional', secondFactor: {} }),
+      'POST /api/foundation/second-factor/verify': () => reply(400, { code: 'second_factor_code_invalid' }),
+    }).fetchImpl,
+  })
+  await assert.rejects(signIn(refused, 'admin@b.test', 'x', () => capture), /second factor admin@b\.test: HTTP 400/)
 })
 
 test('passwordAndToken sets the seed password and signs in', async () => {

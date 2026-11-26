@@ -12,6 +12,7 @@
 import { spawnSync } from 'node:child_process'
 import { randomBytes } from 'node:crypto'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { clubDay, clubSlug, createApi, parseArgs, pool, sleep } from './vereino-capacity-lib.mjs'
@@ -141,14 +142,42 @@ function expectStatus(result, wanted, what) {
   return result.body
 }
 
-/** Signs in with e-mail and password (form-encoded, as the login page does) and answers the token. */
-export async function signIn(call, email, password) {
+/** The `OM_TEST_MODE` e-mail capture of the capacity stack (the platform's default path when unset). */
+export function captureText(env = process.env) {
+  const file = env.OM_TEST_EMAIL_CAPTURE_PATH?.trim() || path.join(os.tmpdir(), 'open-mercato-email-capture.jsonl')
+  return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : ''
+}
+
+/** The newest sign-in code e-mailed to `email` in a capture (its subject ends with `123 456`), or null. */
+export function latestSignInCode(text, email) {
+  const codes = text
+    .split(/\r?\n/)
+    .filter((line) => line.trim().startsWith('{'))
+    .map((line) => JSON.parse(line))
+    .filter((entry) => entry.to === email)
+    .map((entry) => /(\d{3}) (\d{3})\s*$/.exec(String(entry.subject)))
+    .filter((match) => match !== null)
+  const last = codes.at(-1)
+  return last ? `${last[1]}${last[2]}` : null
+}
+
+/**
+ * Signs in with e-mail and password (form-encoded, as the login page does) and answers the token. A club administrator
+ * and the super-admin get a second-factor challenge (#736): the code comes from the stack's `OM_TEST_MODE` e-mail
+ * capture (`readCapture`), and `verify` answers the full token.
+ */
+export async function signIn(call, email, password, readCapture = captureText) {
   const form = new URLSearchParams({ email, password })
   const result = await call('POST', '/api/auth/login', {
     form: form.toString(),
     headers: { 'content-type': 'application/x-www-form-urlencoded' },
   })
-  return String(expectStatus(result, [200], `sign in ${email}`).token)
+  const body = expectStatus(result, [200], `sign in ${email}`)
+  if (!body.secondFactor) return String(body.token)
+  const code = latestSignInCode(readCapture(), email)
+  if (!code) throw new Error(`sign in ${email}: no sign-in code in the e-mail capture (run the stack with OM_TEST_MODE=1)`)
+  const verified = await call('POST', '/api/foundation/second-factor/verify', { token: String(body.token), json: { code } })
+  return String(expectStatus(verified, [200], `second factor ${email}`).token)
 }
 
 /** Sets the seeded password on a user (as the invitation link would) and signs in. */

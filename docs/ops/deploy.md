@@ -319,6 +319,40 @@ limits remain (`docs/compliance/asvs-requirements.md`, V6.2.x):
   upper-case letter and a special character) until the app-owned check of #779 replaces them.
 - No check against common or breached passwords or against club words exists yet (#779).
 
+### Staff second factor
+
+Club administrators, treasurers and the platform super-admin sign in with Google or with the password and a six-digit
+code e-mailed to the account's address (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, #736). It holds only
+while these are true:
+
+- **Transactional e-mail works.** The code is the fallback's only channel; while the provider is down the sign-in of
+  staff without Google answers 503 and the logs show `foundation.second_factor.unavailable` (fail closed). The
+  operator's own sign-in needs a working mailbox too.
+- **`OM_AUTOLOGIN_*` stays unset** (variables above): autologin issues a session without any factor.
+- **The smoke account holds no staff role**: a club administrator or treasurer gets a code instead of a session, so
+  the `no-store` check could not sign in.
+
+The release that ships phase 1 (and any environment set up before it) runs, in this order:
+
+1. `yarn mercato foundation sync-role-acls-if-changed` (the [role ACL sync](#role-acl-sync), part of every deploy):
+   the club administrator and treasurer roles of existing clubs get `foundation.second_factor.required` and the
+   administrator `foundation.second_factor.reset`. Until it ran, existing clubs are not challenged.
+2. For each club: `yarn mercato foundation second-factor end-sessions --tenant <tenantId> --org <organizationId>`. It
+   ends the sessions of every user holding the requirement, so a session issued before the release cannot outlive it
+   (Q-2F05); it prints the counts and a repeat finds nothing. The platform super-admin's tenant is one of these runs.
+
+**A lost factor.** A club administrator resets another staff member on the person record (Account → Sign-in
+methods → Reset second factor) after verifying them, for example by calling back the number on the record. For the
+last administrator of a club, or the super-admin, the operator verifies the person by their own procedure and runs:
+
+```bash
+yarn mercato foundation second-factor reset --tenant <tenantId> --org <organizationId> \
+  --email <the person's e-mail> --note "<how the person was verified>"
+```
+
+It removes the person's sign-in identities and ends all their sessions; the note goes to the command log. Record the
+reset, without the person's e-mail, in the run log of the support case.
+
 ## After every deploy
 
 1. Run the smoke check against the environment:

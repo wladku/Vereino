@@ -4,13 +4,10 @@
 // `refreshToken` through: it opens a challenge for the platform's session, e-mails the code and answers with a
 // provisional `mfa_pending` token for that same session (V-2F01: the platform refuses it everywhere but the two
 // completion routes). Every refusal deletes the platform session first (fail closed, REQ-2F05).
-import type { AwilixContainer } from 'awilix'
 import { NextResponse } from 'next/server'
-import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { signJwt, verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { parseBooleanToken } from '@open-mercato/shared/lib/boolean'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
-import { SECOND_FACTOR_REQUIRED_FEATURE } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
 import { emitFoundationEvent } from '../events'
 import {
@@ -36,19 +33,10 @@ import {
   sendCodeEmail,
   storeChallenge,
 } from './challenge'
+import { holdsSecondFactorRequirement } from './requirement'
 
 /** The marker on a gate answer that tells the wrapper not to clear the account's sign-in counter. */
 export const PROVISIONAL_HEADER = 'x-vereino-second-factor'
-
-/** True when the user holds the requirement in the scope of the token the platform just issued. */
-export async function holdsSecondFactorRequirement(
-  container: AwilixContainer,
-  userId: string,
-  scope: { tenantId: string | null; organizationId: string | null },
-): Promise<boolean> {
-  const rbac = container.resolve<RbacService>('rbacService')
-  return rbac.userHasAllFeatures(userId, [SECOND_FACTOR_REQUIRED_FEATURE], scope)
-}
 
 /** The coded refusal of the gate, without any session cookie. */
 export async function secondFactorRefusal(code: FoundationErrorCode, details?: Record<string, unknown>) {

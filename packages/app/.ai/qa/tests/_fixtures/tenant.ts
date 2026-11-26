@@ -2,7 +2,8 @@
 // every test creates its own tenant, organization, role and user through the API and removes them
 // in `finally`, so no test relies on seed or demo data.
 import type { APIRequestContext } from '@playwright/test'
-import { apiRequest, getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { apiRequest } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from './auth'
 import {
   createOrganizationFixture,
   createRoleFixture,

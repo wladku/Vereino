@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { addDays, createActivity } from '../_fixtures/activities'
 import { expectNoPageOverflow } from '../_fixtures/axe'
 import {
