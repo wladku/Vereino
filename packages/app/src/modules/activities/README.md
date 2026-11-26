@@ -198,6 +198,7 @@ E10-S08 (groups and activities parity spec phase 8, REQ-A10, TEST-A16, AC-A12; J
 - `confirm` kinds: participants (the group's roster on the date plus anyone with a row) who answered themselves — `source` `app` or `link`, `declaration_status` `final`, `declared` `yes`/`no`, `declared_at` before `start_at` — over all participants. `absence_only` kinds: actual absences reported as `no` the same way over all actual absences. The headline adds numerators and denominators; staff entries never count. A section without a `done` session has `sessions: 0` ("No completed sessions").
 - Reach: `activities.reports.view` — the administrator every live section, a coordinator their sections; anyone else 403. Counts only, no names. The same read serves the coordinator's phone view (E27-S02).
 - `/backend/activities/reports/declaration-share` ("Declarations in Vereino", Classes group).
+- `/club/reports/declaration-share` (E27-S02, #819; D29): the same read on the phone, one card per section of the caller's reach, with the panel's texts (`declarationShareText`). More → Declarations in Vereino for holders of `activities.reports.view` (a coordinator, the administrator); a coach has no entry, and the page answers the route's 403 with its own refusal naming who sees the report (E20-S10). The query takes `from`/`to` only: a `sectionId` in the URL is ignored and never widens the reach.
 
 ## PZPN exports (E24-S04, #684)
 
