@@ -33,37 +33,39 @@ B-26 zone week preview; dashboard tiles; new data, filters or permissions; a yea
 
 ## Progress
 
+PR: #796
+
 > Convention: `- [ ]` pending, `- [x]` done. Append ` — <commit sha>` when a step lands. Do not rename step titles.
 
 ### Phase 1: Shared range rules and control
 
-- [ ] 1.1 calendar-range.ts with TEST-W01
-- [ ] 1.2 CalendarRangeSwitch with TEST-W02 and a story
+- [x] 1.1 calendar-range.ts with TEST-W01 — 706fedb1
+- [x] 1.2 CalendarRangeSwitch with TEST-W02 and a story — 706fedb1
 
 ### Phase 2: P-04 public facility calendar
 
-- [ ] 2.1 Public schedule read from/to with TEST-W03
-- [ ] 2.2 PublicScheduleView Day / Week / Month with TEST-W04
+- [x] 2.1 Public schedule read from/to with TEST-W03 — db038340
+- [x] 2.2 PublicScheduleView Day / Week / Month with TEST-W04 — db038340
 
 ### Phase 3: M-03 member calendar
 
-- [ ] 3.1 ClubCalendarPage on the shared control with TEST-W05
+- [x] 3.1 ClubCalendarPage on the shared control with TEST-W05 — b22735b5
 
 ### Phase 4: B-23 and M-11 facility calendars
 
-- [ ] 4.1 Week axes and month list components
-- [ ] 4.2 FacilityCalendar and ClubPlacePage on the shared control with TEST-W06
+- [x] 4.1 Week axes and month list components — e80751ac
+- [x] 4.2 FacilityCalendar and ClubPlacePage on the shared control with TEST-W06 — e80751ac
 
 ### Phase 5: B-15 coordinator calendar
 
-- [ ] 5.1 CoordinatorCalendar address state and shared control with TEST-W07
+- [x] 5.1 CoordinatorCalendar address state and shared control with TEST-W07 — e6e20599
 
 ### Phase 6: Close-out
 
-- [ ] 6.1 Older integration tests updated for the new defaults and testids
-- [ ] 6.2 yarn verify and yarn guard green
-- [ ] 6.3 Spec status and changelog, lessons
-- [ ] 6.4 Review pass and PR summary
+- [x] 6.1 Older integration tests updated for the new defaults and testids — cfeb8949
+- [x] 6.2 yarn verify and yarn guard green — d2f4f7f1
+- [x] 6.3 Spec status and changelog, lessons — 707cb53f
+- [x] 6.4 Review pass and PR summary — d2f4f7f1
 
 ## Steps taken
 
@@ -102,15 +104,52 @@ B-26 zone week preview; dashboard tiles; new data, filters or permissions; a yea
   The grid's English week starts on Sunday; the read covers Sunday to Sunday so both locales show their sessions.
 - The week fixtures (`showCalendarWeekOf`, E06-S18 `showMonthOf`) now start from the address's `date`, since a reload
   keeps the view.
+- Review (independent subagent on the diff) found three bugs, all fixed in `d2f4f7f1`: B-15's grid started English
+  weeks on Sunday (now Monday in every language through the platform's exported `scheduleLocales` registry, DD-W04;
+  the read is the grid's dates); the grid's own drill-down pushed several wrong ranges (now a no-op, the switch is the
+  only navigation); P-04 computed its window from the browser's date, which could ask the club-zone server for a
+  day outside its window (now `publicSafeWindow`, a day inside on both ends).
+- The week columns' day links carry the long date as screen-reader text after the visible text (axe
+  `label-content-name-mismatch` on an `aria-label`).
 
 ## Files changed
 
-(filled in at the end)
+- `packages/ui/src/member/calendar-range.ts`, `calendar-range-switch.tsx`, `index.ts`, their tests, a story and its
+  catalogs.
+- `facilities`: `lib/public-schedule.ts`, `lib/public-range.ts`, `lib/public-load.ts`, `lib/error-codes.ts`,
+  `lib/day-axis.ts`, `lib/internal-bookings.ts` (+ tests); `api/public-shared.ts`, the public schedule route;
+  `services/public-schedule.ts`; `components/public/PublicScheduleView.tsx`, `public-client.ts`;
+  `components/FacilityCalendar.tsx`, `club-places/ClubPlacePage.tsx`, `day-axis/DayAxis.tsx`, `DayEntries.tsx`,
+  `RangeDays.tsx`; `i18n/en.json`, `pl.json`.
+- `activities`: `lib/member-calendar.ts`, `lib/coordinator-calendar.ts`, `lib/occurrence-list.ts` (+ tests);
+  `components/club/ClubCalendarPage.tsx`, `components/CoordinatorCalendar.tsx`; `i18n/en.json`, `pl.json`.
+- Integration tests: new TEST-W03…W07; updated TEST-028, TEST-R16, E06-S18, ISSUE-493, TEST-A19, E06-S12, TEST-R03,
+  TEST-R04, TEST-R07, TEST-R11, TEST-R19, E08-S02, E20-S13, `_fixtures/activities.ts`, `_fixtures/public-places.ts`.
+- `.ai/specs/implemented/2026-11-25-vereino-calendar-range-switch.md` (moved, status), its changelog entry, D-040
+  path; lesson `a-cap-of-n-days-counts-club-days-not-24-hour-blocks`; this log.
 
 ## Commands and results
 
-(filled in as the run goes)
+- `packages/ui` `yarn test` — 286 passed, 100 % lines/branches/functions; app jest on the changed `lib` folders —
+  all passed, 100 % on every changed lib file.
+- `yarn test:integration:vereino --filter <id>` (one id per run, first with a build, then `--no-build`):
+  TEST-W03, TEST-W04, TEST-W05, TEST-W06, TEST-W07 passed. Older: TEST-028, TEST-R16, TEST-039, TEST-N09, E06-S18,
+  ISSUE-493, E06-S12, TEST-R03, TEST-R04, TEST-R07, TEST-R11, TEST-R19, E08-S02, E20-S13, TEST-R12, TEST-R18, E08-S03,
+  TEST-R13, TEST-R15, E08-S01, E03-S04, ISSUE-140, TEST-489, TEST-A16, J-002, E06-S19, E09-S05, TEST-R20, TEST-A19,
+  TEST-014, E20-S12, E09-S04, E06-S14 passed.
+- Failures on the way, fixed: TEST-W06 `getByRole('heading')` strict mode (2 headings); axe
+  `label-content-name-mismatch` on the week day links (7 nodes); a URL regex assuming parameter order; ISSUE-493 and
+  TEST-A19 expected the upcoming list as the phone default; TEST-W07 on the pre-fix build: `Expected: "2026-11-30"
+  Received: "2026-11-29"` (Sunday-first English grid), green after the fix and a rebuild.
+- `yarn verify` — first run failed at lint (React Compiler "Existing memoization could not be preserved" on two
+  manual memos, `restrict-template-expressions`, `no-unnecessary-type-assertion`, `no-confusing-void-expression`), then
+  ds:check (inline style, then an arbitrary Tailwind value), glossary:check ("zajęć" → "terminów"), qa-texts:check (a
+  literal weekday regex); after the fixes all 23 steps passed, twice (last after the review fixes).
+- `yarn guard` — no blocking findings.
 
 ## Open problems / next steps
 
-(filled in at the end)
+- B-15's Monday week is set by replacing entries of the platform's exported `scheduleLocales` registry at module load;
+  it affects every installed schedule grid in this app (all of which should follow DD-W04). If the platform later
+  exposes a week-start option, use it instead.
+- QA in the browser on the sandbox (light/dark, 375 px) by the owner after merge; `needs-qa` is set.
