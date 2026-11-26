@@ -66,8 +66,33 @@
 - TEST-2F02 first failed with `net::ERR_CONNECTION_REFUSED`: a Tab from the e-mail field reached the injected Google
   link; the test now presses Enter in the password field.
 - Final: TEST-2F01, TEST-2F02, TEST-2F03, TEST-2F04 each passed locally (`1 passed`).
+- `yarn verify`: first run failed at `lint` (34 errors in the new files: MikroORM imports outside `services/**`,
+  redundant `String()`, void-returning arrow shorthands, `React.FormEvent`, a raw `<a>`), then `secrets:check`
+  (fixture fallback password literal, real-looking e-mails in a unit test), `format:check`, `i18n:check-hardcoded`
+  (`send timed out` without `[internal]`) and `test` (the foundation error-code table test); each fixed and resumed
+  with `--from`; every step passed.
+- Regression: every touched spec file, one per run (`node scripts/vereino-ephemeral.mjs test --filter <file>`), 130
+  files (121 touched specs, the four new ones, the identity specs, `ISSUE-628`): 129 passed first time; TEST-R10 failed
+  with `[internal] no request row for the token` because an untracked `packages/app/.env`, copied from `.env.example` by
+  a `yarn mercato` call (lesson `mercato-cli-writes-env-and-storage`), gave the app another token-hash secret than the
+  test process; with the file removed it passed. The first loop stopped at the 2-hour limit after 93 files; the rest
+  ran in a second loop.
+- Merged `main` (4 commits: #812 password check, #802 cross-site API check, #795, #824): conflicts in
+  `foundation/lib/error-codes.ts`, its test (both tables kept) and the ASVS summary counts (recomputed from the rows;
+  V3 was stale on `main` too). Three new specs (TEST-089, TEST-PW01, TEST-PW02) imported the platform's `getAuthToken`
+  and now use the fixture. `yarn verify` on the merged tree: `lint` ran out of the default 4 GB Node heap three times
+  (`FATAL ERROR: Ineffective mark-compacts near heap limit`, also after removing `coverage/`, `storage/` and test
+  results); with `NODE_OPTIONS=--max-old-space-size=8192` all steps passed. `yarn guard`: no blocking findings.
+- After the merge: TEST-2F01…2F04, TEST-089, TEST-PW01, TEST-PW02, ISSUE-744, TEST-M07 passed; TEST-2F02 was flaky
+  once (a 401 console error from clearing cookies on an open `/backend` page); it now leaves the page first
+  (`signOutBrowser`) and passed.
 
 ## Open problems and next steps
+
+- The `lint` step has no heap flag (build and typecheck use 8 GB); on this server it now exceeds Node's default heap.
+  A follow-up should give it `--max-old-space-size` like the others.
+- Specs added later must import `getAuthToken` from `_fixtures/auth`, not the platform helper, or a staff sign-in
+  stops at the challenge; a lint rule for the QA tree would keep that from drifting.
 
 - Phase 2 (Google required when connected, profile line, unlink routing) is a separate PR; `Closes #736` belongs there.
 - The rollout steps of `docs/ops/deploy.md` → *Staff second factor* run with the release that ships this PR.

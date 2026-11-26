@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { capturedCount, waitForCode } from '../../_fixtures/auth'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../../_fixtures/axe'
 import { createClub } from '../../_fixtures/club'
+import { signOutBrowser } from '../../_fixtures/club-structure'
 import { uiText, uiTextIn } from '../../_fixtures/ui-text'
 import { wrongCode } from './_fixtures/second-factor'
 
@@ -50,7 +51,8 @@ test('TEST-2F02 the code page works by keyboard at 375 px in both languages and 
     await expect(page.getByText(uiText('foundation.secondFactor.login.expired', { exact: true }))).toBeVisible()
 
     for (const locale of ['en', 'pl'] as const) {
-      await page.context().clearCookies()
+      // Leave `/backend` before the cookies go (lesson `leave-backend-page-before-clearing-cookies`).
+      await signOutBrowser(page)
       await setGuestLocale(page, locale)
       const since = capturedCount(email)
       await typeSignIn(page, email, club.tenant.password)
