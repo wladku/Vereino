@@ -5,6 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { expect, test, type APIRequestContext } from '@playwright/test'
 import JSZip from 'jszip'
+import { createCacheService, runWithCacheTenant } from '@open-mercato/cache'
 import { clearAuthTokenCache, getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { deleteOrganizationIfExists, deleteUserIfExists } from '@open-mercato/core/helpers/integration/authFixtures'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
@@ -25,7 +26,9 @@ import { getSettings, png, publicGet, publish, upload } from '../_fixtures/publi
 // without a tenant (the platform allows a null `tenant_id` there) is exported, deleted with the club and restored
 // (#681), and an export whose checksum file already exists is refused before it writes the archive. The archive is
 // untrusted (#806): a user role naming a role outside it is refused, and an archive edited to grant the club's roles
-// the super-admin flag and instance-wide features is restored without them.
+// the super-admin flag and instance-wide features is restored without them. A cache entry of each club in the shared
+// cache store survives the dry run; `delete-club` clears club A's and leaves club B's (#850: a deleted club's pending
+// one-off BullMQ jobs are not deleted, they find no rows and end).
 test.describe.configure({ timeout: 900_000 })
 
 type Cli = { exitCode: number | null; output: Record<string, unknown> | null }
@@ -128,6 +131,24 @@ async function tenantlessPreferences(userId: string): Promise<number> {
     )
     return Number(rows[0]?.count ?? 0)
   })
+}
+
+/** The cache key TEST-M07 seeds for each club, in the club's tenant scope of the cache store the app shares. */
+const M07_CACHE_KEY = 'm07:club-entry'
+
+/** Whether the shared cache store holds `M07_CACHE_KEY` in `tenantId`'s scope; `seed` writes it first. */
+async function clubCacheEntry(tenantId: string, seed = false): Promise<boolean> {
+  // The app's cache store (sqlite in the ephemeral run) is shared with the CLI; a per-process store proves nothing.
+  expect(process.env.CACHE_STRATEGY ?? 'memory').not.toBe('memory')
+  const cache = createCacheService()
+  try {
+    return await runWithCacheTenant(tenantId, async () => {
+      if (seed) await cache.set(M07_CACHE_KEY, { tenantId }, { tags: ['m07'] })
+      return cache.has(M07_CACHE_KEY)
+    })
+  } finally {
+    await cache.close?.()
+  }
 }
 
 async function moveDeletionDate(tenantId: string): Promise<void> {
@@ -310,10 +331,13 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
 
     // The deletion after the notice: only the tombstone and the deletion's audit entry stay; club B is untouched.
     await moveDeletionDate(clubA.tenantId)
+    expect(await clubCacheEntry(clubA.tenantId, true)).toBe(true)
+    expect(await clubCacheEntry(clubB.tenantId, true)).toBe(true)
     const dry = clubCli(['delete-club', '--slug', slugA, '--confirm', slugA, '--dry-run'])
     expect(dry.output).toMatchObject({ status: 'dry-run' })
     // The administrator's person and Zofia: the dry run deleted nothing.
     expect(await tenantRows(clubA.tenantId)).toMatchObject({ people_persons: 2 })
+    expect(await clubCacheEntry(clubA.tenantId)).toBe(true)
     const deleted = clubCli(['delete-club', '--slug', slugA, '--confirm', slugA])
     expect(deleted.exitCode, JSON.stringify(deleted.output)).toBe(0)
     expect(deleted.output).toMatchObject({
@@ -323,6 +347,9 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
       filesFailed: 0,
       encryptionKey: 'derived',
     })
+    // The club's cache entries are cleared after the commit; another club's stay (Deletion targets item 4).
+    expect(await clubCacheEntry(clubA.tenantId)).toBe(false)
+    expect(await clubCacheEntry(clubB.tenantId)).toBe(true)
     expect(await tenantRows(clubA.tenantId)).toEqual({ action_logs: 1, club_core_club_settings: 1 })
     const leftovers = await withClient(async (client) => {
       const tenant = await client.query(`select id from tenants where id = $1`, [clubA.tenantId])
