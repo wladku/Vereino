@@ -34,6 +34,11 @@ export type RoleDefinition = {
   readonly implies?: readonly VereinoRole[]
   /** The record a role assignment must name: a section for a coordinator, a place for a facility attendant. */
   readonly requiresScope?: 'section' | 'place' | null
+  /**
+   * A role that alone keeps the member session lifetime (ENG-Q-12, `staff-session.ts`): an account holding only such
+   * roles is no staff account. Every other role, a platform role included, makes the account a staff one.
+   */
+  readonly memberSession?: true
 }
 
 export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
@@ -165,11 +170,13 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     // `foundation.identity.self` (#566): own social sign-in identities follow `people.self`.
     features: ['people.self', 'foundation.identity.self', 'activities.attendance.declare', 'communication.view'],
     requiresScope: null,
+    memberSession: true,
   },
   payer: {
     authRole: 'vereino_payer',
     features: ['payments.view_own', 'payments.pay_online', 'payments.orders.place'],
     requiresScope: null,
+    memberSession: true,
   },
   maintenance_planner: {
     authRole: 'vereino_maintenance_planner',
