@@ -74,7 +74,17 @@
   `lib/email-change.ts` in the production server bundles. Fixes: page-route override in `src/modules.ts`;
   `Symbol.for(...)`.
 - Third run: the app never became ready — the CLI bootstrap compiles `src/modules.ts` with esbuild and could not
-  bundle the page import. Fix: `applyPageRouteOverrides` in `src/backend-page-overrides.ts`. Fourth run: see below.
+  bundle the page import. Fix: `applyPageRouteOverrides` in `src/backend-page-overrides.ts`.
+- Fourth run: **1 passed**. `--filter E06-S22` (opens the replaced change-password page): **1 passed**.
+- `yarn verify`: first failed at `secrets:check` (literal passwords in test inputs — now generated or
+  whitespace values), then `format:check`, then `test` (`foundation/lib/__tests__/error-codes.test.ts` lists every
+  code); final full run **all 23 steps passed**. `yarn guard`: no blocking findings.
+- Final TEST-737 run on the committed code: passed (rerun after the test-input edits).
+
+## Labels and risk
+
+The issue carries `risk-medium`; the PR is `risk-high` (sessions and auth, SDLC risk table) with `needs-qa` and the
+Polish QA instruction block.
 
 ## Open problems / follow-ups
 
