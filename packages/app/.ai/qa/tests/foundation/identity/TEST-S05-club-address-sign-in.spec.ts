@@ -3,7 +3,7 @@ import { expect, test, type Browser, type Page } from '@playwright/test'
 import { createClub, createStaff, signInAs, uniqueSuffix, type Club } from '../../_fixtures/club'
 import { startClubDomainApp, type ClubDomainApp } from '../../_fixtures/club-domain'
 import { publish } from '../../_fixtures/publication'
-import { startGoogleFake, type GoogleFake } from './_fixtures/google-fake'
+import { startOAuthFake, type OAuthFake } from './_fixtures/google-fake'
 import { STATE_COOKIE, cleanHttp, roundTrip, sessionJar } from './_fixtures/identity'
 
 // TEST-S05 (social sign-in spec DD-S07; many clubs spec phase 3; #700): with `VEREINO_CLUB_DOMAIN` set, "Sign in with
@@ -12,13 +12,13 @@ import { STATE_COOKIE, cleanHttp, roundTrip, sessionJar } from './_fixtures/iden
 // hand-off replayed, opened on another club's address or opened in another browser is refused without a session, and
 // an identity linked in club A that starts on club B's address gets the generic outcome there. A second app process on
 // the same build and database runs with the club domain (as TEST-M03); it inherits the test Google client, so the
-// in-process Google fake answers both processes.
+// in-process OAuth fake answers both processes.
 test.describe.configure({ mode: 'serial', timeout: 600_000 })
 
 type ClubAtAddress = { club: Club; slug: string; origin: string }
 
 let app: ClubDomainApp
-let fake: GoogleFake
+let fake: OAuthFake
 let clubA: ClubAtAddress
 let clubB: ClubAtAddress
 
@@ -98,7 +98,7 @@ const cleanups: Array<() => Promise<void>> = []
 // The describe's `timeout` covers the tests, not the hooks: the hooks set their own budget (#701).
 test.beforeAll(async ({ request }) => {
   test.setTimeout(300_000)
-  fake = await startGoogleFake()
+  fake = await startOAuthFake()
   cleanups.push(() => fake.stop())
   app = await startClubDomainApp()
   cleanups.push(() => app.stop())
