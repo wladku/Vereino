@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { familyFor } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
-import { actionLogs, createClub, getPerson } from '../_fixtures/club'
+import { actionLogs, createClub, getPerson, signInAs } from '../_fixtures/club'
 import { signInBrowser, signOutBrowser } from '../_fixtures/club-structure'
 import { confirmPassword, invitedGuardianOf, pathOf, startLink } from '../_fixtures/invitation-links'
 import { uiText } from '../_fixtures/ui-text'
@@ -42,24 +42,26 @@ test('TEST-IL01 the administrator shares an invitation link and the guardian act
     await expect(dialog.getByTestId('invitation-share-copy')).toBeVisible()
     await page.keyboard.press('Escape')
     await expect(dialog).toHaveCount(0)
+    // `signInBrowser` ended the administrator's API token (lesson `sign-in-browser-ends-the-api-token`).
+    await signOutBrowser(page)
+    const adminToken = await signInAs(request, club, club.adminUserId, club.tenant.email)
 
     // The audit log names the administrator's role and the link's expiry, never the link.
     await expect
       .poll(
         async () =>
-          (await actionLogs(request, club.adminToken, guardian.personId)).filter(
+          (await actionLogs(request, adminToken, guardian.personId)).filter(
             (entry) => entry.commandId === 'people.persons.share_invitation',
           ).length,
       )
       .toBe(1)
-    const entry = (await actionLogs(request, club.adminToken, guardian.personId)).find(
+    const entry = (await actionLogs(request, adminToken, guardian.personId)).find(
       (item) => item.commandId === 'people.persons.share_invitation',
     )
     expect(entry?.context).toMatchObject({ actingRole: 'club_admin' })
     expect(JSON.stringify(entry)).not.toContain(url.split('/club/i/')[1])
 
     // The guardian opens the link without a session: the club and the next step only.
-    await signOutBrowser(page)
     await page.setViewportSize({ width: 375, height: 812 })
     await page.goto(pathOf(url))
     const main = page.getByTestId('invitation-page')
@@ -81,7 +83,7 @@ test('TEST-IL01 the administrator shares an invitation link and the guardian act
     await page.waitForURL(/\/reset\//)
     const resetUrl = page.url()
     await confirmPassword(request, resetUrl)
-    const activated = await getPerson(request, club.adminToken, guardian.personId)
+    const activated = await getPerson(request, adminToken, guardian.personId)
     expect((activated.body as { account?: { state?: string } }).account?.state).toBe('active')
 
     // The link is used: the page shows the invalid state with the club, and the start answers 410.
