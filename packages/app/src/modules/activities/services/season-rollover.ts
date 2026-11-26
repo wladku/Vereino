@@ -116,7 +116,7 @@ async function copyConflicts(
   shape: Awaited<ReturnType<typeof copyShape>>,
 ): Promise<unknown[]> {
   const scope = scopeOf(plan)
-  const clock = await clubClock(container, scope)
+  const clock = await clubClock(container, scope, undefined, em)
   const rule = shape.recurrenceRule
     ? await activityRule({ recurrenceRule: shape.recurrenceRule, startsOn: shape.startsOn })
     : null
@@ -236,7 +236,7 @@ export const seasonContribution: SeasonContributor = {
 
   async apply(em, plan, ctx) {
     const scope = scopeOf(plan)
-    const clock = await clubClock(ctx.container, scope)
+    const clock = await clubClock(ctx.container, scope, undefined, em)
     const rows = await candidateRows(em, plan, ctx.rules)
     const changes: SeasonChange[] = []
     const copies: Record<string, string> = {}

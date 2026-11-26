@@ -175,17 +175,20 @@ export async function campaignNames(
   container: AwilixContainer,
   scope: PaymentsScope,
   campaigns: readonly Pick<OrderCampaign, 'sectionId' | 'groupIds'>[],
+  em?: EntityManager,
 ): Promise<{ sections: Map<string, string>; groups: Map<string, string> }> {
   const [sections, groups] = await Promise.all([
     findSections(
       container,
       scope,
       campaigns.map((campaign) => campaign.sectionId),
+      em,
     ),
     findGroups(
       container,
       scope,
       campaigns.flatMap((campaign) => campaign.groupIds),
+      em,
     ),
   ])
   return {
@@ -489,7 +492,7 @@ export async function campaignMissing(
   withGuardians = false,
 ): Promise<MissingChildRow[]> {
   const reader = em ?? freshEm(container)
-  const { today } = await clubClock(container, scope)
+  const { today } = await clubClock(container, scope, undefined, em)
   const [participants, orders] = await Promise.all([
     campaignParticipants(container, scope, campaign.groupIds, today, reader),
     submittedOrders(reader, scope, [campaign.id]),
@@ -505,7 +508,7 @@ export async function campaignMissing(
       missing.map(([personId]) => personId),
       reader,
     ),
-    campaignNames(container, scope, [campaign]),
+    campaignNames(container, scope, [campaign], em),
   ])
   const guardiansOf = withGuardians
     ? await missingGuardians(

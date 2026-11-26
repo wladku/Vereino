@@ -344,10 +344,15 @@ const endMembershipCommand: CommandHandler<Record<string, unknown>, MembershipCo
       const authorized = await authorizeScoped(existingSpec(membershipEndSchema, ctx), rawInput, ctx, em)
       const row = (authorized.entity as LockedMembership).membership
       const before = membershipSnapshot(row)
-      const today = await clubToday(ctx.container, {
-        tenantId: authorized.tenantId,
-        organizationId: authorized.organizationId,
-      })
+      const today = await clubToday(
+        ctx.container,
+        {
+          tenantId: authorized.tenantId,
+          organizationId: authorized.organizationId,
+        },
+        undefined,
+        em,
+      )
       const validTo = authorized.parsed.validTo ?? today
       // REQ-A03: ending before the first day, or ending a membership that has not started, is a coded 422; such a
       // membership is edited or removed instead.
@@ -417,10 +422,15 @@ const deleteMembershipCommand: CommandHandler<Record<string, unknown>, Membershi
     const result = await inWriteTransaction(ctx, 'groups.memberships.delete', async (em) => {
       const authorized = await authorizeScoped(existingSpec(membershipDeleteSchema, ctx), rawInput, ctx, em)
       const row = (authorized.entity as LockedMembership).membership
-      const today = await clubToday(ctx.container, {
-        tenantId: authorized.tenantId,
-        organizationId: authorized.organizationId,
-      })
+      const today = await clubToday(
+        ctx.container,
+        {
+          tenantId: authorized.tenantId,
+          organizationId: authorized.organizationId,
+        },
+        undefined,
+        em,
+      )
       const used = row.validFrom > today ? null : await membershipUsed(ctx, em, row)
       if (!mayRemoveMembership(row, today, used)) {
         await groupsErrors.throw('membership_in_use', { membershipId: row.id })
@@ -512,10 +522,15 @@ const moveMembershipCommand: CommandHandler<Record<string, unknown>, MembershipM
       }
       const targetGroup = target as Group
       await assertInScope(authorized.scope, GROUP_WRITE_KINDS, groupTarget(targetGroup))
-      const today = await clubToday(ctx.container, {
-        tenantId: authorized.tenantId,
-        organizationId: authorized.organizationId,
-      })
+      const today = await clubToday(
+        ctx.container,
+        {
+          tenantId: authorized.tenantId,
+          organizationId: authorized.organizationId,
+        },
+        undefined,
+        em,
+      )
       const plan = planMove(
         { groupId: row.groupId, validFrom: row.validFrom, validTo: row.validTo ?? null },
         { toGroupId: targetGroup.id, date: parsed.date },
@@ -815,7 +830,7 @@ export async function previewMoveMany(
     const authorized = await authorizeScoped(moveManySpec(ctx), rawInput, ctx, em)
     const { from, target } = authorized.entity as LockedMoveGroups
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-    const today = await clubToday(ctx.container, scope, now)
+    const today = await clubToday(ctx.container, scope, now, em)
     await assertMoveManyRequest(authorized.parsed, target, today)
     const targetGroup = target as Group
     await assertInScope(authorized.scope, GROUP_WRITE_KINDS, groupTarget(targetGroup))
@@ -865,7 +880,7 @@ const moveManyMembershipsCommand: CommandHandler<Record<string, unknown>, MoveMa
       const { from, target } = authorized.entity as LockedMoveGroups
       const { parsed } = authorized
       const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-      const today = await clubToday(ctx.container, scope)
+      const today = await clubToday(ctx.container, scope, undefined, em)
       await assertMoveManyRequest(parsed, target, today)
       const targetGroup = target as Group
       await assertInScope(authorized.scope, GROUP_WRITE_KINDS, groupTarget(targetGroup))

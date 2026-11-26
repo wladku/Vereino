@@ -103,7 +103,17 @@ export type DepartureChange = {
 
 export type DepartureApplyResult = { snapshot: unknown; changes: DepartureChange[] }
 
-export type DepartureCommitContext = { container: AwilixContainer; tenantId: string; organizationId: string }
+export type DepartureCommitContext = {
+  container: AwilixContainer
+  tenantId: string
+  organizationId: string
+  /**
+   * The replay transaction when `afterCommit` runs inside one (undo, and redo of the `atomicReplay` departure). A
+   * contributor reads with `em.fork({ keepTransactionContext: true })` then, not on a second pooled connection, and
+   * so also sees the restored rows (#836); without it, on a fork of the request's EntityManager.
+   */
+  em?: EntityManager
+}
 
 export type DepartureContributor = {
   /** What the departure would end, warn about or be blocked by. Read only. */

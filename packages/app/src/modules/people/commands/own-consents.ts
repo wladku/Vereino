@@ -140,7 +140,7 @@ const setOwnConsentsCommand: CommandHandler<Record<string, unknown>, OwnConsents
       const person = authorized.entity as Person
       const before = snapshotOf(person)
       const scope = { tenantId: person.tenantId, organizationId: person.organizationId }
-      if (!holdsOwnConsents(person.birthDate, await clubToday(ctx.container, scope))) {
+      if (!holdsOwnConsents(person.birthDate, await clubToday(ctx.container, scope, undefined, em))) {
         await peopleErrors.throw('consents_minor')
       }
       const now = new Date()
