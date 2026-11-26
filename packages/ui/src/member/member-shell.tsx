@@ -1,15 +1,16 @@
 // The frame of the member pages (club spec DD-05 *UI architecture*; foundation II P-23; README 3.1; E06-S19 #101): the
 // club's brand and the header switchers (role context, ward), the page body, and the bottom bar Today · Calendar ·
 // Messages · [fourth tab] · More, where More opens Profile, the member destinations the person may open, the admin
-// panel for staff and Sign out (`memberNav`, #258). Framework-free:
+// panel for staff, Install while the browser offers it (D-045, #873) and Sign out (`memberNav`, #258). Framework-free:
 // the router's link component, the navigation (`memberNav`) and every string come in through props. More is a native
 // disclosure (`<details>`), so the shell holds no state; sign-out posts to the installed `auth` logout route, which
 // ends the session and redirects to `/login`; a page restored from the back-forward cache reloads, so Back after
 // sign-out never shows the previous member's page. Every bar target is at least 48 × 48 px.
 import * as React from 'react'
-import { CalendarDays, House, LogOut, MapPin, Menu, MessageSquare, Wallet } from 'lucide-react'
+import { CalendarDays, Download, House, LogOut, MapPin, Menu, MessageSquare, Wallet } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import type { ClubAccent } from '@vereino/core'
+import { MemberInstallLabelContext, promptInstall, useInstallAvailable } from '#src/member/install-prompt'
 import { reloadOnBackForwardRestore } from '#src/member/member-context'
 import { SIGN_OUT_ACTION, type MemberNav, type MemberTabIcon } from '#src/member/member-nav'
 import { clubAccentStyle } from '#src/theme/club-accent-style'
@@ -96,6 +97,27 @@ function Switcher({ switcher }: { switcher: MemberSwitcher }) {
   )
 }
 
+/**
+ * "Install" in More (D-045, #873): shown while the browser offers installation (Chrome, Edge) and the app provides the
+ * label; it opens the browser's own install dialog.
+ */
+function InstallItem() {
+  const label = React.useContext(MemberInstallLabelContext)
+  const available = useInstallAvailable()
+  if (!label || !available) return null
+  return (
+    <button
+      type="button"
+      className={MORE_ITEM_CLASS}
+      data-testid="club-install"
+      onClick={promptInstall}
+    >
+      <Download className="size-4" aria-hidden />
+      <span>{label}</span>
+    </button>
+  )
+}
+
 function BottomBar({
   nav,
   navLabel,
@@ -144,6 +166,7 @@ function BottomBar({
                 {item.label}
               </Link>
             ))}
+            <InstallItem />
             <form method="post" action={SIGN_OUT_ACTION} onSubmit={onSignOut}>
               <button type="submit" className={MORE_ITEM_CLASS} data-testid="club-sign-out">
                 <LogOut className="size-4" aria-hidden />

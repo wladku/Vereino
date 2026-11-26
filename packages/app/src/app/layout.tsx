@@ -3,6 +3,7 @@ import './globals.css'
 import '@/lib/i18n/register-dictionary-loader'
 import { AppProviders } from '@/components/AppProviders'
 import { resolveLocalizedAppMetadata } from '@/lib/metadata'
+import { APPLE_TOUCH_ICON_SIZE, WEB_APP_ICON_PATH } from '@/modules/club_core/lib/web-app'
 import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 import { getPasswordPolicy } from '@open-mercato/shared/lib/auth/passwordPolicy'
 import { PasswordPolicyBridge } from '@/components/PasswordPolicyBridge'
@@ -14,9 +15,15 @@ import { resolveDevRuntimeLayoutConfig } from '@open-mercato/shared/lib/dev-runt
 import { DevRuntimeDiagnosticsBanner } from '@open-mercato/ui/backend/dev/DevRuntimeDiagnosticsBanner'
 import { DevRuntimeReporter } from '@open-mercato/ui/backend/dev/DevRuntimeReporter'
 
-// The tab says "Vereino" and "{page} — Vereino" in every locale, with the Vereino mark as its icon (#485).
+// The tab says "Vereino" and "{page} — Vereino" in every locale, with the Vereino mark as its icon (#485). The home
+// screen icon of an iPhone is the address's app icon (`app-icon/[size]`, D-045, #873); the manifest is linked by
+// `manifest.ts`.
 export async function generateMetadata(): Promise<Metadata> {
-  return { ...(await resolveLocalizedAppMetadata()), icons: { icon: '/vereino-mark.svg' } }
+  return {
+    ...(await resolveLocalizedAppMetadata()),
+    icons: { icon: '/vereino-mark.svg', apple: `${WEB_APP_ICON_PATH}/${String(APPLE_TOUCH_ICON_SIZE)}` },
+    appleWebApp: { capable: true, statusBarStyle: 'default' },
+  }
 }
 
 export default async function RootLayout({

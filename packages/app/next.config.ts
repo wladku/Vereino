@@ -211,6 +211,11 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         ],
       },
       {
+        // The service worker of the installed app (D-045, #873): a browser checks it for a new version on every visit.
+        source: '/sw.js',
+        headers: [{ key: 'Cache-Control', value: 'no-cache' }],
+      },
+      {
         // Marker header consumed by the custom-domain DNS reverse-resolve check
         // (see SPEC 2026-04-08-portal-custom-domain-routing). Lets the verifier
         // tell "request reached our origin" from "request was answered by an

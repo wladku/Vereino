@@ -103,6 +103,7 @@ Stable IDs per `.ai/review-checklist.md` and `.ai/guides/contracts.md` → *Froz
 - **Webhooks:** none enabled (`@open-mercato/webhooks` installed, not in `src/modules.ts`). Planned Stripe webhook via `payment_gateways` (payments spec `2026-10-27-vereino-club-payments.md`, phase 4, S10.8): event handling must stay idempotent; endpoint URL is protected from first deployment.
 - **Queues/workers:** none Vereino-owned. Planned persistent subscribers and scheduler targets (§4) keep payload shape and idempotency keys stable.
 - **`/` and `/start` (platform scaffold routes, #485):** `/` no longer leads to the platform start page; `/start` answers 404 in production (it remains a local-development page). No Vereino link or e-mail ever pointed to `/start`.
+- **Installable web app (#873, additive, D-045):** home screens hold installed copies. The manifest URL `/manifest.webmanifest`, its `id` (`/club`), its `start_url` (`/club`), the worker script `/sw.js` with scope `/` and the icon route `/app-icon/{192|512|180}` stay stable: changing the `id` makes browsers treat it as a different app, and moving `/sw.js` leaves the old worker running on installed copies. A worker change keeps the offline cache name `vereino-offline-*` or deletes the old cache on `activate`. The worker never caches API responses or member pages.
 - **Public URLs:** none Vereino-owned yet. Planned `/p/[clubSlug]/…`, `/club/…` and e-mailed personal links (`/club/o/[token]`); links already sent by e-mail must keep resolving. **Gap:** token lifetime policy.
 
 ## How agents use this file
