@@ -60,7 +60,11 @@ export const ACTIVITY_REPORT_INTERVAL_MS = MINUTE_MS
  * Whether the browser reports activity now: there was activity after the last report and the last report is at least
  * `ACTIVITY_REPORT_INTERVAL_MS` old (or there was none).
  */
-export function activityReportDue(input: { lastActivityAt: number; lastReportAt: number | null; now: number }): boolean {
+export function activityReportDue(input: {
+  lastActivityAt: number
+  lastReportAt: number | null
+  now: number
+}): boolean {
   if (input.lastReportAt === null) return true
   if (input.lastActivityAt <= input.lastReportAt) return false
   return input.now - input.lastReportAt >= ACTIVITY_REPORT_INTERVAL_MS

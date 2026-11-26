@@ -40,7 +40,9 @@ export const openApi: OpenApiRouteDoc = {
       description:
         'Moves the expiry of a staff session to the idle timeout after now, never past 8 hours after sign-in. A member session is left alone.',
       responses: [{ status: 200, description: 'The session state after the report', schema: activitySchema }],
-      errors: [{ status: 401, description: 'Unauthorized or the session expired', schema: z.object({ error: z.string() }) }],
+      errors: [
+        { status: 401, description: 'Unauthorized or the session expired', schema: z.object({ error: z.string() }) },
+      ],
     },
   },
 }

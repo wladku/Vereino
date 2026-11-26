@@ -78,10 +78,22 @@ test('the staff user is idle once the whole timeout passed without activity', ()
 test('an own e-mail change is an update of the actor that carries a different e-mail', () => {
   assert.equal(normalizeLoginEmail('  Anna@Example.COM '), 'anna@example.com')
   const actorId = 'u-1'
-  assert.equal(isOwnEmailChange({ actorId, targetId: 'u-1', email: 'new@example.com', storedEmail: 'old@example.com' }), true)
-  assert.equal(isOwnEmailChange({ actorId, targetId: 'u-1', email: ' OLD@example.com', storedEmail: 'old@example.com' }), false)
+  assert.equal(
+    isOwnEmailChange({ actorId, targetId: 'u-1', email: 'new@example.com', storedEmail: 'old@example.com' }),
+    true,
+  )
+  assert.equal(
+    isOwnEmailChange({ actorId, targetId: 'u-1', email: ' OLD@example.com', storedEmail: 'old@example.com' }),
+    false,
+  )
   assert.equal(isOwnEmailChange({ actorId, targetId: 'u-1', email: 'new@example.com', storedEmail: null }), true)
-  assert.equal(isOwnEmailChange({ actorId, targetId: 'u-2', email: 'new@example.com', storedEmail: 'old@example.com' }), false)
+  assert.equal(
+    isOwnEmailChange({ actorId, targetId: 'u-2', email: 'new@example.com', storedEmail: 'old@example.com' }),
+    false,
+  )
   assert.equal(isOwnEmailChange({ actorId, targetId: 'u-1', email: undefined, storedEmail: 'old@example.com' }), false)
-  assert.equal(isOwnEmailChange({ actorId: null, targetId: 'u-1', email: 'new@example.com', storedEmail: 'old@example.com' }), false)
+  assert.equal(
+    isOwnEmailChange({ actorId: null, targetId: 'u-1', email: 'new@example.com', storedEmail: 'old@example.com' }),
+    false,
+  )
 })

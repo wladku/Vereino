@@ -108,7 +108,7 @@ test('TEST-737 staff sessions end after the idle timeout; an own e-mail change n
 
     // The confirmed route: a wrong password is refused, the right one changes the e-mail.
     const wrong = await call<Coded>(request, 'PUT', '/api/foundation/profile/email', memberLogin.token, {
-      data: { email: newMemberEmail, currentPassword: 'not-the-password' },
+      data: { email: newMemberEmail, currentPassword: `wrong-${uniqueSuffix()}` },
     })
     expect(wrong.status, JSON.stringify(wrong.body)).toBe(400)
     expect(wrong.body?.code).toBe('current_password_invalid')

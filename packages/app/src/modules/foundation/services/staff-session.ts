@@ -64,16 +64,14 @@ export async function recordStaffActivity(
   const session = await findOneWithDecryption(em, Session, { id: sessionId, user: auth.sub, deletedAt: null })
   if (!session || session.expiresAt.getTime() <= now.getTime()) return null
   const expiresAt = staffSessionExpiryAt(session.createdAt, now)
-  await em.nativeUpdate(
-    Session,
-    { id: sessionId, user: auth.sub, deletedAt: null },
-    { expiresAt, lastUsedAt: now },
-  )
+  await em.nativeUpdate(Session, { id: sessionId, user: auth.sub, deletedAt: null }, { expiresAt, lastUsedAt: now })
   return { staff: true, expiresAt: expiresAt.toISOString(), idleTimeoutSeconds: staffIdleMinutes() * 60 }
 }
 
 /** `recordStaffActivity` in a request container of its own (the activity route). */
-export async function recordStaffActivityForRequest(auth: NonNullable<AuthContext>): Promise<StaffActivityResult | null> {
+export async function recordStaffActivityForRequest(
+  auth: NonNullable<AuthContext>,
+): Promise<StaffActivityResult | null> {
   const container = await createRequestContainer()
   return recordStaffActivity(container.resolve<EntityManager>('em').fork(), auth)
 }

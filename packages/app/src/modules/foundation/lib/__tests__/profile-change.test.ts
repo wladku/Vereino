@@ -2,6 +2,8 @@ import { describe, expect, it } from '@jest/globals'
 import { planProfileChange } from '../profile-change'
 
 const STORED = 'anna@example.com'
+// What the user typed into the password fields (no real secrets).
+const TYPED = { current: 'typed current', fresh: 'typed new', other: 'typed other' }
 
 describe('planProfileChange (ENG-Q-12, #737)', () => {
   it('changes nothing when the e-mail stays and no password is typed', () => {
@@ -17,28 +19,33 @@ describe('planProfileChange (ENG-Q-12, #737)', () => {
     expect(planProfileChange(STORED, { email: 'new@example.com' }).issues).toEqual([
       { path: 'currentPassword', messageKey: 'auth.profile.form.errors.currentPasswordRequired' },
     ])
-    expect(planProfileChange(STORED, { email: 'new@example.com', currentPassword: 'secret' })).toEqual({
+    expect(planProfileChange(STORED, { email: 'new@example.com', currentPassword: TYPED.current })).toEqual({
       email: 'new@example.com',
       password: null,
-      currentPassword: 'secret',
+      currentPassword: TYPED.current,
       issues: [],
     })
   })
 
   it('needs the current, the new and the confirmed password for a password change', () => {
-    expect(planProfileChange(STORED, { email: STORED, password: 'n3w-Password!' }).issues).toEqual([
+    expect(planProfileChange(STORED, { email: STORED, password: TYPED.fresh }).issues).toEqual([
       { path: 'currentPassword', messageKey: 'auth.profile.form.errors.currentPasswordRequired' },
       { path: 'confirmPassword', messageKey: 'auth.profile.form.errors.confirmPasswordRequired' },
     ])
-    expect(planProfileChange(STORED, { email: STORED, currentPassword: 'old', confirmPassword: 'x' }).issues).toEqual([
-      { path: 'password', messageKey: 'auth.profile.form.errors.newPasswordRequired' },
+    expect(
+      planProfileChange(STORED, { email: STORED, currentPassword: TYPED.current, confirmPassword: TYPED.fresh }).issues,
+    ).toEqual([{ path: 'password', messageKey: 'auth.profile.form.errors.newPasswordRequired' }])
+    const mismatch = { currentPassword: TYPED.current, password: TYPED.fresh, confirmPassword: TYPED.other }
+    expect(planProfileChange(STORED, { email: STORED, ...mismatch }).issues).toEqual([
+      { path: 'confirmPassword', messageKey: 'auth.profile.form.errors.passwordMismatch' },
     ])
-    expect(
-      planProfileChange(STORED, { email: STORED, currentPassword: 'old', password: 'a', confirmPassword: 'b' }).issues,
-    ).toEqual([{ path: 'confirmPassword', messageKey: 'auth.profile.form.errors.passwordMismatch' }])
-    expect(
-      planProfileChange(STORED, { email: 'new@example.com', currentPassword: 'old', password: 'a', confirmPassword: 'a' }),
-    ).toEqual({ email: 'new@example.com', password: 'a', currentPassword: 'old', issues: [] })
+    const both = { currentPassword: TYPED.current, password: TYPED.fresh, confirmPassword: TYPED.fresh }
+    expect(planProfileChange(STORED, { email: 'new@example.com', ...both })).toEqual({
+      email: 'new@example.com',
+      password: TYPED.fresh,
+      currentPassword: TYPED.current,
+      issues: [],
+    })
   })
 
   it('requires an e-mail', () => {

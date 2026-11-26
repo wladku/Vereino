@@ -14,7 +14,11 @@ import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { LoadingMessage, ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { buildPasswordSchema, formatPasswordRequirements, getPasswordPolicy } from '@open-mercato/shared/lib/auth/passwordPolicy'
+import {
+  buildPasswordSchema,
+  formatPasswordRequirements,
+  getPasswordPolicy,
+} from '@open-mercato/shared/lib/auth/passwordPolicy'
 import { planProfileChange, type ProfileFormValues } from '../lib/profile-change'
 
 type ProfileResponse = { email?: string | null }
@@ -72,7 +76,11 @@ export default function ProfileSettingsPage() {
             })
           : undefined,
       },
-      { id: 'confirmPassword', label: t('auth.profile.form.confirmPassword', 'Confirm new password'), type: 'password' },
+      {
+        id: 'confirmPassword',
+        label: t('auth.profile.form.confirmPassword', 'Confirm new password'),
+        type: 'password',
+      },
     ],
     [passwordRequirements, t],
   )
@@ -142,14 +150,14 @@ export default function ProfileSettingsPage() {
         ) : error ? (
           <ErrorMessage label={error} />
         ) : (
-          <section className="space-y-6 rounded-lg border bg-background p-6" data-testid="vereino-profile-settings">
+          <section className="bg-background space-y-6 rounded-lg border p-6" data-testid="vereino-profile-settings">
             <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="space-y-1">
                 <h2 className="text-lg font-semibold">{t('auth.profile.title', 'Profile')}</h2>
-                <p className="text-sm text-muted-foreground">{t('auth.profile.subtitle', 'Change password')}</p>
+                <p className="text-muted-foreground text-sm">{t('auth.profile.subtitle', 'Change password')}</p>
               </div>
               <Button type="submit" form={formId}>
-                <Save className="size-4 mr-2" aria-hidden="true" />
+                <Save className="mr-2 size-4" aria-hidden="true" />
                 {t('auth.profile.form.save', 'Save changes')}
               </Button>
             </header>

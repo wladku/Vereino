@@ -17,7 +17,9 @@ function signedInClaims(body: Record<string, unknown>): SignedInClaims | null {
   if (typeof token !== 'string' || token === '') return null
   const payload = verifyJwt(token)
   if (!payload || typeof payload.sub !== 'string' || typeof payload.sid !== 'string') return null
-  const roles = Array.isArray(payload.roles) ? payload.roles.filter((role): role is string => typeof role === 'string') : []
+  const roles = Array.isArray(payload.roles)
+    ? payload.roles.filter((role): role is string => typeof role === 'string')
+    : []
   return { sub: payload.sub, sid: payload.sid, roles }
 }
 
