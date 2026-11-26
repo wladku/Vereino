@@ -1,7 +1,7 @@
 # Sign-up form for a section: age check, places, waiting list and trial session
 
 **Date**: 2026-11-25
-**Status**: Draft — written by an autonomous run for issue #788 (epic E26 #787, decision D-041 in PR #786); waiting for the owner's answers to the Open Questions and the Ask First approvals
+**Status**: Ready for implementation — approved by the product owner on 2026-11-26 ([owner decision on #788](https://github.com/wladku/Vereino/issues/788#issuecomment-7183799608)); issue #788, epic E26 #787, decision D-041 in PR #786
 
 > Use om-spec-writing for the process. This spec is design-only: nothing is built in its PR.
 
@@ -594,20 +594,23 @@ routes with `foreign-id` probes (club B's application id → 404).
 
 ### Ask First items (need the owner's approval before the phase starts)
 
+The owner approved on 2026-11-26 ([owner decision on #788](https://github.com/wladku/Vereino/issues/788#issuecomment-7183799608)) every item below except the slug-free system-scope exception, which
+the design does not need. Anything beyond the spec still needs a separate approval.
+
 | Item | Phase | Kind | Approval |
 |---|---|---|---|
-| `groups_groups.places_limit`, `accepts_applications` | 1 | migration | open |
-| `club_core_sections.accepts_applications` | 1 | migration | open |
-| `club_core_club_settings.application_age_reference_day`, `application_answer_days`, `application_information` | 1 | migration; contract (settings schema) | open |
-| Fit rule moved to `@vereino/core` (re-exported from `groups/lib`) | 1 | shared package surface (additive) | open |
-| `groups.applicationTargets` and `people.duplicateCandidates` DI contracts | 1, 2 | new contract surfaces (additive) | open |
-| New module `enrolment` (registration, ACL, roles) — Q-J01 | 2 | new module | open |
-| `enrolment_applications`, `enrolment_confirmation_links`, `enrolment_application_links` | 2 | migration | open |
-| Only if the owner wants slug-free links (DD-J07): an AGENTS.md exception for a token-hash lookup outside a club scope | 2 | scope; system-scope lookup | not assumed — the design uses club-scoped lookups |
-| `emailSubjectLimit` added to `foundation` (facilities switched) | 2 | shared helper change | open |
-| `vereino:public:section:actions` (club_core) and `vereino:club:occurrence:attendance:extra` (activities) spots | 2, 4 | new contract surfaces (additive) | open |
-| `enrolment` added to the allow-lists of `people.dataExport.*` and `people.departure.*`; delivery erasure by address hash in `foundation` | 3 | contract (additive) | open |
-| `activities.occurrenceFacts.upcomingSessionsOfGroup` | 4 | contract (additive) | open |
+| `groups_groups.places_limit`, `accepts_applications` | 1 | migration | approved 2026-11-26 (migration as specified) |
+| `club_core_sections.accepts_applications` | 1 | migration | approved 2026-11-26 (migration as specified) |
+| `club_core_club_settings.application_age_reference_day`, `application_answer_days`, `application_information` | 1 | migration; contract (settings schema) | approved 2026-11-26 (migration as specified) |
+| Fit rule moved to `@vereino/core` (re-exported from `groups/lib`) | 1 | shared package surface (additive) | approved 2026-11-26 |
+| `groups.applicationTargets` and `people.duplicateCandidates` DI contracts | 1, 2 | new contract surfaces (additive) | approved 2026-11-26 |
+| New module `enrolment` (registration, ACL, roles) — Q-J01 | 2 | new module | approved 2026-11-26 |
+| `enrolment_applications`, `enrolment_confirmation_links`, `enrolment_application_links` | 2 | migration | approved 2026-11-26 (migration as specified) |
+| Only if the owner wants slug-free links (DD-J07): an AGENTS.md exception for a token-hash lookup outside a club scope | 2 | scope; system-scope lookup | not approved (2026-11-26) — the design uses club-scoped lookups |
+| `emailSubjectLimit` added to `foundation` (facilities switched) | 2 | shared helper change | approved 2026-11-26 |
+| `vereino:public:section:actions` (club_core) and `vereino:club:occurrence:attendance:extra` (activities) spots | 2, 4 | new contract surfaces (additive) | approved 2026-11-26 |
+| `enrolment` added to the allow-lists of `people.dataExport.*` and `people.departure.*`; delivery erasure by address hash in `foundation` | 3 | contract (additive) | approved 2026-11-26 |
+| `activities.occurrenceFacts.upcomingSessionsOfGroup` | 4 | contract (additive) | approved 2026-11-26 |
 
 ## Requirement Traceability
 
@@ -698,26 +701,28 @@ Every criterion that names a phone or public page is checked at 375 px, in Engli
 | Migrations and the new module listed as Ask First | pass | *Ask First items* |
 | Backward compatibility | pass | additive columns, settings keys, routes, spots, DI contracts; moved helpers re-exported |
 
-Verdict: `Draft — the owner answers Q-J01…Q-J10 and approves the Ask First items; then the spec can be marked Ready for
-implementation. The lawyer item Q-J09 blocks the production release of phase 2, not building.`
+Verdict: `Ready for implementation — the owner answered Q-J01…Q-J10 and approved the module, the migrations and the
+additive contracts on 2026-11-26; the lawyer item of Q-J09 blocks the production release of phase 2 (not building); the
+slug-free system-scope exception is not approved and not needed.`
 
 ## Open Questions
 
-Each question has a recommended default that the design above already assumes (written by an autonomous run; the
-owner may override any of them on #788 or the spec PR).
+Each question had a recommended default that the design above already assumes. The owner accepted every default on
+2026-11-26 ([owner decision on #788](https://github.com/wladku/Vereino/issues/788#issuecomment-7183799608)). The lawyer item (Q-J09) does not block building; it blocks the
+production release of phase 2.
 
-| ID | Question | Owner | Blocking? | Recommended default (assumed) |
+| ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-J01 | Owning module: a new module `enrolment` (recommended, DD-J01) or the applications in `groups`? | Władek Kuć | phase 2 | new module `enrolment` |
-| Q-J02 | Age reference date: the latest occurrence of the club's reference day on or before today + 60 days (recommended, DD-J03), or the reference day of the season that contains today? Is 60 days the right look-ahead? | Władek Kuć | phase 2 | DD-J03 with 60 days |
-| Q-J03 | Who receives applications of a section without a coordinator: all club administrators (recommended), or a club setting naming one person? | Władek Kuć | phase 2 | all club administrators |
-| Q-J04 | A confirmed application to a full group: straight onto the waiting list with its number (recommended, D-041 §4), or into New for the coordinator to decide? Does the public form say "full — waiting list" (recommended) or hide occupancy? | Władek Kuć | phase 2 | straight onto the waiting list; the form says "full" without counts |
-| Q-J05 | Duplicate detection: decrypt and compare in memory without a new column (recommended, DD-J11), or add an `email_hash` to `people_persons` (migration and backfill)? Which rules count: same e-mail or phone for a guardian; same normalised name and birth date for a child (recommended)? | Władek Kuć | phase 3 | in memory; the rules as listed |
-| Q-J06 | Fees after acceptance: keep the existing generation (the group's fee applies to anyone on the roster on the charge's reference day; no pro-rata; the accept sheet names the fee and that rule; the administrator can add a custom discount) — recommended — or add a pro-rata rule for a part month? | Władek Kuć | phase 3 | existing generation, no pro-rata |
-| Q-J07 | Is the trial session free and limited to one per application (recommended), or may the coordinator propose a second one? | Władek Kuć | phase 4 | free; one at a time, a new one only after the previous is over or cancelled |
-| Q-J08 | Account invitation on accept: for the guardian (or the adult) by default, switchable off on the sheet (recommended), or never automatic? | Władek Kuć | phase 3 | on by default, switchable |
-| Q-J09 | Legal basis Art. 6(1)(b) and the information text for applicants: does the lawyer confirm, and who writes the default text shipped with the module? | Władek Kuć (lawyer) | production release of phase 2 | Art. 6(1)(b); a default text drafted with the D-035 lawyer items; ⚠ lawyer confirmation needed before production |
-| Q-J10 | Retention of accepted applications: anonymised 30 days after acceptance like other closed ones (recommended; the person and membership hold the data from then), or kept as proof of the guardian's statement and rules acceptance for the membership's life? | Władek Kuć | phase 2 | anonymised after 30 days, keeping `rules_accepted_at` and `privacy_acknowledged_at` with the text version |
+| Q-J01 | Owning module: a new module `enrolment` (recommended, DD-J01) or the applications in `groups`? | Władek Kuć | phase 2 | decided 2026-11-26 — new module `enrolment` |
+| Q-J02 | Age reference date: the latest occurrence of the club's reference day on or before today + 60 days (recommended, DD-J03), or the reference day of the season that contains today? Is 60 days the right look-ahead? | Władek Kuć | phase 2 | decided 2026-11-26 — DD-J03 with 60 days |
+| Q-J03 | Who receives applications of a section without a coordinator: all club administrators (recommended), or a club setting naming one person? | Władek Kuć | phase 2 | decided 2026-11-26 — all club administrators |
+| Q-J04 | A confirmed application to a full group: straight onto the waiting list with its number (recommended, D-041 §4), or into New for the coordinator to decide? Does the public form say "full — waiting list" (recommended) or hide occupancy? | Władek Kuć | phase 2 | decided 2026-11-26 — straight onto the waiting list; the form says "full" without counts |
+| Q-J05 | Duplicate detection: decrypt and compare in memory without a new column (recommended, DD-J11), or add an `email_hash` to `people_persons` (migration and backfill)? Which rules count: same e-mail or phone for a guardian; same normalised name and birth date for a child (recommended)? | Władek Kuć | phase 3 | decided 2026-11-26 — in memory; the rules as listed |
+| Q-J06 | Fees after acceptance: keep the existing generation (the group's fee applies to anyone on the roster on the charge's reference day; no pro-rata; the accept sheet names the fee and that rule; the administrator can add a custom discount) — recommended — or add a pro-rata rule for a part month? | Władek Kuć | phase 3 | decided 2026-11-26 — existing generation, no pro-rata |
+| Q-J07 | Is the trial session free and limited to one per application (recommended), or may the coordinator propose a second one? | Władek Kuć | phase 4 | decided 2026-11-26 — free; one at a time, a new one only after the previous is over or cancelled |
+| Q-J08 | Account invitation on accept: for the guardian (or the adult) by default, switchable off on the sheet (recommended), or never automatic? | Władek Kuć | phase 3 | decided 2026-11-26 — on by default, switchable |
+| Q-J09 | Legal basis Art. 6(1)(b) and the information text for applicants: does the lawyer confirm, and who writes the default text shipped with the module? | Władek Kuć (lawyer) | production release of phase 2 | decided 2026-11-26 — Art. 6(1)(b); a default text drafted with the D-035 lawyer items; ⚠ lawyer confirmation needed before production |
+| Q-J10 | Retention of accepted applications: anonymised 30 days after acceptance like other closed ones (recommended; the person and membership hold the data from then), or kept as proof of the guardian's statement and rules acceptance for the membership's life? | Władek Kuć | phase 2 | decided 2026-11-26 — anonymised after 30 days, keeping `rules_accepted_at` and `privacy_acknowledged_at` with the text version |
 
 ## Changelog
 
