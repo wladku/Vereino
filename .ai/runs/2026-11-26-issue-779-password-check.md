@@ -12,7 +12,7 @@
    routes, `commands/users.ts`, the five client pages, the command interceptor contract, the integration runner env.
 3. Wrote the spec (`om-spec-writing --autonomous`; resolved assumptions Q1–Q6 in the spec).
 4. Built it: `foundation/lib/password-check.ts` (pure rules), `lib/common-passwords.ts` (NCSC top 100k from SecLists,
-   MIT, lower-cased and de-duplicated: 97 746 entries), `services/password-check.ts`, `commands/interceptors.ts`
+   MIT, lower-cased and de-duplicated: 97 736 entries), `services/password-check.ts`, `commands/interceptors.ts`
    (`auth.users.create`/`update`), five error codes with en/pl messages, route wrappers
    `src/app/api/auth/reset/confirm/route.ts` and `src/app/api/auth/profile/route.ts`, `PasswordPolicyBridge` in the root
    layout, production policy in `vereino-ephemeral.mjs`.

@@ -13,13 +13,13 @@ test.describe.configure({ timeout: 180_000 })
 
 const COMMON = 'Qwerty123456'
 const GOOD = () => `blue harbour lantern ${uniqueSuffix()}`
-const REFUSED: Array<{ password: string; code: string }> = [
-  { password: COMMON, code: 'password_too_common' },
-  { password: `${'long passphrase '.repeat(4)}x`, code: 'password_too_long' },
-  { password: 'ż'.repeat(37), code: 'password_too_long' },
-  { password: ' blue harbour lantern', code: 'password_whitespace' },
-  { password: 'Vereino2026!!', code: 'password_context_word' },
-  { password: 'only eleven', code: 'password_policy' },
+const REFUSED: Array<{ candidate: string; code: string }> = [
+  { candidate: COMMON, code: 'password_too_common' },
+  { candidate: `${'long passphrase '.repeat(4)}x`, code: 'password_too_long' },
+  { candidate: 'ż'.repeat(37), code: 'password_too_long' },
+  { candidate: ' blue harbour lantern', code: 'password_whitespace' },
+  { candidate: 'Vereino2026!!', code: 'password_context_word' },
+  { candidate: 'only eleven', code: 'password_policy' },
 ]
 
 async function expectSignIn(request: APIRequestContext, email: string, password: string): Promise<void> {
@@ -35,8 +35,8 @@ test('TEST-PW01 the password check on the admin, profile and reset-link paths', 
     const { email, userId, organizationId, tenantId } = tenant
 
     // The administrator path: each refusal answers 422 with its code; the user's password stays unchanged.
-    for (const { password, code } of REFUSED) {
-      const refused = await call(request, 'PUT', '/api/auth/users', superToken, { data: { id: userId, password } })
+    for (const { candidate, code } of REFUSED) {
+      const refused = await call(request, 'PUT', '/api/auth/users', superToken, { data: { id: userId, password: candidate } })
       expect(refused.status, `${code} ${JSON.stringify(refused.body)}`).toBe(422)
       expect(refused.body?.code).toBe(code)
     }
@@ -94,8 +94,8 @@ test('TEST-PW01 the password check on the admin, profile and reset-link paths', 
     const link = resetLink()
     expect(link).toBeTruthy()
     const resetToken = decodeURIComponent(String(link).split('/reset/')[1].split(/[?#]/)[0])
-    for (const { password, code } of REFUSED) {
-      const refused = await request.post('/api/auth/reset/confirm', { form: { token: resetToken, password } })
+    for (const { candidate, code } of REFUSED) {
+      const refused = await request.post('/api/auth/reset/confirm', { form: { token: resetToken, password: candidate } })
       expect(refused.status(), code).toBe(422)
       expect(await refused.json()).toMatchObject({ ok: false, code })
     }
