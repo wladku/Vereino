@@ -42,7 +42,10 @@ async function assertStaffMayWrite(
   const scope = { tenantId: person.tenantId, organizationId: person.organizationId }
   const userId = ctx.auth?.sub
   const rbac = ctx.container.resolve<RbacService>('rbacService')
-  const allowed = userId ? await rbac.userHasAllFeatures(userId, [MEDICAL_MANAGE_FEATURE], scope) : false
+  // On the command's transaction: the cached check reads on a second pooled connection on a miss (#836).
+  const allowed = userId
+    ? await rbac.userHasAllFeaturesWithEntityManager(em, userId, [MEDICAL_MANAGE_FEATURE], scope)
+    : false
   if (!allowed) await foundationErrors.throw('scope_denied')
   if (actingRole !== 'coordinator') return
   // The coordinator reads people club-wide, but writes the date only for members of their own sections.
@@ -72,7 +75,7 @@ const setMedicalCommand: CommandHandler<Record<string, unknown>, MedicalSetResul
       const person = authorized.entity as Person
       await assertNotAnonymized(person)
       const scope = { tenantId: person.tenantId, organizationId: person.organizationId }
-      const today = await clubToday(ctx.container, scope)
+      const today = await clubToday(ctx.container, scope, undefined, em)
       const { actingRole } = authorized
       if (actingRole === 'club_admin' || actingRole === 'coordinator') {
         const sectionIds = authorized.scope.flatMap((grant) => (grant.kind === 'coordinator' ? (grant.ids ?? []) : []))

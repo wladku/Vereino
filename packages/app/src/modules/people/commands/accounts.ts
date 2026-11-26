@@ -85,7 +85,7 @@ const createAccountCommand: CommandHandler<Record<string, unknown>, CreateAccoun
         const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
         if (person.userId) await peopleErrors.throw('account_exists')
         if (!person.birthDate) return peopleErrors.throw('account_birth_date_required')
-        const settings = await clubSettings(ctx.container, scope)
+        const settings = await clubSettings(ctx.container, scope, em)
         const today = calendarDateInZone(new Date(), settings.timezone)
         const threshold = settings.ownAccountMinAge
         if (accountAgePolicy({ birthDate: person.birthDate, threshold, today }) === 'below_threshold') {
@@ -210,7 +210,7 @@ async function authorizeAccountTarget(
   )
   const person = authorized.entity as Person
   const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-  const account = await accountView(ctx.container, scope, person.userId)
+  const account = await accountView(ctx.container, scope, person.userId, em)
   if (!person.userId || account.state === 'none') return peopleErrors.throw('account_not_found')
   const target: AccountTarget = {
     personId: person.id,
@@ -222,9 +222,17 @@ async function authorizeAccountTarget(
   return { target, person, parsed: authorized.parsed }
 }
 
-/** Today in the club's time zone. */
-async function clubToday(ctx: CommandRuntimeContext, scope: { tenantId: string; organizationId: string }) {
-  const settings = await clubSettings(ctx.container, { tenantId: scope.tenantId, organizationId: scope.organizationId })
+/** Today in the club's time zone, read on the caller's transaction (#836). */
+async function clubToday(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+) {
+  const settings = await clubSettings(
+    ctx.container,
+    { tenantId: scope.tenantId, organizationId: scope.organizationId },
+    em,
+  )
   return calendarDateInZone(new Date(), settings.timezone)
 }
 
@@ -317,7 +325,7 @@ const updateAccountCommand: CommandHandler<Record<string, unknown>, UpdateAccoun
       })
       const input = parsed as { email?: string; blocked?: boolean }
       if (input.blocked === true && target.account.state !== 'blocked') {
-        await assertNotLastClubAdmin(em, ctx.container, target, target.personId, await clubToday(ctx, target))
+        await assertNotLastClubAdmin(em, ctx.container, target, target.personId, await clubToday(ctx, em, target))
       }
       const oldLogin = target.account.email?.trim().toLowerCase() ?? null
       const newLogin = input.email?.trim()
@@ -420,7 +428,7 @@ const closeAccountCommand: CommandHandler<Record<string, unknown>, CloseAccountC
   async execute(rawInput, ctx) {
     const target = await inWriteTransaction(ctx, 'people.persons.close_account.check', async (em) => {
       const { target } = await authorizeAccountTarget(rawInput, ctx, em, { schema: personAccountSchema, lock: 'none' })
-      const today = await clubToday(ctx, target)
+      const today = await clubToday(ctx, em, target)
       await assertNotLastClubAdmin(em, ctx.container, target, target.personId, today)
       await assertAccountWithoutPurpose(em, ctx.container, target, target.personId, today)
       return target

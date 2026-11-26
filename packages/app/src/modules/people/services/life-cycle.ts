@@ -119,7 +119,8 @@ async function enqueueNotice(
 ): Promise<EnqueuedNotice> {
   const ids = [...new Set(notice.personIds)]
   if (ids.length === 0) return { dispatchId: null, recipientIds: [] }
-  const context = { container, ...scope, scope: [{ kind: 'system_job' as const }] }
+  // The members are read on the caller's transaction (`em: tx`), not on a second pooled connection (#836).
+  const context = { container, ...scope, scope: [{ kind: 'system_job' as const }], em: tx }
   const audience = await resolveMembers(
     ids.map((personId) => ({ personId, reason: 'direct' as const })),
     context,

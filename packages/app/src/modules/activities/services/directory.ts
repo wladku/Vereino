@@ -264,10 +264,11 @@ export async function coachNeededHandlerIds(
   scope: ActivitiesScope,
   sectionId: string,
   date: CalendarDate,
+  em?: EntityManager,
 ): Promise<string[]> {
   const directory = personDirectory(container)
-  const coordinators = await directory.sectionCoordinatorIdsOn(scope, sectionId, date)
-  return coordinators.length > 0 ? coordinators : directory.roleHolderIdsOn(scope, 'club_admin', date)
+  const coordinators = await directory.sectionCoordinatorIdsOn(scope, sectionId, date, em)
+  return coordinators.length > 0 ? coordinators : directory.roleHolderIdsOn(scope, 'club_admin', date, em)
 }
 
 /** The persons among `ids` who consented to showing their wards' presence to other guardians (REQ-006, #32). */
@@ -315,16 +316,27 @@ export async function consentFlags(
   return directory.consentFlags(scope, ids, today, em)
 }
 
-/** The club's time zone (club spec DD-37: `Europe/Warsaw` by default). */
-export async function clubTimeZone(container: AwilixContainer, scope: ActivitiesScope): Promise<string> {
+/**
+ * The club's time zone (club spec DD-37: `Europe/Warsaw` by default). The club settings reads below take the caller's
+ * `em` inside a write transaction, so they read on its connection instead of a second pooled one (#728, #836).
+ */
+export async function clubTimeZone(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  em?: EntityManager,
+): Promise<string> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)).values.timezone
+  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)).values.timezone
 }
 
 /** The club setting `coach_may_cancel` (#199, club spec DD-37; yes by default). */
-export async function coachMayCancel(container: AwilixContainer, scope: ActivitiesScope): Promise<boolean> {
+export async function coachMayCancel(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  em?: EntityManager,
+): Promise<boolean> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)).values.coachMayCancel
+  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)).values.coachMayCancel
 }
 
 /** The club settings the declarations read (club spec REQ-006, REQ-007; D-022, D-026): the zone, the kinds, the visibility. */
@@ -339,9 +351,10 @@ export type AttendanceSettings = {
 export async function attendanceSettings(
   container: AwilixContainer,
   scope: ActivitiesScope,
+  em?: EntityManager,
 ): Promise<AttendanceSettings> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  const { values } = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  const { values } = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)
   return {
     timeZone: values.timezone,
     declarationKinds: values.declarationKinds,
@@ -354,7 +367,8 @@ export async function clubClock(
   container: AwilixContainer,
   scope: ActivitiesScope,
   now: Date = new Date(),
+  em?: EntityManager,
 ): Promise<{ timeZone: string; today: CalendarDate }> {
-  const timeZone = await clubTimeZone(container, scope)
+  const timeZone = await clubTimeZone(container, scope, em)
   return { timeZone, today: calendarDateInZone(now, timeZone) }
 }

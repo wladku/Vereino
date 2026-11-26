@@ -179,13 +179,20 @@ const STAFF_ROLES: readonly ActingRole[] = ['coach', 'coordinator', 'club_admin'
 
 /**
  * A staff declaration needs the `activities.coach` feature on top of the record scope: a `coach` grant comes from an
- * assistant membership too, which alone does not make a person staff (403 `scope_denied`).
+ * assistant membership too, which alone does not make a person staff (403 `scope_denied`). The features are read on
+ * the declaration's transaction: the cached check reads on a second pooled connection when the cache misses, and the
+ * evening peak would deadlock the pool on it (#549, #836).
  */
-async function assertStaffMayDeclare(ctx: CommandRuntimeContext, actingRole: ActingRole, scope: Scope): Promise<void> {
+async function assertStaffMayDeclare(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  actingRole: ActingRole,
+  scope: Scope,
+): Promise<void> {
   if (!STAFF_ROLES.includes(actingRole)) return
   const userId = ctx.auth?.sub
   const rbac = ctx.container.resolve<RbacService>('rbacService')
-  if (!userId || !(await rbac.userHasAllFeatures(userId, ['activities.coach'], scope))) {
+  if (!userId || !(await rbac.userHasAllFeaturesWithEntityManager(em, userId, ['activities.coach'], scope))) {
     await foundationErrors.throw('scope_denied')
   }
 }
@@ -255,7 +262,7 @@ export async function writeDeclaration(
   if (!roster.some((member) => member.personId === parsed.personId && member.role === 'participant')) {
     await activitiesErrors.throw('declaration_not_participant')
   }
-  await assertStaffMayDeclare(ctx, actingRole, scope)
+  await assertStaffMayDeclare(ctx, em, actingRole, scope)
   await assertDeclarationsOpen(occurrence, now)
   const activity = await em.findOne(
     Activity,
@@ -263,7 +270,7 @@ export async function writeDeclaration(
     { fields: ['id', 'type', 'isAway'] },
   )
   if (!activity) throw new Error('[internal] a session without its activity: ' + occurrence.id)
-  const settings = await attendanceSettings(ctx.container, scope)
+  const settings = await attendanceSettings(ctx.container, scope, em)
   const kind = settings.declarationKinds[activity.type] ?? 'confirm'
   if (!declaredAllowedForKind(kind, parsed.declared)) {
     await activitiesErrors.throw('declaration_kind_absence_only', { kind })

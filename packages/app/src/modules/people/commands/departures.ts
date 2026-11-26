@@ -123,7 +123,7 @@ export async function previewDeparture(
     const authorized = await authorizeScoped(departureSpec(departurePreviewSchema, ctx), rawInput, ctx, em)
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
     const { personIds, lastDay } = authorized.parsed
-    const today = await clubToday(ctx.container, scope, now)
+    const today = await clubToday(ctx.container, scope, now, em)
     if (isDepartureDateInPast(lastDay, today)) await peopleErrors.throw('departure_date_in_past', { field: 'lastDay' })
     const plan = await buildDeparturePlan(em, ctx.container, scope, { personIds, lastDay, today })
     if (!plan) return throwNotFound()
@@ -236,7 +236,11 @@ async function contributorsAfterCommit(
     const moduleChanges = changes[module]
     if (!moduleChanges || moduleChanges.length === 0) continue
     try {
-      await contributor.afterCommit(moduleChanges, { container: ctx.container, ...scope }, undo)
+      await contributor.afterCommit(
+        moduleChanges,
+        { container: ctx.container, ...scope, em: ctx.transactionalEm },
+        undo,
+      )
     } catch (error: unknown) {
       logger.warn('A departure contributor failed after the commit', { module, err: error })
       getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.departure.after_commit_failed' })
@@ -261,7 +265,7 @@ const departCommand: CommandHandler<Record<string, unknown>, DepartureCommandRes
         for (const personId of personIds) {
           if (!(await lockPerson(em, scope, personId))) return throwNotFound()
         }
-        const today = await clubToday(ctx.container, scope)
+        const today = await clubToday(ctx.container, scope, undefined, em)
         if (isDepartureDateInPast(input.lastDay, today)) {
           await peopleErrors.throw('departure_date_in_past', { field: 'lastDay' })
         }
@@ -417,7 +421,7 @@ const departCommand: CommandHandler<Record<string, unknown>, DepartureCommandRes
     const em = await authorizeDepartureReplay(ctx, snapshot)
     const before = snapshot as DepartureSnapshot
     const scope = { tenantId: before.tenantId, organizationId: before.organizationId }
-    const today = await clubToday(ctx.container, scope)
+    const today = await clubToday(ctx.container, scope, undefined, em)
     if (isDepartureUndoExpired(before.lastDay, today)) await peopleErrors.throw('departure_undo_expired')
     // A person anonymised on the last day keeps their departure: the undo would hand an erased person back (#308).
     const anonymized = await em.count(Person, { ...scope, id: { $in: before.personIds }, anonymizedAt: { $ne: null } })
