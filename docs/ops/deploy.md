@@ -308,13 +308,17 @@ the deploy or the lock-down pass.
 
 The platform checks a new password against four variables (`OM_PASSWORD_*`, table above) on the server: the user
 create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
-the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment. Two
-limits remain (`docs/compliance/asvs-requirements.md`, V6.2.x):
+the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment.
 
-- The platform's browser forms (change password, password reset, user create and edit) read the policy in the browser,
-  where these server variables are not set, so they keep showing and checking the platform default (a digit, an
-  upper-case letter and a special character) until the app-owned check of #779 replaces them.
-- No check against common or breached passwords or against club words exists yet (#779).
+On top of them the Vereino password check (#779, `.ai/specs/2026-11-26-vereino-password-check.md`) refuses, on every
+API path that sets a password (user create and edit, profile, the reset and invitation link):
+
+- more than 64 characters or 72 bytes (bcrypt reads no further), and a space at the start or the end;
+- the about 100 000 most common passwords, from breach data (a list built into the app; nothing is sent out);
+- passwords made of context words — `vereino`, `mercato`, the club's name and slug, the user's address and name.
+
+The root layout hands the same variables to the platform's browser forms, so they state and check what the server
+does. No extra variable; the check needs no configuration. `mercato auth set-password` (shell) is not checked.
 
 ## After every deploy
 

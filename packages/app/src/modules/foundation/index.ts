@@ -210,3 +210,5 @@ export {
   type TokenLinkSubject,
   type TokenLinkView,
 } from './services/token-link'
+// The Vereino password check (#779): the reset-confirm route in front of the platform handler uses it.
+export { passwordRefusalError, refuseNewPassword } from './services/password-check'
