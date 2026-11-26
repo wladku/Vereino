@@ -1,4 +1,4 @@
-// The Vereino password check on the server (#779, spec .ai/specs/2026-11-26-vereino-password-check.md): the platform
+// The Vereino password check on the server (#779, spec .ai/specs/implemented/2026-11-26-vereino-password-check.md): the platform
 // policy (`OM_PASSWORD_*`), the built-in common/breached list, loaded on first use, and the context words of the club
 // and the user, read inside the caller's tenant only. Used by `commands/interceptors.ts` and the reset-confirm route.
 import type { EntityManager } from '@mikro-orm/postgresql'
