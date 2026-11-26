@@ -57,7 +57,7 @@ export type PaymentsChargeService = {
     ctx: CommandRuntimeContext,
   ): Promise<{ warning?: 'charge_paid' }>
   /** The stored status of each charge of the caller's organization; unknown or foreign ids are absent (#279). */
-  statusOf(chargeIds: readonly string[], ctx: CommandRuntimeContext): Promise<Map<string, string>>
+  statusOf(chargeIds: readonly string[], ctx: CommandRuntimeContext, em?: EntityManager): Promise<Map<string, string>>
 }
 
 /** The registered charge service, or null while `payments` provides none. */
@@ -78,7 +78,7 @@ export async function rentalChargeInput(
   scope: FacilitiesScope,
   row: Rental,
 ): Promise<RentalChargeInput> {
-  const settings = await clubRequestSettings(container, scope)
+  const settings = await clubRequestSettings(container, scope, em)
   const payee = await placePayee(container, scope, row.placeId, em)
   const place = (await findPlaces(container, scope, [row.placeId], em)).get(row.placeId)
   const description = await renderLocalized(settings.locale, (t, locale) =>

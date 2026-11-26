@@ -39,8 +39,9 @@ export async function retentionCutoff(
   container: AwilixContainer,
   scope: ClubScope,
   today: CalendarDate,
+  em?: EntityManager,
 ): Promise<{ months: number; cutoff: CalendarDate }> {
-  const months = (await clubSettings(container, scope)).formerParticipantRetentionMonths
+  const months = (await clubSettings(container, scope, em)).formerParticipantRetentionMonths
   return { months, cutoff: monthsBefore(today, months) }
 }
 

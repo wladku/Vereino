@@ -379,7 +379,7 @@ export async function previewRollover(
   return inWriteTransaction(ctx, 'groups.seasons.rollover.preview', async (em) => {
     const authorized = await authorizeScoped(rolloverSpec(rolloverPreviewSchema), rawInput, ctx, em)
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-    const today = await clubToday(ctx.container, scope, now)
+    const today = await clubToday(ctx.container, scope, now, em)
     const built = await buildRollover(em, ctx, scope, authorized.scope, authorized.parsed, {
       today,
       forApply: false,
@@ -506,7 +506,7 @@ const rolloverCommand: CommandHandler<Record<string, unknown>, RolloverCommandRe
         const authorized = await authorizeScoped(rolloverSpec(rolloverApplySchema), rawInput, ctx, em)
         const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
         const parsed = authorized.parsed
-        const today = await clubToday(ctx.container, scope)
+        const today = await clubToday(ctx.container, scope, undefined, em)
         const createdSeasonId = 'id' in parsed.season ? null : randomUUID()
         const built = await buildRollover(em, ctx, scope, authorized.scope, parsed, {
           today,

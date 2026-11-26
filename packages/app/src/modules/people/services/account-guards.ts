@@ -43,7 +43,7 @@ export async function assertNotLastClubAdmin(
     { fields: ['id', 'userId'] },
   )
   for (const other of others) {
-    const account = await accountView(container, scope, other.userId)
+    const account = await accountView(container, scope, other.userId, em)
     if (account.state === 'active') return
   }
   return peopleErrors.throw('last_club_admin')
