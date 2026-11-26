@@ -45,6 +45,7 @@ A suspected breach is always SEV1 until the assessment below says otherwise. Whe
 | Backup failed (`vereino.ops.backup.failed`) or missed | bucket credentials, encryption key, network, disk | Read the line's `step` and `exitCode`; fix and run the backup job once by hand; confirm `vereino.ops.backup.succeeded`. Two nights without a backup is SEV1 (RPO broken) |
 | Deploy failed or crashed (webhook) | build or start failure, missing variable | Railway keeps the previous deployment serving when a new one fails its health check; read the log, fix forward, or redeploy the previous one |
 | Disk above 80 % | data growth, logs or dumps on the volume | Raise the volume before it fills; find the cause next working day |
+| Flood of requests: many `Sessionless request over its rate limit` lines, 5xx or a failing health check with healthy database and Redis | an attack or abusive traffic | [`edge-proxy.md` → *An attack before a proxy exists*](edge-proxy.md#a-an-attack-before-a-proxy-exists): the app's limits, Railway edge rules, then Under Attack Mode for a limited time; when they do not stop it, the edge-proxy trigger of D-043 fires |
 | 5xx spike (digest) | a bug or a dependency | Group by `@path`; `"Application error reported"` lines give the `error.code` fingerprint; open an issue per fingerprint |
 
 ## Rollback
