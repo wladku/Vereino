@@ -169,24 +169,24 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V6.2.12 | 2 | Reject breached passwords | No breached-password check; source (range API or offline list) is an owner decision in #779 | gap | #779 |
 | V6.3.1 | 1 | Brute-force controls in place | Platform limits 5/min per IP+e-mail and 20/min per IP, fail-open (`OM/core/src/modules/auth/lib/rateLimitCheck.ts`), plus Vereino's 10 / 15 min per account (#738); counters in Redis on Railway (boot check); `ISSUE-738-sessionless-rate-limits`. Gap: the per-client counters share one key until the proxy depth is set (A-8) | partial | #739 |
 | V6.3.2 | 1 | No default accounts | `docs/ops/deploy.md` → *First deploy* sets `OM_INIT_SUPERADMIN_EMAIL`, a generated `OM_INIT_SUPERADMIN_PASSWORD` and own addresses for the two extra accounts `yarn initialize` always creates (`admin` / `employee` at the platform's demo domain `acme.com` otherwise), deletes those two, and runs the *Default account check* (`mercato auth list-users` filtered for `@acme.com` and derived accounts); both checked on a throwaway database (#747). Staging and production not yet checked by the owner (#747) | partial | #747 |
-| V6.3.3 | 2 | Multi-factor for access | No second factor in 1.0; platform MFA lived in the removed enterprise `security` module (ADR-023); ENG-Q-09 re-decision pending | gap | #736 |
+| V6.3.3 | 2 | Multi-factor for access | No second factor yet; ENG-Q-09 re-decided 2026-11-26 (#736): administrators and treasurers use Google sign-in or a password plus an e-mail code, on the core `auth` `mfa_pending` gate through Vereino's login wrapper (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, phase 1) | gap | #736 |
 | V6.3.4 | 2 | No undocumented sign-in paths | Paths as V6.1.3; `OM_AUTOLOGIN_*` forbidden in production (`docs/ops/deploy.md`); API-key path and equal strength not reviewed | to verify | #743 |
 | V6.4.1 | 1 | Initial secrets random, expiring, single-use | No initial passwords: invitations are 32-byte CSPRNG links stored hashed, 48 h / 60 min (`foundation/services/accounts.ts`, `TEST-F04-create-account`); single use rests on platform reset confirm (code read) | to verify | #743 |
 | V6.4.2 | 1 | No hints or secret questions | Feature absent: no hint or security-question field in `auth` entities or Vereino modules | n/a | — |
 | V6.4.3 | 2 | Safe forgotten-password reset | Code read: hashed 60-min single-use token, rate-limited, all sessions deleted (`authService.ts`, `OM/core/src/modules/auth/api/reset.ts`); no MFA to bypass; no Vereino test | to verify | #743 |
-| V6.4.4 | 2 | Lost-factor recovery proofing | Feature absent: no second factor in 1.0; recovery path is part of #736 | n/a | — |
-| V6.5.1 | 2 | One-time codes single-use | Feature absent: no lookup secrets, out-of-band codes or TOTP (#736 decides) | n/a | — |
-| V6.5.2 | 2 | Low-entropy lookup secrets hashed | Feature absent: no lookup secrets | n/a | — |
-| V6.5.3 | 2 | Codes and seeds from CSPRNG | Feature absent: no lookup secrets, out-of-band codes or TOTP seeds | n/a | — |
-| V6.5.4 | 2 | Minimum code entropy | Feature absent: no lookup secrets or out-of-band codes | n/a | — |
-| V6.5.5 | 2 | Code and TOTP lifetimes | Feature absent: no out-of-band codes or TOTP | n/a | — |
+| V6.4.4 | 2 | Lost-factor recovery proofing | Planned: a club administrator resets another person's factor after verifying them, with a required note in the command log; the operator for the last administrator (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F07, phase 1) | n/a | #736 |
+| V6.5.1 | 2 | One-time codes single-use | Planned: the e-mail code's challenge marker is deleted on success and after 5 wrong codes (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
+| V6.5.2 | 2 | Low-entropy lookup secrets hashed | No lookup secrets; the planned e-mail code is stored as HMAC-SHA256 keyed with a 32-byte challenge id (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | — |
+| V6.5.3 | 2 | Codes and seeds from CSPRNG | Planned: `crypto.randomInt` for the code, 32 random bytes for the challenge id (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
+| V6.5.4 | 2 | Minimum code entropy | Planned: 6 digits (about 20 bits), with 5 attempts per challenge and 5 challenges per user per hour (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
+| V6.5.5 | 2 | Code and TOTP lifetimes | Planned: the e-mail code lives 10 minutes (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
 | V6.6.1 | 2 | Phone/SMS factor restrictions | Feature absent: no phone or SMS authentication | n/a | — |
-| V6.6.2 | 2 | Out-of-band request binding | Feature absent: no out-of-band authentication | n/a | — |
-| V6.6.3 | 2 | Out-of-band code brute force | Feature absent: no out-of-band authentication | n/a | — |
+| V6.6.2 | 2 | Out-of-band request binding | Planned: the e-mail code is bound to the sign-in that requested it through the challenge id in the provisional token (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`) | n/a | #736 |
+| V6.6.3 | 2 | Out-of-band code brute force | Planned: 5 attempts per challenge, 3 resends 60 s apart, 5 challenges per user per hour counted under a lock, per-IP limits on `verify` and `resend` (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05, DD-2F08) | n/a | #736 |
 | V6.8.1 | 2 | No identity spoofing across IdPs | Links found only by (`provider`, `subject`), never by e-mail, no account creation (DD-S02/DD-S03, `foundation/services/identity.ts`); `TEST-S01-google-sign-in` refuses a tenant-B reuse of a subject | met | — |
 | V6.8.2 | 2 | Assertion signatures validated | `arctic` decodes the Google id token without a signature check by decision V-S04 (TLS back channel); iss/aud/azp/exp/sub checked in `foundation/lib/identity.ts`, `lib/__tests__/identity.test.ts` | partial | #743 |
 | V6.8.3 | 2 | SAML assertion replay | Feature absent: no SAML (enterprise `sso` not installed) | n/a | — |
-| V6.8.4 | 2 | IdP authentication strength checked | Feature absent: no function expects IdP strength or recency; relevant if #736 picks Google as the staff second factor | n/a | — |
+| V6.8.4 | 2 | IdP authentication strength checked | #736 picked Google as the staff second factor; Google's ID token carries no reliable `amr`, so 2-Step Verification on the Google account cannot be checked — accepted with the owner's option 1, open as Q-2F04 of `.ai/specs/2026-11-26-vereino-staff-second-factor.md` | n/a | #736 |
 
 ### V7 Session Management
 
