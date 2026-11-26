@@ -24,7 +24,8 @@ export const PEOPLE_CLUB_JOBS: readonly ClubJobDeclaration[] = [
   {
     key: 'people:purge-import-rows',
     schedule: { dailyAt: '04:00' },
-    description: 'Delete the staged rows and the file of people imports 30 days after their commit or cancellation.',
+    description:
+      'Delete the staged rows and the file of people imports 30 days after their commit or cancellation, and the invitation links dead for 30 days.',
   },
   {
     // Training outlines and medical expiry spec DD-O04 (#682): 07:00 club time, so a reminder arrives in the morning.
