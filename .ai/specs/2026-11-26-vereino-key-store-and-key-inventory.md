@@ -1,7 +1,7 @@
 # Key store with per-club keys and a key inventory
 
 **Date**: 2026-11-26
-**Status**: Ready for implementation — key store chosen by the owner on #740 (2026-11-26: HashiCorp Vault in the same Railway project, EU, through the platform's Vault adapter; the migration and new required variables named here are approved as this spec defines them). Q-K01…Q-K05 answered by the owner on 2026-11-26 (PR #803): all recommended defaults accepted.
+**Status**: In progress — key store chosen by the owner on #740 (2026-11-26: HashiCorp Vault in the same Railway project, EU, through the platform's Vault adapter; the migration and new required variables named here are approved as this spec defines them). Q-K01…Q-K05 answered by the owner on 2026-11-26 (PR #803): all recommended defaults accepted.
 
 Issue: #740 (E25-S06, epic #734). Parent decision: Q-M07 and DD-M09 of
 [`2026-11-22-vereino-many-clubs-one-instance.md`](2026-11-22-vereino-many-clubs-one-instance.md). ASVS open item A-3

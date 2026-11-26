@@ -5,6 +5,7 @@ import {
   findBootEnvProblems,
   findBootEnvWarnings,
   formatBootEnvProblems,
+  KEY_STORE_RULES,
   RATE_LIMIT_RULES,
   REQUIRED_VARIABLES,
   runCli,
@@ -213,4 +214,100 @@ test('every Railway script that runs the boot check sets the rate-limit store de
     assert.ok(checkAt > 0, `${name} runs the boot check`)
     assert.ok(defaultAt > 0 && defaultAt < checkAt, `${name} sets the default before the boot check`)
   }
+})
+
+// Key store (#740, DD-K03 of `.ai/specs/2026-11-26-vereino-key-store-and-key-inventory.md`).
+const VAULT_MODE = {
+  ...PRODUCTION,
+  VEREINO_KEY_STORE: 'vault',
+  VAULT_ADDR: 'http://vault.railway.internal:8200',
+  VAULT_TOKEN: 'hvs.app-token-secret-value',
+  VAULT_KV_PATH: 'secret/data',
+  VAULT_REQUEST_TIMEOUT_MS: '3000',
+  LOOKUP_HASH_PEPPER: 'pepper-secret-value',
+}
+
+test("the derived mode is the default and today's fallback-key configuration passes", () => {
+  const derived = { ...PRODUCTION, TENANT_DATA_ENCRYPTION_FALLBACK_KEY: 'fallback-secret-value' }
+  assert.deepEqual(findBootEnvProblems(derived), [])
+  assert.deepEqual(findBootEnvProblems({ ...derived, VEREINO_KEY_STORE: 'derived' }), [])
+  assert.deepEqual(findBootEnvProblems({ ...derived, VEREINO_KEY_STORE: '  ' }), [])
+  assert.deepEqual(findBootEnvWarnings(derived), [])
+})
+
+test('an unknown key-store mode is invalid', () => {
+  assert.deepEqual(findBootEnvProblems({ ...PRODUCTION, VEREINO_KEY_STORE: 'kms' }), [
+    'VEREINO_KEY_STORE is invalid (expected derived or vault)',
+  ])
+})
+
+test('a complete vault-mode environment has no problems or warnings', () => {
+  assert.deepEqual(findBootEnvProblems(VAULT_MODE), [])
+  assert.deepEqual(findBootEnvProblems({ ...VAULT_MODE, VAULT_KV_PATH: undefined }), [])
+  assert.deepEqual(findBootEnvProblems({ ...VAULT_MODE, VAULT_KV_PATH: 'secret/data/' }), [])
+  assert.deepEqual(findBootEnvProblems({ ...VAULT_MODE, TENANT_DATA_ENCRYPTION: 'yes' }), [])
+  assert.deepEqual(findBootEnvWarnings(VAULT_MODE), [])
+})
+
+test('vault mode needs the Vault address, the app token and a pinned pepper', () => {
+  assert.deepEqual(
+    findBootEnvProblems({ ...VAULT_MODE, VAULT_ADDR: '', VAULT_TOKEN: undefined, LOOKUP_HASH_PEPPER: ' ' }),
+    [
+      'VAULT_ADDR is missing (the private http(s) URL of Vault, because VEREINO_KEY_STORE=vault)',
+      'VAULT_TOKEN is missing (the vereino-app token, because VEREINO_KEY_STORE=vault)',
+      'LOOKUP_HASH_PEPPER is missing (pin it to the old fallback key before VEREINO_KEY_STORE=vault, DD-K04)',
+    ],
+  )
+})
+
+test('vault mode refuses a malformed address and any KV path but the granted one', () => {
+  assert.deepEqual(findBootEnvProblems({ ...VAULT_MODE, VAULT_ADDR: 'vault:8200', VAULT_KV_PATH: 'kv/data' }), [
+    'VAULT_ADDR is invalid (expected the private http(s) URL of Vault)',
+    'VAULT_KV_PATH must be secret/data (the only path the vereino-app policy grants)',
+  ])
+})
+
+test('vault mode refuses every derived-key fallback and disabled encryption (BR-K4)', () => {
+  const problems = findBootEnvProblems({
+    ...VAULT_MODE,
+    TENANT_DATA_ENCRYPTION_FALLBACK_KEY: 'fallback-secret-value',
+    TENANT_DATA_ENCRYPTION_KEY: 'legacy-secret-value',
+    ALLOW_DERIVED_KMS_FALLBACK: 'true',
+    TENANT_DATA_ENCRYPTION: 'no',
+  })
+  assert.deepEqual(problems, [
+    'TENANT_DATA_ENCRYPTION_FALLBACK_KEY must not be set when VEREINO_KEY_STORE=vault (derived-key fallback)',
+    'TENANT_DATA_ENCRYPTION_KEY must not be set when VEREINO_KEY_STORE=vault (derived-key fallback)',
+    'ALLOW_DERIVED_KMS_FALLBACK must not be set when VEREINO_KEY_STORE=vault (derived-key fallback)',
+    'TENANT_DATA_ENCRYPTION must not be off when VEREINO_KEY_STORE=vault',
+  ])
+  for (const value of [
+    'fallback-secret-value',
+    'legacy-secret-value',
+    'hvs.app-token-secret-value',
+    'pepper-secret-value',
+  ]) {
+    assert.ok(!problems.join('\n').includes(value))
+  }
+})
+
+test('the derived mode refuses Vault variables (the mixed state of DD-K02)', () => {
+  const expected = [
+    'VAULT_ADDR and VAULT_TOKEN must not be set while VEREINO_KEY_STORE is derived (set VEREINO_KEY_STORE=vault and remove the fallback key in the same deploy, docs/ops/key-store.md)',
+  ]
+  assert.deepEqual(findBootEnvProblems({ ...PRODUCTION, VAULT_ADDR: 'http://vault:8200' }), expected)
+  assert.deepEqual(findBootEnvProblems({ ...PRODUCTION, VEREINO_KEY_STORE: 'derived', VAULT_TOKEN: 't' }), expected)
+})
+
+test('vault mode warns about a Vault timeout below 3000 ms', () => {
+  for (const timeout of [undefined, '', '1000', 'slow']) {
+    const warnings = findBootEnvWarnings({ ...VAULT_MODE, VAULT_REQUEST_TIMEOUT_MS: timeout })
+    assert.equal(warnings.length, 1)
+    assert.match(warnings[0], /VAULT_REQUEST_TIMEOUT_MS is unset or below 3000/)
+  }
+  assert.deepEqual(findBootEnvWarnings({ ...VAULT_MODE, VAULT_REQUEST_TIMEOUT_MS: '5000' }), [])
+})
+
+test('every key-store rule names its problem', () => {
+  for (const rule of KEY_STORE_RULES) assert.ok(rule.problem.length > 0)
 })

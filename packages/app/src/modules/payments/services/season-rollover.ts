@@ -48,9 +48,12 @@ function scopeOf(plan: SeasonRolloverPlan): PaymentsScope {
   return { tenantId: plan.tenantId, organizationId: plan.organizationId }
 }
 
-/** Whether the actor writes fees (the club administrator); a coordinator's rollover leaves the fees alone. */
-async function writesFees(plan: SeasonRolloverPlan, ctx: SeasonRolloverContext): Promise<boolean> {
-  const grants = await scopeContract.resolve(ctx.command)
+/**
+ * Whether the actor writes fees (the club administrator); a coordinator's rollover leaves the fees alone. The grants
+ * are read with the caller's `em`, on the rollover transaction's connection (#728).
+ */
+async function writesFees(em: EntityManager, plan: SeasonRolloverPlan, ctx: SeasonRolloverContext): Promise<boolean> {
+  const grants = await scopeContract.resolve(ctx.command, { em })
   const target = clubTarget({ id: plan.organizationId, ...scopeOf(plan) })
   return findActingRole(grants, PAYMENTS_WRITE_KINDS, target) !== null
 }
@@ -115,7 +118,7 @@ async function assertCopyTarget(
 export const seasonContribution: SeasonContributor = {
   async preview(em, plan, ctx) {
     const moving = plan.groups.filter((group) => group.action !== 'none')
-    if (!(await writesFees(plan, ctx))) {
+    if (!(await writesFees(em, plan, ctx))) {
       return {
         candidates: [],
         items: [],
@@ -181,7 +184,7 @@ export const seasonContribution: SeasonContributor = {
   async apply(em, plan, ctx, copies) {
     const changes: SeasonChange[] = []
     const created: Record<string, string> = {}
-    if (!(await writesFees(plan, ctx))) return { changes, copies: created }
+    if (!(await writesFees(em, plan, ctx))) return { changes, copies: created }
     for (const { fee, groupId } of await candidateFees(em, plan, ctx)) {
       const action = ctx.rules.recordAction(plan, groupId, fee.id)
       if (action === null || action === 'keep') continue

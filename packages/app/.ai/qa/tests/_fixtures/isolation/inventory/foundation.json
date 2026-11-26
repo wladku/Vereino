@@ -19,6 +19,12 @@
         "why": "The OAuth callback names no club record: it consumes a single-use state bound to an HttpOnly cookie and finds the link by (provider, subject), the approved system-scope lookup of D-027, which narrows to the linked user's tenant and organization. TEST-S01 covers it; without the provider round trip the probe engine can only reach the invalid-state redirect."
       }
     },
+    "/api/foundation/identity/[provider]/handoff": {
+      "GET": {
+        "probe": "exempt",
+        "why": "The club-address hand-off of a social sign-in (DD-S07) names no club record: it consumes a one-minute single-use token the central callback stored, refuses any host but the club address the round trip started on and any browser whose state cookie differs, and sets a session only for a link of that club's tenant. TEST-S05 covers it; without the provider round trip the probe engine can only reach the invalid-token redirect."
+      }
+    },
     "/api/foundation/identity/[provider]/link": {
       "POST": {
         "probe": "exempt",

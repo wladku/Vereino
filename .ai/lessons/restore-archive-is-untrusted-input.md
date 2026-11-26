@@ -2,7 +2,7 @@
 title: "An archive a restore reads is untrusted input; checksums inside it prove nothing"
 modules: ["club_core", "attachments", "auth"]
 areas: ["module-data", "architecture"]
-topics: ["export", "restore", "archive", "tenant-isolation", "path-traversal", "credentials"]
+topics: ["restore", "archive", "tenant-isolation", "path-traversal", "credentials", "privilege-escalation"]
 ---
 
 # An archive a restore reads is untrusted input; checksums inside it prove nothing
@@ -24,6 +24,16 @@ plain partition code (checked for shape: a freshly migrated target has no partit
 `club_core/lib/club-offboarding.ts`). Run these checks before writing anything. An export handed to the data subject
 or club leaves credentials out: drop the secret tables and null the credential columns (`CLUB_EXPORT_REDACTED_COLUMNS`).
 A restored user then sets a password again.
+
+**Rule, part 2 (#806)**: a row inside the archive's own tenant can still carry a privilege no club holds, or point
+outside the club. In Open Mercato a super-admin ACL (`role_acls` / `user_acls.is_super_admin`) is instance-wide, and a
+`user_roles` row may name any role, including the instance's own super administrator role. So a restore also (a)
+checks the user, role and organization references of the privilege-bearing platform tables against the archive's own
+records and refuses a `system` schedule (`ARCHIVE_REFERENCES` in `club_core/lib/club-offboarding.ts`), and (b) writes
+every row through `sanitizeRestoreRow`: no super-admin flag, no tenant-restricted feature (`*`, `directory.*`,
+`directory.tenants…`, the same set the platform's ACL editor drops for a tenant's users), only the archive's
+organizations, redacted columns null. Restoring a value a club could never set through the app is the test: if a
+tenant administrator cannot grant it, the restore must not write it.
 
 **Applies to**: `club_core` export and restore, the person data export (`people`), any future import that writes rows
 or files from a user-supplied archive, and any code path that calls a storage driver's `store` with a path from data.
