@@ -1082,6 +1082,7 @@
   "payments.cashCustody.history.columns.amount": "Kwota",
   "payments.club.nav.clubEvents": "Imprezy klubowe",
   "payments.club.nav.outlines": "Konspekty treningów",
+  "payments.club.nav.invitations": "Zaproszenia",
   "payments.audit.cashHandover.send": "Wysłanie przekazania gotówki",
   "payments.audit.cashHandover.withdraw": "Wycofanie przekazania gotówki",
   "payments.audit.cashHandover.confirm": "Potwierdzenie przekazania gotówki",

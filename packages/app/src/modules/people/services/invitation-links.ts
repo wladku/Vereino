@@ -11,7 +11,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { getSecurityEmailBaseUrl } from '@open-mercato/shared/lib/url'
-import { clubOrigin, type AccountState, type CalendarDate } from '@vereino/core'
+import { clubOrigin, type CalendarDate } from '@vereino/core'
 import { accountView, passwordSetupLink, type TokenLinkService } from '@/modules/foundation'
 import { Guardianship, InvitationLink, Person } from '../data/entities'
 import {
@@ -134,7 +134,7 @@ async function inspect(container: AwilixContainer, rawToken: string, now: Date):
     expired: inspected.state !== 'active',
     revoked: Boolean(link.revokedAt),
     personActive: personActive(person, today) && person?.id === link.personId,
-    accountState: account.state as AccountState,
+    accountState: account.state,
   })
   const clubName = { name: club.name }
   return {

@@ -517,6 +517,7 @@
   "groups.ageCategories.proposalOpen": "Ages from {from} are proposed from the category {category}; change them if needed and save.",
   "groups.club.nav.clubEvents": "Club events",
   "groups.club.nav.outlines": "Training outlines",
+  "groups.club.nav.invitations": "Invitations",
   "groups.club.pzpnExport": "PZPN exports",
   "groups.club.medical.missing": "Medical: missing",
   "groups.club.medical.unknown": "Medical: unknown",
@@ -524,5 +525,6 @@
   "groups.club.medical.expiring": "Medical until {date} (expires soon)",
   "groups.club.medical.valid": "Medical until {date}",
   "groups.club.medical.filter": "Medical: not valid",
-  "groups.club.medical.filterEmpty": "Everyone here has a valid medical certificate."
+  "groups.club.medical.filterEmpty": "Everyone here has a valid medical certificate.",
+  "groups.club.inviteFamilies": "Invite families"
 }
