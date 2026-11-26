@@ -17,7 +17,14 @@ const ENQUEUED = new Date('2026-11-27T02:05:00.000Z')
 const DEADLINE = new Date('2026-11-27T02:40:00.000Z')
 
 function round(overrides: Partial<ClubJobRound> = {}): ClubJobRound {
-  return { jobKey: 'payments:verify-invariants', enqueuedAt: ENQUEUED, deadline: DEADLINE, clubs: [A, B], enqueueFailed: 0, ...overrides }
+  return {
+    jobKey: 'payments:verify-invariants',
+    enqueuedAt: ENQUEUED,
+    deadline: DEADLINE,
+    clubs: [A, B],
+    enqueueFailed: 0,
+    ...overrides,
+  }
 }
 
 function finishedAt(at: string, lastError: string | null = null): ClubJobRunState {

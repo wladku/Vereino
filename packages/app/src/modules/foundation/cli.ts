@@ -115,7 +115,8 @@ const clubJobs: ModuleCli = {
       process.stdout.write(`${JSON.stringify(await stepClubJobRound(container, parsed))}\n`)
       return
     }
-    if (round !== undefined && round !== 'queue' && round !== 'return') fail('club-jobs', '--round must be queue or return')
+    if (round !== undefined && round !== 'queue' && round !== 'return')
+      fail('club-jobs', '--round must be queue or return')
     // Created before the job check: the declarations come from the modules' DI registrars.
     const container = await createRequestContainer()
     if (action === 'status') {

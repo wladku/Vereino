@@ -115,9 +115,7 @@ test('ISSUE-852 the invariants heartbeat pings once per sweep run with the count
     await makeDue(clubs)
     const clean = sweep()
     expect(clean.enqueued.filter((row) => ours.has(row.organizationId))).toHaveLength(2)
-    expect(clean.round?.clubs.map(([, organizationId]) => organizationId)).toEqual(
-      expect.arrayContaining([...ours]),
-    )
+    expect(clean.round?.clubs.map(([, organizationId]) => organizationId)).toEqual(expect.arrayContaining([...ours]))
     const cleanOutcome = await settle(clean.round as Round, monitor.url)
     expect(cleanOutcome).toMatchObject({ jobKey: JOB, failing: 0, unfinished: 0 })
     expect(cleanOutcome.clubs).toBeGreaterThanOrEqual(2)
