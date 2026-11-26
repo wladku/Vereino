@@ -1,7 +1,7 @@
 # Photos and graphics on club events, with the guardian's image consent
 
 **Date**: 2026-11-26
-**Status**: Draft — written autonomously for issue #870 (epic E30 #866); the recommended defaults of *Open Questions* and the Ask First items of *Rollout* wait for the owner's decision
+**Status**: Ready for implementation — approved by the product owner on 2026-11-26 (#870 comment 7203995918: Q-I01–Q-I03 decided as recommended, the migrations of *Rollout* approved); the consent wording is under the lawyer's review (OA-I1) and may still change
 
 > Design authority: `.ai/specs/product-brief.md` (refresh of 2026-11-26, PR #864) with D-044 (the club page stays a simple club card; only photos and graphics on club events), Q19 (closed 2026-11-26: Vereino collects each child's image consent from the guardian and blocks publishing without it), N06 (no page editor), D-029 (phone first for every role but the administrator) and D-035 (the lawyer items). This spec completes `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md` (REQ-T08, REQ-T09, DD-T10, DD-T11: the poster and funder logos of a club event) and `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L10, DD-L11, DD-L12: the `image` consent and the consent texts). It does not edit their bodies. Ids carry the letter **I** (`REQ-I01`, `DD-I01`, `BR-I01`, `J-I01`, `TEST-I01`, `AC-I01`, `Q-I01`), which no other spec uses.
 
@@ -12,7 +12,7 @@
 - A picture becomes public only when three things hold: staff published it, the club event is public (REQ-T09), and **every marked person's image consent is in force at the moment of the read**. For a minor, the consent comes from the guardians: at least one active guardian gave it, and no active guardian withdrew it. For an adult, it is the person's own consent. Publication is decided on every read, not stored, so a withdrawal hides the photo on the next read, within the 60-second public cache.
 - The guardian gives, withdraws and sees the **history** of the image consent for each child on the phone (the ward page `/club/wards/[personId]`; an adult on M-10). Every decision is kept in a new append-only `people_consent_events` table, with the wording it was given to. Staff can no longer *grant* the image consent for someone, but they may still record a withdrawal.
 - Pictures are private attachments in `activities`, with the metadata removed (GPS included). Unpublished pictures are streamed only to the event's managers, through a route that checks the manager. Pictures are deleted when staff delete them, with the club, and with the erasure of any person marked on them. Undo can never bring back a withdrawn consent or an erased picture (BR-I06, BR-I07).
-- No new module and no new dependency. The work needs two migrations (`activities`, `people`) and one narrowing of a command, all listed for the owner's approval. The consent wording goes to the lawyer with the D-035 items before real club data.
+- No new module and no new dependency. The work needs two migrations (`activities`, `people`) and one narrowing of a command; the owner approved all three on 2026-11-26 (*Rollout*). The consent wording is with the lawyer (D-035 items) and may still change before real club data.
 
 ## Problem Statement
 
@@ -88,7 +88,7 @@ This closes each stated problem with the smallest platform-native surface:
 | **DD-I02** Pictures are two new kinds, `photo` and `graphic`, of `activities_club_event_files`, with new nullable columns; marks live in a new link table | Same upload route, byte check, partition, file streamer and club-data handling as the poster (DD-T10, DD-T11); one public streamer | A separate `activities_club_event_pictures` table | Duplicates the upload, streaming and deletion paths for the same kind of record |
 | **DD-I03** Marks are explicit, made by staff with a picker of club persons; the staff confirmation that nobody else is recognisable is recorded with author and time | Without face recognition only a person can tell who is in a photo; the confirmation puts that duty on a named person and makes it auditable | Face recognition; the club just asserts it holds consents (Q19 option a) | Biometric data and a new dependency (out of scope); Q19 chose (b), Vereino collects consent |
 | **DD-I04** A photo with recognisable people from outside the club cannot be published (the confirmation excludes it) | Vereino cannot collect consent from another club's guardians; Q19 blocks publishing without consent | Let staff confirm they hold outside consents on paper | Reintroduces Q19 option (a) for exactly the children Vereino knows least about (Q-I03) |
-| **DD-I05** A minor's image consent for publishing holds when at least one active guardian granted it and no active guardian's current decision is a withdrawal (a withdrawal by any guardian is a veto) | Publishing a child's image is a decision a single objecting parent should be able to stop; the lawyer confirms (Q-I01) | The existing "most recent decision among guardians" rule of `effectiveConsents` | A parent who withdrew could be overruled silently by the other parent granting later |
+| **DD-I05** A minor's image consent for publishing holds when at least one active guardian granted it and no active guardian's current decision is a withdrawal (a withdrawal by any guardian is a veto) | Publishing a child's image is a decision a single objecting parent should be able to stop; decided by the owner on 2026-11-26 (Q-I01) | The existing "most recent decision among guardians" rule of `effectiveConsents` | A parent who withdrew could be overruled silently by the other parent granting later |
 | **DD-I06** Only grants made by a guardian of the ward or by the adult person count for publishing (`by_person_id`); staff may record a withdrawal only | Q19: consent collected *from the guardian*; earlier staff-entered grants have no proof of the guardian's will | Accept staff-entered grants with a "paper consent" checkbox | No evidence trail; reopens Q19 option (a) (Q-I02) |
 | **DD-I07** An append-only `people_consent_events` row per consent decision (every kind, not only `image`), with the wording's `changedAt` and a SHA-256 of the wording shown | Proof under Art. 7(1) independent of the audit log's encryption and retention; the history read is a plain indexed query | Read the history from `action_logs` through the audit API | Encrypted columns, no guardian access to audit, audit retention is not a consent-proof retention |
 | **DD-I08** Metadata is removed byte by byte at upload by a pure function in `@vereino/core` (JPEG APP1/APP13/COM segments except a minimal orientation tag; PNG `eXIf`/`tEXt`/`iTXt`/`zTXt`; WebP `EXIF`/`XMP ` chunks) | Phone photos carry GPS: where children train; no re-encoding dependency is needed | Re-encode with `sharp` | New dependency (Ask First), CPU cost; rejected by the club events spec |
@@ -184,7 +184,7 @@ Administrator -> people.persons.anonymize -> people.departure.activities.erase -
     - the new directory method and optional token;
     - the new event `people.consent.image_withdrawn`;
     - the optional field `pictures` on the P-T1 response and on the B-T3 / phone event read.
-  - **Contract narrowing, which needs the owner's approval (BC §2, §3):** `people.guardianships.set_consents`, `people.guardianships.create|update` and `POST /api/people/persons/{id}/consents` refuse a *grant* of `image` by anyone other than the guardian of that row or the person (422 `image_consent_subject_only`, as `medical` does today), and a guardian's change of `image` on the other guardian's row (403). Staff can still withdraw. The undo of those commands keeps a withdrawal (BR-I06). The coach's attendance flag `consentFlags.image` switches to the same rule as `imagePublishable`, so "no image consent" means the same thing everywhere. No external consumer exists (`BACKWARD_COMPATIBILITY.md`: no shared environment is deployed). The change lands in one PR together with its only UI consumer, `GuardianshipsPanel.tsx`.
+  - **Contract narrowing, approved by the owner on 2026-11-26 (Q-I02; BC §2, §3):** `people.guardianships.set_consents`, `people.guardianships.create|update` and `POST /api/people/persons/{id}/consents` refuse a *grant* of `image` by anyone other than the guardian of that row or the person (422 `image_consent_subject_only`, as `medical` does today), and a guardian's change of `image` on the other guardian's row (403). Staff can still withdraw. The undo of those commands keeps a withdrawal (BR-I06). The coach's attendance flag `consentFlags.image` switches to the same rule as `imagePublishable`, so "no image consent" means the same thing everywhere. No external consumer exists (`BACKWARD_COMPATIBILITY.md`: no shared environment is deployed). The change lands in one PR together with its only UI consumer, `GuardianshipsPanel.tsx`.
 
 ## User Journeys
 
@@ -231,7 +231,7 @@ All texts come from the `activities`, `people` and `club_core` i18n catalogs, in
 
 | Surface / route | Purpose and primary actions | Data source / mutations | Closest installed reference | Canonical shell / components | Required states | Requirement IDs |
 |---|---|---|---|---|---|---|
-| `/club/wards/[personId]` (ward consents) and M-10 `/club/profile` (an adult's own consents) (changed) | Image consent row: wording, effect line, "{n} public photos" with links, history disclosure; withdrawal confirmation sheet | `GET /api/people/me` (adds `imagePublishable` per ward and for self), `POST /api/people/guardianships/{id}/consents` (existing), `PUT /api/people/me/consents` (existing), `GET /api/people/me/consents/{personId}/image-history` (new) | `ClubWardPage.tsx`, `ConsentList.tsx` | `MemberShell`, `Checkbox`, `Card`, bottom sheet, `StatusBadge` (status variants only) | loading, error with retry, 409 version, saved toast, empty history ("No decision yet") | REQ-I06, REQ-I07, REQ-I08 |
+| `/club/wards/[personId]` (ward consents) and M-10 `/club/profile` (an adult's own consents) (changed) | Image consent row: wording, effect line, "{n} public photos" with links, history disclosure; withdrawal confirmation sheet | `GET /api/people/me` (adds `imagePublishable` per ward and for self), `POST /api/people/guardianships/{id}/consents` (existing), `PUT /api/people/me/consents` (existing), `GET /api/people/me/consents/{personId}/image-history` (new) | `ClubWardPage.tsx`, `ConsentList.tsx` | `MemberShell`, `ConsentToggle` (`@vereino/ui`, new shared primitive, #857), `Card`, bottom sheet, `StatusBadge` (status variants only) | loading, error with retry, 409 version, saved toast, empty history ("No decision yet") | REQ-I06, REQ-I07, REQ-I08 |
 | B-10 `/backend/people/persons/[id]?tab=guardians` (changed) | Image consent: grant switch disabled for staff with an explanation; **Record withdrawal** with a note; **History** dialog | `POST /api/people/guardianships/{id}/consents` (existing, narrowed), `GET /api/people/persons/{id}/consents/image-history` (new) | `GuardianshipsPanel.tsx` | `Dialog`, `DataTable` (history), `CrudForm` field for the note | loading, empty history, 422 subject-only, 409 version | REQ-I07, REQ-I08 |
 | `/club/club-events/[id]` — Pictures block (changed) | **Add photos** (camera or files, several at once), per picture: description, **Who is in the photo?** (picker sheet), photo/graphic switch, confirmation, Publish/Unpublish, Move up/down, Delete; **Publish all** | `POST/DELETE …/{id}/files`, `PUT …/files/{fileId}`, `PUT …/files/{fileId}/people`, `POST …/files/{fileId}/publish|unpublish`, `POST …/files/publish-all`, people options from `GET /api/activities/club-events/{id}/people-options` (new, scoped) | the existing files block of the phone page | member page, bottom sheets, `useConfirmDialog`, upload progress, `StatusBadge` | loading, empty ("No pictures yet — add the first"), upload progress and per-file 422, 409 with refresh, state badges Draft / Public / Waiting for consent / Event not public | REQ-I01–REQ-I04 |
 | B-T3 `/backend/activities/club-events/[id]?tab=files` (changed) | The same as the phone block, as a `DataTable` of pictures (thumbnail, description, kind, people count, state, actions) and a mark dialog | the same routes | `PlaceFilesPanel.tsx`, `RowActions` | `DataTable`, `Dialog`, `LookupSelect` (multi) for people | as above + bulk selection publish/unpublish | REQ-I01–REQ-I04 |
@@ -405,7 +405,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
   - the withdrawal note;
   - the confirmation texts for marking people (REQ-I03).
 
-  The lawyer also answers Q-I01, Q-I03, Q-I04 and Q-I07. Until then the built-in texts are marked as drafts in the catalogs, and `docs/compliance/legal-verification.md` lists them.
+  The owner sent the consent text to the lawyer on 2026-11-26; the wording may still change, so phase 1 keeps every one of these texts in the i18n catalogs (no wording in code or tests: tests read them through `uiText`). The owner decided Q-I01 and Q-I03 (2026-11-26); the lawyer still answers Q-I04 and Q-I07 and may ask to revisit Q-I01 or Q-I03, which would be a spec change. Until the review ends the built-in texts are marked as drafts in the catalogs, and `docs/compliance/legal-verification.md` lists them.
 
 ## Integration Coverage
 
@@ -427,7 +427,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 
 ### Phase 1 — Guardian's image consent with history (E30-S02, #871)
 
-- **Depends on:** the owner's approval of the `people` migration and of the narrowing of `set_consents` (Rollout); OA-I1 is not needed to build, but it is needed before real club data.
+- **Depends on:** nothing open: the owner approved the `people` migration and the narrowing of `set_consents` on 2026-11-26 (Rollout). OA-I1 (the lawyer's wording) is not needed to build, but it is needed before real club data.
 - **Outcome:** guardians and adults give, withdraw and see the history of the image consent on the phone. Staff can only record withdrawals. `imagePublishable` is available to other modules.
 - **Why this order / value delivered:** photos are useless without consents. Clubs can start collecting consents before the photo feature ships, so photos can be published on day one of phase 2.
 - **Deliverables:**
@@ -438,6 +438,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
   - both history routes;
   - the directory method `imagePublishable`;
   - the event `people.consent.image_withdrawn`;
+  - the shared `ConsentToggle` in `packages/ui/src/member/` (the foundation primitive of phase A2 of `.ai/specs/2026-10-27-vereino-foundation-primitives.md`; owner decision on #857, 2026-11-26: #871 builds it, as its second consumer next to the M-10 consent switch), used by the ward page and M-10, with its unit tests;
   - ward page, M-10 and B-10 changes;
   - i18n `en`/`pl`;
   - the person data export of consent history;
@@ -451,7 +452,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 
 ### Phase 2 — Photos and graphics on club events, public only with consent (E30-S03, #872)
 
-- **Depends on:** the Phase 1 exit gate; the owner's approval of the `activities` migration.
+- **Depends on:** the Phase 1 exit gate (the owner approved the `activities` migration on 2026-11-26).
 - **Outcome:** managers add, mark, confirm and publish pictures on the phone and in the panel. Guests see only the pictures BR-I01 allows. Withdrawals hide photos and notify managers. Erasure deletes marked pictures.
 - **Why this order / value delivered:** it delivers D-044's only addition to the club page on top of consents that already exist.
 - **Deliverables:**
@@ -503,13 +504,15 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 
 ## Rollout, Migration, and Rollback
 
-- **Ask First items, which wait for the owner's approval:**
-  1. the `people` migration (`people_consent_events`);
-  2. the `activities` migration (new kinds, columns and checks on `activities_club_event_files`; the new table `activities_club_event_file_people`);
-  3. the narrowing of `people.guardianships.set_consents` and `people.persons.set_own_consents` (staff may not grant `image`);
-  4. the new DI contract method `imagePublishable` and the optional token `people.imageUsage.activities` (additive);
+- **Ask First items, approved by the owner on 2026-11-26 (#870 comment 7203995918):**
+  1. the `people` migration (`people_consent_events`, append-only) — approved;
+  2. the `activities` migration (new kinds, columns and checks on `activities_club_event_files`; the new table `activities_club_event_file_people`) — approved;
+  3. the narrowing of `people.guardianships.set_consents`, `people.guardianships.create|update` and `people.persons.set_own_consents` (staff may not grant `image`) — approved with Q-I02;
+  4. the new DI contract method `imagePublishable` and the optional token `people.imageUsage.activities` (additive) — approved with the spec;
   5. no new module and no new dependency are proposed. A separate `media` module was considered and rejected (Architecture).
-- **Owner action OA-I1:** the lawyer's wording and the answers to Q-I01, Q-I03, Q-I04 and Q-I07, before real club data (D-035).
+
+  Anything beyond what this spec names (another migration, a new module, a dependency, a further contract change) is Ask First again. Migrations are never applied by an agent to a dev or real database.
+- **Owner action OA-I1:** the lawyer's review of the wording (sent by the owner on 2026-11-26) and the answers to Q-I04 and Q-I07, before real club data (D-035). Q-I01 and Q-I03 are decided by the owner; the lawyer may ask to revisit them.
 - **Order:**
   - Phase 1 ships first. Clubs collect consents while phase 2 is built.
   - Phase 2 adds the pictures. Until a club adds a picture, nothing changes on its public pages.
@@ -527,7 +530,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 | Staff mark the wrong child or forget one | A child without consent is public | Confirmation recorded with author and time; changing marks clears it; the picker lists the event's participants first; guardians see the count of public photos of their child | Human error remains; the confirmation makes it accountable (DPIA D-12) |
 | A visiting team's child is recognisable | Publication without any consent | DD-I04: the confirmation excludes outsiders; DPIA D-13 | Staff may confirm wrongly |
 | A withdrawal while a page is open in a browser or in a shared cache | Photo stays visible for up to 60 s, or in a tab already loaded | `no-store` bytes; `s-maxage=60` JSON; the wording says so | Copies saved by others |
-| Veto rule (DD-I05) surprises a parent whose grant is overruled | A photo stays hidden | The history shows both decisions; the lawyer confirms the rule (Q-I01) | — |
+| Veto rule (DD-I05) surprises a parent whose grant is overruled | A photo stays hidden | The history shows both decisions; the owner decided the rule (Q-I01, 2026-11-26) | — |
 | Staff-entered consents no longer count | Fewer publishable photos at first | Phase 1 ships first; the B-09 filter "Needs attention" can list wards without a guardian-given image consent | Slower start for clubs that typed consents in |
 | Metadata stripper misses a format variant | GPS leaks | Unit tests on real phone samples (iPhone HEIC→JPEG export, Android JPEG, WebP); unknown segments in APP1–APP15 are removed except orientation | Rare formats; byte check refuses non-JPEG/PNG/WebP |
 | A replay through undo or redo revives a withdrawn consent or an erased picture | A child's photo public again | BR-I06, BR-I07, TEST-I02, TEST-I08 | — |
@@ -559,20 +562,20 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 | UI contracts identify references, canonical components, and theme/state coverage | pass | UI and Interaction Contracts |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | Implementation Phases |
 
-Verdict: **Blocked — the owner's approval of the Ask First items (Rollout) and of the recommended defaults Q-I01–Q-I07.** None of these blocks the design. The lawyer's wording (OA-I1) is needed before real club data, not before the build.
+Verdict: **Ready for implementation** — the owner decided Q-I01–Q-I03 and approved the Ask First items on 2026-11-26 (#870). The lawyer's wording (OA-I1) and the answers to Q-I04 and Q-I07 are needed before real club data, not before the build.
 
 ## Open Questions
 
-Each question carries the recommended default that this spec already applies (the autonomous defaults of `om-spec-writing`). Questions marked ⚠ need the owner's confirmation, and the lawyer's where noted, before the phase they block starts.
+Each question carries the recommended default that this spec applies. The owner accepted every recommendation on 2026-11-26 (#870 comment 7203995918); Q-I04 and Q-I07 still wait for the lawyer (OA-I1) and block nothing.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-I01 | With two guardians, does a withdrawal by either one block publication (veto), or does the most recent decision win (the current `effectiveConsents` rule)? | Władek Kuć, lawyer | phase 1 | Recommended default: **veto** (DD-I05, BR-I02). ⚠ NEEDS HUMAN CONFIRMATION — pending |
-| Q-I02 | Do image consents typed in by staff before this spec (or recorded from paper) count for publishing? | Władek Kuć | phase 1 | Recommended default: **no**; staff may only record withdrawals (DD-I06, BR-I04, BR-I05). ⚠ NEEDS HUMAN CONFIRMATION (narrows an existing command) — pending |
-| Q-I03 | May a photo be published when it also shows recognisable people from outside the club (for example a visiting team)? | Władek Kuć, lawyer | phase 2 | Recommended default: **no**; the manager's confirmation excludes it (DD-I04). ⚠ NEEDS HUMAN CONFIRMATION — pending |
+| Q-I01 | With two guardians, does a withdrawal by either one block publication (veto), or does the most recent decision win (the current `effectiveConsents` rule)? | Władek Kuć, lawyer | phase 1 | **Decided 2026-11-26 (owner): veto.** For a minor, one guardian's withdrawal blocks publication; a picture is public only when at least one guardian granted the consent and no guardian withdrew it (DD-I05, BR-I02) |
+| Q-I02 | Do image consents typed in by staff before this spec (or recorded from paper) count for publishing? | Władek Kuć | phase 1 | **Decided 2026-11-26 (owner): no.** Consents recorded by staff do not count; staff may only record a withdrawal; only the guardian, or the adult member, grants the consent, in the app (DD-I06, BR-I04, BR-I05; the narrowing is approved) |
+| Q-I03 | May a photo be published when it also shows recognisable people from outside the club (for example a visiting team)? | Władek Kuć, lawyer | phase 2 | **Decided 2026-11-26 (owner): no.** No picture showing recognisable people from outside the club is published; staff confirm on each photo that nobody else can be recognised (DD-I04, REQ-I03) |
 | Q-I04 | For a participant aged 13–17, is the guardian's consent enough, or is the young person's own agreement also needed? | lawyer | no | Recommended default: the guardian's consent (BR-I02), as for every minor today; the lawyer's answer may add the young person's own switch later without a schema change (`people_consent_events.by_role = self`). Pending (OA-I1) |
-| Q-I05 | May coaches who do not manage the event upload photos (for the manager to publish)? | Władek Kuć | no | Recommended default: **no**, managers only (DD-T06); revisit after the first season |
-| Q-I06 | Should guardians see unpublished photos of their child, or be asked for consent with the photo attached? | Władek Kuć | no | Recommended default: **no**; it discloses other children before any consent and could pressure the decision (Non-goals) |
+| Q-I05 | May coaches who do not manage the event upload photos (for the manager to publish)? | Władek Kuć | no | **Decided 2026-11-26 (owner, recommendation accepted): no**, managers only (DD-T06); revisit after the first season |
+| Q-I06 | Should guardians see unpublished photos of their child, or be asked for consent with the photo attached? | Władek Kuć | no | **Decided 2026-11-26 (owner, recommendation accepted): no**; it discloses other children before any consent and could pressure the decision (Non-goals) |
 | Q-I07 | How long are consent decisions kept as proof after the consent ends? | lawyer | no | Recommended default: until the person is anonymised or the club deleted (Security, R23). Pending (OA-I1) |
 
 ## Changelog
