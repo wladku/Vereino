@@ -35,6 +35,12 @@ function findAppRoot(start: string): string {
 
 export const APP_ROOT = findAppRoot(process.cwd())
 
+// The platform logger writes JSON records to stdout through an asynchronous stream, so a record logged before a
+// command's synchronous result line can still land after it, and the parser below would read the log record (TEST-M06
+// on PR #829 read a log record instead of `club-jobs sweep`'s `{"sweeps":…}`). The logger's own switch sends
+// every record to stderr, leaving stdout to the command (lesson `cli-json-result-line-is-not-the-last-json-line`).
+const CLI_ENV = { ...process.env, OM_LOG_DESTINATION: 'stderr' }
+
 function lastJsonLine(stdout: string): unknown {
   const line = stdout
     .split(/\r?\n/)
@@ -47,7 +53,7 @@ function lastJsonLine(stdout: string): unknown {
 export function mercato(args: string[]): unknown {
   const result = spawnSync('yarn', ['mercato', ...args], {
     cwd: APP_ROOT,
-    env: process.env,
+    env: CLI_ENV,
     encoding: 'utf8',
     shell: process.platform === 'win32',
     timeout: 180_000,
@@ -63,7 +69,7 @@ export function mercatoAsync(args: string[]): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const child = spawn('yarn', ['mercato', ...args], {
       cwd: APP_ROOT,
-      env: process.env,
+      env: CLI_ENV,
       shell: process.platform === 'win32',
     })
     let stdout = ''
