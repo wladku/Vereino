@@ -55,3 +55,10 @@
 
 - If the owner prefers an exact closing time, a `completed_at` column on `activities_occurrences` (migration, Ask First) replaces the action-log read (options in the issue comment of 2026-11-26).
 - The ESLint step needs more than the default ~4 GB heap on this server when other jobs run; the gate passed with `NODE_OPTIONS=--max-old-space-size=8192`.
+
+## Follow-up run — CI gate red on PR #838 (om-auto-fix-pr, 2026-11-26)
+
+- **Trigger:** the required `gate` check failed (run 45865053350). Log: `[verify] failed at lint` after `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory` in `@vereino/app` `eslint .` (no rule findings). `main` passes the same step at 191 s, just under the default ~4 GB heap; the same OOM also failed the gate of `feat/issue-713-enterprise-overlay` (run 45860726154), so this is repository growth, not this PR's code.
+- **Fix:** `packages/app/package.json` `lint` runs `cross-env NODE_OPTIONS=--max-old-space-size=8192 eslint .`, the same heap `build` and `typecheck` already use. No rule, threshold or file list changed.
+- **Base:** `origin/main` had not advanced past the PR's base (`cc3de13d`); nothing to merge.
+- **Checks:** `yarn workspace @vereino/app lint` — 0 errors, 166 warnings, exit 0; `yarn verify --from lint` — all 19 steps passed (lint 86 s, build 62 s). The integration tests of this PR (E27-S01, E27-S03) passed locally earlier (above); the heap change does not touch app code.
