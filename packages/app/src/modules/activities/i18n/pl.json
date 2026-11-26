@@ -1172,5 +1172,6 @@
   "activities.rangeSwitch.previous.month": "poprzedni miesiąc",
   "activities.rangeSwitch.next.day": "następny dzień",
   "activities.rangeSwitch.next.week": "następny tydzień",
-  "activities.rangeSwitch.next.month": "następny miesiąc"
+  "activities.rangeSwitch.next.month": "następny miesiąc",
+  "activities.occurrences.calendar.agenda": "Agenda"
 }

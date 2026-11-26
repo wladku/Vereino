@@ -153,7 +153,8 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
 
     // A week without sessions (the week before: every session is today or later) keeps its hours reachable by
     // keyboard: the scroll region takes focus and has a name (WCAG 2.1.1, axe `scrollable-region-focusable`, #248).
-    await calendar.getByRole('button', { name: uiText('schedule.range.prev', { exact: true }) }).click()
+    // The shared range switch above the grid (#784, REQ-W07).
+    await page.getByTestId('occurrences-calendar-range-previous').click()
     await expect(page.getByTestId('occurrences-calendar-empty')).toBeVisible()
     await expect(calendar.locator('.rbc-event')).toHaveCount(0)
     const hours = calendar.getByRole('region', {
@@ -163,7 +164,7 @@ test('E06-S12 the sessions list opens on today, cancels and opens attendance fro
     await hours.focus()
     await expect(hours).toBeFocused()
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
-    await calendar.getByRole('button', { name: uiText('schedule.range.next', { exact: true }) }).click()
+    await page.getByTestId('occurrences-calendar-range-next').click()
     await startedEvent.click()
     await expect(page).toHaveURL(new RegExp(`/backend/activities/occurrences/${started}$`))
 

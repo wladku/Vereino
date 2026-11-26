@@ -16,7 +16,6 @@ import {
   perspectiveQuery,
   perspectiveStatus,
   perspectiveWindow,
-  scheduleRangeWindow,
   sessionInlineActions,
   sessionRowActions,
   viewOfParams,
@@ -174,20 +173,6 @@ describe('coordinator calendar range', () => {
   it('formats a local date with padded month and day', () => {
     expect(localCalendarDate(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05')
     expect(localCalendarDate(new Date(2026, 10, 30, 0, 0))).toBe('2026-11-30')
-  })
-
-  it('reads the dates of the grid range', () => {
-    expect(scheduleRangeWindow({ start: new Date(2026, 10, 2), end: new Date(2026, 10, 8, 23, 59, 59) })).toEqual({
-      from: '2026-11-02',
-      to: '2026-11-08',
-    })
-  })
-
-  it('trims a range longer than the 62 days the API serves', () => {
-    expect(scheduleRangeWindow({ start: new Date(2026, 0, 1), end: new Date(2026, 5, 30) })).toEqual({
-      from: '2026-01-01',
-      to: '2026-03-03',
-    })
   })
 })
 
