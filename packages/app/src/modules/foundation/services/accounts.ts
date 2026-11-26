@@ -157,6 +157,37 @@ export async function accountView(
   }
 }
 
+/**
+ * The users among `userIds` whose account is `active` (DD-L02, the same reading as `accountView`) and was created
+ * before `createdBefore` — the "Accounts" leading indicator of the pilot (E27-S03, #820). Users of another tenant or
+ * organization, deleted users and unknown ids are never returned. One query; no e-mail is read.
+ */
+export async function activeAccountUserIds(
+  container: AwilixContainer,
+  scope: AccountScope,
+  userIds: readonly string[],
+  createdBefore: Date,
+): Promise<Set<string>> {
+  const unique = [...new Set(userIds)]
+  if (unique.length === 0) return new Set()
+  const em = container.resolve<EntityManager>('em').fork()
+  const users = await em.find(
+    User,
+    { id: { $in: unique }, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
+    { fields: ['id', 'passwordHash', 'lastLoginAt', 'isConfirmed', 'createdAt'] },
+  )
+  const active = new Set<string>()
+  for (const user of users) {
+    const state = accountState({
+      hasPassword: Boolean(user.passwordHash),
+      lastSignInAt: user.lastLoginAt ?? null,
+      isConfirmed: user.isConfirmed,
+    })
+    if (state === 'active' && user.createdAt.getTime() < createdBefore.getTime()) active.add(user.id)
+  }
+  return active
+}
+
 export type ResendInvitationResult = {
   sentAt: string
   /** The link exists but the e-mail failed; the action stays available. */
