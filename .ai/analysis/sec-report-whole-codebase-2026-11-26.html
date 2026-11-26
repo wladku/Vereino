@@ -1,0 +1,2310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security report — whole codebase before the first real club data (#743)</title>
+<style>
+body{font-family:system-ui,-apple-system,"Segoe UI",sans-serif;max-width:72rem;margin:2rem auto;padding:0 1rem;line-height:1.5;color:#1f2328}
+table{border-collapse:collapse;margin:1rem 0;font-size:.9rem}th,td{border:1px solid #d0d7de;padding:.3rem .5rem;vertical-align:top;text-align:left}th{background:#f6f8fa}
+code{background:#f6f8fa;padding:.1rem .3rem;border-radius:4px;font-size:.85em}h2{border-bottom:1px solid #d0d7de;padding-bottom:.3rem;margin-top:2.5rem}
+</style>
+</head>
+<body>
+<h1>Security report — whole codebase before the first real club data (internal review, #743)</h1>
+<p>Window: <strong>whole codebase at <code>main</code> 1e45a949</strong> (base: <code>main</code>), reviewed 2026-11-26 · Units analyzed: 7 (6 code areas, plus the ASVS rows owned by #743) · Excluded: 0 · Merged into other bases: 0 · Residue: 0</p>
+<p>This is the internal part of E25-S09 (#743, owner decision of 2026-11-26). The repository is public, so this report follows the <code>withhold-live</code> disclosure policy: a live high or critical finding appears only as a placeholder, and its detail goes to the maintainers through a private GitHub security advisory (<code>SECURITY.md</code>). The external penetration test of staging is still to come and is tracked in #743.</p>
+<h2>Executive summary</h2>
+<ul>
+<li><strong>Total findings: 0 blocker (critical), 1 major (high), 22 minor (medium), 12 nit, 19 info; 1 withheld for private disclosure</strong> (tracked in #806 and a private draft security advisory). Some findings were reported by more than one unit and are counted once per unit: the autologin and dev-secret switches the boot check does not refuse (U1-6, U6-3, U7-3); the platform <code>admin</code> role that club administrators receive (U2-2, U5-2); the CSP with <code>&#39;unsafe-inline&#39;</code> (U1-9, U6-2); the order-link page headers (U1-7, U2-6); the anonymous OpenAPI document (U6-7, U7-5).</li>
+<li><strong>Top OWASP categories:</strong> A04 Insecure Design (6 medium), A05 Security Misconfiguration (5 medium), then A01, A07 and A09 (3 medium each). The one high finding is A08.</li>
+<li><strong>Cross-club isolation holds:</strong> every unit traced its routes and found tenant and organization taken from the session, club B ids answering 404, and a complete isolation inventory (<code>route-isolation:check</code>). Every system-scope lookup the approved exceptions allow narrows to the club it found. No finding lets one club read or change another club&#39;s data through a request.</li>
+<li><strong>Deep vectors surfaced:</strong> account lockout through per-address sign-in limits, refund race on concurrent refunds, link not revoked after a contact change, staff rights on threads that outlive the role, fail-open production switches at boot, reset links left valid after a reset, missing security-event logging.</li>
+<li><strong>Riskiest remaining area:</strong> the platform <code>auth</code> module and the boot check. Sign-in lockout (U1-1), timing that reveals accounts on reset (U1-2), sibling reset links (U7-1), unlogged sign-in failures (U7-2) and unrefused autologin switches (U7-3) all sit in installed platform code that Vereino neither wraps nor tests.</li>
+</ul>
+<h2>Open E25 findings — where they stand</h2>
+<table>
+<thead>
+<tr>
+<th>Story</th>
+<th>State on 2026-11-26</th>
+<th>What this review adds</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>#735 S01 Railway lock-down</td>
+<td>open; checklist written (PR #745)</td>
+<td>U6-1 and U7-3: the boot check should refuse placeholder secrets and the autologin and dev-secret switches</td>
+</tr>
+<tr>
+<td>#736 S02 second factor</td>
+<td>open, in progress</td>
+<td>U1-8: Google sign-in issues the session without the platform&#39;s second-factor hooks</td>
+</tr>
+<tr>
+<td>#737 S03 session lifetime</td>
+<td>open, in progress</td>
+<td>no new finding</td>
+</tr>
+<tr>
+<td>#738 S04 rate limits</td>
+<td>closed (PR #751)</td>
+<td>U1-1 lockout, U1-3 shared counter until the proxy depth is set, U1-4 and U2-4 per-user layer missing</td>
+</tr>
+<tr>
+<td>#739 S05 edge proxy and WAF</td>
+<td>open, in progress</td>
+<td>V4.2.1 and V13.4.3 can be settled only at the edge</td>
+</tr>
+<tr>
+<td>#740 S06 key store</td>
+<td>open, in progress</td>
+<td>U6-1: without an encryption key, encrypted columns are written in plaintext</td>
+</tr>
+<tr>
+<td>#741 S07 GitHub hardening</td>
+<td>open</td>
+<td>U6-4: merge train merges without an approving review; U6-8 install scripts</td>
+</tr>
+<tr>
+<td>#742 S08 ASVS checklist</td>
+<td>closed (PR #748)</td>
+<td>U7 gives a verdict for all 80 requirement rows owned by #743 (below)</td>
+</tr>
+<tr>
+<td>#744 S10 cross-site request check</td>
+<td>open, in progress</td>
+<td>not re-analysed</td>
+</tr>
+<tr>
+<td>#747 default super-admin, password policy</td>
+<td>open; runbook merged (PR #781)</td>
+<td>U6-3/U7-3 autologin switches</td>
+</tr>
+<tr>
+<td>#779 app-owned password check</td>
+<td>open</td>
+<td>no new finding</td>
+</tr>
+</tbody></table>
+<h2>For the external penetration test</h2>
+<p>What only a test of a running staging deployment can settle (U7): request smuggling at the Railway edge (V4.2.1), directory listings and <code>TRACE</code> (V13.4.3), whether access logs keep token paths (V14.2.1) and host clock sync (V16.2.2). The client-IP detection behind the proxy, on which every per-client limit rests, should be measured there too (A-8 of the ASVS checklist). Beyond those, the tester&#39;s scope in #743 (cross-club isolation, sign-in and sessions, public and token routes, uploads, payment webhooks, back office) matches the areas of units U1 to U5.</p>
+<h2>Consolidated next steps — go deeper</h2>
+<p>Every per-unit next step, deduplicated; ordered by expected impact. Exactly one is <strong>[recommended]</strong>.</p>
+<ul>
+<li><strong>[recommended]</strong> Fix the withheld major finding U5-1 (#806) through its private security advisory, then re-run <code>om-auto-sec-report-pr</code> on the fixing PR — the only high-severity finding of the review.</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the platform <code>auth</code> module (reset, login, autologin, profile password change) — U1-1, U1-2 and U7-1 to U7-3 sit in installed code that Vereino neither wraps nor tests.</li>
+<li>Audit <code>packages/app/scripts/vereino-boot-env.mjs</code> for fail-open production switches — encryption key and placeholders, <code>AUTH_SECRET</code>, <code>LOOKUP_HASH_PEPPER</code>, autologin and dev-secret switches in one rule set (U6-1, U6-3, U7-3).</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the installed <code>payment_gateways</code> staff routes and the <code>admin</code> role features the club administrator inherits (U2-2, U5-2) — money can move outside the Vereino ledger.</li>
+<li>Audit <code>packages/app/src/modules/payments/commands/checkout.ts</code> for concurrent refund reservations (U2-1).</li>
+<li>Audit <code>communication</code> thread visibility for grants that ended, and its reply flooding against the club send budget (U4-1, U4-2).</li>
+<li>Audit <code>packages/app/src/modules/foundation</code> for a security-event subscriber set (login failure, 429, 403, reset, role change) — closes V16.3.1 to V16.3.3 in one change (U7-2).</li>
+<li>Audit every Art. 9 health-data read path for <code>auditedRead</code> coverage against DPIA D-14 (U4-3), and the club export download for an audit entry and an expiry (U5-3).</li>
+<li>Audit <code>facilities</code> rental lifecycle for link revocation on every renter-identity change (U3-1), and <code>facilities/commands/requests.ts</code> for slot squatting through verified public requests.</li>
+<li>Audit <code>packages/app/src/app/api/[...slug]/route.ts</code> and <code>foundation</code> for a per-user layer under the club budget (U1-4, U2-4, U2-5).</li>
+<li>Audit <code>.github/workflows/ci.yml</code> and the live <code>main</code> ruleset for review-before-merge (U6-4, #741).</li>
+<li>Audit <code>packages/app/next.config.ts</code> for a nonce-based CSP and the PDF and image download routes that inherit the global CSP (U6-2).</li>
+<li>Audit <code>yarn verify</code> for an S5.8 raw-SQL interpolation gate and a <code>react/no-danger</code> lint rule — together they let five V1 and V3 rows be called met.</li>
+<li>Audit <code>packages/app/src/modules/foundation</code> e-mail templates for HTML escaping of club-entered text used by the <code>payments</code> templates.</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> limited to <code>foundation</code> <code>authorizeScoped</code> and <code>scopeContract</code> grant resolution, the club_core public-site service, the people-module consumers of the foundation data export, and the season-rollover contributors in <code>activities</code> and <code>payments</code> — spot-checked only.</li>
+<li>Audit the Railway staging edge for request smuggling, <code>TRACE</code>, directory listings, clock sync and access-log retention of token paths — and re-run the sessionless families once <code>RATE_LIMIT_TRUST_PROXY_DEPTH</code> is set (U1-3).</li>
+</ul>
+<h2>Risk heatmap</h2>
+<table>
+<thead>
+<tr>
+<th>OWASP category</th>
+<th>Blocker</th>
+<th>Major</th>
+<th>Minor</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A01 Broken Access Control</td>
+<td>0</td>
+<td>0</td>
+<td>3</td>
+<td>in-club only: platform admin grant (U2-2), link kept after a contact change (U3-1), thread rights after a role ends (U4-1); cross-club isolation held everywhere</td>
+</tr>
+<tr>
+<td>A02 Cryptographic Failures</td>
+<td>0</td>
+<td>0</td>
+<td>1</td>
+<td>encryption key not required at boot (U6-1)</td>
+</tr>
+<tr>
+<td>A03 Injection</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>parameterised SQL, React escaping, CSV formula prefixes; one nit on line breaks in mail subjects</td>
+</tr>
+<tr>
+<td>A04 Insecure Design</td>
+<td>0</td>
+<td>0</td>
+<td>6</td>
+<td>rate-limit layering, refund race, Stripe test mode in production, reply flooding, slug release</td>
+</tr>
+<tr>
+<td>A05 Security Misconfiguration</td>
+<td>0</td>
+<td>0</td>
+<td>5</td>
+<td>boot check gaps, CSP, platform <code>admin</code> role on club administrators</td>
+</tr>
+<tr>
+<td>A06 Vulnerable and Outdated Components</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>audit not run here; the weekly <code>security.yml</code> job covers it</td>
+</tr>
+<tr>
+<td>A07 Identification and Authentication Failures</td>
+<td>0</td>
+<td>0</td>
+<td>3</td>
+<td>lockout, reset timing, sibling reset links</td>
+</tr>
+<tr>
+<td>A08 Software and Data Integrity Failures</td>
+<td>0</td>
+<td>1</td>
+<td>1</td>
+<td>one withheld; merge train without an approving review (U6-4)</td>
+</tr>
+<tr>
+<td>A09 Security Logging and Monitoring Failures</td>
+<td>0</td>
+<td>0</td>
+<td>3</td>
+<td>health-data read, export download and sign-in failures not logged</td>
+</tr>
+<tr>
+<td>A10 Server-Side Request Forgery</td>
+<td>0</td>
+<td>0</td>
+<td>0</td>
+<td>outbound URLs only from environment or fixed</td>
+</tr>
+<tr>
+<td>Out of scope (not OWASP)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>0 findings</td>
+</tr>
+</tbody></table>
+<p>Withheld findings count in their row; the notes never describe them.</p>
+<h2>Deep vectors — coverage matrix</h2>
+<p>Abbreviated to vectors that surfaced a risk or stayed inconclusive; the full tables are in the per-unit fragments below.</p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>U1</th>
+<th>U2</th>
+<th>U3</th>
+<th>U4</th>
+<th>U5</th>
+<th>U6</th>
+<th>U7</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cross-club IDOR</td>
+<td>covered</td>
+<td>covered</td>
+<td>covered</td>
+<td>covered</td>
+<td>covered</td>
+<td>not applicable</td>
+<td>not applicable</td>
+</tr>
+<tr>
+<td>Account lockout / enumeration</td>
+<td>risk surfaced</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>risk surfaced</td>
+</tr>
+<tr>
+<td>Rate-limit layering</td>
+<td>risk surfaced</td>
+<td>risk surfaced</td>
+<td>inconclusive (proxy depth)</td>
+<td>risk surfaced</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>covered</td>
+</tr>
+<tr>
+<td>TOCTOU on money</td>
+<td>not applicable</td>
+<td>risk surfaced</td>
+<td>covered</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+</tr>
+<tr>
+<td>Token revocation</td>
+<td>covered</td>
+<td>covered</td>
+<td>risk surfaced</td>
+<td>covered</td>
+<td>covered</td>
+<td>not applicable</td>
+<td>risk surfaced</td>
+</tr>
+<tr>
+<td>Over-broad or stale grants</td>
+<td>not applicable</td>
+<td>risk surfaced</td>
+<td>covered</td>
+<td>risk surfaced</td>
+<td>risk surfaced</td>
+<td>not applicable</td>
+<td>not applicable</td>
+</tr>
+<tr>
+<td>Fail-open configuration</td>
+<td>risk surfaced</td>
+<td>risk surfaced</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>covered</td>
+<td>risk surfaced</td>
+<td>risk surfaced</td>
+</tr>
+<tr>
+<td>Security-event logging</td>
+<td>not applicable</td>
+<td>covered</td>
+<td>covered</td>
+<td>risk surfaced</td>
+<td>risk surfaced</td>
+<td>not applicable</td>
+<td>risk surfaced</td>
+</tr>
+<tr>
+<td>Withheld vector</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+<td>risk surfaced</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Request smuggling at the edge</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>not applicable</td>
+<td>inconclusive</td>
+</tr>
+</tbody></table>
+<h2>Per-unit findings</h2>
+<h2>U1 — Sign-in, sessions and sessionless/public routes</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 0 - -->
+
+<ul>
+<li>10 findings: 0 blocker, 0 major, 4 minor, 3 nit, 3 info; 0 withheld.</li>
+<li>Top OWASP categories: A07, A04, A05. Deep vectors surfaced: targeted account lockout through the per-account limit, timing-based account enumeration on password reset, rate-limit identifier collapse behind the proxy, one member exhausting a club-wide budget, unbounded rate-limit bucket keys.</li>
+<li>Recommended next run: Audit <code>packages/app/src/app/api/auth/**</code> and <code>foundation/services/sessionless-limits.ts</code> for lockout and enumeration abuse — the per-account layers that close the brute-force gap also give anyone a cheap way to lock a known staff address out of both sign-in and reset.</li>
+</ul>
+<p>The entry points held up well. Every <code>requireAuth: false</code> route is deliberate and rate-limited. Personal-link tokens are 256-bit, stored as HMAC hashes, compared in constant time, scope-narrowed, and single-use through a compare-and-set update. Social sign-in uses PKCE S256, a cookie-bound single-use state, and checks of <code>iss</code>, <code>aud</code>, <code>azp</code> and <code>exp</code>. It never matches by e-mail and never creates accounts. Every system-scope lookup checked (club slug, token hash, <code>(provider, subject)</code>) narrows each later query to the tenant and organization it found.</p>
+<h3>U1-1 [Minor] A07 Identification and Authentication Failures — <code>packages/app/src/modules/foundation/services/sessionless-limits.ts:140</code></h3>
+<ul>
+<li><strong>What:</strong> <code>withAccountEmailLimit</code> counts every sign-in attempt for an address before the platform handler, from any client, at 10 per 15 minutes (<code>SIGN_IN_EMAIL_LIMIT</code>). It also counts password-reset requests at 3 per hour (<code>PASSWORD_RESET_EMAIL_LIMIT</code>). Once the counter is spent, a correct password is refused too. The counter resets only after a successful sign-in, and none can succeed while it is spent.</li>
+<li><strong>Why:</strong> Anyone who knows a staff address can keep that account locked out of password sign-in and password reset indefinitely, at about 13 requests per hour. This works against the treasurer and the club administrator. The window is time-bounded but renewable at will, and nothing alerts on it.</li>
+<li><strong>Fix:</strong> Keep the per-account layer but stop it from blocking a correct password outright. For example, count only failed attempts (consume after a 401) and answer a spent counter with a step-up or a delay rather than a hard 429. Also log and alert on an address whose counter stays spent.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/app/api/auth/reset/route.ts:13</code> — same layer on password reset — together with the sign-in lockout it also removes the victim&#39;s recovery path.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-2 [Minor] A07 Identification and Authentication Failures — <code>packages/app/src/app/api/auth/reset/route.ts:12</code></h3>
+<ul>
+<li><strong>What:</strong> The Vereino wrapper passes the request straight to the platform reset handler. For a known address, that handler creates the token, renders the e-mail, awaits the e-mail transport and creates a notification before it answers. For an unknown address it answers at once. The body is the same <code>{ ok: true }</code> in both cases, but the response time differs by the provider round trip.</li>
+<li><strong>Why:</strong> Response timing reveals whether an address has an account, so anyone can enumerate member and staff accounts. The sessionless link-request routes already avoid this with a floor and <code>after()</code>; this route does not.</li>
+<li><strong>Fix:</strong> Give the wrapper a uniform minimum response time, or run the platform handler&#39;s send step after the response (as <code>activities/api/declaration-links/route.ts</code> does), so both branches answer in the same time.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found. The declaration and order link-request routes already pad, and the platform login equalizes bcrypt time.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-3 [Minor] A05 Security Misconfiguration — <code>packages/app/scripts/vereino-boot-env.mjs:102</code></h3>
+<ul>
+<li><strong>What:</strong> An unset or zero <code>RATE_LIMIT_TRUST_PROXY_DEPTH</code> behind the Railway proxy only produces a boot warning. In that state <code>getClientIp</code> returns null, and every per-client limit falls back to one shared key. This covers platform login, reset and session refresh, and every <code>metadata.rateLimit</code>.</li>
+<li><strong>Why:</strong> One client can spend the shared budget, for example 20 sign-ins per minute, and block sign-in and every public route for all users. The deploy docs describe the risk, but nothing enforces the measured depth.</li>
+<li><strong>Fix:</strong> Once the depth is measured per environment, make the Railway boot check refuse a missing or zero depth instead of warning (related: #739 edge WAF).</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/training/api/library-shared.ts:43</code> — the guest report&#39;s &quot;once per client address&quot; check falls back to the same shared key, so the first guest report of an entry blocks every later one.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-4 [Minor] A04 Insecure Design — <code>packages/app/src/app/api/[...slug]/route.ts:455</code></h3>
+<ul>
+<li><strong>What:</strong> The club request budget (DD-M10, 600 per minute) is keyed only by the session&#39;s tenant (<code>clubRequestLimitKey</code>). It has no per-user layer below it, so one authenticated member of any role, such as a guardian, spends the same counter as every staff user of the club.</li>
+<li><strong>Why:</strong> A single low-privilege or compromised member account can keep its whole club at 429 on every authenticated API call. This is a cheap insider denial of service against the treasurer and the administrators.</li>
+<li><strong>Fix:</strong> Add a per-user (<code>auth.sub</code>) layer with a smaller share of the club budget before the per-club layer, so no single session can spend it all.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-5 [Nit] A04 Insecure Design — <code>packages/app/src/modules/foundation/lib/club-limits.ts:44</code></h3>
+<ul>
+<li><strong>What:</strong> <code>routeLimitKey</code> appends the raw <code>clubSlug</code> route parameter to the per-client key before the slug is validated or resolved.</li>
+<li><strong>Why:</strong> A client that rotates made-up slugs gets a fresh bucket for every value. The per-client limit on the public route families then never trips, and every request still runs a slug lookup. With the memory strategy, the number of keys is also unbounded.</li>
+<li><strong>Fix:</strong> Add the slug only when it passes <code>isPublicSlug</code>, or key it on the resolved club. Otherwise keep a per-client-only layer alongside the per-club one.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-6 [Nit] A05 Security Misconfiguration — <code>packages/app/scripts/vereino-boot-env.mjs:86</code></h3>
+<ul>
+<li><strong>What:</strong> The Railway boot check refuses <code>OM_INTEGRATION_TEST</code> and <code>OM_TEST_MODE</code>, but not <code>OM_AUTOLOGIN_*</code> or <code>OM_ALLOW_DEV_AUTH_SECRET</code>. The deploy docs say never to set any of these in staging or production.</li>
+<li><strong>Why:</strong> If an operator sets <code>OM_AUTOLOGIN_*</code> by mistake, the platform&#39;s autologin route signs every anonymous visitor in as the configured user. The dev auth-secret opt-in would let token hashing fall back to a published default.</li>
+<li><strong>Fix:</strong> Refuse both on Railway in the same boot check.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-7 [Nit] A09 Security Logging and Monitoring Failures — <code>packages/app/next.config.ts:166</code></h3>
+<ul>
+<li><strong>What:</strong> The declaration link and the facilities verify and cancel pages get <code>Referrer-Policy: no-referrer</code>. The order-link page <code>/club/o/{token}</code> and its API <code>/api/payments/order-links/{token}/**</code> do not. Both personal-link APIs also carry the raw token in the request path. The facilities routes deliberately moved the token into the body &quot;so access logs never carry it&quot;.</li>
+<li><strong>Why:</strong> Valid personal-link tokens end up in proxy and access logs and in same-origin referrers. Anyone with log access can act as the guardian until the link expires.</li>
+<li><strong>Fix:</strong> Add the <code>no-referrer</code> headers for the order-link page and API. Consider sending the token in the body for the API calls, as the facilities routes do.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/activities/api/declaration-links/[token]/route.ts:1</code> — the token is in the API path too (the referrer header is already set).</li>
+</ul>
+</li>
+</ul>
+<h3>U1-8 [Info] A07 Identification and Authentication Failures — <code>packages/app/src/modules/foundation/services/identity.ts:203</code></h3>
+<ul>
+<li><strong>What:</strong> <code>issueSession</code> signs a Google-linked user in directly through <code>createSession</code> and <code>signJwt</code>, without the <code>auth/login</code> after-interceptors that the platform&#39;s login route runs. The platform&#39;s second-factor challenge plugs in through those interceptors.</li>
+<li><strong>Why:</strong> No second factor is enabled today. Once one is added as a login interceptor, Google sign-in would bypass it for admins and treasurers.</li>
+<li><strong>Fix:</strong> Tracked in #736. Include the social sign-in path in that work.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-9 [Info] A05 Security Misconfiguration — <code>packages/app/next.config.ts:29</code></h3>
+<ul>
+<li><strong>What:</strong> The production CSP keeps <code>script-src &#39;unsafe-inline&#39;</code> (the nonce-based CSP is deferred, documented) and <code>connect-src &#39;self&#39; https:</code>.</li>
+<li><strong>Why:</strong> Any HTML-injection bug becomes script execution, and <code>connect-src https:</code> lets injected script exfiltrate to any HTTPS host. The CSP gives no containment.</li>
+<li><strong>Fix:</strong> Plan the nonce-based CSP, and narrow <code>connect-src</code> to the origins in use.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U1-10 [Info] A01 Broken Access Control — <code>packages/app/src/modules/club_core/lib/club-host.ts:138</code></h3>
+<ul>
+<li><strong>What:</strong> On <code>&lt;slug&gt;.&lt;club domain&gt;</code>, <code>clubForHost</code> resolves the club even when its public pages are off. <code>/</code> then redirects to <code>/login</code> instead of not-found, and <code>signInTenantRedirect</code> puts the club&#39;s tenant id into the URL.</li>
+<li><strong>Why:</strong> Anyone can confirm that an unpublished club exists and learn its tenant id. The id is not a credential, so the impact is reconnaissance only.</li>
+<li><strong>Fix:</strong> Decide whether unpublished clubs should be discoverable through their host. If not, answer an unpublished host like an unknown one until sign-in.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Auth bypass on routes missing metadata</td>
+<td>covered</td>
+<td>dispatcher defaults <code>requireAuth</code> to true; every <code>requireAuth: false</code> route reviewed is intentional and rate-limited; <code>ratelimit_probe</code> and <code>example</code> are not in <code>src/modules.ts</code></td>
+</tr>
+<tr>
+<td>Dev-runtime and docs routes</td>
+<td>covered</td>
+<td>dev-runtime closed without the supervisor handshake; OpenAPI public (platform default), ACL metadata only for authorized callers</td>
+</tr>
+<tr>
+<td>Token entropy / hash / constant-time / expiry / single use</td>
+<td>covered</td>
+<td><code>foundation/services/token-link.ts</code>: 32-byte tokens, HMAC-SHA-256 hash, <code>timingSafeEqual</code>, CAS <code>UPDATE</code> on redeem, <code>peek</code> spends nothing</td>
+</tr>
+<tr>
+<td>System-scope lookups narrow to the found tenant/org</td>
+<td>covered</td>
+<td><code>clubFrame</code>, <code>inspect</code>/<code>peek</code> consumers (declaration, order, request verify, rental cancel), <code>findLinkForSignIn</code> → <code>signInUser</code> scoped</td>
+</tr>
+<tr>
+<td>Public endpoints derive scope from slug/token, never a query tenant</td>
+<td>covered</td>
+<td>no public route reads <code>tenantId</code>/<code>organizationId</code> from input; sessionless contexts carry <code>auth: null</code></td>
+</tr>
+<tr>
+<td>User enumeration</td>
+<td>risk surfaced</td>
+<td>password reset timing (U1-2); sign-in, link requests and social outcomes are uniform</td>
+</tr>
+<tr>
+<td>Open redirect after sign-in</td>
+<td>covered</td>
+<td>platform <code>sanitizeRedirectPath</code> + <code>buildSafeRedirectResponse</code> on login, autologin and social start/callback; host redirects use env origins</td>
+</tr>
+<tr>
+<td>Session fixation / rotation</td>
+<td>covered</td>
+<td>new session and JWT on every sign-in, social included; MFA-pending swap clears <code>session_token</code></td>
+</tr>
+<tr>
+<td>JWT algorithm confusion</td>
+<td>covered</td>
+<td>HS256 fixed by the verifier, header <code>alg</code> ignored, <code>timingSafeEqual</code>, <code>exp</code> checked</td>
+</tr>
+<tr>
+<td>Social sign-in account takeover (email trust, subject/provider confusion)</td>
+<td>covered</td>
+<td>no e-mail matching or account creation; unique (<code>provider</code>, <code>subject</code>); PKCE + cookie-bound single-use state; link requires the same session user and scope</td>
+</tr>
+<tr>
+<td>OAuth id-token validation</td>
+<td>covered</td>
+<td><code>iss</code>/<code>aud</code>/<code>azp</code>/<code>exp</code>/<code>sub</code> checked; signature not verified by design (V-S04, TLS back channel, https-only endpoints)</td>
+</tr>
+<tr>
+<td>Rate-limit gaps on sessionless routes</td>
+<td>risk surfaced</td>
+<td>per-account lockout (U1-1), proxy depth collapse (U1-3), slug-rotated buckets (U1-5); limiter fails open on store outage (documented)</td>
+</tr>
+<tr>
+<td>Lockout time-bounded and observable</td>
+<td>risk surfaced</td>
+<td>U1-1</td>
+</tr>
+<tr>
+<td>Per-tenant budget abuse</td>
+<td>risk surfaced</td>
+<td>U1-4</td>
+</tr>
+<tr>
+<td>CSRF on cookie-authenticated mutations</td>
+<td>risk surfaced</td>
+<td>tracked in #744 (e.g. identity unlink <code>DELETE</code>, link <code>POST</code>); GET state change limited to the OAuth callback, protected by state + PKCE</td>
+</tr>
+<tr>
+<td>Second factor coverage</td>
+<td>risk surfaced</td>
+<td>U1-8, tracked in #736</td>
+</tr>
+<tr>
+<td>Cookie flags</td>
+<td>covered</td>
+<td><code>HttpOnly</code>, <code>SameSite=Lax</code>, <code>Secure</code> in production, host-only (no <code>Domain</code>) so club subdomains do not share sessions</td>
+</tr>
+<tr>
+<td>Headers / CSP / referrer</td>
+<td>risk surfaced</td>
+<td>U1-7, U1-9</td>
+</tr>
+<tr>
+<td>Public file downloads</td>
+<td>covered</td>
+<td><code>readScoped</code> with expected owner/assignment/partition, <code>nosniff</code>, no SVG (magic-byte checked)</td>
+</tr>
+<tr>
+<td>Boot-time fail-closed config</td>
+<td>risk surfaced</td>
+<td>U1-3, U1-6</td>
+</tr>
+<tr>
+<td>Cache-key scope (identity state)</td>
+<td>covered</td>
+<td>global-scope key on a 256-bit random state, 10-minute TTL, consumed once</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> Audit <code>packages/app/src/app/api/auth/**</code> and <code>packages/app/src/modules/foundation/services/sessionless-limits.ts</code> for lockout and enumeration abuse — redesign the per-account layers so they stop brute force without letting anyone lock a known staff address out of sign-in and reset.</li>
+<li>Audit <code>packages/app/src/modules/facilities/commands/requests.ts</code> for slot squatting through verified public requests — <code>requested</code> rentals occupy slots, and anyone with several mailboxes can confirm requests (outside this unit&#39;s entry-point scope).</li>
+<li>Audit <code>packages/app/src/app/api/[...slug]/route.ts</code> for per-user versus per-club budget layering — one member exhausting the club budget.</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> — rerun the sessionless families against the configured proxy depth once <code>RATE_LIMIT_TRUST_PROXY_DEPTH</code> is set on Railway, to confirm the per-client limits separate clients.</li>
+</ul>
+<h2>U2 — Payments, money and payment webhooks</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 0 - -->
+
+<ul>
+<li>8 findings: 0 blocker, 0 major, 4 minor, 2 nit, 2 info; 0 withheld.</li>
+<li>Top OWASP categories: A04 Insecure Design, A01 Broken Access Control, A05 Security Misconfiguration. Deep vectors surfaced: TOCTOU on refunds, ledger bypass through installed staff routes, test-mode provider captures booked as real money, missing per-user limits on gateway sessions and reminders.</li>
+<li>Recommended next run: <code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the installed <code>payment_gateways</code> staff routes and the role features the club administrator inherits. Those routes move money at the provider outside the Vereino ledger.</li>
+</ul>
+<p>Webhook authenticity holds. The installed <code>payment_gateways</code> webhook route reads the raw body. It verifies the Stripe signature through the Stripe SDK, which uses a timing-safe compare and a 300-second tolerance, with the per-club webhook secret. It attributes the delivery to the club whose credentials verified it. Vereino never trusts the event body: <code>fulfilCheckout</code> re-reads the provider state under a row lock and books each checkout once. Every one of the 65 routes has an entry in <code>payments.json</code> or <code>payments-orders.json</code>. Every write uses <code>authorizeScoped</code> (club B id → 404) or a payer-, link- or job-scoped path. No role-name guards were found, and every write schema is <code>.strict()</code>.</p>
+<h3>[Minor] U2-1 A04 Insecure Design — <code>packages/app/src/modules/payments/commands/checkout.ts:225</code></h3>
+<ul>
+<li><strong>What:</strong> The online refund (<code>payments.payments.refund</code>) checks the refundable amount against refund entries that are already booked. The new entry is booked only after the provider call (phase 2). Between phase 1 committing and phase 2 booking, nothing marks a refund as pending. A second refund of the same payment, sent with a different <code>operationId</code> and the refreshed lock token, therefore passes the same check.</li>
+<li><strong>Why:</strong> The provider caps refunds only at the whole gateway transaction. One transaction can back several payment rows: the charge lines of a multi-charge checkout and overpayment lines. So one payment can be refunded above its own amount, and the per-charge ledger goes negative. Exploit precondition: a holder of <code>payments.manage</code> with a treasurer or club-admin grant, racing their own requests. Both refunds are audited.</li>
+<li><strong>Fix:</strong> In phase 1, inside the charge row lock, reserve the refund: a pending reversing entry, or a pending-refund sum on the payment. Count reservations in <code>refundable</code>, then confirm or release them after the provider answers.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found. Cash, bank and record-payment writes book under the charge row lock in one transaction.</li>
+</ul>
+</li>
+</ul>
+<h3>[Minor] U2-2 A01 Broken Access Control — <code>packages/app/src/modules/club_core/services/club-onboarding.ts:33</code></h3>
+<ul>
+<li><strong>What:</strong> The club administrator holds the platform role <code>admin</code> (<code>CLUB_ADMIN_PLATFORM_ROLE</code>). The installed <code>payment_gateways</code> setup grants <code>admin</code> the features <code>payment_gateways.*</code> (<code>node_modules/@open-mercato/core/dist/modules/payment_gateways/setup.js:47</code>). That opens the staff routes <code>/api/payment_gateways/refund</code>, <code>/capture</code> and <code>/cancel</code> for the club&#39;s own transactions.</li>
+<li><strong>Why:</strong> A refund or cancel through those routes moves money at Stripe. It writes no Vereino reversing entry and no <code>payments</code> audit entry, and it skips the refundable-amount rules. The charge then stays <code>paid</code> in the club ledger while the money is back with the payer. This is a ledger-integrity and audit gap, limited to the club administrator&#39;s own club.</li>
+<li><strong>Fix:</strong> Remove <code>payment_gateways.refund|capture|manage</code> from the roles club users hold. Use a Vereino role-feature override or an ACL deny synced by <code>auth sync-role-acls</code>, or limit them to <code>payment_gateways.view</code>, so money moves only through <code>payments.payments.refund</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>Other installed modules whose setup grants <code>&lt;module&gt;.*</code> to <code>admin</code> reach the club administrator the same way. This is worth one sweep in the identity unit.</li>
+</ul>
+</li>
+</ul>
+<h3>[Minor] U2-3 A04 Insecure Design — <code>packages/app/src/modules/payments/services/checkout.ts:330</code></h3>
+<ul>
+<li><strong>What:</strong> The checkout fulfilment books any <code>captured</code> provider status as <code>online</code> payments. It does not check whether the club&#39;s Stripe connection is in test mode. <code>onlineConnectionOf</code> already tells <code>pk_test_</code> keys apart, but the settings tab only uses that to show a warning.</li>
+<li><strong>Why:</strong> If a club leaves test keys connected in production, any payer can settle real charges with Stripe&#39;s public test cards. The charges are marked paid, and receipts and reports treat them as received money.</li>
+<li><strong>Fix:</strong> Refuse <code>payments.checkout.create</code> in production while the connection is <code>connected_test</code>. Alternatively, store the provider&#39;s live/test mode with the payment and never settle a charge from a test-mode capture.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>[Minor] U2-4 A04 Insecure Design — <code>packages/app/src/modules/payments/api/checkout/route.ts:14</code></h3>
+<ul>
+<li><strong>What:</strong> <code>POST /api/payments/checkout</code> creates a new checkout and a new provider session (a Stripe PaymentIntent) on every call. Beyond the club-wide budget of 600 authenticated requests per minute, there is no per-user or per-payer limit. The only other cap is 50 charges per call.</li>
+<li><strong>Why:</strong> One payer account can use up the club&#39;s whole request budget, which denies service to the club&#39;s staff and members. It can also create provider objects without bound on the club&#39;s Stripe account.</li>
+<li><strong>Fix:</strong> Add a per-user limiter on checkout create and quote. Alternatively, reuse the payer&#39;s open <code>created</code> checkout for the same charge set instead of opening a new session.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/payments/api/checkouts/[id]/refresh/route.ts</code> — each call reads the provider status; same per-user gap, lower cost.</li>
+</ul>
+</li>
+</ul>
+<h3>[Nit] U2-5 A04 Insecure Design — <code>packages/app/src/modules/payments/commands/group-charges.ts:315</code></h3>
+<ul>
+<li><strong>What:</strong> Manual reminders use a fresh random idempotency key on every send and have no cooldown per payer or charge. This covers the coach&#39;s &quot;Remind payers&quot; (<code>payments.group_charges.remind</code>), &quot;Remind guardians&quot; and &quot;Remind everyone&quot; (<code>commands/order-campaigns.ts:536</code>). The nightly overdue reminder has a cooldown through <code>last_reminded_at</code>.</li>
+<li><strong>Why:</strong> A coach account, or a script run by one, can e-mail the same payers repeatedly. Only the club e-mail pace and the request budget limit it, so the result is harassment and wasted club e-mail quota.</li>
+<li><strong>Fix:</strong> Refuse or collapse a manual reminder to the same payer and charge within a cooldown window, for example by reusing a per-day idempotency key.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/payments/commands/order-campaigns.ts:536</code> — same pattern.</li>
+</ul>
+</li>
+</ul>
+<h3>[Nit] U2-6 A05 Security Misconfiguration — <code>packages/app/next.config.ts:165</code></h3>
+<ul>
+<li><strong>What:</strong> The personal order-link page <code>/club/o/:token</code> carries its raw token in the path. It does not get the <code>Referrer-Policy: no-referrer</code> and <code>Cache-Control: no-store</code> rule that <code>next.config.ts</code> gives the other token pages: declaration links and the facility request and cancellation pages. The API route sets <code>no-store</code> itself.</li>
+<li><strong>Why:</strong> The global <code>strict-origin-when-cross-origin</code> still drops the path for cross-origin requests. The token can still reach same-origin request logs and intermediary caches of the HTML page.</li>
+<li><strong>Fix:</strong> Add a <code>/club/o/:token*</code> rule with <code>no-referrer</code> and <code>no-store</code>, and a <code>no-referrer</code> rule for <code>/api/payments/order-links/:token*</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>[Info] U2-7 A01 Broken Access Control — <code>packages/app/src/modules/payments/api/checkouts/[id]/refresh/route.ts:31</code></h3>
+<ul>
+<li><strong>What:</strong> The payer routes <code>checkout</code>, <code>checkout/quote</code> and <code>checkouts/[id]/refresh</code> answer 403 <code>checkout_charge_forbidden</code> for a club B id, not the 404 that D-034 asks for. The inventory records this with <code>expect: [403]</code>.</li>
+<li><strong>Why:</strong> An unknown id gets the same 403, so the answer is no existence oracle. It does differ from the project-wide contract.</li>
+<li><strong>Fix:</strong> Optionally answer 404 for ids not visible to the payer, to keep D-034 uniform.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>[Info] U2-8 A05 Security Misconfiguration — <code>packages/app/src/modules/payments/di.ts:36</code></h3>
+<ul>
+<li><strong>What:</strong> The integration-test gateway is registered whenever <code>OM_INTEGRATION_TEST=true</code>. Its webhook secret is fixed and public in the repository. The boot guard refuses that variable only on Railway (<code>scripts/vereino-boot-env.mjs:87</code>). Separately, the refund replay lookups at <code>commands/checkout.ts:223</code> and <code>:289</code> read by derived id or provider refund id without the scope filter.</li>
+<li><strong>Why:</strong> A non-Railway production deployment with that variable set would accept forged captures. The unscoped lookups are not exploitable, because their keys derive from tenant-scoped input or the provider.</li>
+<li><strong>Fix:</strong> Make the boot guard refuse <code>OM_INTEGRATION_TEST</code> whenever <code>NODE_ENV=production</code>, and add <code>tenantId</code>/<code>organizationId</code> to the two lookups.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Webhook signature, timing-safe compare, raw body</td>
+<td>covered</td>
+<td>installed <code>payment_gateways</code> webhook route + Stripe SDK <code>constructEvent</code>; per-club secret</td>
+</tr>
+<tr>
+<td>Webhook replay / idempotency</td>
+<td>covered</td>
+<td>Stripe 300 s tolerance; fulfilment re-reads provider state, row lock + single booking</td>
+</tr>
+<tr>
+<td>Webhook tenant attribution</td>
+<td>covered</td>
+<td>scope = the candidate transaction whose club credentials verified the signature; subscriber reads the checkout with that scope</td>
+</tr>
+<tr>
+<td>Amount / currency tampering from the client</td>
+<td>covered</td>
+<td>totals from server-side shares and club fee settings; PLN fixed server-side; capture must equal the total</td>
+</tr>
+<tr>
+<td>TOCTOU on cash, bank, record payment, handovers</td>
+<td>covered</td>
+<td>charge/payment row locks in id order; advisory locks for receipt and handover numbers</td>
+</tr>
+<tr>
+<td>TOCTOU on refunds</td>
+<td>risk surfaced</td>
+<td><code>packages/app/src/modules/payments/commands/checkout.ts:225</code> (U2-1)</td>
+</tr>
+<tr>
+<td>Double charge on repeated checkout</td>
+<td>covered</td>
+<td>a second capture books an overpayment &quot;to refund&quot;, flagged for the treasurer</td>
+</tr>
+<tr>
+<td>Mass assignment</td>
+<td>covered</td>
+<td>every write schema <code>.strict()</code>; scope never taken from input</td>
+</tr>
+<tr>
+<td>Cross-club IDOR (65 routes)</td>
+<td>covered</td>
+<td><code>authorizeScoped</code> 404, <code>scopeWhere</code> lists; every route in the isolation inventory</td>
+</tr>
+<tr>
+<td>ACL features / treasurer-only actions</td>
+<td>covered</td>
+<td><code>payments.manage</code> + treasurer/club_admin grant on refunds, reversals, settings</td>
+</tr>
+<tr>
+<td>Role-name guards</td>
+<td>covered</td>
+<td>none in <code>payments</code></td>
+</tr>
+<tr>
+<td>Installed staff routes bypassing the ledger</td>
+<td>risk surfaced</td>
+<td><code>packages/app/src/modules/club_core/services/club-onboarding.ts:33</code> (U2-2)</td>
+</tr>
+<tr>
+<td>Test-mode provider in production</td>
+<td>risk surfaced</td>
+<td><code>packages/app/src/modules/payments/services/checkout.ts:330</code> (U2-3)</td>
+</tr>
+<tr>
+<td>CSV / formula injection in exports</td>
+<td>covered</td>
+<td><code>csvCell</code> and <code>csvField</code> neutralize <code>= + - @ tab CR</code></td>
+</tr>
+<tr>
+<td>Provider secrets storage / exposure</td>
+<td>covered</td>
+<td>credentials stay in <code>integrations</code>; settings answer only the connection mode</td>
+</tr>
+<tr>
+<td>Public order links (token)</td>
+<td>covered</td>
+<td>hashed token, single DD-35 lookup, per-IP and per-token limits, constant-time 202 on link requests</td>
+</tr>
+<tr>
+<td>Token in URL / referrer</td>
+<td>risk surfaced</td>
+<td><code>packages/app/next.config.ts:165</code> (U2-6)</td>
+</tr>
+<tr>
+<td>Rate limits on authenticated money routes</td>
+<td>risk surfaced</td>
+<td><code>packages/app/src/modules/payments/api/checkout/route.ts:14</code> (U2-4)</td>
+</tr>
+<tr>
+<td>Bank statement parsing (size, ReDoS)</td>
+<td>covered</td>
+<td>2 MB / 2000 lines; linear regexes; integer grosz</td>
+</tr>
+<tr>
+<td>Money in floating point</td>
+<td>covered</td>
+<td>integer grosz throughout; <code>Math.round</code> only at the gateway boundary</td>
+</tr>
+<tr>
+<td>E-mail template injection</td>
+<td>inconclusive (next step)</td>
+<td>rendering owned by foundation <code>defineEmailTemplate</code>; checked in the communication/foundation unit</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> <code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the installed <code>payment_gateways</code> staff routes and the <code>admin</code> role features the club administrator inherits — U2-2 shows money can move outside the Vereino ledger.</li>
+<li>Audit <code>packages/app/src/modules/payments/commands/checkout.ts</code> for concurrent refund reservations — confirm U2-1 against the provider&#39;s per-transaction refund cap.</li>
+<li>Audit <code>packages/app/src/modules/foundation</code> for per-user limits on authenticated routes that create provider objects or send e-mail — U2-4 and U2-5 rely on one club-wide budget.</li>
+<li>Audit <code>packages/app/src/modules/foundation</code> e-mail templates for HTML escaping of club-entered text (campaign names, charge descriptions) used by the <code>payments</code> templates.</li>
+</ul>
+<h2>U3 — Facilities, rentals and activities</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 0 - -->
+
+<ul>
+<li>9 findings: 0 blocker, 0 major, 1 minor, 2 nit, 6 info; 0 withheld.</li>
+<li>Top OWASP categories: A01, A04. Deep vectors surfaced: magic-link scope creep (a live cancellation link outlives a contact correction), the exact limits of the DD-R13 exception, upload buffering before the size check.</li>
+<li>Recommended next run: <code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the foundation token-link service and <code>authorizeScoped</code>, which every route in this unit depends on.</li>
+</ul>
+<h3>U3-1 [Minor] A01 Broken Access Control — <code>packages/app/src/modules/facilities/commands/rentals.ts:692</code></h3>
+<ul>
+<li><strong>What:</strong> <code>facilities.rentals.update</code> lets staff correct <code>contactEmail</code> (and assign a registered renter), but it does not revoke or reissue the rental&#39;s single-use cancellation link (<code>facilities_rental_links</code>). Only <code>reissueCancelLink</code> in <code>services/rental-links.ts:74</code> deletes links, and it runs only for summary, approval and &quot;moved&quot; e-mails.</li>
+<li><strong>Why:</strong> If a summary went to a mistyped or wrong address, whoever holds that mailbox can still cancel the rental through the sessionless link until the rental starts, even after staff fixed the address. A late cancellation forfeits the payment, and the freed slot can be taken.</li>
+<li><strong>Fix:</strong> When <code>contactEmail</code> or the renter changes, delete the rental&#39;s <code>cancel</code> links in the same transaction (optionally sending a fresh terms e-mail to the corrected address).</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/facilities/services/rental-links.ts:68</code> — <code>reissueCancelLink</code> is the only revocation point; any future contact-changing command needs the same hook.</li>
+</ul>
+</li>
+</ul>
+<h3>U3-2 [Nit] A01 Broken Access Control — <code>packages/app/src/modules/activities/api/reports/coach-units/route.ts</code></h3>
+<ul>
+<li><strong>What:</strong> The report GET exports (<code>reports/coach-units</code>, <code>reports/pzpn-attendance</code>, <code>reports/pzpn-schedule</code>) declare only <code>requireAuth</code> in route metadata. The feature gate lives only in the services (<code>services/coach-units.ts:103-111</code>, <code>services/pzpn-export.ts:68-73</code>).</li>
+<li><strong>Why:</strong> The gate works today, but one service refactor could silently open an export path. The dispatcher-level guard and the OpenAPI document also do not show the required feature.</li>
+<li><strong>Fix:</strong> Also declare the gate in route metadata (or document why it has to be an any-of check in the handler, as facilities <code>calendar</code> does).</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/activities/api/reports/pzpn-attendance/route.ts</code> — same pattern.</li>
+<li><code>packages/app/src/modules/activities/api/reports/pzpn-schedule/route.ts</code> — same pattern.</li>
+</ul>
+</li>
+</ul>
+<h3>U3-3 [Nit] A04 Insecure Design — <code>packages/app/src/modules/activities/api/club-event-uploads.ts:31</code></h3>
+<ul>
+<li><strong>What:</strong> The club-event file upload buffers the whole file into memory before the per-kind size check. Memory is bounded only by the platform multipart limit.</li>
+<li><strong>Why:</strong> A staff caller (<code>activities.manage</code>) can cause avoidable memory pressure per request. The impact is low because the route is authenticated and privileged.</li>
+<li><strong>Fix:</strong> Check <code>file.size</code> against the per-kind limit before <code>arrayBuffer()</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/facilities/api/incidents/[id]/photos/route.ts:44</code> — same buffer-then-check order (5 MB limit, <code>facilities.log.write</code>).</li>
+</ul>
+</li>
+</ul>
+<h3>U3-4 [Info] A01 Broken Access Control — <code>packages/app/src/modules/facilities/commands/rentals.ts:426</code></h3>
+<ul>
+<li><strong>What:</strong> The DD-R13 exception allows one read-only system-scope lookup by token hash. The cancellation flow does it 2-3 times: <code>rentalOfLink</code> → <code>peek</code>, then <code>redeem</code> (and a re-<code>find</code> after a lost race) in <code>foundation/services/token-link.ts:119</code>. The later lookups query by hash alone and compare tenant and organization in code afterwards. Verifying a request does the same (<code>facilities/commands/requests.ts:283-287</code>).</li>
+<li><strong>Why:</strong> Nothing leaks: the hash is unique and the later lookups refuse a scope mismatch. This deviates only from the wording of the approved exception.</li>
+<li><strong>Fix:</strong> Pass the found scope into the SQL <code>where</code> of the <code>find</code> that <code>redeem</code> runs (<code>lookup.scope</code>), or reword DD-R13 to cover peek + redeem.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/facilities/commands/requests.ts:283</code> — same peek + redeem sequence.</li>
+</ul>
+</li>
+</ul>
+<h3>U3-5 [Info] A04 Insecure Design — <code>packages/app/src/modules/facilities/commands/incident-photos.ts:115</code></h3>
+<ul>
+<li><strong>What:</strong> Incident photos are stored with their original bytes. EXIF metadata (GPS position, device) is not stripped.</li>
+<li><strong>Why:</strong> Photos are private-partition and staff-only, so exposure is limited. Still, they are evidence that may hold location data beyond the policy&#39;s needs.</li>
+<li><strong>Fix:</strong> Consider stripping metadata on upload, or record the decision to keep it.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U3-6 [Info] A08 Software and Data Integrity Failures — <code>packages/app/src/modules/facilities/subscribers/payment-recorded.ts:31</code></h3>
+<ul>
+<li><strong>What:</strong> The subscriber falls back to the payload&#39;s <code>tenantId</code>/<code>organizationId</code> when the event context has no scope.</li>
+<li><strong>Why:</strong> Events are internal and the command re-checks that the charge is paid in that scope, so this cannot be exploited from outside. It is still a payload-scope fallback.</li>
+<li><strong>Fix:</strong> Drop the payload fallback and skip the event when the emitter&#39;s scope is missing.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U3-7 [Info] A01 Broken Access Control — <code>packages/app/src/modules/activities/services/public-session.ts:22</code></h3>
+<ul>
+<li><strong>What:</strong> The public session route shows any session of a club that publishes its pages, by occurrence UUID.</li>
+<li><strong>Why:</strong> This is by design (DD-17 capability URL): the query is narrowed to the club found by slug, the route is rate-limited and it returns no personal data.</li>
+<li><strong>Fix:</strong> No change. Keep the UUID unguessable and the response free of personal data.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U3-8 [Info] A01 Broken Access Control — <code>packages/app/src/modules/activities/commands/substitutions.ts:107</code></h3>
+<ul>
+<li><strong>What:</strong> A 409 <code>occurrence_coach_conflict</code> lists the coach&#39;s other sessions (activity name, group id, place id), including ones outside the caller&#39;s grants.</li>
+<li><strong>Why:</strong> The data stays within the club and is minimal, but it goes beyond the caller&#39;s scope.</li>
+<li><strong>Fix:</strong> Redact labels for conflicts outside the caller&#39;s grants, as the facilities conflict views do.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U3-9 [Info] A01 Broken Access Control — <code>packages/app/.ai/qa/tests/_fixtures/isolation/inventory/facilities.json</code></h3>
+<ul>
+<li><strong>What:</strong> Every facilities and activities route and method has a cross-club probe in the isolation inventory. A crude scan flagged DELETE as missing for <code>/api/facilities/incidents</code>, <code>/logs</code> and <code>/maintenance-tasks</code>; this was confirmed as a false positive, because those routes export no DELETE handler.</li>
+<li><strong>Why:</strong> This is a coverage confirmation, not a gap.</li>
+<li><strong>Fix:</strong> None.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cross-club IDOR (ids in path/body)</td>
+<td>covered</td>
+<td><code>authorizeScoped</code> loads in the trusted tenant and returns 404 for another club; lists use <code>scopeWhere</code>; foreign references (place, renter, section, person, incident) are validated in scope</td>
+</tr>
+<tr>
+<td>Tenant/org from auth, never payload</td>
+<td>covered</td>
+<td><code>trustedScopeOf</code>/<code>scopeContract</code>; strict schemas reject scope keys; one internal fallback noted (U3-6)</td>
+</tr>
+<tr>
+<td>Rental link DD-R13 limits</td>
+<td>risk surfaced</td>
+<td>U3-4 (repeated hash lookup, scope compared afterwards); constant-time compare, single use, expiry at start, <code>no-referrer</code>, <code>no-store</code>, per-IP and per-token limits</td>
+</tr>
+<tr>
+<td>Magic link scope creep</td>
+<td>risk surfaced</td>
+<td>U3-1 (link survives a contact correction)</td>
+</tr>
+<tr>
+<td>Member vs staff (another family&#39;s child, booking)</td>
+<td>covered</td>
+<td>activities guardian/self grants via <code>authorizeScoped</code>; internal booking cancel is <code>self</code> (booker), coordinator or admin</td>
+</tr>
+<tr>
+<td>ACL features on mutations</td>
+<td>covered</td>
+<td>every facilities mutation declares <code>requireFeatures</code>; activities report exports gate only in the service (U3-2)</td>
+</tr>
+<tr>
+<td>Mass assignment</td>
+<td>covered</td>
+<td><code>.strict()</code> write schemas in both modules</td>
+</tr>
+<tr>
+<td>Booking race / capacity TOCTOU</td>
+<td>covered</td>
+<td>org-wide <code>pg_advisory_xact_lock</code> (<code>lockOccupancy</code>) in rental, request, booking, closure, maintenance and session writes; row locks plus re-read on cancel-by-link; photo count under the incident lock</td>
+</tr>
+<tr>
+<td>File uploads (type, size, path, owner, download)</td>
+<td>covered</td>
+<td>magic-byte check, no SVG, sanitized stored name, private partition, <code>readScoped</code> with expected owner, assignment and partition, <code>nosniff</code>; buffering order U3-3; EXIF U3-5</td>
+</tr>
+<tr>
+<td>Calendar/ICS feeds</td>
+<td>not applicable</td>
+<td>no ICS feeds; the staff calendar is authenticated and place-scoped with contact redaction</td>
+</tr>
+<tr>
+<td>CSV/formula injection in exports</td>
+<td>covered</td>
+<td><code>csvField</code> neutralizes <code>= + - @ TAB CR</code>; activities PZPN export prefixes the same</td>
+</tr>
+<tr>
+<td>XSS (names, descriptions, links)</td>
+<td>covered</td>
+<td>React escaping only, no <code>dangerouslySetInnerHTML</code>; public hrefs are https-validated or internal paths</td>
+</tr>
+<tr>
+<td>Raw SQL / injection</td>
+<td>covered</td>
+<td>only parameterized advisory-lock statements</td>
+</tr>
+<tr>
+<td>Public enumeration</td>
+<td>covered</td>
+<td>slug-based pages are public by design; one 404 shape for unknown places; public schedule shows states without names or ids (U3-7)</td>
+</tr>
+<tr>
+<td>Rate limiting on public routes</td>
+<td>covered</td>
+<td>per-IP metadata limits; per-e-mail (fail closed) on requests; per-token on verify and cancel; IP derivation behind the proxy is tracked in #739</td>
+</tr>
+<tr>
+<td>Isolation inventory completeness</td>
+<td>covered</td>
+<td>U3-9</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> <code>om-auto-sec-report-pr branch:main --deep-scan</code> — focus on <code>foundation</code> <code>authorizeScoped</code>, <code>scopeContract</code> grant resolution (place descendants for <code>facility_operator</code>) and the token-link service. Every finding-free outcome in this unit rests on them.</li>
+<li>Audit <code>facilities</code> and <code>activities</code> sessionless routes for client-IP derivation behind the proxy — the per-IP limits are only as good as the trusted-proxy setup.</li>
+<li>Audit <code>facilities</code> rental lifecycle for link revocation on every renter-identity change (contact, renter assignment, move, approval) — this generalizes U3-1.</li>
+</ul>
+<h2>U4 — People, children&#39;s data, groups and communication</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 0 - -->
+
+<ul>
+<li>8 findings: 0 blocker, 0 major, 3 minor, 2 nit, 3 info; 0 withheld.</li>
+<li>Top OWASP categories: A01, A04, A09. Deep vectors surfaced: stale staff rights after a role ends (messaging), reply flooding of staff mailboxes and of the per-club send budget, an unaudited health-data read path, unkeyed preview tokens.</li>
+<li>Recommended next run: Audit <code>communication</code> thread visibility for grants that ended. Staff rights come from stored participant reasons, and nothing checks them against current grants.</li>
+</ul>
+<h3>U4-1 [Minor] A01 Broken Access Control — <code>packages/app/src/modules/communication/lib/thread-rules.ts:68</code></h3>
+<ul>
+<li><strong>What:</strong> <code>isThreadStaff</code> (thread-rules.ts ~248) treats a viewer as thread staff whenever the stored participant row has the reason <code>author</code>, <code>coach</code> or <code>staff</code>. Participant rows are append-only, and visibility never re-checks a live grant. A coach removed from a group, or a coordinator whose section assignment ended, keeps staff visibility on that group&#39;s threads while their account stays active. They read every family&#39;s staff-only replies, including new ones, and <code>staffParticipants</code> keeps e-mailing them those replies.</li>
+<li><strong>Why:</strong> Children&#39;s and family data in staff-only replies keeps reaching a person whose role has ended. This stays inside one club. It is a former insider risk, not a cross-club leak.</li>
+<li><strong>Fix:</strong> Count <code>coach</code> and <code>staff</code> as staff reasons only while a matching live grant exists (<code>findActingRole</code> on the thread&#39;s scope). Otherwise treat the person as an ordinary participant and drop them from reply recipients.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/communication/services/threads.ts</code> (<code>visibleHeader</code>) — the list header uses the same reasons, same risk.</li>
+<li><code>packages/app/src/modules/communication/commands/threads.ts</code> (<code>loadThreadAccess</code>) — reply and deliveries authorization use the same reasons, same risk.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-2 [Minor] A04 Insecure Design — <code>packages/app/src/modules/communication/commands/threads.ts:435</code></h3>
+<ul>
+<li><strong>What:</strong> <code>communication.threads.reply</code> has no per-author rate or count limit. Direct threads have one (<code>countDirectThreadsSince</code>, threads.ts:322). Any member account can post replies of up to the body limit without bound, and each reply e-mails every staff participant. On a club announcement, every staff participant means the author plus every coach of the club.</li>
+<li><strong>Why:</strong> This allows mailbox flooding of staff. It also uses up the per-club send rate, which delays real announcements and session-cancellation notices for the whole club (availability of safety-relevant messages).</li>
+<li><strong>Fix:</strong> Add a per-person reply limit under the same advisory-lock pattern as direct threads. Also consider sending reply notifications to staff as a digest per thread.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/communication/commands/threads.ts</code> (revise path, ~525) — edits of a reply have no limit either, so this is the same pattern.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-3 [Minor] A09 Security Logging and Monitoring Failures — <code>packages/app/src/modules/people/services/medical.ts:212</code></h3>
+<ul>
+<li><strong>What:</strong> <code>staffMedicalBlock</code> returns a person&#39;s medical certificate date and status to a coordinator in <code>GET /api/people/persons/{id}</code>. Unlike <code>GET /api/people/medical-status</code>, this read is not recorded through <code>auditedRead</code>. The medical-status route records coordinator and coach reads, ids only, as the DPIA D-14 measure.</li>
+<li><strong>Why:</strong> The same Art. 9 health data reaches staff through two paths. Only one of them leaves a trace, so after an account takeover the detail page reads health data without a record.</li>
+<li><strong>Fix:</strong> Wrap the coordinator branch of <code>staffMedicalBlock</code> in <code>auditedRead</code> with purpose <code>medical_status_read</code>. The administrator branch can stay unlogged, as it is on the medical-status route.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-4 [Nit] A03 Injection — <code>packages/app/src/modules/communication/data/validators.ts:9</code></h3>
+<ul>
+<li><strong>What:</strong> The thread subject is only trimmed at its ends, so it may contain CR/LF. Members set it on direct threads, and it is copied into the reply e-mails&#39; Subject header. The same applies to person names (<code>nameSchema</code>, <code>people/data/validators.ts:11</code>), which go into the Subject of the turns-18 notice (<code>people/emails/templates.ts:204</code>).</li>
+<li><strong>Why:</strong> The only enabled transport is <code>channel_resend</code>, a JSON API that does not take raw headers, so nothing can be injected today. A future SMTP transport (<code>channel_imap</code> is installed but not enabled) could make it reachable.</li>
+<li><strong>Fix:</strong> Reject or collapse <code>[\r\n\t]</code> in subjects and names at the zod layer, as <code>excerpt</code> already does.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/people/data/validators.ts:11</code> — same pattern, unreachable with the current transport.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-5 [Nit] A08 Software and Data Integrity Failures — <code>packages/app/src/modules/groups/lib/rollover-token.ts:33</code></h3>
+<ul>
+<li><strong>What:</strong> The preview tokens of the season rollover, the bulk move and the departure (<code>people/lib/departure-token.ts:34</code>) are unkeyed SHA-256 hashes of values the caller knows, with an expiry the caller chooses, compared with <code>===</code>. A holder of the feature can build a valid token without running the preview.</li>
+<li><strong>Why:</strong> This bypasses only the &quot;preview before apply&quot; safety step and the 15-minute window. Every apply re-checks the scope and recomputes the plan, and the departure token is documented as &quot;not a secret&quot;.</li>
+<li><strong>Fix:</strong> Use an HMAC with a server secret and <code>timingSafeEqual</code>, or record in the specs that the token detects stale plans only.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/people/lib/departure-token.ts:34</code> — same pattern, documented as not a secret.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-6 [Info] A01 Broken Access Control — <code>packages/app/src/modules/groups/commands/memberships.ts:247</code></h3>
+<ul>
+<li><strong>What:</strong> A section coordinator can add any live person of the club as <code>coach</code> or <code>assistant</code> of a group in their section. The role sync then gives that person <code>vereino_coach</code>, which holds <code>people.medical.view</code>, <code>communication.post</code> and <code>payments.groups.collect</code> for that group.</li>
+<li><strong>Why:</strong> A section-level role delegates a role that reads health status and collects cash, and no higher role approves it. This looks intended but is not written down as a decision.</li>
+<li><strong>Fix:</strong> Have the owner confirm it and record the decision in the groups spec. Otherwise, require <code>people.roles.manage</code> for the staff membership roles.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-7 [Info] A04 Insecure Design — <code>packages/app/src/modules/people/services/departure.ts:16</code></h3>
+<ul>
+<li><strong>What:</strong> <code>communication</code> is not a departure contributor, so anonymising or deleting a person keeps their own message bodies, revisions and participant rows. Only the displayed name becomes &quot;Former member&quot;.</li>
+<li><strong>Why:</strong> Messages are kept by decision Q-L21 of the life-cycle spec, which covers bodies that others wrote. Free-text replies a family wrote about a child (often health details) stay, encrypted, after the family asks for erasure.</li>
+<li><strong>Fix:</strong> Ask the owner whether the person&#39;s own replies should become tombstones on anonymisation. If yes, add a <code>people.departure.communication</code> contributor that keeps ids and counts.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<h3>U4-8 [Info] A01 Broken Access Control — <code>packages/app/src/modules/groups/api/external-teams/route.ts:56</code></h3>
+<ul>
+<li><strong>What:</strong> The decrypted <code>contact</code> and <code>notes</code> of external (opponent) teams are readable club-wide by every coach. The dictionary read is club-wide by design.</li>
+<li><strong>Why:</strong> These are third-party personal data, and this is the widest audience for decrypted contact data in the unit.</li>
+<li><strong>Fix:</strong> Consider hiding <code>contact</code> from the coach role, or record the audience as an accepted product decision.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Cross-club IDOR, every route and method of <code>people</code>, <code>groups</code> and <code>communication</code></td>
+<td>covered</td>
+<td>Each route derives scope with <code>trustedScopeOf</code>/makeCrudRoute and checks it with <code>authorizeScoped</code>/<code>assertInScope</code>/<code>scopeWhere</code>. The isolation inventories <code>people.json</code>, <code>groups.json</code> and <code>communication.json</code> cover every exported route and method (checked against the route exports).</td>
+</tr>
+<tr>
+<td>A parent or member reading or editing another family&#39;s or child&#39;s record</td>
+<td>covered</td>
+<td>Person, guardianship and consent writes go through grant kinds (<code>self</code>, <code>guardian</code>, <code>club_admin</code>). <code>me/*</code> routes load the caller&#39;s own person. Departure requests check <code>self</code> or <code>guardian</code> per subject. Self-update and import schemas are <code>.strict()</code>.</td>
+</tr>
+<tr>
+<td>Coach and coordinator scope enforced on the server</td>
+<td>covered</td>
+<td>Groups writes need coordinator or admin, with the target group re-checked on move, move-many and rollover. The coordinator writes the medical date only for members of their own sections (<code>inSections</code>). Medical status drops out-of-scope ids.</td>
+</tr>
+<tr>
+<td>Stale grants in messaging</td>
+<td>risk surfaced</td>
+<td>U4-1</td>
+</tr>
+<tr>
+<td>Medical/sensitive fields in lists, search, enrichers and exports</td>
+<td>covered</td>
+<td>The person list leaves out e-mail, phone, notes and PESEL. Search is indexed through hashed tokens only, and the presenter returns the name only. Enrichers add group names or counts only. The CRUD export is disabled. The data export is admin-only, scope-checked and logged before reading.</td>
+</tr>
+<tr>
+<td>Audit of health-data reads</td>
+<td>risk surfaced</td>
+<td>U4-3</td>
+</tr>
+<tr>
+<td>Departure and erasure completeness (<code>people.departure.*</code>)</td>
+<td>risk surfaced (info)</td>
+<td>U4-7. Contributors are registered for <code>groups</code>, <code>activities</code>, <code>payments</code>, <code>club_core</code>, <code>facilities</code> and <code>training</code>.</td>
+</tr>
+<tr>
+<td>Declarations and consents via sessionless links</td>
+<td>not applicable</td>
+<td>There is no sessionless route in this unit. The public group catalogue gets its scope from the <code>club_core</code> slug lookup (D-024, outside this unit) and shows instructor names only with consent.</td>
+</tr>
+<tr>
+<td>Mass-mail abuse</td>
+<td>risk surfaced</td>
+<td>U4-2. Audiences are capped at 2000 recipients, and direct threads at 20 per 24 h.</td>
+</tr>
+<tr>
+<td>E-mail header injection</td>
+<td>risk surfaced (nit)</td>
+<td>U4-4. Not reachable with the Resend transport.</td>
+</tr>
+<tr>
+<td>HTML injection in e-mail templates and XSS in pages</td>
+<td>covered</td>
+<td>Templates are React elements with escaped text. There is no <code>dangerouslySetInnerHTML</code> or markdown in the three modules, and links are built from ids.</td>
+</tr>
+<tr>
+<td>Attachments (photo download authorization and owner assignment)</td>
+<td>covered</td>
+<td><code>readScoped</code> checks the exact owner, assignment and private partition. A coordinator&#39;s basic read gets 403. The upload checks format and size by magic bytes. Non-admin roles hold no <code>attachments.*</code> feature.</td>
+</tr>
+<tr>
+<td>Upload parsing (family import CSV/XLSX)</td>
+<td>covered</td>
+<td>The format is detected from the bytes. Zip-bomb and entry budgets apply, DOCTYPE is refused, and entities are not expanded. Row, column and cell limits apply.</td>
+</tr>
+<tr>
+<td>Privilege escalation through role sync and events</td>
+<td>covered (info U4-6)</td>
+<td>Subscribers prefer the emitter&#39;s scope over the payload&#39;s and recompute roles from stored records.</td>
+</tr>
+<tr>
+<td>Preview-token integrity</td>
+<td>risk surfaced (nit)</td>
+<td>U4-5</td>
+</tr>
+<tr>
+<td>PII in logs and audit payloads</td>
+<td>covered</td>
+<td>Loggers carry scope and error only. Messaging audit rows hold ids only, and event payloads are ids plus scope.</td>
+</tr>
+<tr>
+<td>Pagination caps</td>
+<td>covered</td>
+<td>CRUD lists are capped at 100. <code>member-groups</code> is bounded per family.</td>
+</tr>
+<tr>
+<td>Account e-mail change and takeover</td>
+<td>covered (tracked)</td>
+<td>Admin-only (<code>people.accounts.manage</code>) inside the club&#39;s tenant and organization. Step-up before an e-mail change is tracked in #737.</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> Audit <code>communication</code> thread visibility for grants that ended (U4-1): compare stored participant reasons with live grants on read, reply and deliveries.</li>
+<li>Audit <code>communication</code> and the per-club send limiter for flooding: replies, revisions and how notification e-mails interact with the club send budget (U4-2).</li>
+<li>Audit every Art. 9 health-data read path (<code>people</code>, <code>activities</code> rosters, attendance) for <code>auditedRead</code> coverage against DPIA D-14 (U4-3).</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> — limited to the season-rollover contributors in <code>activities</code> and <code>payments</code>, whose record filtering was checked only in passing from <code>groups</code>.</li>
+</ul>
+<h2>U5 — Club core, foundation, training library and back office</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 1 .ai/tmp/om-auto-sec-report-pr/withheld/u5-club-core-foundation-training-2026-11-26.md -->
+
+<ul>
+<li>5 findings: 0 blocker, 1 major, 3 minor, 0 nit, 1 info; 1 withheld.</li>
+<li>Top OWASP categories: A08, A05, A09, A04. Deep vectors surfaced: one withheld vector, over-broad platform grant to the club administrator, unaudited bulk export download, slug release without reservation, shared-cache lag after a library withdrawal.</li>
+<li>Recommended next run: fix and re-review the withheld major finding U5-1 through its private security advisory — it is the only high-severity finding of the whole review.</li>
+</ul>
+<h3>U5-1 [Major] A08 Software and Data Integrity Failures — withheld</h3>
+<p>Details withheld for private disclosure: this weakness is live on the base branch. No location is published until it is fixed.</p>
+<h3>U5-2 [Minor] A05 Security Misconfiguration — <code>packages/app/src/modules/club_core/services/club-onboarding.ts:33</code></h3>
+<ul>
+<li><strong>What:</strong> <code>club_core create-club</code> gives every club administrator the platform <code>admin</code> role (<code>CLUB_ADMIN_PLATFORM_ROLE</code>, used at <code>:322</code>) next to <code>vereino_club_admin</code>. That role carries the platform&#39;s instance-level features (<code>configs.system_status.view</code>, <code>configs.manage</code>, <code>configs.cache.manage</code>, <code>scheduler.*</code>, <code>query_index.*</code>, <code>entities.*</code>, <code>api_keys.*</code>, <code>integrations.*</code>). On a shared instance it lets the administrator of one club read the instance environment snapshot, including the database host, port and name (credentials masked), and the instance-wide module telemetry. It also lets them mint long-lived API keys and manage schedules and index jobs outside the Vereino role catalogue.</li>
+<li><strong>Why:</strong> Each club administrator learns infrastructure details, and gets capabilities that the catalogue in <code>packages/core/src/roles.ts</code> does not list and that no Vereino review covers. This widens the blast radius of any one compromised club administrator account. The cache, ACL and scheduler routes stay tenant-scoped (checked), so no cross-club write was found.</li>
+<li><strong>Fix:</strong> Give the club administrator a Vereino-owned platform role with an explicit feature list (no <code>configs.system_status.view</code>, <code>configs.manage</code>, <code>api_keys.*</code> or <code>scheduler.jobs.manage</code> unless a story needs them). Keep the platform <code>admin</code> role for the instance maintainers only, and resync existing clubs with <code>auth sync-role-acls</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/node_modules/@open-mercato/core/src/modules/configs/setup.ts:6</code> — same pattern, same risk — the platform default that puts <code>configs.system_status.view</code> on <code>admin</code> (read-only, listed for the role trim).</li>
+</ul>
+</li>
+</ul>
+<h3>U5-3 [Minor] A09 Security Logging and Monitoring Failures — <code>packages/app/src/modules/club_core/api/offboarding/export/route.ts:40</code></h3>
+<ul>
+<li><strong>What:</strong> <code>GET /api/club_core/offboarding/export</code> streams the club&#39;s whole data archive, with every member&#39;s decrypted personal data, to any holder of <code>club_core.manage</code>. It writes no audit or access-log entry (unlike the guardian-contact reads, which use the foundation <code>auditedRead</code> helper). The archive also stays in the private partition after the operator withdraws the notice: <code>readClubExportArchive</code> (<code>packages/app/src/modules/club_core/services/club-export.ts:214</code>) does not check the offboarding state, so a later administrator can still download it.</li>
+<li><strong>Why:</strong> The largest bulk exfiltration path of a club leaves no trace of who downloaded it or when, and a personal-data copy outlives its purpose (data minimisation) when a club decides to stay.</li>
+<li><strong>Fix:</strong> Record each download (actor, club, job id, size) through the foundation audited-read helper or the access log before streaming. Refuse the download, and delete the stored archives, once the notice is withdrawn or after a fixed retention period.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/club_core/lib/club-export.ts:114</code> — same pattern, same risk — <code>clubExportDownload</code> serves the newest completed archive with no age or state limit.</li>
+</ul>
+</li>
+</ul>
+<h3>U5-4 [Minor] A04 Insecure Design — <code>packages/app/src/modules/club_core/commands/settings.ts:287</code></h3>
+<ul>
+<li><strong>What:</strong> A club administrator can rename or clear the club&#39;s public slug (<code>PUT /api/club_core/settings</code>, <code>nullableSlug</code> at <code>packages/app/src/modules/club_core/data/validators.ts:54</code>). The old slug is freed at once: only the fixed reserved labels are refused, and the 90-day reservation (BR-M4) applies only to deleted clubs. Any other club administrator can claim it straight away.</li>
+<li><strong>Why:</strong> The slug is the club&#39;s subdomain. Members&#39; bookmarks, printed QR codes and old e-mails then reach a different club&#39;s public pages, and the sign-in form on that host targets the other club&#39;s tenant. That is a phishing and confusion surface, not a credential leak, because sign-in stays on the same instance.</li>
+<li><strong>Fix:</strong> Keep a released slug reserved for the same 90 days as a deleted club&#39;s slug (a tombstone row or a slug-history table), and answer <code>slug_reserved</code> to every other club during that time.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U5-5 [Info] A04 Insecure Design — <code>packages/app/src/modules/training/api/library-shared.ts:36</code></h3>
+<ul>
+<li><strong>What:</strong> Public library entries are served with <code>Cache-Control: public, s-maxage=60</code> (<code>packages/app/src/modules/training/api/public/library/[entryId]/route.ts:24</code>), and their images with <code>public, max-age=300, s-maxage=300</code>.</li>
+<li><strong>Why:</strong> After a withdrawal, a lowered club level or the removal of an author&#39;s name, shared caches and browsers can keep serving the old entry (and the author&#39;s name) for up to 5 minutes.</li>
+<li><strong>Fix:</strong> Accept the delay and document it in the privacy notice, or send <code>no-cache</code> with an ETag on public library responses so a withdrawal takes effect at once.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/club_core/api/public-shared.ts:19</code> — same pattern, lower risk — public club pages use <code>public, s-maxage=60</code>; an unpublished page lingers up to 60 s.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Operator commands reachable from a request</td>
+<td>covered</td>
+<td>the offboarding, export and provision commands accept only a <code>system_job</code> grant; <code>jobScope</code> refuses any context with a session, so an audit-log redo cannot replay them; the CLI-only services have no route importer</td>
+</tr>
+<tr>
+<td>Withheld vector (U5-1)</td>
+<td>risk surfaced</td>
+<td>withheld</td>
+</tr>
+<tr>
+<td>Club export completeness / secrets in export</td>
+<td>covered</td>
+<td><code>password_hash</code> and delivery <code>secret_params</code> are nulled; sessions, password resets, API keys and provider credentials are not exported</td>
+</tr>
+<tr>
+<td>Who can download the club export</td>
+<td>risk surfaced</td>
+<td><code>club_core.manage</code> only (club_admin); no download audit, no retention limit (U5-3)</td>
+</tr>
+<tr>
+<td>Tenant creation and club-admin bootstrap</td>
+<td>risk surfaced</td>
+<td>invitation by a single-use 48 h reset token, no password on the CLI; platform <code>admin</code> role over-broad (U5-2)</td>
+</tr>
+<tr>
+<td>Wildcard grants / role-name guards</td>
+<td>covered</td>
+<td><code>club_core.*</code> and <code>training.*</code> only on <code>vereino_club_admin</code>; guards check features, role names are used only for assignment</td>
+</tr>
+<tr>
+<td>DD-M07 job claim and dispatch sweeps</td>
+<td>covered</td>
+<td>the claim reads ids and scope only; every per-club run runs under the club&#39;s lease or <code>verifyScheduledJobScope</code>; the system sweep narrows each club to its own scope</td>
+</tr>
+<tr>
+<td>Scheduler as a privilege bridge</td>
+<td>covered</td>
+<td>no Vereino command or worker is scheduler-safe; the schedule scope comes from the registration row</td>
+</tr>
+<tr>
+<td>Training library cross-tenant service</td>
+<td>covered</td>
+<td>config-only library scope; visibility filter on every read; rater and reporter keys are HMACs; guest reports do not count towards hiding; the author name is stripped on consent withdrawal (cache lag: U5-5)</td>
+</tr>
+<tr>
+<td>Settings that change security behaviour</td>
+<td>risk surfaced</td>
+<td>slug release (U5-4); URLs restricted to https, accent colour normalised to hex, minimum age bounded 13–18</td>
+</tr>
+<tr>
+<td>Back-office pages and API ACL features</td>
+<td>covered</td>
+<td>every club_core, training and foundation route and page declares <code>requireAuth</code> plus features; the identity unlink checks the owner, then self or manage</td>
+</tr>
+<tr>
+<td>Isolation inventory coverage</td>
+<td>covered</td>
+<td>all 50 routes of club_core, foundation and training have probes or a justified exemption</td>
+</tr>
+<tr>
+<td><code>example*</code> modules in production</td>
+<td>not applicable</td>
+<td>not in <code>src/modules.ts</code> and not imported by any enabled module, so their routes are not registered</td>
+</tr>
+<tr>
+<td>Social sign-in (OAuth)</td>
+<td>covered</td>
+<td>PKCE S256, single-use state bound to an HttpOnly cookie with a timing-safe compare, session match on link, back-channel id token with iss, aud and exp checked, sanitized redirect</td>
+</tr>
+<tr>
+<td>Token links (magic links)</td>
+<td>covered</td>
+<td>stored hashed, timing-safe match, single use, expiry capped</td>
+</tr>
+<tr>
+<td>Injection (raw SQL)</td>
+<td>covered</td>
+<td>dynamic identifiers come from the server catalogue and are quoted and pattern-checked; every value is a bound parameter</td>
+</tr>
+<tr>
+<td>Upload content type and XSS sinks</td>
+<td>covered</td>
+<td>magic-byte checks, no SVG, <code>nosniff</code>; no <code>dangerouslySetInnerHTML</code> in scope</td>
+</tr>
+<tr>
+<td>Rate limiting on public routes</td>
+<td>covered</td>
+<td>public club and library pages 120/min, library guest report 5/h, identity start and callback 20/min</td>
+</tr>
+<tr>
+<td>CSRF on cookie-authenticated mutations</td>
+<td>not applicable</td>
+<td>tracked in #744</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> Fix the withheld major finding U5-1 through its private security advisory, then re-run <code>om-auto-sec-report-pr</code> on the fixing PR.</li>
+<li>Audit <code>the platform admin role grant to club administrators</code> for least privilege — list each <code>admin</code> feature against a Vereino story and trim the rest (U5-2).</li>
+<li>Audit <code>club_core offboarding export</code> for audit logging and retention — download audit and archive expiry (U5-3).</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> — the club_core public-site service and the people-module consumers of foundation <code>data-export</code> were only spot-checked.</li>
+</ul>
+<h2>U6 — Platform configuration, deployment and supply chain</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 0 - -->
+
+<ul>
+<li>9 findings: 0 blocker, 0 major, 4 minor, 2 nit, 3 info; 0 withheld.</li>
+<li>Top OWASP categories: A05 Security Misconfiguration, A02 Cryptographic Failures, A08 Software and Data Integrity Failures. Deep vectors surfaced: fail-open encryption at rest on a missing key, placeholder secrets accepted at boot, CSP that does not contain an XSS, unreviewed auto-merge path, install-time scripts and mutable lockfile in image builds.</li>
+<li>Recommended next run: Audit <code>packages/app/scripts/vereino-boot-env.mjs</code> for every security switch the production profile leaves open — one boot-time rule set closes U6-1 and U6-3 together.</li>
+</ul>
+<h3>U6-1 [Minor] A02 Cryptographic Failures — <code>packages/app/scripts/vereino-boot-env.mjs:29</code></h3>
+<ul>
+<li><strong>What:</strong> the production boot check requires <code>JWT_SECRET</code> but neither requires <code>TENANT_DATA_ENCRYPTION_FALLBACK_KEY</code> (or Vault) nor refuses the value published in <code>packages/app/.env.example:555</code> and the <code>docker-compose.fullapp.yml</code> defaults, and the platform KMS (<code>@open-mercato/shared</code> <code>createKmsService</code>) falls back to a no-op KMS without a key, so <code>encryptEntityPayload</code> returns the payload unchanged and encrypted columns (PESEL, personal data) are written in plaintext with only a log warning.</li>
+<li><strong>Why:</strong> one missing or copied variable silently turns off encryption at rest for every club, or keys it with a secret anyone can read in this public repository, so a database or backup read exposes the personal data the encryption maps are meant to protect.</li>
+<li><strong>Fix:</strong> add production rows to <code>REQUIRED_VARIABLES</code> that require the encryption key (or a Vault address and token) when <code>TENANT_DATA_ENCRYPTION</code> is on, refuse the published example values, refuse <code>TENANT_DATA_ENCRYPTION</code> off on Railway, and require <code>LOOKUP_HASH_PEPPER</code>; the key inventory itself is tracked in #740.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/.env.example:25</code> — <code>AUTH_SECRET</code> example value — the platform&#39;s placeholder policy covers <code>JWT_*</code> only, yet <code>AUTH_SECRET</code> is preferred for session/reset token hashing (<code>auth/lib/tokenHash.ts</code>) and consent integrity (<code>auth/lib/consentIntegrity.ts</code>); refuse it at boot as well.</li>
+<li><code>LOOKUP_HASH_PEPPER</code> — unset falls back to the encryption key or an unkeyed digest (ASVS V11.1 row), so lookup hashes of PESEL inherit the same gap.</li>
+</ul>
+</li>
+</ul>
+<h3>U6-2 [Minor] A05 Security Misconfiguration — <code>packages/app/next.config.ts:38</code></h3>
+<ul>
+<li><strong>What:</strong> the production CSP keeps <code>script-src &#39;unsafe-inline&#39;</code> and allows <code>connect-src &#39;self&#39; https: ws: wss:</code> and <code>img-src https:</code>, so it blocks neither an injected inline script nor its exfiltration to any HTTPS host.</li>
+<li><strong>Why:</strong> the CSP is the only browser-side backstop for an XSS in any module (club public pages render staff-entered content to anonymous visitors), and as configured it does not limit the impact of one.</li>
+<li><strong>Fix:</strong> move to a nonce-based <code>script-src</code> (the deferral is recorded in the config comment and ASVS V3.4, assigned to #743) and narrow <code>connect-src</code>/<code>img-src</code> to <code>&#39;self&#39;</code> plus the named Stripe and storage origins.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/next.config.ts:154</code> — the attachment-file CSP override has <code>sandbox</code> but no <code>frame-ancestors</code> (ASVS V3.4 row).</li>
+</ul>
+</li>
+</ul>
+<h3>U6-3 [Minor] A05 Security Misconfiguration — <code>packages/app/scripts/vereino-boot-env.mjs:61</code></h3>
+<ul>
+<li><strong>What:</strong> the boot rules refuse <code>OM_TEST_MODE</code>, <code>OM_INTEGRATION_TEST</code> and a disabled rate limiter on Railway, but not <code>OM_AUTOLOGIN_EMAIL</code>/<code>OM_AUTOLOGIN_PASSWORD</code> or <code>OM_ALLOW_DEV_AUTH_SECRET</code>, which <code>docs/ops/deploy.md</code> says must never be set in production; the platform autologin route has no production guard of its own, and <code>src/app/page.tsx</code> sends every visitor without a session to it when the variables are set.</li>
+<li><strong>Why:</strong> one leftover demo variable makes every anonymous visitor the configured account (typically the super-admin), and nothing at boot catches it.</li>
+<li><strong>Fix:</strong> add <code>RATE_LIMIT_RULES</code>-style rules that refuse <code>OM_AUTOLOGIN_*</code> and <code>OM_ALLOW_DEV_AUTH_SECRET</code> whenever <code>NODE_ENV=production</code>, not only on Railway.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>DEMO_MODE</code>, <code>SELF_SERVICE_ONBOARDING_ENABLED</code> — set off in the Dockerfile and <code>deploy.md</code> only, not checked at boot; same rule.</li>
+</ul>
+</li>
+</ul>
+<h3>U6-4 [Minor] A08 Software and Data Integrity Failures — <code>scripts/merge-train.mjs:144</code></h3>
+<ul>
+<li><strong>What:</strong> the merge train squash-merges, with the owner&#39;s <code>MERGE_TRAIN_TOKEN</code>, any open non-draft same-repository PR whose required checks are green and that carries no skip label, without checking for an approving review; the <code>main</code> ruleset holds only the status-check rule (no pull-request requirement, no force-push block, per <code>docs/ops/github-settings.md</code>), and the <code>gate</code> job runs <code>yarn guard</code> from the PR&#39;s own checkout, so a branch can change the guard it is judged by.</li>
+<li><strong>Why:</strong> anyone with write access (a collaborator or an automation token) can land code on <code>main</code>, and so in the next Railway deploy, without a human review; forks are excluded (<code>pull.head.repo</code> check at line 149), so this is not reachable by an outside contributor.</li>
+<li><strong>Fix:</strong> tracked in #741 (GitHub hardening): add the pull-request rule and force-push block to the ruleset, and run the guard from the base branch&#39;s copy of <code>scripts/guard.mjs</code> (as the train and the ledger already do with <code>main</code>&#39;s scripts) or have the train require an approval or the <code>guard-approved</code> state for PRs that touch <code>scripts/guard.mjs</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U6-5 [Nit] A08 Software and Data Integrity Failures — <code>Dockerfile:35</code></h3>
+<ul>
+<li><strong>What:</strong> the image builds run <code>yarn install</code> (lines 35 and 71) and <code>yarn workspaces focus --production</code> (line 128) without <code>--immutable</code> or <code>YARN_ENABLE_IMMUTABLE_INSTALLS</code>, and Railway&#39;s Docker build does not set <code>CI</code>, so a lockfile out of sync with a manifest is re-resolved at deploy time instead of failing.</li>
+<li><strong>Why:</strong> the deployed image could contain dependency versions the CI gate (<code>yarn install --immutable</code>) never tested; low likelihood because <code>main</code> only changes through a green gate.</li>
+<li><strong>Fix:</strong> set <code>ENV YARN_ENABLE_IMMUTABLE_INSTALLS=true</code> in each stage before the install.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>docker/scripts/dev-entrypoint.sh</code> — dev only; same pattern, no action needed.</li>
+</ul>
+</li>
+</ul>
+<h3>U6-6 [Nit] A05 Security Misconfiguration — <code>.dockerignore:14</code></h3>
+<ul>
+<li><strong>What:</strong> <code>.env</code>, <code>.env.local</code> and <code>.env.*.local</code> are root-anchored patterns, but the app&#39;s environment file lives in <code>packages/app/</code>, so a build from a developer checkout copies <code>packages/app/.env*</code> into the <code>builder</code> stage and the <code>dev</code> image (<code>COPY . .</code>), and <code>next build</code> inlines its <code>NEXT_PUBLIC_*</code> values (for example <code>NEXT_PUBLIC_UMES_DEVTOOLS=true</code> from the example) into the client bundle of the runner image.</li>
+<li><strong>Why:</strong> a locally built or pushed image can carry a developer&#39;s secrets and dev-only client switches; Railway builds from git, where no <code>.env</code> exists, so production is not affected today.</li>
+<li><strong>Fix:</strong> use <code>**/.env</code> and <code>**/.env.*</code> with <code>!**/.env.example</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U6-7 [Info] A05 Security Misconfiguration — <code>packages/app/src/app/api/docs/openapi/route.ts:12</code></h3>
+<ul>
+<li><strong>What:</strong> the enabled <code>api_docs</code> module serves the full OpenAPI document (and its markdown form) to anonymous callers.</li>
+<li><strong>Why:</strong> it maps every route and schema for an attacker; the repository is public, so the added exposure is small, but the ASVS V13.4 row records it as an open decision.</li>
+<li><strong>Fix:</strong> decide it under #743 (ASVS V13.4): require a staff session in production or accept and record it.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/app/api/docs/markdown/route.ts</code> — same document.</li>
+</ul>
+</li>
+</ul>
+<h3>U6-8 [Info] A06 Vulnerable and Outdated Components — <code>.yarnrc.yml:13</code></h3>
+<ul>
+<li><strong>What:</strong> dependency lifecycle scripts run on every install (Yarn&#39;s <code>enableScripts</code> default) in CI and in the image build, and <code>npmPreapprovedPackages</code> exempts <code>@open-mercato/*</code> from the 5-day age gate.</li>
+<li><strong>Why:</strong> a compromised transitive package executes during <code>yarn install</code> with the CI runner&#39;s or the image builder&#39;s environment; the platform scope can arrive the same day it is published (only on a deliberate upgrade, since Renovate leaves it alone).</li>
+<li><strong>Fix:</strong> set <code>enableScripts: false</code> and allow the packages that need a build step through <code>dependenciesMeta</code>, and review platform upgrades against the release diff (#741 covers Dependabot/CodeQL).</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>U6-9 [Info] A05 Security Misconfiguration — <code>Dockerfile:148</code></h3>
+<ul>
+<li><strong>What:</strong> the runner image ships the whole <code>scripts/</code> tree (merge train, harness, backup tooling) and <code>packages/app/scripts</code> beside the app, and <code>next.config.ts</code> leaves <code>poweredByHeader</code> on.</li>
+<li><strong>Why:</strong> more tooling and fingerprinting surface in production than the app needs; no direct exploit path.</li>
+<li><strong>Fix:</strong> copy only the scripts the start, pre-deploy and worker commands run, and set <code>poweredByHeader: false</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CSP, clickjacking, HSTS, nosniff, Referrer-Policy, Permissions-Policy</td>
+<td>risk surfaced</td>
+<td>U6-2; HSTS, nosniff, XFO, Permissions-Policy and token-page <code>no-referrer</code> present</td>
+</tr>
+<tr>
+<td>Authenticated response caching</td>
+<td>covered</td>
+<td><code>private, no-store</code> on <code>/api/*</code> with session cookie, bearer or API key</td>
+</tr>
+<tr>
+<td>Infrastructure env vars fail closed, no default secrets</td>
+<td>risk surfaced</td>
+<td>U6-1, U6-3; <code>JWT_SECRET</code> placeholder policy and rate-limit rules enforced</td>
+</tr>
+<tr>
+<td>Build artifacts exclude env files and demo seeds</td>
+<td>risk surfaced</td>
+<td>U6-6; runner copies selected paths only</td>
+</tr>
+<tr>
+<td>Container runs as non-root, base image pinned</td>
+<td>covered</td>
+<td><code>omuser</code> final stage, digest-pinned bases, <code>dockerfiles:check</code></td>
+</tr>
+<tr>
+<td>Workflows: <code>pull_request_target</code>, untrusted input in <code>run</code>, token permissions, fork secrets</td>
+<td>covered</td>
+<td>train and ledger check out <code>main</code> only, env-passed values, read-only default token, forks skipped</td>
+</tr>
+<tr>
+<td>Third-party actions pinned by SHA</td>
+<td>covered</td>
+<td>every <code>uses:</code> pinned by commit SHA; agent-browser binary checksum-verified</td>
+</tr>
+<tr>
+<td>Merge path integrity (review before merge)</td>
+<td>risk surfaced</td>
+<td>U6-4, tracked in #741</td>
+</tr>
+<tr>
+<td>Supply chain: lockfile, install scripts, dependency confusion</td>
+<td>risk surfaced</td>
+<td>U6-5, U6-8; <code>@vereino/*</code> via <code>workspace:*</code>, 5-day age gate, <code>resolutions</code> pin known-vulnerable transitive packages</td>
+</tr>
+<tr>
+<td>Dev-only and example surfaces in production</td>
+<td>covered</td>
+<td>dev-runtime routes 404 without the supervisor token; <code>/start</code> 404 in production; <code>example</code> module not enabled</td>
+</tr>
+<tr>
+<td>API documentation exposure</td>
+<td>risk surfaced</td>
+<td>U6-7</td>
+</tr>
+<tr>
+<td>Upload storage partitions and served content type</td>
+<td>covered</td>
+<td>platform file route <code>sandbox</code> CSP override; Vereino uploads by magic bytes, no SVG (<code>packages/core/src/file-format.ts</code>)</td>
+</tr>
+<tr>
+<td>Shared packages: raw HTML, eval, raw SQL</td>
+<td>covered</td>
+<td>no <code>dangerouslySetInnerHTML</code>, <code>eval</code> or raw query in <code>packages/core</code>, <code>packages/db</code>, <code>packages/ui</code></td>
+</tr>
+<tr>
+<td>SSRF from <code>Host</code> header (custom-domain resolver)</td>
+<td>covered</td>
+<td>resolver fetches <code>INTERNAL_APP_ORIGIN</code> with a secret header, host only as an encoded query value</td>
+</tr>
+<tr>
+<td>Server actions, <code>next/image</code> remote loader</td>
+<td>not applicable</td>
+<td>no <code>&#39;use server&#39;</code> and no <code>remotePatterns</code></td>
+</tr>
+<tr>
+<td>Backup job secrets and logging</td>
+<td>covered</td>
+<td>bucket keys passed by environment, stderr sanitized, dumps <code>age</code>-encrypted; database URL in <code>pg_dump</code> argv inside a single-purpose container</td>
+</tr>
+<tr>
+<td>Secrets sent to the client via <code>NEXT_PUBLIC_*</code></td>
+<td>covered</td>
+<td>only <code>NEXT_PUBLIC_APP_URL</code> and a test flag read in app code; <code>env</code> block exposes <code>OM_SEARCH_MIN_LEN</code> only</td>
+</tr>
+<tr>
+<td>CSRF on cookie-authenticated mutations</td>
+<td>not applicable</td>
+<td>tracked in #744, outside this unit</td>
+</tr>
+<tr>
+<td>Vulnerability audit output</td>
+<td>inconclusive (next step)</td>
+<td><code>yarn npm audit</code> not run (no network in this run); weekly <code>security.yml</code> job owns it</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> Audit <code>packages/app/scripts/vereino-boot-env.mjs</code> for fail-open production switches — encryption key and placeholders, <code>AUTH_SECRET</code>, <code>LOOKUP_HASH_PEPPER</code>, autologin and dev-secret switches in one rule set (U6-1, U6-3).</li>
+<li>Audit <code>.github/workflows/ci.yml</code> and the live <code>main</code> ruleset for review-before-merge — guard taken from the base branch, pull-request rule and force-push block (U6-4, #741).</li>
+<li>Audit <code>packages/app/next.config.ts</code> for a nonce-based CSP — measure what breaks without <code>&#39;unsafe-inline&#39;</code> and narrow <code>connect-src</code> (U6-2).</li>
+<li><code>om-auto-sec-report-pr branch:main --deep-scan</code> — limited to the PDF and image download routes of <code>club_core</code>, <code>facilities</code>, <code>training</code> and <code>people</code>, which inherit the global CSP rather than a sandbox one.</li>
+</ul>
+<h2>U7 — Open E25 findings: ASVS rows owned by #743</h2>
+<!-- sec-unit-status: complete -->
+<!-- sec-unit-withheld: 0 - -->
+
+<ul>
+<li>5 findings: 0 blocker, 0 major, 3 minor, 1 nit, 1 info; 0 withheld.</li>
+<li>Top OWASP categories: A07, A09, A05. Deep vectors surfaced: token-sibling revocation, silent auth-failure logging, unguarded demo autologin, GCM tag truncation.</li>
+<li>Recommended next run: <code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the platform <code>auth</code> reset and login paths — U7-1 and U7-2 sit in installed platform code that only an app-side wrapper or an upstream fix can close.</li>
+<li>Scope: 80 requirement rows of <code>docs/compliance/asvs-requirements.md</code> with owner <code>#743</code>, checked against the code at 1e45a949. Verdicts: 40 confirmed by code read, 30 gap confirmed, 6 rows map to 5 findings, 4 still to verify on a running deployment.</li>
+<li>Every &quot;confirmed by code read&quot; row is still <strong>to verify</strong> under the checklist&#39;s own rule (platform code read only, no named test). The Next action column names the smallest test or gate that would let the row be called met.</li>
+</ul>
+<h3>[Minor] U7-1 A07 Identification and Authentication Failures — <code>packages/app/node_modules/@open-mercato/core/src/modules/auth/services/authService.ts:165</code></h3>
+<ul>
+<li><strong>What:</strong> <code>confirmPasswordReset</code> marks only the token it redeemed as used (<code>authService.ts:169-175</code>). <code>requestPasswordReset</code> (<code>:134-145</code>) never retires earlier rows either, so any other unused reset link (60 min) or the Vereino invitation link (48 h, a <code>PasswordReset</code> row from <code>foundation/services/accounts.ts:256-261</code>) still sets a new password after the account holder has already reset it.</li>
+<li><strong>Why:</strong> anyone holding an older link e-mail (forwarded invitation, shared mailbox) can take the account over again within the window. The reset also ends every session (<code>:181</code>), so the rightful owner is logged out.</li>
+<li><strong>Fix:</strong> retire all of the user&#39;s unused <code>PasswordReset</code> rows in the same transaction as the redeemed one, and when a new one is issued. Vereino already does this for invitations (<code>accounts.ts:259</code>); wrap or extend the platform reset the same way and add an integration test that a second link answers &quot;invalid&quot; after the first is used.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/modules/foundation/services/accounts.ts:186</code> — the Vereino &quot;send reset&quot; path calls <code>requestPasswordReset</code> without retiring earlier rows.</li>
+</ul>
+</li>
+</ul>
+<h3>[Minor] U7-2 A09 Security Logging and Monitoring Failures — <code>packages/app/node_modules/@open-mercato/core/src/modules/auth/api/login.ts:155</code></h3>
+<ul>
+<li><strong>What:</strong> a failed password sign-in only emits the non-persistent event <code>auth.login.failed</code>, and nothing subscribes to it: no platform or Vereino subscriber exists, and <code>events.ts:21</code> only declares it. Login and reset 429 answers from <code>checkAuthRateLimit</code> (<code>login.ts:114-117</code>) are not logged either. <code>rateLimitCheck.ts:57-59</code> also swallows any unexpected error and allows the request without a log line.</li>
+<li><strong>Why:</strong> password guessing and credential stuffing against staff accounts leave no trace in the kept log, so the digest and alerting in <code>docs/ops/monitoring.md</code> cannot see an attack (ASVS V16.3.1, V16.3.3). Vereino&#39;s own sessionless limiter does log hits (<code>foundation/services/sessionless-limits.ts:72-76</code>).</li>
+<li><strong>Fix:</strong> add a Vereino subscriber to <code>auth.login.failed</code> (and to the rate-limit outcome) that writes a structured warning with a hashed e-mail and the club scope, never the clear address. Add it to a written list of security events (V16.3.3).</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/node_modules/@open-mercato/core/src/modules/auth/api/reset.ts:36-39</code> — reset 429s are not logged.</li>
+</ul>
+</li>
+</ul>
+<h3>[Minor] U7-3 A05 Security Misconfiguration — <code>packages/app/scripts/vereino-boot-env.mjs:59</code></h3>
+<ul>
+<li><strong>What:</strong> the Railway boot check refuses <code>OM_TEST_MODE</code>, <code>OM_INTEGRATION_TEST</code> and a disabled rate limiter, but not <code>OM_AUTOLOGIN_*</code> or <code>OM_ALLOW_DEV_AUTH_SECRET</code>. <code>docs/ops/deploy.md:79</code> says these must never be set, and the boot check does not enforce it.</li>
+<li><strong>Why:</strong> with <code>OM_AUTOLOGIN_EMAIL</code>/<code>OM_AUTOLOGIN_PASSWORD</code> set, the platform <code>GET /api/auth/autologin</code> (<code>core/src/modules/auth/api/autologin.ts:22-60</code>) signs every anonymous visitor in as that user. One stray variable copied from a demo environment becomes an unauthenticated sign-in path (V6.3.4).</li>
+<li><strong>Fix:</strong> add both variables to the Railway refusals in <code>vereino-boot-env.mjs</code>, with a unit test like the existing <code>OM_TEST_MODE</code> case.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>[Nit] U7-4 A02 Cryptographic Failures — <code>packages/app/node_modules/@open-mercato/shared/src/lib/encryption/aes.ts:140</code></h3>
+<ul>
+<li><strong>What:</strong> <code>decryptWithAesGcm</code> passes the stored tag to <code>setAuthTag</code> without checking that it is 16 bytes, and <code>createDecipheriv</code> is called without <code>authTagLength</code> (<code>aes.ts:134-137</code>). Node 24 still accepts truncated GCM tags in that case (deprecated). The strict envelope check <code>aes.ts:120-130</code> exists but the decrypt path does not use it.</li>
+<li><strong>Why:</strong> someone who can write ciphertext columns could forge values against a 32-bit tag instead of a 128-bit one. This needs database write access, so it is defence in depth only (V11.3.3).</li>
+<li><strong>Fix:</strong> reject tags whose decoded length is not 16 bytes, or pass <code>{ authTagLength: 16 }</code>, upstream in the platform. Add a unit test that a truncated tag is refused.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li>None found</li>
+</ul>
+</li>
+</ul>
+<h3>[Info] U7-5 A05 Security Misconfiguration — <code>packages/app/src/app/api/docs/openapi/route.ts:12</code></h3>
+<ul>
+<li><strong>What:</strong> <code>GET /api/docs/openapi</code> and <code>GET /api/docs/markdown</code> answer anonymous callers with the full route and schema inventory of every enabled module and the app version. Feature and role metadata is withheld from anonymous callers (<code>core/src/modules/api_docs/lib/document.ts:58-64</code>).</li>
+<li><strong>Why:</strong> the repository is public, so the inventory reveals little that the source does not. It still gives an attacker a ready map and a version string without reading code, and no decision records the exposure (V13.4.5).</li>
+<li><strong>Fix:</strong> record a decision. Either require a session for both routes, or keep them public and note why in <code>docs/compliance/asvs-requirements.md</code>.</li>
+<li><strong>Apply elsewhere:</strong><ul>
+<li><code>packages/app/src/app/api/docs/markdown/route.ts:12</code> — same document as Markdown.</li>
+</ul>
+</li>
+</ul>
+<p><strong>Requirement verdicts (owner #743)</strong></p>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Prior state</th>
+<th>Verdict</th>
+<th>Evidence (file:line)</th>
+<th>Next action</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>V1.1.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Next.js decodes route params once; the only manual decodes are single cookie reads (<code>foundation/services/identity.ts:143</code>, <code>club_core/lib/sign-in-club.ts:32</code>)</td>
+<td>Integration test: a double-encoded slug (<code>%252e</code>) answers the public 404</td>
+</tr>
+<tr>
+<td>V1.1.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>One raw-HTML sink, a constant theme script (<code>packages/app/src/app/layout.tsx:43</code>); <code>eslint.vereino.mjs</code> has no <code>react/no-danger</code></td>
+<td>Add <code>react/no-danger</code> to <code>eslint.vereino.mjs</code>, allow-listing <code>layout.tsx</code> only (nit)</td>
+</tr>
+<tr>
+<td>V1.2.1</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>as V1.1.2; React text rendering everywhere else</td>
+<td>Same lint rule</td>
+</tr>
+<tr>
+<td>V1.2.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>No hand-built JSON or script strings; responses use <code>Response.json</code>; the only inline script is the constant at <code>layout.tsx:43</code></td>
+<td>The V1.1.2 lint rule covers it</td>
+</tr>
+<tr>
+<td>V1.2.4</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>Every <code>${}</code> in raw SQL is a code constant, a <code>?</code> placeholder list or a <code>quoteIdent</code>-validated identifier (<code>club_core/services/club-offboarding.ts:103-106</code>, <code>:190-202</code>, <code>:465</code>, <code>:679</code>; <code>training/data/queries.ts:60-93</code>; <code>communication/data/queries.ts:238-258</code>; <code>foundation/data/queries.ts:125-177</code>)</td>
+<td>Gate in <code>yarn verify</code>: flag <code>${</code> inside <code>execute(</code>/<code>raw(</code> templates unless it is an allow-listed helper (<code>placeholders</code>, <code>quoteIdent</code>, upper-case constants)</td>
+</tr>
+<tr>
+<td>V1.3.6</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Outbound calls only to env-set heartbeat URLs (<code>payments/services/invariants.ts:54</code>, <code>foundation/lib/worker-heartbeat.ts:49</code>, <code>scripts/vereino-ops-signal.mjs:78</code>), fixed Google endpoints (<code>foundation/lib/identity.ts:19-20</code>) and the Resend SDK; the only fetch in enabled platform modules is <code>communication_channels/lib/oauth-token.ts:55</code>, fixed Gmail URL, provider not enabled</td>
+<td>Lint: <code>no-restricted-globals</code> on <code>fetch</code> in <code>src/modules/**</code> outside the three files</td>
+</tr>
+<tr>
+<td>V1.3.11</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Mail goes through <code>channel_resend</code> as JSON over the Resend HTTPS API (<code>channel-resend/.../lib/adapter.ts:75-87</code>); no SMTP header is assembled in app or platform code (<code>shared/src/lib/email/send.ts:124-150</code>)</td>
+<td>Unit test in <code>foundation/services/email-templates</code> that a club name with CR/LF yields a single-line subject</td>
+</tr>
+<tr>
+<td>V2.1.1</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Rules live only in Zod schemas and READMEs</td>
+<td>Generate a per-flow validation table from the OpenAPI document (info)</td>
+</tr>
+<tr>
+<td>V2.1.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Cross-field rules spread over specs and READMEs</td>
+<td>Collect them per flow next to V2.1.1 (info)</td>
+</tr>
+<tr>
+<td>V2.1.3</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>No per-user or global limit inventory</td>
+<td>Write <code>docs/compliance/limits.md</code> listing every count, size and rate limit (info)</td>
+</tr>
+<tr>
+<td>V2.3.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Depends on the V2.1.3 inventory</td>
+<td>Link each limit in that inventory to its enforcing <code>lib/</code> function and test</td>
+</tr>
+<tr>
+<td>V2.3.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Commands write in <code>em.transactional</code>/<code>withAtomicFlush</code> (<code>payments/commands/orders.ts:342</code>, <code>payments/commands/shared.ts:48</code>); effects post-commit</td>
+<td>Integration test: a command failing after its first write leaves no row</td>
+</tr>
+<tr>
+<td>V3.2.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>as V1.1.2</td>
+<td>Same lint rule</td>
+</tr>
+<tr>
+<td>V3.3.2</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td><code>om_selected_tenant</code>/<code>om_selected_org</code> set with <code>samesite=lax</code> (<code>src/components/OrganizationSwitcher.tsx:156</code>, <code>:182</code>); they are selectors re-validated on the server (<code>foundation/services/route-context.ts:17</code>), not credentials; no <code>Secure</code> (HSTS covers it)</td>
+<td>Extend <code>ENG-TEST-11-security-headers</code> to assert cookie attributes</td>
+</tr>
+<tr>
+<td>V3.4.3</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td><code>script-src &#39;unsafe-inline&#39;</code>, <code>connect-src &#39;self&#39; https: ws: wss:</code>, <code>img-src https:</code> (<code>packages/app/next.config.ts:36-40</code>); nonce CSP deferred</td>
+<td>Track the nonce CSP; narrow <code>connect-src</code> to named hosts first (minor)</td>
+</tr>
+<tr>
+<td>V3.4.6</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Attachment CSP <code>default-src &#39;none&#39;; sandbox</code> without <code>frame-ancestors</code> (<code>next.config.ts:154-157</code>); <code>X-Frame-Options: SAMEORIGIN</code> on the same rule compensates</td>
+<td>Add <code>frame-ancestors &#39;none&#39;</code> and assert it in <code>ENG-TEST-11</code> (nit)</td>
+</tr>
+<tr>
+<td>V3.5.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Spot check: the only GET-only route that writes is the OAuth callback (<code>foundation/api/identity/[provider]/callback/route.ts</code>), bound to a single-use state and cookie (<code>foundation/services/identity.ts:87-108</code>); the platform autologin GET writes only when U7-3&#39;s variables are set</td>
+<td><code>yarn verify</code> step listing GET handlers that reach <code>commandBus</code>/<code>flush</code> against an allowlist</td>
+</tr>
+<tr>
+<td>V3.7.2</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>Platform <code>/login</code> redirect is same-origin and rejects <code>//</code> paths on the server (<code>core/src/modules/auth/lib/safeRedirect.ts:1-22</code>, <code>api/login.ts:199</code>) and the client (<code>auth/frontend/login.tsx:160-170</code>)</td>
+<td>Integration test: sign in with <code>redirect=https://evil.example</code> and a backslash form, expect <code>/backend</code></td>
+</tr>
+<tr>
+<td>V4.1.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Text bodies carry <code>charset=utf-8</code> (5 CSV routes, <code>api/docs/markdown/route.ts</code>); JSON is <code>application/json</code> (UTF-8 by RFC 8259)</td>
+<td>Pen test checks that the edge does not rewrite <code>Content-Type</code></td>
+</tr>
+<tr>
+<td>V4.2.1</td>
+<td>to verify</td>
+<td>still to verify — needs a running deployment</td>
+<td>Railway edge in front of the Node server; nothing in the repository decides it</td>
+<td>Pen test of staging: CL.TE/TE.CL/H2 downgrade desync against the edge</td>
+</tr>
+<tr>
+<td>V5.1.1</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Upload rules scattered (club_core, activities READMEs, S8.11)</td>
+<td>One upload inventory table: route, formats, size, count (info)</td>
+</tr>
+<tr>
+<td>V5.3.2</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Stored name = timestamp + 12 hex of a UUID + <code>[a-zA-Z0-9._-]</code> name under org/tenant segments (<code>core/src/modules/attachments/lib/drivers/localDriver.ts:29-32</code>); reads go through <code>lib/pathContainment</code></td>
+<td>Integration test: upload a file named <code>../../x.pdf</code>, expect a stored path inside the partition</td>
+</tr>
+<tr>
+<td>V5.4.2</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td><code>buildAttachmentContentDisposition</code> sanitises to ASCII and adds <code>filename*=UTF-8&#39;&#39;</code> + <code>encodeURIComponent</code> (<code>attachments/lib/security.ts:87-98</code>, <code>:179-185</code>), used at <code>club_core/api/public-shared.ts:95</code></td>
+<td>Assert the header in the public-materials integration test</td>
+</tr>
+<tr>
+<td>V5.4.3</td>
+<td>gap</td>
+<td>gap confirmed</td>
+<td>No malware scan; staff PDFs served on public pages (<code>club_core/api/public-shared.ts:75-103</code>, download disposition + <code>nosniff</code>)</td>
+<td>Decide: scan, or serve public PDFs re-rendered/flattened; at least record the residual risk (minor)</td>
+</tr>
+<tr>
+<td>V6.1.3</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Paths documented separately; API keys are 48-hex secrets, bcrypt-hashed (<code>core/src/modules/api_keys/services/apiKeyService.ts:118-130</code>)</td>
+<td>One sign-in path inventory with strengths (info)</td>
+</tr>
+<tr>
+<td>V6.2.7</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>No paste handler in <code>PasswordInput</code>; <code>autoComplete</code> set (<code>auth/frontend/login.tsx:442</code>, <code>frontend/reset/[token]/page.tsx:155</code>, <code>:167</code>)</td>
+<td>Browser test: paste into the password field and submit</td>
+</tr>
+<tr>
+<td>V6.2.9</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td><code>buildPasswordSchema</code> sets no maximum unless asked (<code>shared/src/lib/auth/passwordPolicy.ts:138-143</code>); bcryptjs reads only 72 bytes, so long input is no CPU risk</td>
+<td>Unit test: a 128-character password is accepted</td>
+</tr>
+<tr>
+<td>V6.3.4</td>
+<td>to verify</td>
+<td>finding (U7-3)</td>
+<td>Autologin variables not refused at boot</td>
+<td>Fix U7-3</td>
+</tr>
+<tr>
+<td>V6.4.1</td>
+<td>to verify</td>
+<td>finding (U7-1)</td>
+<td>Single use is atomic (<code>authService.ts:169-175</code>), invitations retire older rows (<code>foundation/services/accounts.ts:259</code>), but later resets leave the invitation row live</td>
+<td>Fix U7-1</td>
+</tr>
+<tr>
+<td>V6.4.3</td>
+<td>to verify</td>
+<td>finding (U7-1)</td>
+<td>Hashed 60-min token, rate-limited, sessions deleted (<code>authService.ts:134-182</code>, <code>auth/api/reset.ts:36-110</code>); sibling tokens survive</td>
+<td>Fix U7-1; integration test for reset single use</td>
+</tr>
+<tr>
+<td>V6.8.2</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>Id token from a direct TLS back-channel exchange with PKCE S256 (<code>foundation/services/identity-providers.ts:28-53</code>), claims checked (<code>foundation/lib/identity.ts:117-131</code>); acceptable under OIDC Core 3.1.3.7, decision V-S04</td>
+<td>Keep partial; cite OIDC Core 3.1.3.7 in the row</td>
+</tr>
+<tr>
+<td>V7.2.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>32 <code>randomBytes</code>, stored as HMAC-SHA256 (<code>core/src/modules/auth/lib/tokenHash.ts:46-52</code>, <code>services/authService.ts:95-101</code>)</td>
+<td>Unit test of token length in the Vereino session path (<code>foundation/services/identity.ts:199</code>)</td>
+</tr>
+<tr>
+<td>V8.1.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>No per-field read/write matrix</td>
+<td>Field matrix per module (info)</td>
+</tr>
+<tr>
+<td>V8.2.1</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>A-2 insufficient-feature inventory open</td>
+<td>Extend <code>route-isolation:check</code> inventories with a feature-less probe per route</td>
+</tr>
+<tr>
+<td>V8.2.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Cross-club met by #628; in-club scope inventory open</td>
+<td>In-club scope probes in the same inventory</td>
+</tr>
+<tr>
+<td>V8.2.3</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Only PESEL and medical date tested</td>
+<td>Inventory sensitive fields and a test per field</td>
+</tr>
+<tr>
+<td>V9.1.1</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>HMAC checked with <code>timingSafeEqual</code> before the payload is parsed (<code>shared/src/lib/auth/jwt.ts:300-307</code>); Google side per V6.8.2</td>
+<td>Unit test: tampered payload with original signature is refused</td>
+</tr>
+<tr>
+<td>V9.1.2</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td><code>alg</code> header never read; verification always HS256 (<code>jwt.ts:282</code>, <code>:295-304</code>)</td>
+<td>Unit test: an <code>alg: none</code> token and an HS512 token are refused</td>
+</tr>
+<tr>
+<td>V9.2.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td><code>exp</code> checked (<code>jwt.ts:312</code>); the check is skipped when <code>exp</code> is absent, but <code>signJwt</code> always sets it (<code>:284</code>) and the one Vereino signer passes none (<code>foundation/services/identity.ts:219</code>)</td>
+<td>Unit test: expired token refused; prefer rejecting a missing <code>exp</code> upstream</td>
+</tr>
+<tr>
+<td>V9.2.2</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td><code>mfa_pending</code> tokens refused outside MFA routes (<code>shared/src/lib/auth/server.ts:372-377</code>, <code>:420-426</code>); per-audience keys</td>
+<td>Unit test: customer-audience token refused on a staff route</td>
+</tr>
+<tr>
+<td>V9.2.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td><code>aud</code> and <code>iss</code> compared on the default path (<code>jwt.ts:313-318</code>)</td>
+<td>Same unit test as V9.2.2</td>
+</tr>
+<tr>
+<td>V9.2.4</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Per-audience key = HMAC-SHA256(<code>JWT_SECRET</code>, label+audience) (<code>jwt.ts:182-213</code>)</td>
+<td>Covered by the V9.2.2 test</td>
+</tr>
+<tr>
+<td>V11.2.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Vereino uses <code>node:crypto</code> only; platform <code>node:crypto</code> + <code>bcryptjs</code></td>
+<td>Add crypto libraries other than these to <code>forbidden-packages:check</code></td>
+</tr>
+<tr>
+<td>V11.2.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>JWT HS256 with 256-bit derived key, <code>JWT_SECRET</code> ≥ 32 chars enforced in production (<code>jwt.ts:75</code>, <code>:146-154</code>); AES-256-GCM; PBKDF2-SHA512 310 000 (<code>shared/src/lib/encryption/kms.ts:155-158</code>)</td>
+<td>Boot test exists (<code>ENG-TEST-12-13-boot-env</code>); cite it</td>
+</tr>
+<tr>
+<td>V11.3.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>AES-256-GCM, fresh 12-byte IV per value (<code>aes.ts:82-90</code>)</td>
+<td>Unit test: two encryptions of one value differ</td>
+</tr>
+<tr>
+<td>V11.3.2</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>same file</td>
+<td>Same test</td>
+</tr>
+<tr>
+<td>V11.3.3</td>
+<td>to verify</td>
+<td>finding (U7-4)</td>
+<td>Tag checked by GCM but its length not pinned (<code>aes.ts:134-157</code>)</td>
+<td>Fix U7-4; tamper test</td>
+</tr>
+<tr>
+<td>V11.4.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Vereino: 14 <code>createHash(&#39;sha256&#39;)</code>, 6 <code>createHmac(&#39;sha256&#39;)</code>, no MD5/SHA-1</td>
+<td>Lint: <code>no-restricted-syntax</code> on other hash names</td>
+</tr>
+<tr>
+<td>V11.4.2</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>bcrypt cost 10 (<code>authService.ts:179</code>, <code>auth/lib/setup-app.ts:347</code>), OWASP&#39;s minimum</td>
+<td>Record the choice; consider 12 with a login-latency check</td>
+</tr>
+<tr>
+<td>V11.4.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>SHA-256 for link and preview tokens (<code>foundation/lib/token-link.ts</code>, <code>people/lib/departure-token.ts</code>)</td>
+<td>Existing unit tests; cite them</td>
+</tr>
+<tr>
+<td>V11.5.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>OAuth state 32 bytes (<code>foundation/services/identity.ts:54</code>), link tokens 32 bytes (<code>tokenHash.ts:46-48</code>); <code>Math.random</code> only for the public transfer reference <code>GW-XXXX</code> (<code>payments/lib/payer-summary.ts:20-28</code>), not a secret</td>
+<td>Note the payer code as non-secret in the row</td>
+</tr>
+<tr>
+<td>V11.6.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Stripe webhook verified by <code>stripe.webhooks.constructEvent</code> (<code>gateway-stripe/.../lib/webhook-handler.ts:34</code>); JWT HMAC as above; <code>age</code> backup keys are operator-generated (ops)</td>
+<td>Ops check of the <code>age</code> key procedure</td>
+</tr>
+<tr>
+<td>V13.1.1</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Outbound: PostgreSQL, Redis, Resend, Stripe, Google OAuth, three heartbeat URLs (see V1.3.6)</td>
+<td>Add Google and the heartbeat monitor to <code>docs/compliance/processors.md</code> (info)</td>
+</tr>
+<tr>
+<td>V13.4.3</td>
+<td>to verify</td>
+<td>still to verify — needs a running deployment</td>
+<td>Next.js serves no directory listings by code</td>
+<td>Pen test: directory listing and <code>TRACE</code>/<code>OPTIONS</code> at the Railway edge</td>
+</tr>
+<tr>
+<td>V13.4.5</td>
+<td>partial</td>
+<td>finding (U7-5)</td>
+<td>Anonymous OpenAPI and Markdown docs</td>
+<td>Fix U7-5 (decision)</td>
+</tr>
+<tr>
+<td>V14.1.1</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>No protection levels</td>
+<td>Define levels in <code>ropa.md</code> (info)</td>
+</tr>
+<tr>
+<td>V14.1.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Rules piecemeal</td>
+<td>Requirement set per level (info)</td>
+</tr>
+<tr>
+<td>V14.2.1</td>
+<td>partial</td>
+<td>still to verify — needs a running deployment</td>
+<td>Tokens in link paths by design, <code>no-referrer</code>/<code>no-store</code> (<code>next.config.ts:165-195</code>)</td>
+<td>Pen test/ops: confirm Railway edge and access logs do not keep request paths with tokens</td>
+</tr>
+<tr>
+<td>V14.2.2</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>CRUD response cache off unless <code>ENABLE_CRUD_API_CACHE</code> (<code>shared/src/lib/crud/cache.ts:15-19</code>) and keyed per tenant, org and user (<code>crud/factory.ts:1055-1068</code>); Redis otherwise holds state markers and counters</td>
+<td>Assert <code>ENABLE_CRUD_API_CACHE</code> unset in the boot check</td>
+</tr>
+<tr>
+<td>V14.2.3</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>No trackers in code; CSP <code>connect-src https:</code> (<code>next.config.ts:40</code>) does not enforce it</td>
+<td>Narrow <code>connect-src</code> (nit)</td>
+</tr>
+<tr>
+<td>V14.3.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td><code>sessionStorage</code>: member person id and selection (<code>packages/ui/src/member/member-context.ts:228</code>); <code>localStorage</code>: undo metadata (<code>ui/src/backend/operations/store.ts:22</code>, <code>:113</code>; undo is actor-bound, <code>audit_logs/api/audit-logs/actions/undo/route.ts:87-93</code>), login tenant id (<code>auth/frontend/login.tsx:26</code>), table/filter state; no session token</td>
+<td>Note that undo entries survive logout until the next sign-in (<code>login.tsx:270</code>, <code>:325</code>)</td>
+</tr>
+<tr>
+<td>V15.2.3</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Scaffold modules unregistered (<code>src/modules.ts:91</code>) but in the image; dev-runtime routes closed without the supervisor token (<code>shared/src/lib/dev-runtime/server.ts:45-60</code>)</td>
+<td>Exclude <code>src/modules/example*</code> and <code>ratelimit_probe</code> in <code>.dockerignore</code> (nit)</td>
+</tr>
+<tr>
+<td>V15.3.1</td>
+<td>to verify</td>
+<td>gap confirmed</td>
+<td>Response schemas exist per route (<code>openApi</code>), no test compares returned keys</td>
+<td>Contract test: response keys ⊆ declared schema for public routes</td>
+</tr>
+<tr>
+<td>V15.3.2</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Three heartbeat fetches follow redirects (V1.3.6 files)</td>
+<td>Pass <code>redirect: &#39;error&#39;</code> (nit)</td>
+</tr>
+<tr>
+<td>V15.3.3</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Loose route schemas only feed commands that parse strict schemas (<code>facilities/api/closures/route.ts:31</code>, <code>:79</code>; <code>facilities/commands/closures.ts:158</code>); <code>z.object</code> strips unknown keys; scope from server</td>
+<td>Integration test: POST with <code>tenantId</code>/<code>organizationId</code> of club B is ignored</td>
+</tr>
+<tr>
+<td>V15.3.5</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>No <code>eqeqeq</code>; only <code>== null</code> idioms found</td>
+<td><code>eqeqeq: [&#39;error&#39;, &#39;always&#39;, { null: &#39;ignore&#39; }]</code> (nit)</td>
+</tr>
+<tr>
+<td>V15.3.6</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Zod 4.6.7 drops <code>__proto__</code> in objects and records (<code>node_modules/zod/v4/core/schemas.js:966-972</code>, <code>:1743-1764</code>)</td>
+<td>Unit test: a body with <code>__proto__</code> parses to a plain object</td>
+</tr>
+<tr>
+<td>V15.3.7</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Repeated query keys become arrays (<code>shared/src/lib/crud/query-params.ts:39-52</code>), which <code>z.string()</code> refuses (400)</td>
+<td>Unit test on one list route</td>
+</tr>
+<tr>
+<td>V16.2.1</td>
+<td>to verify</td>
+<td>gap confirmed</td>
+<td>Lines carry module, tenant, organization; user id only on lifecycle events (<code>src/app/api/[...slug]/route.ts:496-501</code>)</td>
+<td>Add <code>userId</code> to the S15.1 field set (info)</td>
+</tr>
+<tr>
+<td>V16.2.2</td>
+<td>to verify</td>
+<td>still to verify — needs a running deployment</td>
+<td>pino epoch-ms <code>time</code>; host clock is Railway&#39;s</td>
+<td>Ops/pen test: compare log timestamps with an NTP reference</td>
+</tr>
+<tr>
+<td>V16.2.4</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>Next.js unhandled lines plain text</td>
+<td>Route Next errors through the logger (nit)</td>
+</tr>
+<tr>
+<td>V16.2.5</td>
+<td>partial</td>
+<td>gap confirmed</td>
+<td>pino redact paths (<code>shared/src/lib/logger/transport.server.ts:79-81</code>); no general check</td>
+<td>Log-content test over a seeded run (info)</td>
+</tr>
+<tr>
+<td>V16.3.1</td>
+<td>partial</td>
+<td>finding (U7-2)</td>
+<td><code>auth.login.failed</code> unlogged</td>
+<td>Fix U7-2</td>
+</tr>
+<tr>
+<td>V16.3.2</td>
+<td>to verify</td>
+<td>gap confirmed</td>
+<td>403/404 answers not logged</td>
+<td>Log denials with route and feature (info)</td>
+</tr>
+<tr>
+<td>V16.3.3</td>
+<td>gap</td>
+<td>gap confirmed</td>
+<td>No security event list; platform auth 429s unlogged (U7-2)</td>
+<td>Write the list; fix U7-2</td>
+</tr>
+<tr>
+<td>V16.3.4</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>CRUD routes log every unexpected error regardless of telemetry (<code>shared/src/lib/crud/factory.ts:700-711</code>); the dispatcher&#39;s <code>reportError</code> is silent unless <code>TELEMETRY_BACKEND</code> is set (<code>src/app/api/[...slug]/route.ts:526-528</code>)</td>
+<td>Add <code>TELEMETRY_BACKEND=console</code> to the <code>docs/ops/deploy.md</code> variable table</td>
+</tr>
+<tr>
+<td>V16.4.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>pino JSON (dependency of <code>@open-mercato/shared</code>, <code>package.json:130</code>); the console fallback writes raw <code>key=value</code> (<code>logger/transport.console.ts:17-31</code>) only if pino fails to load</td>
+<td>Boot assertion that the pino transport is active</td>
+</tr>
+<tr>
+<td>V16.5.1</td>
+<td>to verify</td>
+<td>confirmed by code read</td>
+<td>Generic 500 body with <code>requestId</code> (<code>crud/factory.ts:712-719</code>); non-CRUD throws re-thrown to Next.js (<code>[...slug]/route.ts:538</code>)</td>
+<td>Pen test confirms the production 500 body is empty/generic</td>
+</tr>
+<tr>
+<td>V16.5.2</td>
+<td>to verify</td>
+<td>gap confirmed</td>
+<td>Missing transport mapped (<code>foundation/lib/dispatch-rules.ts:154</code>); Stripe/Resend outage paths untested</td>
+<td>Integration test with the e-mail sender seam failing</td>
+</tr>
+<tr>
+<td>V16.5.3</td>
+<td>partial</td>
+<td>confirmed by code read</td>
+<td>Scope fails closed (#628); auth limiter fails open by design, logged by the service (<code>shared/src/lib/ratelimit/service.ts:45-55</code>) except the catch-all at <code>auth/lib/rateLimitCheck.ts:57-59</code></td>
+<td>Covered by U7-2&#39;s fix</td>
+</tr>
+</tbody></table>
+<p><strong>Deep vectors — what was checked</strong></p>
+<table>
+<thead>
+<tr>
+<th>Vector</th>
+<th>Outcome</th>
+<th>Location or note</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>JWT algorithm confusion</td>
+<td>covered</td>
+<td><code>alg</code> ignored, HS256 only (<code>jwt.ts:295-304</code>)</td>
+</tr>
+<tr>
+<td>JWT expiry, audience, issuer</td>
+<td>covered</td>
+<td><code>jwt.ts:312-318</code>; missing <code>exp</code> accepted but never issued</td>
+</tr>
+<tr>
+<td>Legacy JWT fallback</td>
+<td>covered</td>
+<td>off unless <code>JWT_LEGACY_CUTOVER_AT</code> is set (<code>jwt.ts:61-73</code>, <code>:328-336</code>)</td>
+</tr>
+<tr>
+<td>Reset/invite token single use and sibling revocation</td>
+<td>risk surfaced</td>
+<td>U7-1</td>
+</tr>
+<tr>
+<td>Session token entropy</td>
+<td>covered</td>
+<td>32 bytes, HMAC at rest</td>
+</tr>
+<tr>
+<td>Password hashing</td>
+<td>covered</td>
+<td>bcrypt cost 10 (minimum)</td>
+</tr>
+<tr>
+<td>Id-token signature (V-S04)</td>
+<td>covered</td>
+<td>back-channel + PKCE, claims checked</td>
+</tr>
+<tr>
+<td>SQL injection in raw SQL</td>
+<td>covered</td>
+<td>constants, placeholders, <code>quoteIdent</code> only</td>
+</tr>
+<tr>
+<td>SSRF and redirect following</td>
+<td>covered</td>
+<td>env-set targets only; redirects followed (nit, V15.3.2)</td>
+</tr>
+<tr>
+<td>Mail header injection</td>
+<td>covered</td>
+<td>Resend JSON API, no SMTP headers built</td>
+</tr>
+<tr>
+<td>Content-Disposition encoding</td>
+<td>covered</td>
+<td>sanitised + RFC 5987</td>
+</tr>
+<tr>
+<td>Framing of attachment files</td>
+<td>covered</td>
+<td><code>X-Frame-Options</code> present; <code>frame-ancestors</code> missing (nit)</td>
+</tr>
+<tr>
+<td>Open redirect on <code>/login</code></td>
+<td>covered</td>
+<td><code>safeRedirect.ts</code></td>
+</tr>
+<tr>
+<td>Prototype pollution</td>
+<td>covered</td>
+<td>Zod strips <code>__proto__</code></td>
+</tr>
+<tr>
+<td>Parameter pollution</td>
+<td>covered</td>
+<td>duplicates become arrays, refused</td>
+</tr>
+<tr>
+<td>Browser storage of secrets</td>
+<td>covered</td>
+<td>no tokens in storage</td>
+</tr>
+<tr>
+<td>Error body leakage</td>
+<td>covered</td>
+<td>generic 500 + <code>requestId</code></td>
+</tr>
+<tr>
+<td>Auth failure logging</td>
+<td>risk surfaced</td>
+<td>U7-2</td>
+</tr>
+<tr>
+<td>Debug/demo paths in production</td>
+<td>risk surfaced</td>
+<td>U7-3; dev-runtime closed</td>
+</tr>
+<tr>
+<td>AES-GCM tag truncation</td>
+<td>risk surfaced</td>
+<td>U7-4</td>
+</tr>
+<tr>
+<td>API surface disclosure</td>
+<td>risk surfaced</td>
+<td>U7-5</td>
+</tr>
+<tr>
+<td>Request smuggling at the edge</td>
+<td>inconclusive</td>
+<td>needs staging (V4.2.1)</td>
+</tr>
+</tbody></table>
+<p><strong>Next steps — go deeper</strong></p>
+<ul>
+<li><strong>[recommended]</strong> <code>om-auto-sec-report-pr branch:main --deep-scan</code> scoped to the platform <code>auth</code> module (reset, login, autologin, profile password change) — U7-1 to U7-3 show its token lifecycle and logging rely on code that Vereino neither wraps nor tests.</li>
+<li>Audit <code>packages/app/src/modules/foundation</code> for a security-event subscriber set (login failure, 429, 403, reset, role change) — closes V16.3.1 to V16.3.3 in one change.</li>
+<li>Audit the Railway staging edge for request smuggling, <code>TRACE</code>, directory listings, clock sync and access-log retention of token paths — the four rows no code read settles (V4.2.1, V13.4.3, V14.2.1, V16.2.2).</li>
+<li>Audit <code>yarn verify</code> for an S5.8 raw-SQL interpolation gate and a <code>react/no-danger</code> lint rule — together they let five V1 and V3 rows be called met.</li>
+</ul>
+<h2>Limits</h2>
+<ul>
+<li>Findings are aggregated from per-unit heuristic analysis by code reading; confirm before acting. No application, test or deployment was run for this review.</li>
+<li>Apply-elsewhere and next-step pointers are suggestions, not verified vulnerabilities.</li>
+<li>A whole-codebase review hides less per-unit context than a large PR window, but the spot-checked areas named in the next steps were not read line by line.</li>
+<li>This report does not replace the external penetration test of staging (#743).</li>
+</ul>
+<h2>Appendix — queue</h2>
+<h3>2026-11-26</h3>
+<ul>
+<li>U1 <code>om-auto-sec-report-pr</code> over the sign-in, session and sessionless route entry points — complete · withheld: 0</li>
+<li>U2 over <code>packages/app/src/modules/payments</code> — complete · withheld: 0</li>
+<li>U3 over <code>packages/app/src/modules/facilities</code> and <code>activities</code> — complete · withheld: 0</li>
+<li>U4 over <code>packages/app/src/modules/people</code>, <code>groups</code> and <code>communication</code> — complete · withheld: 0</li>
+<li>U5 over <code>packages/app/src/modules/club_core</code>, <code>foundation</code>, <code>training</code> and the example modules — complete · withheld: 1</li>
+<li>U6 over platform configuration, deployment, CI and the shared packages — complete · withheld: 0</li>
+<li>U7 over the 80 rows of <code>docs/compliance/asvs-requirements.md</code> owned by #743 — complete · withheld: 0</li>
+</ul>
+</body>
+</html>
