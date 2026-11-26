@@ -107,7 +107,9 @@ describe('staff calendar window', () => {
     const from = at('2026-11-01T00:00:00Z')
     expect(MAX_CALENDAR_DAYS).toBe(31)
     expect(calendarWindowProblem(from, at('2026-12-02T00:00:00Z'))).toBeNull()
-    expect(calendarWindowProblem(from, at('2026-12-02T00:00:01Z'))).toBe('too_long')
+    // October in Warsaw: 31 club-zone days are 31 days and the hour the clocks go back (#784).
+    expect(calendarWindowProblem(at('2026-09-30T22:00:00Z'), at('2026-10-31T23:00:00Z'))).toBeNull()
+    expect(calendarWindowProblem(from, at('2026-12-02T01:00:01Z'))).toBe('too_long')
     expect(calendarWindowProblem(from, from)).toBe('inverted')
   })
 

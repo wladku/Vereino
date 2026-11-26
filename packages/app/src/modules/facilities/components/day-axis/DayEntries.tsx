@@ -42,6 +42,8 @@ export function DayEntries({
   filtered = false,
   actionOf,
   onOpen,
+  title,
+  date,
 }: {
   entries: readonly CalendarEntry[]
   timeZone: string
@@ -53,14 +55,29 @@ export function DayEntries({
   actionOf?: (entry: CalendarEntry) => React.ReactNode
   /** When set, an entry's text is a button opening its details (M-11). */
   onOpen?: (entry: CalendarEntry) => void
+  /** A day of a week or month list (DD-W05): its heading (a link to the day) instead of "Wpisy dnia", as `h3`. */
+  title?: React.ReactNode
+  /** The day of a list, for `data-date`. */
+  date?: string
 }) {
   const t = useT()
   const headingId = React.useId()
   return (
-    <section aria-labelledby={headingId} className="flex flex-col gap-2" data-testid="facilities-day-entries">
-      <h2 id={headingId} className="text-lg font-semibold">
-        {t('facilities.calendar.dayEntries')}
-      </h2>
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-2"
+      data-testid={title ? 'facilities-range-day' : 'facilities-day-entries'}
+      data-date={date}
+    >
+      {title ? (
+        <h3 id={headingId} className="text-base font-semibold">
+          {title}
+        </h3>
+      ) : (
+        <h2 id={headingId} className="text-lg font-semibold">
+          {t('facilities.calendar.dayEntries')}
+        </h2>
+      )}
       {entries.length === 0 ? (
         <p className="text-muted-foreground text-sm" data-testid="facilities-day-entries-empty">
           {t(filtered ? 'facilities.calendar.dayEntries.emptyFiltered' : 'facilities.calendar.dayEntries.empty')}

@@ -31,6 +31,9 @@ describe('publicFacilitiesLoadOf', () => {
     expect(
       publicFacilitiesLoadOf({ ok: false, status: 400, body: { code: 'public_schedule_month_invalid', club } }),
     ).toEqual({ status: 'month_invalid', club })
+    expect(
+      publicFacilitiesLoadOf({ ok: false, status: 400, body: { code: 'public_schedule_range_invalid', club } }),
+    ).toEqual({ status: 'month_invalid', club })
   })
 
   it('answers null for a failed request', () => {

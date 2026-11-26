@@ -15,6 +15,7 @@ import {
   maxLanes,
   type FreeHoursInput,
   type ZoneRuleLike,
+  unionBounds,
 } from '../day-axis'
 
 const at = (time: string) => {
@@ -216,5 +217,21 @@ describe('bookableWindowsByDay', () => {
     expect([...byDay.entries()]).toEqual([
       [1, [{ id: 'last', from: '16:00', to: '22:00', validTo: '2026-11-16', source: 'availability' }]],
     ])
+  })
+})
+
+describe('unionBounds (calendar range switch spec DD-W06)', () => {
+  it('spans every axis of a week, and the default day without one', () => {
+    expect(
+      unionBounds([
+        { from: 480, to: 1320 },
+        { from: 360, to: 1260 },
+        { from: 540, to: 1380 },
+      ]),
+    ).toEqual({
+      from: 360,
+      to: 1380,
+    })
+    expect(unionBounds([])).toEqual({ from: 480, to: 1320 })
   })
 })

@@ -126,20 +126,21 @@ test('TEST-R03 the facility calendar draws one place day on the hour axis and ke
     await prepareForAccessibilityScan(page)
 
     // Opened without parameters: the first bookable place and today are written into the address.
-    await page.goto('/backend/facilities/calendar')
-    await expect(page).toHaveURL(new RegExp(`\\?place=[0-9a-f-]+&date=${today}$`))
+    // Day by name since #784 (a desktop opens on Week without `range`).
+    await page.goto('/backend/facilities/calendar?range=day')
+    await expect(page).toHaveURL(new RegExp(`\\?place=[0-9a-f-]+&range=day&date=${today}$`))
     await axisReady(page)
     await expect(page.getByTestId(`facilities-calendar-day-${today}`)).toHaveAttribute('aria-current', 'date')
 
     // Another place by its chip; a reload keeps it.
     await page.getByTestId(`facilities-calendar-place-${pitchB}`).click()
-    await expect(page).toHaveURL(new RegExp(`place=${pitchB}&date=${today}$`))
+    await expect(page).toHaveURL(new RegExp(`place=${pitchB}&range=day&date=${today}$`))
     await page.reload()
     await expect(page.getByTestId(`facilities-calendar-place-${pitchB}`)).toHaveAttribute('aria-current', 'true')
 
     // Boisko B on Saturday: a closed day without hour buttons; no bookable window, so the card is open.
     await page.getByTestId('facilities-calendar-other-day').fill(saturday)
-    await expect(page).toHaveURL(new RegExp(`place=${pitchB}&date=${saturday}$`))
+    await expect(page).toHaveURL(new RegExp(`place=${pitchB}&range=day&date=${saturday}$`))
     await axisReady(page)
     await expect(page.getByTestId('facilities-axis-closed')).toHaveText(uiText('facilities.axis.closedDay'))
     await expect(page.locator('[data-testid^="facilities-axis-hour-"]')).toHaveCount(0)
@@ -151,7 +152,7 @@ test('TEST-R03 the facility calendar draws one place day on the hour axis and ke
 
     // Boisko A on Saturday: every kind drawn and listed, the axis widened to 06:00–23:00.
     await page.getByTestId(`facilities-calendar-place-${pitchA}`).click()
-    await expect(page).toHaveURL(new RegExp(`place=${pitchA}&date=${saturday}$`))
+    await expect(page).toHaveURL(new RegExp(`place=${pitchA}&range=day&date=${saturday}$`))
     await axisReady(page)
     const axis = page.getByTestId('facilities-axis')
     await expect(axis).toHaveAttribute('data-from', '06:00')
@@ -200,7 +201,7 @@ test('TEST-R03 the facility calendar draws one place day on the hour axis and ke
     await page.getByTestId('facilities-calendar-zones-link').click()
     await expect(page).toHaveURL(/\/backend\/facilities\/zones/)
     await page.goBack()
-    await expect(page).toHaveURL(new RegExp(`place=${pitchA}&date=${saturday}$`))
+    await expect(page).toHaveURL(new RegExp(`place=${pitchA}&range=day&date=${saturday}$`))
     await axisReady(page)
     // The arrow keys on the day chips move the day.
     await page.getByTestId('facilities-calendar-day').locator('button').first().focus()
@@ -212,11 +213,13 @@ test('TEST-R03 the facility calendar draws one place day on the hour axis and ke
     await expect(page.getByTestId('club-core-place-zones-link')).toBeVisible()
     await page.getByTestId('club-core-place-calendar-link').click()
     await expect(page).toHaveURL(new RegExp(`place=${pitchA}&date=${today}$`))
-    await axisReady(page)
+    // The link names no view: a desktop opens on Week (#784, DD-W08).
+    await expect(page.getByTestId('facilities-calendar-range')).toHaveAttribute('data-range', 'week')
+    await expect(page.getByTestId('facilities-week-axes')).toBeVisible()
 
     // Desktop and 375 px, English and Polish, light and dark: no blocking violation, no sideways page scroll.
     const violations: Record<string, unknown> = {}
-    const target = `/backend/facilities/calendar?place=${pitchA}&date=${saturday}`
+    const target = `/backend/facilities/calendar?place=${pitchA}&range=day&date=${saturday}`
     for (const locale of ['en', 'pl']) {
       await page.context().addCookies([{ name: 'locale', value: locale, url: new URL(page.url()).origin }])
       for (const viewport of [

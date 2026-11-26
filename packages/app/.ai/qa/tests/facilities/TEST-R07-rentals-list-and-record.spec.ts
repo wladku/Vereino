@@ -135,7 +135,7 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
 
     // "New rental" from B-23 with a purpose; the purpose is on the rental page and is corrected there.
     const thursday = nextWeekday(week, 'TH')
-    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${thursday}`)
+    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&range=day&date=${thursday}`)
     await page.waitForLoadState('networkidle')
     await page.locator('[data-testid^="facilities-axis-hour-"]').first().click()
     const dialog = page.getByTestId('facilities-slot-dialog')

@@ -11,7 +11,11 @@
 // the contact stays with the rental scope (DD-R18). A free hour opens the slot dialog (E11-S03, #277) with the kinds
 // the user may save (DD-R04); without any kind the hours are not buttons. On a past day, and before now on today, the
 // hours are buttons for the club administrator only, up to 92 days back, and open the dialog with the general kind
-// alone: a club booking recorded after the fact (DD-R17, #281).
+// alone: a club booking recorded after the fact (DD-R17, #281). Calendar range switch spec REQ-W05 (#784, D-040): the
+// shared Day / Week / Month switch with the view in the address (`?place=&range=&date=`; without `range` a phone opens
+// on Day and a wider screen on Week). Day is the axis above with its chips; Week is seven axes side by side from `lg`
+// (a day's heading opens it, a free hour the slot dialog) and a list of days below; Month is a list of days. "To be
+// moved" filters every range.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -27,8 +31,24 @@ import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { Skeleton } from '@open-mercato/ui/primitives/skeleton'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { ISO_WEEKDAYS, addDays, isCalendarDate } from '@vereino/core'
-import { browserTimeZone, clubToday, formatDayHeading, Notice, useClubTimeZone, useClubToday } from '@vereino/ui'
+import { ISO_WEEKDAYS, addDays } from '@vereino/core'
+import {
+  browserTimeZone,
+  CalendarRangeSwitch,
+  calendarRangeLabels,
+  clubToday,
+  datesOf,
+  defaultCalendarRange,
+  formatDayHeading,
+  Notice,
+  parseCalendarRange,
+  rangeOf,
+  useClubTimeZone,
+  useClubToday,
+  useWideCalendar,
+  type CalendarRange,
+  type CalendarRangeLinkProps,
+} from '@vereino/ui'
 import { bookableWindowsByDay, chipDates, hourInPast, CHIP_DAYS } from '../lib/day-axis'
 import { earliestPastBookingDate } from '../lib/internal-bookings'
 import type { SlotKind } from '../lib/slot'
@@ -74,14 +94,22 @@ import {
 import { DayAxis } from './day-axis/DayAxis'
 import { ChipRow, DayChips } from './day-axis/DayChips'
 import { DayEntries } from './day-axis/DayEntries'
+import { RangeEntryList, WeekAxes } from './day-axis/RangeDays'
 
 const REQUESTS_HREF = '/backend/facilities/requests'
 const PLACE_CREATE_HREF = '/backend/club/places/create'
 const placeSettingsHref = (placeId: string) => `/backend/club/places/${encodeURIComponent(placeId)}/edit`
 
-/** The calendar's address of a place and a day. */
-export const calendarHref = (placeId: string, date: string) =>
-  `${CALENDAR_HREF}?place=${encodeURIComponent(placeId)}&date=${encodeURIComponent(date)}`
+/** The calendar's address of a place and a day, and of a view when the address names one (REQ-W05). */
+export const calendarHref = (placeId: string, date: string, range?: string) =>
+  `${CALENDAR_HREF}?place=${encodeURIComponent(placeId)}${range ? `&range=${encodeURIComponent(range)}` : ''}&date=${encodeURIComponent(date)}`
+
+/** Seven axes side by side from `lg` (DD-W06, A-W04). */
+const WEEK_AXES_QUERY = '(min-width: 1024px)'
+
+function RangeLink({ replace, ...props }: CalendarRangeLinkProps) {
+  return <Link {...props} replace={replace} scroll={false} />
+}
 
 /** The availability card (REQ-R03): a `details` element, open when the place has no bookable window. */
 function AvailabilityCard({
@@ -190,11 +218,13 @@ function AvailabilityCard({
 function PlaceDay({
   place,
   placeId,
+  range,
   date,
   onDate,
 }: {
   place: PlaceOptionRow | null
   placeId: string
+  range: CalendarRange
   date: string
   onDate: (date: string) => void
 }) {
@@ -217,16 +247,18 @@ function PlaceDay({
   const [slotPast, setSlotPast] = React.useState(false)
   const [task, setTask] = React.useState<{ row: MaintenanceTaskRow; placeName: string; key: number } | null>(null)
   const filterId = React.useId()
+  const axes = useWideCalendar(WEEK_AXES_QUERY)
 
-  // The seven chip days are read once; "Other day" reads its day alone.
+  // The seven chip days are read once; "Other day" reads its day alone; a week or a month reads its days.
   const zone = clubZone ?? browserTimeZone()
-  const inChips = date >= today && date < addDays(today, CHIP_DAYS)
+  const inChips = range === 'day' && date >= today && date < addDays(today, CHIP_DAYS)
+  const dates = React.useMemo(() => (range === 'day' ? [date] : datesOf(rangeOf(range, date))), [range, date])
   const window = React.useMemo(
     () =>
       inChips
         ? { from: dayWindow(today, zone).from, to: dayWindow(addDays(today, CHIP_DAYS - 1), zone).to, placeId }
-        : { ...dayWindow(date, zone), placeId },
-    [inChips, today, date, zone, placeId],
+        : { from: dayWindow(dates[0], zone).from, to: dayWindow(dates[dates.length - 1], zone).to, placeId },
+    [inChips, today, dates, zone, placeId],
   )
   const query = useStaffCalendar(window)
   const rules = usePlaceZoneRules(placeId)
@@ -256,6 +288,32 @@ function PlaceDay({
   const name = shown?.name ?? place?.name ?? ''
   const capacity = shown?.capacityGroups ?? place?.capacityGroups ?? 1
   const acceptsOnline = shown?.acceptsOnlineRequests ?? place?.acceptsOnlineRequests ?? false
+
+  const rangeDays = dates.map((shownDate) => {
+    const occupying = calendar ? entriesOfDay(calendar.entries, shownDate, timeZone) : []
+    return {
+      date: shownDate,
+      day: calendar?.days.find((entry) => entry.date === shownDate) ?? null,
+      entries: toMove ? occupying.filter((entry) => entry.needsReschedule) : occupying,
+      occupying,
+    }
+  })
+  const dayHref = (next: string) => calendarHref(placeId, next, 'day')
+  const bookHour = (onDate: string, time: string) => {
+    const shown = rangeDays.find((entry) => entry.date === onDate)
+    setSlotKey((current) => current + 1)
+    setSlotPast(hourInPast(onDate, minutesOf(time), today, nowMinutes))
+    setSlotPreset(
+      slotPresetAt({
+        placeId,
+        placeName: name,
+        date: onDate,
+        time,
+        day: shown?.day ?? null,
+        entries: shown?.occupying ?? [],
+      }),
+    )
+  }
 
   const refreshCalendar = () => queryClient.invalidateQueries({ queryKey: [PLACES_CALENDAR_KEY] })
   const refreshRules = () => queryClient.invalidateQueries({ queryKey: [ZONE_RULES_KEY] })
@@ -450,31 +508,57 @@ function PlaceDay({
             </AlertDescription>
           </Notice>
         ) : null}
-        <DayAxis
-          date={date}
-          timeZone={timeZone}
-          day={day}
-          entries={entries}
-          occupying={dayEntries}
-          today={today}
-          nowMinutes={nowMinutes}
-          redacted={redacted}
-          canBook={canBook}
-          pastFrom={pastFrom}
-          onBookHour={(time) => {
-            setSlotKey((current) => current + 1)
-            setSlotPast(hourInPast(date, minutesOf(time), today, nowMinutes))
-            setSlotPreset(slotPresetAt({ placeId, placeName: name, date, time, day, entries: dayEntries }))
-          }}
-        />
-        <DayEntries
-          entries={entries}
-          timeZone={timeZone}
-          placeId={placeId}
-          redacted={redacted}
-          filtered={toMove}
-          actionOf={actionOf}
-        />
+        {range === 'day' ? (
+          <>
+            <DayAxis
+              date={date}
+              timeZone={timeZone}
+              day={day}
+              entries={entries}
+              occupying={dayEntries}
+              today={today}
+              nowMinutes={nowMinutes}
+              redacted={redacted}
+              canBook={canBook}
+              pastFrom={pastFrom}
+              onBookHour={(time) => {
+                bookHour(date, time)
+              }}
+            />
+            <DayEntries
+              entries={entries}
+              timeZone={timeZone}
+              placeId={placeId}
+              redacted={redacted}
+              filtered={toMove}
+              actionOf={actionOf}
+            />
+          </>
+        ) : range === 'week' && axes ? (
+          <WeekAxes
+            days={rangeDays}
+            timeZone={timeZone}
+            today={today}
+            nowMinutes={nowMinutes}
+            redacted={redacted}
+            canBook={canBook}
+            pastFrom={pastFrom}
+            onBookHour={bookHour}
+            dayHref={dayHref}
+            Link={Link}
+          />
+        ) : (
+          <RangeEntryList
+            days={rangeDays}
+            timeZone={timeZone}
+            placeId={placeId}
+            redacted={redacted}
+            filtered={toMove}
+            actionOf={actionOf}
+            dayHref={dayHref}
+            Link={Link}
+          />
+        )}
       </>
     )
   }
@@ -524,7 +608,9 @@ function PlaceDay({
             {name}
           </h2>
           <p className="text-muted-foreground text-sm" aria-live="polite" data-testid="facilities-calendar-day-heading">
-            {formatDayHeading(date, locale)} · {capacityText(t, locale, capacity)}
+            {range === 'day'
+              ? `${formatDayHeading(date, locale)} · ${capacityText(t, locale, capacity)}`
+              : capacityText(t, locale, capacity)}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -539,7 +625,17 @@ function PlaceDay({
           <Label htmlFor={filterId}>{t('facilities.calendar.toMove')}</Label>
         </div>
       </div>
-      <DayChips today={today} date={date} onSelect={onDate} flagged={flagged} />
+      <CalendarRangeSwitch
+        range={range}
+        anchor={date}
+        today={today}
+        locale={locale}
+        labels={calendarRangeLabels(t, 'facilities.rangeSwitch')}
+        hrefFor={(next, anchor) => calendarHref(placeId, anchor, next)}
+        Link={RangeLink}
+        testId="facilities-calendar-range"
+      />
+      {range === 'day' ? <DayChips today={today} date={date} onSelect={onDate} flagged={flagged} /> : null}
       {canBook ? <p className="text-muted-foreground text-sm">{t('facilities.calendar.clickHint')}</p> : null}
       {body}
       {features.manage && dialogKey > 0 ? (
@@ -603,6 +699,7 @@ export function FacilityCalendar() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const today = useClubToday()
+  const wide = useWideCalendar()
   const features = useCalendarFeatures()
   const placeRows = usePlaceRows()
   const all = placeRows.data ?? []
@@ -612,7 +709,11 @@ export function FacilityCalendar() {
   const requestedPlace = searchParams.get('place')
   const requestedDate = searchParams.get('date')
   const placeId = requestedPlace || (bookable.at(0)?.id ?? null)
-  const date = requestedDate && isCalendarDate(requestedDate) ? requestedDate : today
+  // Without `range` the view follows the screen (DD-W03); an old `?date=` link opens that day's Day or Week (DD-W08).
+  const shown = parseCalendarRange(searchParams, { today, fallback: defaultCalendarRange(wide) })
+  const range = shown.range
+  const date = shown.anchor
+  const named = shown.explicit ? range : undefined
   const place = all.find((row) => row.id === placeId) ?? null
   // A place named in the address but not bookable (a parent, an external hall) keeps its chip while it is shown.
   const chips = place && !bookable.includes(place) ? [...bookable, place] : bookable
@@ -620,8 +721,8 @@ export function FacilityCalendar() {
   // The address always names the place and the day shown, without a new history entry.
   React.useEffect(() => {
     if (!placeId || (requestedPlace === placeId && requestedDate === date)) return
-    router.replace(calendarHref(placeId, date))
-  }, [placeId, date, requestedPlace, requestedDate, router])
+    router.replace(calendarHref(placeId, date, named))
+  }, [placeId, date, named, requestedPlace, requestedDate, router])
 
   let body: React.ReactNode
   if (placeRows.isPending && !requestedPlace) {
@@ -665,7 +766,7 @@ export function FacilityCalendar() {
             chips={chips.map((row) => ({ value: row.id, label: row.name }))}
             current={placeId}
             onSelect={(next) => {
-              router.replace(calendarHref(next, date))
+              router.replace(calendarHref(next, date, named))
             }}
             testId="facilities-calendar-place"
           />
@@ -674,9 +775,10 @@ export function FacilityCalendar() {
           key={placeId}
           place={place}
           placeId={placeId}
+          range={range}
           date={date}
           onDate={(next) => {
-            router.replace(calendarHref(placeId, next))
+            router.replace(calendarHref(placeId, next, named))
           }}
         />
       </>
