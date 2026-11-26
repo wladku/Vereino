@@ -66,6 +66,7 @@ function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
     },
     {
       id: 'confirm',
+      meta: { truncate: false },
       header: t(`${prefix}.columns.confirm`),
       cell: cell('confirm', (row) => {
         if (row.sessions === 0) return t(`${prefix}.noSessions`)
@@ -75,6 +76,7 @@ function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
     },
     {
       id: 'absence',
+      meta: { truncate: false },
       header: t(`${prefix}.columns.absence`),
       cell: cell('absence', (row) => {
         if (row.sessions === 0) return '—'
@@ -84,6 +86,7 @@ function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
     },
     {
       id: 'headline',
+      meta: { truncate: false },
       header: t(`${prefix}.columns.headline`),
       cell: cell('headline', (row) => {
         if (row.headline.total === 0) return '—'

@@ -47,3 +47,7 @@
 ## Lesson
 
 - Updated `.ai/lessons/panel-language-follows-club-default-locale.md`: the club or person language applies at sign-in (the platform reads the `locale` cookie first), so a mid-test switch needs a new sign-in or a cookie set after the sign-in.
+
+## Browser evidence
+
+- Screenshots (en desktop, en 375 px, pl desktop) from an E27-S01 run with temporary, uncommitted screenshot lines. The first set showed the DataTable truncating the count cells ("14 of 20 (70%) declar…"); the count columns now set `meta: { truncate: false }`. Second set full text; E27-S01 passed again and a full `yarn verify` passed (23 steps).
