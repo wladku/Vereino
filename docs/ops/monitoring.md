@@ -113,6 +113,8 @@ JSON with a numeric `level` (50 = error); Railway documents only string levels, 
 | Payments invariants heartbeat not delivered | `"Payments invariants heartbeat ping failed"` | the same |
 | Scheduled or queued job failed | `"Job failed" OR "Job exhausted all attempts"` | platform queue (worker service) |
 | Error with a fingerprint | `"Application error reported"` | platform `reportError`; the line carries `error.code` = `<module>.<reason>` (S15.2) |
+| Key store sealed or down after a start | `"[vereino-vault] unsealing failed" OR "[vereino-vault] VAULT_UNSEAL_KEY_1 or VAULT_UNSEAL_KEY_2 is not set" OR "[vereino-vault] Vault did not answer" OR "[vereino-vault] the Vault server exited"` | `docker/vault/vereino-vault-entry.sh` (Vault service, [`key-store.md`](key-store.md)) |
+| Key store unsealed after a start | `"[vereino-vault] Vault is unsealed"` | the same |
 | HTTP 5xx | `@httpStatus:500..599` | Railway HTTP logs |
 | Stripe webhook failures | `@path:/api/payment_gateways/webhook/stripe AND @httpStatus:>=400` | Railway HTTP logs |
 
