@@ -69,7 +69,9 @@ before entering it; without such a reason the field stays empty (open item O-1).
 - Tenant and organization scope on every query, derived on the server and failing closed; feature-based authorization
   (S8.3); second-tenant tests per route (S13.4).
 - Encryption at rest of the columns marked ENC; TLS in transit; backups encrypted with `age`, key outside Railway
-  ([`backups.md`](../ops/backups.md)).
+  ([`backups.md`](../ops/backups.md)). Every key and secret, with owner and rotation period, is listed in
+  [`key-inventory.md`](key-inventory.md); the per-club encryption keys move into a HashiCorp Vault service inside the
+  same Railway project (EU West, no new recipient; [`key-store.md`](../ops/key-store.md), #740).
 - Personal links: random 32-byte tokens stored only as SHA-256, single purpose, expiring (S8.7).
 - No personal data in logs, events, URLs or error messages (S9.4, S15.1).
 - Nightly off-site backup, RPO ≤ 24 hours, restore drill ([`backups.md`](../ops/backups.md)); monitoring and the

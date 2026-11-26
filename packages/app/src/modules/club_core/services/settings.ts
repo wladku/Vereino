@@ -56,7 +56,11 @@ export type ClubSettingsSnapshot = {
 }
 
 export type ClubCoreSettingsService = {
-  get(scope: ClubSettingsScope): Promise<ClubSettingsSnapshot>
+  /**
+   * The club's settings, read with `em` when given — the caller's, e.g. a command's transactional one, so the read
+   * runs on the connection the caller holds (#728) — otherwise on a fork of the request's EntityManager.
+   */
+  get(scope: ClubSettingsScope, em?: EntityManager): Promise<ClubSettingsSnapshot>
   /** The name of the club's platform organization (`clubName` on B-02, #87), or null when it cannot be read. */
   organizationName(scope: ClubSettingsScope): Promise<string | null>
 }
@@ -135,7 +139,7 @@ export async function readClubSettings(em: EntityManager, scope: ClubSettingsSco
 
 export function createClubCoreSettingsService(getEm: () => EntityManager): ClubCoreSettingsService {
   return {
-    get: (scope) => readClubSettings(getEm().fork(), scope),
+    get: (scope, em) => readClubSettings(em ? em.fork({ keepTransactionContext: true }) : getEm().fork(), scope),
     async organizationName(scope) {
       const organization = await findOneWithDecryption(
         getEm().fork(),

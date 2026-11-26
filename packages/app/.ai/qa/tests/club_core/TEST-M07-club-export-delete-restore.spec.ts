@@ -23,7 +23,9 @@ import { getSettings, png, publicGet, publish, upload } from '../_fixtures/publi
 // decrypted person, the public logo is served — and the archive round-trips into an empty, freshly migrated database:
 // the export taken there equals the original apart from the audit log. A sidebar preference of club A's administrator
 // without a tenant (the platform allows a null `tenant_id` there) is exported, deleted with the club and restored
-// (#681), and an export whose checksum file already exists is refused before it writes the archive.
+// (#681), and an export whose checksum file already exists is refused before it writes the archive. The archive is
+// untrusted (#806): a user role naming a role outside it is refused, and an archive edited to grant the club's roles
+// the super-admin flag and instance-wide features is restored without them.
 test.describe.configure({ timeout: 900_000 })
 
 type Cli = { exitCode: number | null; output: Record<string, unknown> | null }
@@ -235,7 +237,8 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     clubs.push(clubB)
 
     // Club A's data: a person with encrypted columns, a logo file, a published page.
-    const password = `Vereino-${suffix}-Aa1!`
+    // A suffix of its own: `emailA` carries `suffix`, and a password made of the address is refused (#779).
+    const password = `Vereino-${uniqueSuffix()}-Aa1!`
     const tokenA = await signIn(request, superToken, clubA, emailA, password)
     const personId = await createPerson(request, tokenA, { firstName: 'Zofia', lastName: 'Wiśniewska' })
     const settings = await getSettings(request, tokenA)
@@ -394,14 +397,54 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
       reason: 'archive_out_of_scope',
       tables: ['attachments: a file outside its partition'],
     })
+    // A user role of the club's administrator naming a role outside the archive (the instance's own super
+    // administrator role, say) is refused too (#806).
+    const foreignRole = await tamperedArchive(archive, path.join(work, 'foreign-role.zip'), (entries) => {
+      const rows = (entries['data/auth.json'] as Record<string, Record<string, unknown>[]>).user_roles
+      rows.push({
+        ...rows[0],
+        id: '00000000-0000-4000-8000-000000000806',
+        role_id: '00000000-0000-4000-8000-000000000807',
+      })
+    })
+    expect(clubCli(['restore-club', '--in', foreignRole]).output).toEqual({
+      status: 'refused',
+      reason: 'archive_out_of_scope',
+      tables: ['user_roles: a reference outside the club'],
+    })
     expect(await tenantRows(clubA.tenantId)).toEqual({ action_logs: 1, club_core_club_settings: 1 })
 
-    // The restore on this instance: over its own tombstone; a second one is refused.
-    const restored = clubCli(['restore-club', '--in', archive])
+    // The restore on this instance: over its own tombstone; a second one is refused. The archive restored here was
+    // edited to make every role of the club a super administrator with the global and tenant-management grants; the
+    // restore writes none of them (#806), and the administrator keeps the club's own features (checked below).
+    const elevated = await tamperedArchive(archive, path.join(work, 'elevated.zip'), (entries) => {
+      const auth = entries['data/auth.json'] as Record<string, Record<string, unknown>[]>
+      expect(auth.role_acls.length).toBeGreaterThan(0)
+      for (const row of auth.role_acls) {
+        row.is_super_admin = true
+        row.features_json = [...((row.features_json as string[] | null) ?? []), '*', 'directory.tenants.manage']
+      }
+    })
+    const restored = clubCli(['restore-club', '--in', elevated])
     expect(restored.exitCode, JSON.stringify(restored.output)).toBe(0)
     expect(restored.output).toMatchObject({ status: 'restored', tenantId: clubA.tenantId, files: 1 })
     expect(await tenantlessPreferences(clubA.adminUserId)).toBe(1)
     expect(clubCli(['restore-club', '--in', archive]).output).toEqual({ status: 'refused', reason: 'tenant_exists' })
+    const grants = await withClient(async (client) => {
+      const result = await client.query<{ is_super_admin: boolean; features_json: string[] | null }>(
+        `select is_super_admin, features_json from role_acls where tenant_id = $1
+         union all select is_super_admin, features_json from user_acls where tenant_id = $1`,
+        [clubA.tenantId],
+      )
+      return result.rows
+    })
+    expect(grants.length).toBeGreaterThan(0)
+    expect(grants.filter((grant) => grant.is_super_admin)).toEqual([])
+    expect(
+      grants
+        .flatMap((grant) => grant.features_json ?? [])
+        .filter((f) => f === '*' || f.startsWith('directory.tenants')),
+    ).toEqual([])
     // The deletion ended the administrator's sessions; the helper's token cache would hand back the dead token. The
     // archive carries no password hash, so the administrator sets a password again (here through the superadmin).
     clearAuthTokenCache()

@@ -156,6 +156,12 @@ export function buildAppEnv({
     NOTIFICATIONS_EMAIL_FROM: 'Vereino QA <no-reply@vereino.test>',
     OM_TEST_AUTH_RATE_LIMIT_MODE: 'opt-in',
     OM_ENABLE_ENTERPRISE_MODULES: 'false',
+    // The production password policy (docs/ops/deploy.md → *Password policy*, #747), so the password check of #779 and
+    // the forms that state it are tested as production runs them.
+    OM_PASSWORD_MIN_LENGTH: '12',
+    OM_PASSWORD_REQUIRE_DIGIT: 'false',
+    OM_PASSWORD_REQUIRE_UPPERCASE: 'false',
+    OM_PASSWORD_REQUIRE_SPECIAL: 'false',
     OM_EVENTS_SINGLE_DELIVERY: 'false',
     AUTO_SPAWN_SCHEDULER: 'false',
     DEMO_MODE: 'false',

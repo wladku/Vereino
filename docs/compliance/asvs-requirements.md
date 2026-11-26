@@ -31,7 +31,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V3 Web Frontend Security | 6 | 8 | 1 | 2 | 2 | 19 |
 | V4 API and Web Service | 0 | 0 | 0 | 4 | 6 | 10 |
 | V5 File Handling | 5 | 2 | 1 | 1 | 0 | 9 |
-| V6 Authentication | 5 | 4 | 8 | 5 | 13 | 35 |
+| V6 Authentication | 11 | 5 | 1 | 5 | 13 | 35 |
 | V7 Session Management | 5 | 8 | 4 | 1 | 0 | 18 |
 | V8 Authorization | 3 | 4 | 0 | 0 | 0 | 7 |
 | V9 Self-contained Tokens | 1 | 1 | 0 | 5 | 0 | 7 |
@@ -43,7 +43,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V15 Secure Coding and Architecture | 1 | 7 | 0 | 5 | 0 | 13 |
 | V16 Security Logging and Error Handling | 0 | 7 | 2 | 7 | 0 | 16 |
 | V17 WebRTC | 0 | 0 | 0 | 0 | 7 | 7 |
-| **All** | **48** | **63** | **20** | **59** | **63** | **253** |
+| **All** | **54** | **64** | **13** | **59** | **63** | **253** |
 
 ## Requirements
 
@@ -111,10 +111,10 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V3.4.4 | 2 | `nosniff` on all responses | `X-Content-Type-Options: nosniff` on `/:path*` (`next.config.ts`); asserted by `ENG-TEST-11-security-headers` | met | — |
 | V3.4.5 | 2 | Referrer policy | `strict-origin-when-cross-origin` globally, `no-referrer` on token pages (`next.config.ts`); `ENG-TEST-11-security-headers` | met | — |
 | V3.4.6 | 2 | CSP frame-ancestors on every response | `frame-ancestors 'self'` + `X-Frame-Options: SAMEORIGIN` (`next.config.ts`). Gap: the attachment-file CSP override has no `frame-ancestors`; not asserted in a test | partial | #743 |
-| V3.5.1 | 1 | Cross-origin request validation | Only `SameSite=Lax`; a cross-site `text/plain` `POST` with the cookie reached the handler (spike #448 §3). Gap: no Origin/`Sec-Fetch-Site` check (ENG-Q-11) | partial | #744 |
-| V3.5.2 | 1 | No bypass of CORS preflight | Not relied on: simple (`text/plain`) requests are accepted (spike §3); `SameSite=Lax` only | partial | #744 |
+| V3.5.1 | 1 | Cross-origin request validation | `src/proxy.ts` refuses a cookie-authenticated `POST`/`PUT`/`PATCH`/`DELETE` on `/api` from a foreign `Origin` or with `Sec-Fetch-Site: cross-site` with 403 (ENG-Q-11, #744); bearer, API-key and webhook requests exempt; `SameSite=Lax` below it. `ISSUE-744-cross-site-api-check`, `cross-site-request.test.mjs` | met | — |
+| V3.5.2 | 1 | No bypass of CORS preflight | Not relied on: a simple (`text/plain`) cross-site request with the cookie is refused by its `Origin` / `Sec-Fetch-Site` before the handler (#744); the bearer and API-key exemption rests on the preflight, which no Vereino route grants (V3.4.2) | met | — |
 | V3.5.3 | 1 | No sensitive action via safe methods | Rule S8.6/S8.9: `GET` never changes state, link pages `POST` from a button. No test or gate checks it app-wide | to verify | #743 |
-| V3.5.4 | 2 | Separate apps on separate hostnames | Product site at `vereino.org`, each club on its own subdomain (D-036). Not live yet; sibling-subdomain risk tracked with ENG-Q-11 | to verify | #744 |
+| V3.5.4 | 2 | Separate apps on separate hostnames | Product site at `vereino.org`, each club on its own subdomain (D-036). Not live yet; a sibling club subdomain passes the cross-site check by the owner's decision on ENG-Q-11 (#744), so club separation rests on host-only session cookies (D-036) | to verify | #743 |
 | V3.5.5 | 2 | postMessage origin checks | No `postMessage` listener in Vereino code | n/a | — |
 | V3.7.1 | 2 | Supported client technologies only | Next.js/React only, no plugins; dependency updates via Renovate (`renovate.json`) | met | — |
 | V3.7.2 | 2 | Redirects only to allowlisted hosts | Google sign-in redirect sanitised to same origin; `TEST-S01-google-sign-in` refuses `https://evil.example`. Gap: platform `/login` redirect not covered by a Vereino test | partial | #743 |
@@ -153,20 +153,20 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | Req | L | Topic | Vereino control and evidence | State | Owner |
 |---|---|---|---|---|---|
 | V6.1.1 | 1 | Documented brute-force and lockout defences | *Sessionless route inventory* in `asvs-checklist.md` documents the sign-in and password-reset limits (platform per client and per client and address, Vereino per account) and the accepted lockout trade-off; S8.6 of `.ai/specs/2026-10-21-engineering-standards-and-patterns.md`; production settings in `docs/ops/deploy.md` → *Rate limits* (#738) | met | — |
-| V6.1.2 | 2 | Documented banned context words | No list of club, product or role words exists; specced as part of the app-owned password check (#779) | gap | #779 |
+| V6.1.2 | 2 | Documented banned context words | `.ai/specs/2026-11-26-vereino-password-check.md` (Q4) and `docs/ops/deploy.md` → *Password policy*: the product words `vereino`, `openmercato`, `mercato`, the club's name and slug, the user's address and name (`PRODUCT_CONTEXT_WORDS`, `contextWords` in `packages/app/src/modules/foundation/lib/password-check.ts`) | met | — |
 | V6.1.3 | 2 | All sign-in paths documented together | Password (platform `auth`), Google (`.ai/specs/2026-10-27-vereino-social-sign-in.md`), invitation/reset links (`packages/app/src/modules/foundation/services/accounts.ts`), API keys (`api_keys` in `packages/app/src/modules.ts`) are described separately; no single inventory with strengths | partial | #743 |
-| V6.2.1 | 1 | Minimum password length | `OM_PASSWORD_MIN_LENGTH=12` on production and staging (`docs/ops/deploy.md` → *Variables*, *Password policy*; #747); the platform checks it on the server (`OM/shared/src/lib/auth/passwordPolicy.ts`): `mercato auth set-password` refused a 7-character password and accepted a 19-character one on a throwaway database (`.ai/runs/2026-11-25-issue-747-default-super-admin-password.md`). The browser forms still show the platform default of 6 (#779) | met | — |
+| V6.2.1 | 1 | Minimum password length | `OM_PASSWORD_MIN_LENGTH=12` on production and staging (`docs/ops/deploy.md` → *Variables*, *Password policy*; #747); the platform checks it on the server (`OM/shared/src/lib/auth/passwordPolicy.ts`): `mercato auth set-password` refused a 7-character password and accepted a 19-character one on a throwaway database (`.ai/runs/2026-11-25-issue-747-default-super-admin-password.md`). The browser forms state the same policy (#779, `TEST-PW02`) | met | — |
 | V6.2.2 | 1 | Users can change their password | `/club/profile` links to the platform change-password page; `E06-S22` (`packages/app/.ai/qa/tests/people/E06-S22-profile-wards-guardians.spec.ts`) opens it and sees a password field | met | — |
 | V6.2.3 | 1 | Change asks for current password | Spike E3 item 5 (`.ai/runs/2026-11-20-issue-448-platform-spike-e3.md`): `PUT /api/auth/profile` requires `currentPassword` (`OM/core/src/modules/auth/api/profile/route.ts`) | met | — |
-| V6.2.4 | 1 | Reject common passwords | No common-password list check in platform `auth` or Vereino; app-owned check to be specced (#779) | gap | #779 |
-| V6.2.5 | 1 | No character-class rules | `OM_PASSWORD_REQUIRE_DIGIT`, `_UPPERCASE` and `_SPECIAL` set to `false` in `docs/ops/deploy.md` (#747): the server accepts a lower-case passphrase (checked with `mercato auth set-password`). Code read: the platform's browser forms (change password, reset, user create/edit) read the policy in the browser, where the server variables are not set, so they still demand the three classes | partial | #779 |
+| V6.2.4 | 1 | Reject common passwords | The built-in NCSC top-100k list (`foundation/lib/common-passwords.ts`, 97 736 entries, 1 190 of them 12 characters or longer) refused on every API path that sets a password, by the `foundation.password-check` command interceptor (`auth.users.create`/`update`) and `src/app/api/auth/reset/confirm/route.ts` (`.ai/specs/2026-11-26-vereino-password-check.md`, #779); `TEST-PW01`, `TEST-PW02` | met | — |
+| V6.2.5 | 1 | No character-class rules | `OM_PASSWORD_REQUIRE_DIGIT`, `_UPPERCASE` and `_SPECIAL` set to `false` in `docs/ops/deploy.md` (#747); the root layout hands the server policy to the platform's browser forms (`src/components/PasswordPolicyBridge.tsx`, #779), so the reset and change-password pages state 12 characters without classes and accept a lower-case passphrase (`TEST-PW02`) | met | — |
 | V6.2.6 | 1 | Password fields masked | `ENG-TEST-16-login-accessibility` asserts `input[type="password"]` on `/login`; `E06-S22` on the change-password page | met | — |
 | V6.2.7 | 1 | Paste and password managers allowed | Code read: no paste blocking in `OM/core/src/modules/auth/frontend/login.tsx`; no test | to verify | #743 |
-| V6.2.8 | 1 | Password checked exactly as typed | bcryptjs 3 ignores bytes beyond 72 (`OM/core/src/modules/auth/services/authService.ts`); the change route trims `currentPassword` (`api/profile/route.ts`) while sign-in does not; platform source, so handled by the app-owned check (#779) or reported upstream | partial | #779 |
-| V6.2.9 | 2 | Long passwords accepted | Code read: `buildPasswordSchema` sets no maximum (`passwordPolicy.ts`); untested; bytes beyond 72 are ignored (V6.2.8) | to verify | #743 |
+| V6.2.8 | 1 | Password checked exactly as typed | New passwords: at most 72 UTF-8 bytes, so bcrypt never cuts them, and no space at either end, so the platform change form's trim never alters them; `PUT /api/auth/profile` answers a `currentPassword` with a space at either end as incorrect instead of trimming it (`src/app/api/auth/profile/route.ts`; #779, `TEST-PW01`). Residual: a password set before #779 and longer than 72 bytes still signs in on its first 72 bytes (platform bcrypt) | partial | #779 |
+| V6.2.9 | 2 | Long passwords accepted | The Vereino check allows up to 64 characters and 72 bytes (#779, V6.2.8): 64 ASCII characters pass, 64 Polish letters (2 bytes each) do not; untested at 64 | to verify | #743 |
 | V6.2.10 | 2 | No forced periodic rotation | Feature absent: no password-expiry field or rule in `OM/core/src/modules/auth/data/entities.ts` or Vereino modules | n/a | — |
-| V6.2.11 | 2 | Enforce banned context words | No list to enforce (V6.1.2) | gap | #779 |
-| V6.2.12 | 2 | Reject breached passwords | No breached-password check; source (range API or offline list) is an owner decision in #779 | gap | #779 |
+| V6.2.11 | 2 | Enforce banned context words | A password that keeps fewer than 8 letters or digits once its context words (V6.1.2) are removed is refused (`password_context_word`; #779, `TEST-PW01`). The reset link checks the product words only: it has no session scope to read the club from | met | — |
+| V6.2.12 | 2 | Reject breached passwords | Owner decision on #779 (2026-11-26): an offline list, no outbound call — the NCSC top 100k is drawn from Have I Been Pwned breach data (V6.2.4) | met | — |
 | V6.3.1 | 1 | Brute-force controls in place | Platform limits 5/min per IP+e-mail and 20/min per IP, fail-open (`OM/core/src/modules/auth/lib/rateLimitCheck.ts`), plus Vereino's 10 / 15 min per account (#738); counters in Redis on Railway (boot check); `ISSUE-738-sessionless-rate-limits`. Gap: the per-client counters share one key until the proxy depth is set (A-8) | partial | #739 |
 | V6.3.2 | 1 | No default accounts | `docs/ops/deploy.md` → *First deploy* sets `OM_INIT_SUPERADMIN_EMAIL`, a generated `OM_INIT_SUPERADMIN_PASSWORD` and own addresses for the two extra accounts `yarn initialize` always creates (`admin` / `employee` at the platform's demo domain `acme.com` otherwise), deletes those two, and runs the *Default account check* (`mercato auth list-users` filtered for `@acme.com` and derived accounts); both checked on a throwaway database (#747). Staging and production not yet checked by the owner (#747) | partial | #747 |
 | V6.3.3 | 2 | Multi-factor for access | No second factor yet; ENG-Q-09 re-decided 2026-11-26 (#736): administrators and treasurers use Google sign-in or a password plus an e-mail code, on the core `auth` `mfa_pending` gate through Vereino's login wrapper (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, phase 1) | gap | #736 |
@@ -273,8 +273,8 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 
 | Req | L | Topic | Vereino control and evidence | State | Owner |
 |---|---|---|---|---|---|
-| V11.1.1 | 2 | Key management policy and lifecycle | Pieces only: S8.10 rotation rule, `age` backup key lifecycle in `docs/ops/backups.md`, rotation on incident in `docs/ops/incident.md`; no policy covering all keys | partial | #740 |
-| V11.1.2 | 2 | Cryptographic inventory kept current | No written inventory of keys, algorithms and certificates (open item A-3) | gap | #740 |
+| V11.1.1 | 2 | Key management policy and lifecycle | `docs/compliance/key-inventory.md` gives every key a rotation period and method; `docs/ops/key-store.md` the key store's lifecycle (setup, unseal, rotation); per-tenant stored keys and key deletion follow in phases 2 and 3 of #740 | partial | #740 |
+| V11.1.2 | 2 | Cryptographic inventory kept current | `docs/compliance/key-inventory.md` (#740 phase 1): every key and secret, algorithm where it applies, location, owner, rotation; a new key gets its row in the PR that adds it; awaiting the owner's approval (open item A-3) | partial | #740 |
 | V11.2.1 | 2 | Validated crypto implementations | Vereino code uses `node:crypto` only (no hand-written crypto, AGENTS.md); platform uses `node:crypto` and `bcryptjs`; no gate enforces it | to verify | #743 |
 | V11.2.2 | 2 | Crypto agility | Platform lookup hash is versioned (`v2` prefix, `@open-mercato/shared/src/lib/encryption/aes.ts`); ciphertext format and re-encryption path not checked | to verify | #740 |
 | V11.2.3 | 2 | At least 128-bit security | Seen in source: AES-256-GCM, SHA-256, HMAC-SHA256, 32-byte tokens; JWT signing algorithm and key length not checked | to verify | #743 |

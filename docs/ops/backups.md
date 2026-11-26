@@ -147,8 +147,13 @@ yarn mercato club_core restore-club --in /path/orlik-zielonka.zip
 
 It checks the manifest and the checksum of every module file and attachment. The checksums sit inside the archive and
 only catch corruption, so it then refuses an archive that reaches beyond its club (`archive_out_of_scope`, with the
-reasons): a table that is not part of a club export, a row of another tenant or of a user outside the archive, or an
-attachment whose partition code or path would leave its partition. It refuses — before writing — a database that
+reasons): a table that is not part of a club export, a row of another tenant or of a user outside the archive, a user
+role, role or user ACL, schedule or other platform row naming a user, role or organization outside the archive or a
+`system` schedule (`a reference outside the club`), or an attachment whose partition code or path would leave its
+partition. Whatever it writes grants nothing beyond the club: role and user ACLs come back without the super-admin
+flag, without the `*`, `directory.*` and `directory.tenants…` features and with only the archive's organizations, and
+password hashes stay empty (#806). A club whose role really held such a grant gets it back from the operator by hand.
+It refuses — before writing — a database that
 holds the club's tenant (`tenant_exists`), a slug another club holds (`slug_taken`), any row of the club
 (`club_rows_exist`, with the tables) or a schema without a column of the archive (`schema_mismatch`; migrate the
 target first). A deleted club's tombstone is replaced. In one transaction it inserts every table in foreign-key order,

@@ -199,9 +199,17 @@
       }
     },
     "/api/payments/cash-handovers": {
-      "GET": {
-        "probe": "read"
-      },
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "status": "pending"
+          }
+        }
+      ],
       "POST": [
         {
           "probe": "foreign-ref",
@@ -218,6 +226,26 @@
           }
         }
       ]
+    },
+    "/api/payments/cash-handovers/[id]/confirm": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:pendingHandover"
+        },
+        "body": {}
+      }
+    },
+    "/api/payments/cash-handovers/[id]/reject": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:pendingHandover"
+        },
+        "body": {
+          "reason": "Probe"
+        }
+      }
     },
     "/api/payments/charge-generations": {
       "GET": {
@@ -598,6 +626,26 @@
     "/api/payments/my-charges/summary": {
       "GET": {
         "probe": "read"
+      }
+    },
+    "/api/payments/my-cash-handovers": {
+      "GET": {
+        "probe": "read"
+      },
+      "POST": {
+        "probe": "foreign-ref",
+        "body": {
+          "paymentIds": ["$B:cashPayment"]
+        }
+      }
+    },
+    "/api/payments/my-cash-handovers/[id]/withdraw": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:pendingHandover"
+        },
+        "body": {}
       }
     },
     "/api/payments/payments/[id]/refund": {

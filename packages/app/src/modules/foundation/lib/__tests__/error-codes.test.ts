@@ -2,7 +2,7 @@ import { describe, expect, it } from '@jest/globals'
 import { errorCodes } from '../error-codes'
 
 describe('foundation error codes', () => {
-  it('declares the phase A1 codes, the locale code of #27, the foundation II codes, the S5.2 lock-token code, the foundation III codes, the unlinked-account code of #76 the token-link codes of phase C, the social sign-in codes of #566, the Enterprise gate codes of #649 and the per-club import code of #633 with their statuses and message keys', () => {
+  it('declares the phase A1 codes, the locale code of #27, the foundation II codes, the S5.2 lock-token code, the foundation III codes, the unlinked-account code of #76 the token-link codes of phase C, the social sign-in codes of #566, the Enterprise gate codes of #649 and the per-club import code of #633, the password check codes of #779 with their statuses and message keys', () => {
     expect(errorCodes).toEqual([
       { code: 'scope_denied', status: 403, messageKey: 'foundation.errors.scope_denied' },
       { code: 'validity_inverted', status: 422, messageKey: 'foundation.errors.validity_inverted' },
@@ -30,6 +30,11 @@ describe('foundation error codes', () => {
         messageKey: 'foundation.errors.enterprise_feature_read_only',
       },
       { code: 'import_running', status: 409, messageKey: 'foundation.errors.import_running' },
+      { code: 'password_whitespace', status: 422, messageKey: 'foundation.errors.password_whitespace' },
+      { code: 'password_too_long', status: 422, messageKey: 'foundation.errors.password_too_long' },
+      { code: 'password_policy', status: 422, messageKey: 'foundation.errors.password_policy' },
+      { code: 'password_too_common', status: 422, messageKey: 'foundation.errors.password_too_common' },
+      { code: 'password_context_word', status: 422, messageKey: 'foundation.errors.password_context_word' },
     ])
   })
 

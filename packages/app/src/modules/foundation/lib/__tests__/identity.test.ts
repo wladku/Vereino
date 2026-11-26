@@ -10,6 +10,7 @@ import {
   GOOGLE_AUTHORIZATION_URL,
   GOOGLE_ISSUERS,
   GOOGLE_TOKEN_URL,
+  HANDOFF_TTL_MS,
   IdentityProviderError,
   IdentityTimeoutError,
   accessTokenOf,
@@ -17,8 +18,16 @@ import {
   graphIdentity,
   isConfirmationCode,
   STATE_TTL_MS,
+  callbackBrowserAccepted,
   callbackPath,
   canRemoveMethod,
+  clubLabelOfHost,
+  handoffMarkerKey,
+  handoffPath,
+  hostMatchesOrigin,
+  outcomeLocation,
+  parseHandoffMarker,
+  type HandoffMarker,
   idTokenIdentity,
   identityEventPayload,
   identityProviderConfig,
@@ -335,6 +344,136 @@ describe('parseStateMarker', () => {
     expect(parseStateMarker({ ...signIn, verifier: '' })).toBeNull()
     expect(parseStateMarker({ ...signIn, redirect: 3 })).toBeNull()
     expect(parseStateMarker({ ...signIn, expiresAt: '10' })).toBeNull()
+  })
+
+  it('reads back the club address a round trip started on (DD-S07) and refuses a malformed one', () => {
+    const club = { origin: 'https://a.clubs.example', tenantId: 't' }
+    expect(parseStateMarker(JSON.stringify({ ...signIn, club }))).toEqual({ ...signIn, club })
+    expect(parseStateMarker({ ...signIn, club: null })).toBeNull()
+    expect(parseStateMarker({ ...signIn, club: 'https://a.clubs.example' })).toBeNull()
+    expect(parseStateMarker({ ...signIn, club: { origin: '', tenantId: 't' } })).toBeNull()
+    expect(parseStateMarker({ ...signIn, club: { origin: club.origin } })).toBeNull()
+  })
+})
+
+describe('callbackBrowserAccepted', () => {
+  const marker: StateMarker = {
+    provider: 'google',
+    purpose: { kind: 'sign_in' },
+    verifier: 'v',
+    redirect: '/club',
+    expiresAt: 100,
+  }
+
+  it('needs the matching cookie, except for a round trip started on a club address (the hand-off checks it)', () => {
+    expect(callbackBrowserAccepted(true, marker)).toBe(true)
+    expect(callbackBrowserAccepted(false, marker)).toBe(false)
+    expect(callbackBrowserAccepted(false, { ...marker, club: { origin: 'https://a.x', tenantId: 't' } })).toBe(true)
+  })
+})
+
+describe('clubLabelOfHost', () => {
+  const env = { VEREINO_CLUB_DOMAIN: 'clubs.example', APP_URL: 'https://app.clubs.example' }
+
+  it("reads the label of a club's address, on any port when the domain names none", () => {
+    expect(clubLabelOfHost('Lions.Clubs.Example', env)).toBe('lions')
+    expect(clubLabelOfHost('lions.clubs.example:8443', env)).toBe('lions')
+  })
+
+  it('matches the port when the domain names one', () => {
+    const local = { VEREINO_CLUB_DOMAIN: 'localhost:4000', APP_URL: 'http://127.0.0.1:4000' }
+    expect(clubLabelOfHost('lions.localhost:4000', local)).toBe('lions')
+    expect(clubLabelOfHost('lions.localhost:4001', local)).toBeNull()
+    expect(clubLabelOfHost('127.0.0.1:4000', local)).toBeNull()
+  })
+
+  it('answers null without a club domain, for the app host, the bare domain, www, nested and foreign hosts', () => {
+    expect(clubLabelOfHost('lions.clubs.example', {})).toBeNull()
+    expect(clubLabelOfHost(null, env)).toBeNull()
+    expect(clubLabelOfHost('  ', env)).toBeNull()
+    expect(clubLabelOfHost('app.clubs.example', env)).toBeNull()
+    expect(clubLabelOfHost('clubs.example', env)).toBeNull()
+    expect(clubLabelOfHost('.clubs.example', env)).toBeNull()
+    expect(clubLabelOfHost('www.clubs.example', env)).toBeNull()
+    expect(clubLabelOfHost('a.b.clubs.example', env)).toBeNull()
+    expect(clubLabelOfHost('lions.other.example', env)).toBeNull()
+  })
+
+  it('reads a label also when APP_URL is unset or not a URL', () => {
+    expect(clubLabelOfHost('lions.clubs.example', { VEREINO_CLUB_DOMAIN: 'clubs.example' })).toBe('lions')
+    expect(clubLabelOfHost('lions.clubs.example', { VEREINO_CLUB_DOMAIN: 'clubs.example', APP_URL: 'nope' })).toBe(
+      'lions',
+    )
+  })
+})
+
+describe('hostMatchesOrigin', () => {
+  it('compares the host with the recorded origin, the port only when the origin has one', () => {
+    expect(hostMatchesOrigin('lions.clubs.example', 'https://lions.clubs.example')).toBe(true)
+    expect(hostMatchesOrigin('Lions.Clubs.Example:443', 'https://lions.clubs.example')).toBe(true)
+    expect(hostMatchesOrigin('tigers.clubs.example', 'https://lions.clubs.example')).toBe(false)
+    expect(hostMatchesOrigin('lions.localhost:4000', 'http://lions.localhost:4000')).toBe(true)
+    expect(hostMatchesOrigin('lions.localhost:4001', 'http://lions.localhost:4000')).toBe(false)
+    expect(hostMatchesOrigin('lions.localhost', 'http://lions.localhost:4000')).toBe(false)
+  })
+
+  it('refuses a missing host and an origin that is not a URL', () => {
+    expect(hostMatchesOrigin(undefined, 'https://lions.clubs.example')).toBe(false)
+    expect(hostMatchesOrigin('', 'https://lions.clubs.example')).toBe(false)
+    expect(hostMatchesOrigin('lions.clubs.example', 'not a url')).toBe(false)
+  })
+})
+
+describe('hand-off marker (DD-S07)', () => {
+  const state = 'A'.repeat(43)
+  const handoff: HandoffMarker = {
+    provider: 'google',
+    purpose: { kind: 'sign_in' },
+    redirect: '/club',
+    club: { origin: 'https://lions.clubs.example', tenantId: 't' },
+    state,
+    identity: { subject: 'sub-1', email: 'anna@example.test' },
+    expiresAt: 10,
+  }
+
+  it('has a one-minute life, its own cache key and a route on the club address', () => {
+    expect(HANDOFF_TTL_MS).toBe(60_000)
+    expect(handoffMarkerKey('tok')).toBe('foundation:identity:handoff:tok')
+    expect(handoffPath('google', 'a+b')).toBe('/api/foundation/identity/google/handoff?token=a%2Bb')
+  })
+
+  it('reads back what the callback stored, as JSON text or as an object, with or without an e-mail', () => {
+    expect(parseHandoffMarker(JSON.stringify(handoff))).toEqual(handoff)
+    const link = {
+      ...handoff,
+      purpose: { kind: 'link' as const, userId: 'u', tenantId: 't', organizationId: 'o' },
+      identity: { subject: 'sub-1', email: null },
+    }
+    expect(parseHandoffMarker(link)).toEqual(link)
+  })
+
+  it('refuses anything else', () => {
+    expect(parseHandoffMarker('{not json')).toBeNull()
+    expect(parseHandoffMarker(7)).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, provider: 'apple' })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, purpose: { kind: 'other' } })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, club: undefined })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, club: { origin: 'x' } })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, state: 'short' })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, redirect: '' })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, identity: null })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, identity: 'sub-1' })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, identity: { subject: '', email: null } })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, identity: { subject: 's', email: 3 } })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, identity: { subject: 's' } })).toBeNull()
+    expect(parseHandoffMarker({ ...handoff, expiresAt: '10' })).toBeNull()
+  })
+
+  it("puts an outcome on the club's address when the round trip started there", () => {
+    expect(outcomeLocation(handoff.club, '/login?identity=failed')).toBe(
+      'https://lions.clubs.example/login?identity=failed',
+    )
+    expect(outcomeLocation(undefined, '/login?identity=failed')).toBe('/login?identity=failed')
   })
 })
 

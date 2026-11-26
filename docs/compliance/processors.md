@@ -47,6 +47,8 @@ known is an **open item**, never assumed (#468 negative case).
 - **GitHub** holds the source code, issues and CI logs. Staging uses synthetic data only (S15.10) and runbooks forbid
   copying production data there; no personal data of club members goes to GitHub.
 - **Open Mercato** is installed software running inside Railway; its vendor receives no data.
+- **HashiCorp Vault** (the per-club encryption keys, #740) is installed software running as a service inside the
+  Railway project (P-1, EU West); HashiCorp receives no data, so it is no recipient ([`key-store.md`](../ops/key-store.md)).
 - No analytics, error-tracking, tracing or log vendor is used in 1.0 (ENG-Q-05, S15.3, S9.9). Adding one is a spec
   change and a new row here before it receives data.
 - No edge proxy (CDN, WAF or DDoS service) sits in front of `vereino.org` (D-043, #739). One terminates TLS and sees

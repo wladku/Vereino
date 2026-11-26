@@ -39,7 +39,7 @@ import {
   type OrderLineDraft,
   type OrderLinesError,
 } from '../lib/orders'
-import { payerOf } from '../services/checkout'
+import { payerOf, type Payer } from '../services/checkout'
 import { clubClock, findGroups, findPersons, type PaymentsScope } from '../services/directory'
 import { orderLinkService } from '../services/order-links'
 import { campaignParticipants, campaignProducts, submittedOrders } from '../services/order-campaigns'
@@ -119,10 +119,24 @@ async function throwFieldError(code: PaymentsErrorCode, field: string, details?:
   throw error
 }
 
+/**
+ * The session's payer, resolved before the write transaction: the payments gate and the scope provider read on their
+ * own pooled connections, which a command must not wait for while its transaction holds one (#728, #549). Null for a
+ * token command, whose link is redeemed inside the transaction.
+ */
+async function sessionPayer(ctx: CommandRuntimeContext, token: string | undefined): Promise<Payer | null> {
+  return token === undefined ? payerOf(ctx) : null
+}
+
 /** The writer of a command: the payer of the session, or — with a `token` — the redeemed link's guardian. */
-async function actorOf(ctx: CommandRuntimeContext, em: EntityManager, token: string | undefined): Promise<Actor> {
+async function actorOf(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  token: string | undefined,
+  payer: Payer | null,
+): Promise<Actor> {
   if (token === undefined) {
-    const payer = await payerOf(ctx)
+    if (!payer) throw new Error('[internal] payments: a session order command resolves its payer first')
     return { scope: payer.scope, personId: payer.personId, via: 'app', linkCampaignId: null }
   }
   const view = await orderLinkService(ctx.container).redeem(em, token)
@@ -421,8 +435,9 @@ const placeOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRes
   isUndoable: false,
   async execute(rawInput, ctx) {
     const { token, input } = tokenOf(rawInput)
+    const payer = await sessionPayer(ctx, token)
     const result = await inWriteTransaction(ctx, 'payments.orders.place', async (em) => {
-      const actor = await actorOf(ctx, em, token)
+      const actor = await actorOf(ctx, em, token, payer)
       const box: { actingRole?: ActingRole } = {}
       const authorized = await authorizeScoped(
         {
@@ -514,8 +529,9 @@ const updateOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRe
   isUndoable: false,
   async execute(rawInput, ctx) {
     const { token, input } = tokenOf(rawInput)
+    const payer = await sessionPayer(ctx, token)
     const result = await inWriteTransaction(ctx, 'payments.orders.update', async (em) => {
-      const actor = await actorOf(ctx, em, token)
+      const actor = await actorOf(ctx, em, token, payer)
       const authorized = await authorizeScoped(
         {
           input: orderUpdateSchema,
@@ -592,8 +608,9 @@ const cancelOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRe
   isUndoable: false,
   async execute(rawInput, ctx) {
     const { token, input } = tokenOf(rawInput)
+    const payer = await sessionPayer(ctx, token)
     const result = await inWriteTransaction(ctx, 'payments.orders.cancel', async (em) => {
-      const actor = await actorOf(ctx, em, token)
+      const actor = await actorOf(ctx, em, token, payer)
       const authorized = await authorizeScoped(
         {
           input: orderCancelSchema,

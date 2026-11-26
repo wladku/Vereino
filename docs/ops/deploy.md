@@ -60,9 +60,12 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | Variable | Purpose |
 |---|---|
 | `AUTH_SECRET` | session and cookie signing secret, unique per environment |
-| `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` | tenant data encryption fallback key; never change it on a running environment |
+| `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` | tenant data encryption fallback key; never change it on a running environment. Removed (copy kept in the password manager) at the key-store cutover, after `LOOKUP_HASH_PEPPER` holds its value ([`key-store.md`](key-store.md)) |
+| `LOOKUP_HASH_PEPPER` | the key of lookup hashes (e-mail, PESEL, external ids); set it to the **current value of `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`** and never change it (unset, the platform silently uses the fallback key). Required by the boot check when `VEREINO_KEY_STORE=vault` (#740, DD-K04) |
+| `VEREINO_KEY_STORE` | optional; `derived` (default: tenant keys derived from the fallback key) or `vault` (tenant keys held in the Vault service, [`key-store.md`](key-store.md)). In `vault` mode the boot check requires `VAULT_ADDR`, `VAULT_TOKEN` and `LOOKUP_HASH_PEPPER`, requires `VAULT_KV_PATH` (if set) to be `secret/data`, and refuses `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, `TENANT_DATA_ENCRYPTION_KEY`, `ALLOW_DERIVED_KMS_FALLBACK` and `TENANT_DATA_ENCRYPTION` off; in `derived` mode it refuses `VAULT_ADDR` and `VAULT_TOKEN` (#740, DD-K03). Switch only with the cutover of [`key-store.md`](key-store.md) |
+| `VAULT_ADDR`, `VAULT_TOKEN`, `VAULT_KV_PATH`, `VAULT_REQUEST_TIMEOUT_MS` | only with `VEREINO_KEY_STORE=vault`, on app, worker and scheduler: the Vault service's private URL, the sealed `vereino-app` token, `secret/data`, `3000` (below 3000 the boot check warns) |
 | `NEXT_PUBLIC_APP_URL`, `PLATFORM_PORTAL_BASE_URL` | same value as `APP_URL` |
-| `SYSTEM_EMAIL_PROVIDER`, `RESEND_API_KEY`, `NOTIFICATIONS_EMAIL_FROM` | outbound e-mail (S12.6) |
+| `SYSTEM_EMAIL_PROVIDER`, `RESEND_API_KEY`, `NOTIFICATIONS_EMAIL_FROM`, `EMAIL_FROM` | outbound e-mail (S12.6) from the sending subdomain `mail.vereino.org`; DNS records, values and the check `yarn ops:mail-dns`: [`email.md`](email.md) |
 | `OM_ENABLE_ENTERPRISE_MODULES=false` | no effect since the enterprise package was removed (ADR-023, #466); keep it false so a reinstalled package stays off |
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_PASSWORD_MIN_LENGTH=12`, `OM_PASSWORD_REQUIRE_DIGIT=false`, `OM_PASSWORD_REQUIRE_UPPERCASE=false`, `OM_PASSWORD_REQUIRE_SPECIAL=false` | the password policy (#747, see *Password policy* below); app and worker. Unset, the platform default applies: 6 characters with a digit, an upper-case letter and a special character |
@@ -311,13 +314,17 @@ the deploy or the lock-down pass.
 
 The platform checks a new password against four variables (`OM_PASSWORD_*`, table above) on the server: the user
 create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
-the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment. Two
-limits remain (`docs/compliance/asvs-requirements.md`, V6.2.x):
+the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment.
 
-- The platform's browser forms (change password, password reset, user create and edit) read the policy in the browser,
-  where these server variables are not set, so they keep showing and checking the platform default (a digit, an
-  upper-case letter and a special character) until the app-owned check of #779 replaces them.
-- No check against common or breached passwords or against club words exists yet (#779).
+On top of them the Vereino password check (#779, `.ai/specs/2026-11-26-vereino-password-check.md`) refuses, on every
+API path that sets a password (user create and edit, profile, the reset and invitation link):
+
+- more than 64 characters or 72 bytes (bcrypt reads no further), and a space at the start or the end;
+- the about 100 000 most common passwords, from breach data (a list built into the app; nothing is sent out);
+- passwords made of context words — `vereino`, `mercato`, the club's name and slug, the user's address and name.
+
+The root layout hands the same variables to the platform's browser forms, so they state and check what the server
+does. No extra variable; the check needs no configuration. `mercato auth set-password` (shell) is not checked.
 
 ## After every deploy
 
@@ -411,7 +418,7 @@ the workspace (D-039, `docs/compliance/processors.md` P-1).
 |---|---|---|---|
 | L-1 | **No public TCP proxy** on PostgreSQL or Redis in `production` | Each database service → *Settings* → *Networking*: no *Public Access* / *TCP Proxy* entry; delete one if present. Railway databases are private unless public access is added, which creates the proxy and its `DATABASE_PUBLIC_URL` | [PostgreSQL](https://docs.railway.com/guides/postgresql), [TCP proxy](https://docs.railway.com/networking/tcp-proxy) |
 | L-2 | The app, the worker and the backup job reach the databases **only over `*.railway.internal`** | Their `DATABASE_URL` and `REDIS_URL` are references to the database service's private variables (`${{Postgres.DATABASE_URL}}`, `${{Redis.REDIS_URL}}`), never `DATABASE_PUBLIC_URL` or a proxy host; the resolved host ends in `.railway.internal` (check the service's *Variables* tab, never copy the value out). Each environment has its own isolated private network over WireGuard | [Private networking](https://docs.railway.com/reference/private-networking) |
-| L-3 | Every production **secret is a sealed variable** | `JWT_SECRET`, `AUTH_SECRET`, `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, `RESEND_API_KEY`, `VEREINO_LICENCE_KEYS`, the `BACKUP_S3_*` keys and any provider key added later: *Seal* in the variable's menu. A sealed value is given to builds and deployments but never shown in the UI or returned by the API or `railway variables` / `railway run`, and it cannot be unsealed. Keep a copy of `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (it must never change) and of the licence keys in the team password manager before sealing | [Sealed variables](https://docs.railway.com/guides/variables) |
+| L-3 | Every production **secret is a sealed variable** | `JWT_SECRET`, `AUTH_SECRET`, `TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, `LOOKUP_HASH_PEPPER`, `VAULT_TOKEN` and the Vault service's `VAULT_UNSEAL_KEY_1` / `VAULT_UNSEAL_KEY_2` ([`key-store.md`](key-store.md)), `RESEND_API_KEY`, `VEREINO_LICENCE_KEYS`, the `BACKUP_S3_*` keys and any provider key added later: *Seal* in the variable's menu. A sealed value is given to builds and deployments but never shown in the UI or returned by the API or `railway variables` / `railway run`, and it cannot be unsealed. Keep a copy of `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (it must never change) and of the licence keys in the team password manager before sealing | [Sealed variables](https://docs.railway.com/guides/variables) |
 | L-4 | **No secret shared with staging** | Every production secret has its own value, generated for production (`openssl rand -hex 32` for the signing secrets); no project-level shared variable (`${{shared.…}}`) holds a secret; staging never references a production service | [Variables](https://docs.railway.com/guides/variables) |
 | L-5 | **PR environments are off** for the project that holds production | *Project Settings* → *Environments*: PR environments disabled. A PR environment would deploy unreviewed code into the project that holds club data | [Environments](https://docs.railway.com/guides/environments) |
 | L-6 | **Token inventory**: production holds only the tokens the maintainers need | Project tokens (*Project Settings* → *Tokens*; one environment each) and workspace tokens (account settings → *Tokens*; the whole workspace) keep working without two-factor sign-in. List every token that can reach production in the [token inventory](#token-inventory) with its owner and purpose; revoke every token that is not on it | [Public API](https://docs.railway.com/reference/public-api), [Two-factor enforcement](https://docs.railway.com/access/two-factor-enforcement) |
