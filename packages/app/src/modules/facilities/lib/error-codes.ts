@@ -73,6 +73,7 @@ export const errorCodes = [
   { code: 'public_place_not_found', status: 404, messageKey: 'facilities.errors.public_place_not_found' },
   { code: 'public_places_disabled', status: 404, messageKey: 'facilities.errors.public_places_disabled' },
   { code: 'public_schedule_month_invalid', status: 400, messageKey: 'facilities.errors.public_schedule_month_invalid' },
+  { code: 'public_schedule_range_invalid', status: 400, messageKey: 'facilities.errors.public_schedule_range_invalid' },
   // Online requests (P-04, P-05, B-25, TEST-035, TEST-036; #125): a slot taken or held by another confirmed request
   // answers 409 `slot_unavailable`; the place or the club not taking requests 403; a request outside the `reservable_paid`
   // zone, without the rules accepted, starting in the past or with the honeypot filled 422. An unknown, used or expired

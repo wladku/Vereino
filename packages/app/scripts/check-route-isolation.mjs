@@ -4,7 +4,9 @@
 // A route or a method missing from the inventory fails, so isolation coverage cannot rot; an inventory entry without
 // a route fails too, so the inventory cannot drift. Each probe is checked for shape: a probe that addresses the other
 // club (`foreign-id`, `foreign-ref`, `public`) must name at least one `$B:` reference, every `[param]` of the route
-// must be bound, and an exemption or a non-default expected status must say why.
+// must be bound, and an exemption or a non-default expected status must say why. A `library` probe (training outlines
+// spec phase 4, #685) addresses the shared outline library, which shows club A what club B published on purpose: it
+// must say why, may expect a 2xx, and the guard checks it for 5xx and for any club B data beyond the published entry.
 // Usage: node scripts/check-route-isolation.mjs [--json]
 import fs from 'node:fs'
 import path from 'node:path'
@@ -13,7 +15,7 @@ import { APP_ROOT, readVereinoModuleIds } from './vereino-paths.mjs'
 
 export const INVENTORY_DIR = '.ai/qa/tests/_fixtures/isolation/inventory'
 export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
-export const PROBE_KINDS = ['read', 'foreign-id', 'foreign-ref', 'public', 'exempt']
+export const PROBE_KINDS = ['read', 'foreign-id', 'foreign-ref', 'public', 'exempt', 'library']
 const FOREIGN_KINDS = new Set(['foreign-id', 'foreign-ref', 'public'])
 const PROBE_KEYS = new Set(['probe', 'why', 'params', 'query', 'body', 'headers', 'expect', 'roles', 'stable'])
 const REFERENCE = /^\$(A|B):[a-zA-Z][a-zA-Z0-9]*$/
@@ -91,6 +93,7 @@ export function probeProblems(url, method, probe) {
     if (!hasWhy(probe)) problems.push(`${label}: an exempt probe must say why`)
     return problems
   }
+  if (probe.probe === 'library' && !hasWhy(probe)) problems.push(`${label}: a library probe must say why`)
   const params = probe.params ?? {}
   for (const name of routeParams(url)) {
     if (typeof params[name] !== 'string') problems.push(`${label}: the route parameter [${name}] is not bound`)
@@ -103,11 +106,13 @@ export function probeProblems(url, method, probe) {
     problems.push(`${label}: a ${probe.probe} probe must name at least one $B: reference`)
   }
   if (probe.expect !== undefined) {
+    // A library probe reads what another club shared on purpose, so it may expect a success.
+    const lowest = probe.probe === 'library' ? 200 : 400
     const valid =
       Array.isArray(probe.expect) &&
       probe.expect.length > 0 &&
-      probe.expect.every((status) => Number.isInteger(status) && status >= 400 && status <= 499)
-    if (!valid) problems.push(`${label}: expect must list 4xx statuses`)
+      probe.expect.every((status) => Number.isInteger(status) && status >= lowest && status <= 499)
+    if (!valid) problems.push(`${label}: expect must list ${lowest === 200 ? '2xx–4xx' : '4xx'} statuses`)
     if (!hasWhy(probe)) problems.push(`${label}: a non-default expect must say why`)
   }
   if (probe.stable === false && !hasWhy(probe)) problems.push(`${label}: an unstable read must say why`)

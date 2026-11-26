@@ -150,7 +150,8 @@ test('TEST-R16 public pages: P-03 intro and booking mode, P-04 owner notice and 
       await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
     }
     await setLocale(page, 'en')
-    await page.goto(`/p/${clubSlug}/places/${placeSlug}`)
+    // A phone opens on Day since #784: the month view keeps its list from today (REQ-W04).
+    await page.goto(`/p/${clubSlug}/places/${placeSlug}?range=month`)
     const list = page.getByTestId('public-schedule-list')
     await expect(list).toBeVisible()
     const days = month.days ?? []

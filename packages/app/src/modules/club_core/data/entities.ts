@@ -23,6 +23,10 @@ decorateScopedEntityBase({ PrimaryKey, Property })
   name: 'club_core_club_settings_retention_months_check',
   expression: 'former_participant_retention_months between 1 and 120',
 })
+@Check({
+  name: 'club_core_club_settings_answer_days_check',
+  expression: 'application_answer_days between 1 and 60',
+})
 @Unique({ name: 'club_core_club_settings_organization_unique', properties: ['organizationId'] })
 @Index({ name: 'club_core_club_settings_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 @Index({
@@ -59,6 +63,10 @@ export class ClubSettings extends ScopedEntityBase {
     | 'offboardingNoticeAt'
     | 'offboardingDeleteAfter'
     | 'formerParticipantRetentionMonths'
+    | 'outlineLibraryMaxVisibility'
+    | 'applicationAgeReferenceDay'
+    | 'applicationAnswerDays'
+    | 'applicationInformation'
 
   @Property({ name: 'own_account_min_age', type: 'int', default: 16 })
   ownAccountMinAge: number = 16
@@ -125,6 +133,25 @@ export class ClubSettings extends ScopedEntityBase {
    */
   @Property({ name: 'former_participant_retention_months', type: 'int', default: 12 })
   formerParticipantRetentionMonths: number = 12
+
+  /**
+   * The widest level the club's coaches may publish training outlines at (training outlines spec B-O1, BR-O4, D-038
+   * §4; #685): `club` (never published), `clubs` (clubs on Vereino, the default) or `public`.
+   */
+  @Property({ name: 'outline_library_max_visibility', type: 'text', default: 'clubs' })
+  outlineLibraryMaxVisibility: string = 'clubs'
+
+  /** The age reference day of section applications, `MM-DD` (sign-up form spec DD-J03, REQ-J02). */
+  @Property({ name: 'application_age_reference_day', type: 'text', default: '09-01' })
+  applicationAgeReferenceDay: string = '09-01'
+
+  /** Days a coordinator has to answer an application before it counts as overdue (REQ-J02; 1–60). */
+  @Property({ name: 'application_answer_days', type: 'smallint', default: 7 })
+  applicationAnswerDays: number = 7
+
+  /** The club's "Information for applicants" (≤ 6000; null = the built-in text; not a consent text, B-J2). */
+  @Property({ name: 'application_information', type: 'text', nullable: true })
+  applicationInformation?: string | null
 
   /** Globally unique slug of the public pages `/p/{publicSlug}` (DD-23); null until the club chooses one. */
   @Property({ name: 'public_slug', type: 'text', nullable: true })
@@ -241,6 +268,7 @@ export class Section extends ScopedEntityBase {
     | 'publicContactEmail'
     | 'publicContactPhone'
     | 'shortDescription'
+    | 'acceptsApplications'
 
   @Property({ name: 'name', type: 'text' })
   name!: string
@@ -284,6 +312,13 @@ export class Section extends ScopedEntityBase {
   /** Plain text of at most 160 characters shown on the section's tile of the public club page (P-01). */
   @Property({ name: 'short_description', type: 'varchar', length: 160, nullable: true })
   shortDescription?: string | null
+
+  /**
+   * Whether the section takes online applications through its sign-up form (sign-up form spec REQ-J01, D-041); off
+   * until the club turns it on, so nothing is public before (Rollout).
+   */
+  @Property({ name: 'accepts_applications', type: 'boolean', default: false })
+  acceptsApplications: boolean = false
 }
 
 /**

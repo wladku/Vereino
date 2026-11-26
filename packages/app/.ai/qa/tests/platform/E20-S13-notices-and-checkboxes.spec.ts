@@ -141,7 +141,7 @@ test('E20-S13 info notices use the light info style and checkboxes fill with the
     await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
     const emptyDay = addDays(today, 3)
     await everyVariant(page, attach, 'b23-calendar-empty', async () => {
-      await page.goto(`/backend/facilities/calendar?place=${family.pitch}&date=${emptyDay}`)
+      await page.goto(`/backend/facilities/calendar?place=${family.pitch}&range=day&date=${emptyDay}`)
       await expectLightInfoNotice(page.getByTestId('facilities-calendar-empty'))
     })
 

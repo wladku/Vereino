@@ -42,7 +42,7 @@ A ticket is ready for implementation when the answers below are on the ticket or
 - the problem or need, and who has it (a user or a role);
 - the expected outcome, and how it will be checked;
 - what is out of scope;
-- open questions, each marked blocking or non-blocking — no blocking question left unanswered;
+- open questions, each marked non-blocking or with the spec phases it blocks — no question blocking the ticket's phase left unanswered;
 - any autonomous assumption confirmed by a human (the resolved-assumptions comment on a spec PR).
 
 **Spec-level — a covering spec supplies these, and `om-auto-write-spec` writes them when they are missing:**
@@ -53,6 +53,10 @@ A ticket is ready for implementation when the answers below are on the ticket or
 - impact on data and permissions;
 - dependencies;
 - a link to the prototype or mockups when the change is user-facing.
+
+**A story of a spec phase** (one issue per phase) is ready to build when its linked spec is `Ready for implementation`, **or** when the story carries `phase-ready` (PS-D01, `.ai/specs/2026-11-24-phase-level-story-start.md`). The spec's Open Questions table says which phases each question blocks (*Blocking?*: `no`, `phase N`, `phases N, M`; `yarn spec-questions:check`), so one open question no longer holds every phase of a Draft spec. A story without `phase-ready` whose spec is Draft is not ready. A later phase that needs an earlier phase's code still waits for that phase's PR to merge, as its "Before building" section says. Spec runs file `blocked` only on stories whose phase has an open blocking question, and name those questions on the story.
+
+**`phase-ready` rules.** Only the owner-attended decision session sets `phase-ready`, and only on a story issue, right after the owner's answer, when both hold: every question whose *Blocking?* names the story's phase is answered and recorded in a `## Owner decision` comment on the epic or spec issue, and the phase's Ask First items (migrations, new modules, dependencies, contracts) are approved in a `## Owner decision` comment on the story itself (PS-D02). The same comment names the spec commit the story is built against. Automation never sets `phase-ready` itself: no picker, spec run, fix run or review adds it, and a run that finds it without those two comments treats the story as not ready. When a spec change later touches a decided phase, the decision session removes `phase-ready` from that phase's unbuilt stories and asks the owner again; work already built is not reopened (a change is a new issue).
 
 For a bug, ready means reproducible: `om-verify-in-repo` is that gate, and the list above applies only to its ticket-level items. Enforcement: `om-prepare-issue` files tickets with these sections; `om-auto-manage-issues` records `READY_STATUS` per issue and posts a not-ready comment naming what is missing; `om-auto-fix-issue`'s feature route stops on a ticket that fails the ticket-level tier instead of speccing around the gap, the way `om-verify-in-repo` stops on a bug that is not real. Spec-level gaps are not a stop — the spec is authored. A maintainer may waive an item by saying so on the ticket. This section is what those skills read: a repository whose `SDLC.md` has no Definition of Ready gets no readiness check.
 
@@ -79,11 +83,11 @@ Pipeline labels are mutually exclusive: a PR carries at most one, and it names w
 |---|---|---|---|
 | Pipeline | `review`, `changes-requested`, `qa`, `qa-failed`, `merge-queue`, `blocked`, `do-not-merge` | one at a time | Workflow state |
 | Category | `bug`, `feature`, `refactor`, `security`, `dependencies`, `documentation` | additive | Kind of change |
-| Meta | `needs-qa`, `skip-qa`, `qa-approved`, `qa-self-verified`, `in-progress`, `ci-monitoring`, `screenshots` | additive | Process signals |
+| Meta | `needs-qa`, `skip-qa`, `qa-approved`, `qa-self-verified`, `in-progress`, `ci-monitoring`, `screenshots`, `phase-ready` | additive | Process signals |
 | Priority | `priority-low`, `priority-medium`, `priority-high`, `priority-extreme` | one at a time; unset = medium | Urgency of the work |
 | Risk | `risk-low`, `risk-medium`, `risk-high` | one at a time; unset = medium | Blast radius of the change |
 
-`ci-monitoring` marks a PR whose work is finished and reported while an agent watches CI; it is not a claim (see `.ai/trackers/github.md`). `screenshots` marks a PR that carries UI screenshots from the working app as evidence.
+`ci-monitoring` marks a PR whose work is finished and reported while an agent watches CI; it is not a claim (see `.ai/trackers/github.md`). `screenshots` marks a PR that carries UI screenshots from the working app as evidence. `phase-ready` marks a story issue whose spec phase the owner has decided, so it may be built while the spec is Draft; only the decision session sets or removes it (see "Definition of Ready").
 
 Priority is how urgent the work is; risk is how dangerous the change is to ship. A one-line fix for an outage can be `priority-extreme` and `risk-low`; a large auth refactor that can wait can be `priority-low` and `risk-high`. A PR inherits both from its source issue unless the scope clearly changed. When an automated skill adds or changes a pipeline or meta label, it leaves a short comment explaining why.
 
@@ -108,6 +112,24 @@ One label lives outside this taxonomy: `do-not-close`, applied by humans to issu
 
 The pipeline's QA gate is off (`qaGate: false`), so for `risk-low` and `risk-medium` PRs `needs-qa` is advisory and does not block a merge on its own. **A `risk-high` PR labelled `needs-qa` does not merge before manual QA** (owner decision MT-D02, 2026-11-18, `.ai/specs/2026-11-18-merge-throughput.md`): the merge train holds it, logs why and comments once on the PR, until the owner tests it and sets `qa`; the train then queues it like any other PR. User-facing changes are still proven by the author with browser evidence as `AGENTS.md` requires (both locales, 375 px, console without errors). `qa-failed`, `do-not-merge` and `blocked` remain hard blocks. Automation never sets `qa`, `qa-failed` or `qa-approved`. To make every `needs-qa` a hard block until `qa-approved`, set `qaGate: true` and re-run `om-setup-agent-pipeline`.
 
+**QA instruction.** A `risk-high` PR that asks for QA (`needs-qa`) carries a short Polish test instruction for the owner in its description, between fixed markers (QM-D01/QM-D02, `.ai/specs/2026-11-24-qa-request-email.md`). Plain language, no jargon, no passwords; 3–7 numbered steps saying where to click and what must show. A PR without screens says what the owner sees instead (for example "nic do klikania — sprawdzenie to polecenie; sesja decyzyjna może je uruchomić za Ciebie").
+
+```markdown
+<!-- qa-instruction:start -->
+## Jak przetestować (QA)
+**Co się zmienia:** 1–2 zdania prostym językiem.
+**Przygotowanie:** `node C:\Users\wkuc\vereino-sandbox-env\sandbox.mjs preview <PR>` (5–10 min), potem http://127.0.0.1:4300; konto: … (rola, nie hasło).
+**Kroki:**
+1. …
+**Czego nie sprawdzisz:** np. płatność Stripe, klucze Google — i dlaczego.
+**Po teście:** działa → etykieta `qa`; nie działa → `qa-failed` i komentarz, co poszło źle.
+<!-- qa-instruction:end -->
+```
+
+The train's hold comment links the instruction; when the block is missing or empty (or its markers are out of order), the comment says **QA instruction missing** and carries the hidden marker `<!-- merge-train:qa-instruction-missing -->`, so the picker queues a run that writes the block without changing code. When the block is written later, the train edits the same comment (`scripts/merge-train-holds.mjs`).
+
+**QA request e-mail.** On the build server (cezar-ws) the alerts job (`~/vereino-alerts/vereino_alerts.py`, every 10 minutes) mails the owner, through Resend, once per PR and head SHA when a PR carries the train's hold comment and a non-empty `qa-instruction` block: subject `[Vereino] Do przetestowania: #<n> <title>`, the block as plain text (capped at 4 000 characters), the PR link, the preview command and the other PRs still waiting for `qa`. A PR held without the block gets its mail once the block is written; the same PR is mailed again only after `qa-failed` and a new head. The morning report lists every PR still held. When Resend refuses, the mail stays in the job's outbox (QM-D03, phase 2 of the spec).
+
 ## The claim protocol
 
 Before mutating an issue or PR, an agent claims it with all three signals: it assigns itself, adds the `in-progress` label, and posts a `🤖`-prefixed claim comment saying what it is doing. Any agent that finds an existing claim backs off instead of colliding. A PR carrying `in-progress` is also skipped by the merge tooling. A claim belongs to the **run** that made it, not to the GitHub account: agents, forks of a session and orchestrated runs all act as the same user, so a run that did not post the claim backs off (or asks) even when the claim carries its own login. The claim comment names the run's worktree, branch and start time (`.ai/skills/om-auto-fix-issue/SKILL.md` §5).
@@ -116,7 +138,7 @@ The claim is released when the work finishes — on success and on failure alike
 
 ## The automation contract
 
-The `om-auto-*` skills run this process unattended and are chainable: each accepts the artifact the previous one produced (an issue id, a spec path, or a PR number from the `PR: #<number> (link: <url>)` reference line every PR-producing skill emits), and each detects work already started — an open PR referencing the issue or plan — and continues on it rather than opening a duplicate. A completed autonomous run leaves a **ready** (non-draft), fully labeled PR — one pipeline label, category, QA meta, one priority, one risk — with a run-summary comment, a committed run log in `.ai/runs/`, and, for user-facing changes, screenshots from the working app attached as PR evidence. Draft PRs are reserved for explicitly incomplete states: spec-only design PRs, interrupted hand-offs, or autonomous defaults flagged for human confirmation. Automation never applies `qa-approved`.
+The `om-auto-*` skills run this process unattended and are chainable: each accepts the artifact the previous one produced (an issue id, a spec path, or a PR number from the `PR: #<number> (link: <url>)` reference line every PR-producing skill emits), and each detects work already started — an open PR referencing the issue or plan — and continues on it rather than opening a duplicate. A completed autonomous run leaves a **ready** (non-draft), fully labeled PR — one pipeline label, category, QA meta, one priority, one risk — with a run-summary comment, a committed run log in `.ai/runs/`, and, for user-facing changes, screenshots from the working app attached as PR evidence. Draft PRs are reserved for explicitly incomplete states: spec-only design PRs, interrupted hand-offs, or autonomous defaults flagged for human confirmation. Automation never applies `qa-approved`, and never applies `phase-ready`: only the owner-attended decision session sets and removes it (see "Definition of Ready"); the picker and `om-auto-fix-issue` read it to build a story of a Draft spec. The run that adds `needs-qa` to a `risk-high` PR writes the PR's `qa-instruction` block in the same step (see "QA"; `.ai/skills/om-open-pr/SKILL.md`), and any run that rewrites a PR description keeps that block; a run queued for a PR whose hold comment says "QA instruction missing" only writes the block.
 
 ## Validation gate
 

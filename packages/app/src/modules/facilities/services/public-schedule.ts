@@ -30,11 +30,12 @@ import {
   localMoment,
   publicDaySlots,
   publicRates,
-  scheduleMonth,
+  scheduleRange,
   type PublicRate,
   type PublicSlot,
   type PublicSlotState,
   type ScheduleEntryKind,
+  type ScheduleQuery,
 } from '../lib/public-schedule'
 import { OCCUPYING_RENTAL_STATUSES } from '../lib/rentals'
 import { dayZoneSegments } from '../lib/zones'
@@ -86,12 +87,14 @@ export type PublicScheduleView = {
 }
 
 /**
- * Why a public read has nothing to show: unknown or non-public (404), no places calendar (404), a bad month (400).
+ * Why a public read has nothing to show: unknown or non-public (404), no places calendar (404), a bad month or a bad
+ * `from`/`to` range (400).
  * `club` is the header of a known club that publishes its page, so every state renders inside its frame (#289); it is
  * absent for an unknown club.
  */
 export type PublicFacilitiesResult<T> =
-  { status: 'ok'; value: T } | { status: 'not_found' | 'disabled' | 'month_invalid'; club?: PublicFacilitiesClub }
+  | { status: 'ok'; value: T }
+  | { status: 'not_found' | 'disabled' | 'month_invalid' | 'range_invalid'; club?: PublicFacilitiesClub }
 
 function site(container: AwilixContainer): ClubCorePublicSite | null {
   return container.hasRegistration(CLUB_CORE_PUBLIC_SITE)
@@ -141,14 +144,15 @@ export async function publicPlacesView(
 }
 
 /**
- * `GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule?month=` (P-04): the place's month as states, with
- * its opening hours, rates, rules and the club phone.
+ * `GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule?month=` or `?from=&to=` (P-04; calendar range
+ * switch spec REQ-W03): the place's month — or the asked days — as states, with its opening hours, rates, rules and
+ * the club phone.
  */
 export async function publicScheduleView(
   container: AwilixContainer,
   clubSlug: string,
   placeSlug: string,
-  month: string | undefined,
+  query: ScheduleQuery,
   now: Date,
 ): Promise<PublicFacilitiesResult<PublicScheduleView>> {
   const publicSite = site(container)
@@ -159,8 +163,9 @@ export async function publicScheduleView(
   const scope = { tenantId: frame.tenantId, organizationId: frame.organizationId }
   const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
   const timeZone = settings.values.timezone
-  const range = scheduleMonth(month, localMoment(now, timeZone).date)
-  if (!range) return { status: 'month_invalid', club: frame.club }
+  const asked = scheduleRange(query, localMoment(now, timeZone).date)
+  if (asked.status !== 'ok') return { status: asked.status, club: frame.club }
+  const { range } = asked
   const em = container.resolve<EntityManager>('em').fork()
   const window = {
     start: zonedInstant(range.first, '00:00', timeZone),

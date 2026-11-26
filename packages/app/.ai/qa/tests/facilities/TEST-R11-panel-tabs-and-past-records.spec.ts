@@ -226,7 +226,7 @@ test('TEST-R11 panel tabs: zones, a past log entry, an incident, a ban from its 
 
     // B-23: yesterday's free hour opens the slot dialog for the administrator with the general kind alone.
     await page.setViewportSize({ width: 1280, height: 900 })
-    await page.goto(`/backend/facilities/calendar?place=${pitch}&date=${yesterday}`)
+    await page.goto(`/backend/facilities/calendar?place=${pitch}&range=day&date=${yesterday}`)
     await page.getByTestId('facilities-axis-hour-14:00').click()
     const slot = page.getByTestId('facilities-slot-dialog')
     await expect(slot).toBeVisible()

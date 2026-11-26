@@ -41,6 +41,8 @@ export const errorCodes = [
   // expired past its grace period (409; reads keep working).
   { code: 'enterprise_feature_disabled', status: 404, messageKey: 'foundation.errors.enterprise_feature_disabled' },
   { code: 'enterprise_feature_read_only', status: 409, messageKey: 'foundation.errors.enterprise_feature_read_only' },
+  // Many-clubs spec DD-M10 (#633): one running import per club; a second one answers at once instead of waiting.
+  { code: 'import_running', status: 409, messageKey: 'foundation.errors.import_running' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

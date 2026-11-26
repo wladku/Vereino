@@ -7,7 +7,7 @@
 // Attendance list for a started one, Assign substitute / Change coach for a planned one), the coach badges, the
 // cancellation reason rule and the date range the coordinator's calendar reads for the shown grid. Pure: the page
 // passes "today" and "now".
-import { addCalendarDays, trimCalendarRange, type CalendarDate, type DateWindow } from '@vereino/core'
+import { addCalendarDays, type CalendarDate, type DateWindow } from '@vereino/core'
 
 export const OCCURRENCE_PERSPECTIVES = [
   'all',
@@ -173,9 +173,4 @@ export function localCalendarDate(date: Date): CalendarDate {
   const month = String(date.getMonth() + 1).padStart(2, '0')
   const day = String(date.getDate()).padStart(2, '0')
   return `${String(date.getFullYear())}-${month}-${day}`
-}
-
-/** The dates the coordinator's calendar reads for the grid's range, trimmed to the 62 days the API serves. */
-export function scheduleRangeWindow(range: { start: Date; end: Date }): DateWindow {
-  return trimCalendarRange({ from: localCalendarDate(range.start), to: localCalendarDate(range.end) })
 }

@@ -1,11 +1,15 @@
 'use client'
-// `/p/[clubSlug]/places/[placeSlug]?month=YYYY-MM` — one facility's public month (facilities spec P-04, REQ-014,
-// glossary *Public facility calendar*; #124). The month is a list of days on a phone and a month grid from `md` up;
+// `/p/[clubSlug]/places/[placeSlug]?range=&date=` — one facility's public calendar (facilities spec P-04, REQ-014,
+// glossary *Public facility calendar*; #124; calendar range switch spec REQ-W04, #784). The shared Day / Week / Month
+// switch picks the range and keeps it in the URL, so a QR code or a permalink opens the same view; a phone opens on
+// Day, a wider screen on Week, and an old `?month=YYYY-MM` permalink on that month (DD-W03, DD-W08). Day lists the
+// day's stretches; Week is a list of the week's days on a phone and one row of seven day cells from `md`; the month
+// is a list of days on a phone and a month grid from `md` up;
 // every stretch of a day is written as its time and a state label ("Taken by the club", "Booked", "Requested —
 // pending", "Closed", "Unavailable" for planned maintenance work — #128, …), and a text legend explains the states —
 // colour is only an extra cue from the status tokens.
-// "Earlier" and "Later" move a month within the readable range and keep it in the URL, so a QR code or a permalink
-// opens the same month. Below the month: the opening hours, the rates per 90 minutes, the rules, the club phone and
+// "Earlier" and "Later" move a day, a week or a month within the readable range (last month to a year ahead). Below
+// the calendar: the opening hours, the rates per 90 minutes, the rules, the club phone and
 // the photos — only what the API sends, never a name of a renter, a group or a person. A bookable stretch that a guest
 // could request offers "Request a booking", which opens the request dialog (P-04, E08-S05 #125).
 // While the place takes online requests, a notice says the request is valid only after the administrator approves it
@@ -13,16 +17,27 @@
 // today, marked as today, and "Show earlier days" brings back the days before it; days without a stretch stay omitted
 // (parity spec REQ-R16, Q-R17; #289).
 // States: loading, error with retry, 404, "the club does not share facility calendars", a month that cannot be shown,
-// and a month without any published stretch — each answered state inside the club's frame.
+// and a range without any published stretch — each answered state inside the club's frame.
 import * as React from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
-import { Notice } from '@vereino/ui'
+import {
+  browserTimeZone,
+  CalendarRangeSwitch,
+  Notice,
+  calendarRangeLabels,
+  rangeOf,
+  useWideCalendar,
+  windowHolds,
+  type CalendarRange,
+  type CalendarRangeLinkProps,
+} from '@vereino/ui'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { calendarDateInZone } from '@vereino/core'
+import { calendarDateInZone, type CalendarDate } from '@vereino/core'
+import { publicRangeHref, publicRangeOf, publicReadableWindow, publicScheduleRead } from '../../lib/public-range'
 import { PublicRequestDialog, type RequestTarget } from './PublicRequestDialog'
 import {
   PublicFacilitiesDisabled,
@@ -39,11 +54,9 @@ import {
   dayHasContent,
   formatAmount,
   formatDayHeading,
-  formatMonth,
   formatMonthDay,
   isAllDay,
   isoWeekday,
-  monthParam,
   phoneHref,
   placeHref,
   placesHref,
@@ -132,15 +145,15 @@ function DayContent({ day, compact = false }: { day: PublicScheduleDay; compact?
 }
 
 /**
- * The month on a phone: the days with something to show, one after another. In the month holding `today` the list
- * starts today; "Show earlier days" brings back the days before it.
+ * A week or the month on a phone: the days with something to show, one after another. In the month holding `today`
+ * the month's list starts today; "Show earlier days" brings back the days before it (Q-R17). A week lists all its days.
  */
-function DayList({ days, today }: { days: PublicScheduleDay[]; today: string }) {
+function DayList({ days, today, fromToday }: { days: PublicScheduleDay[]; today: string; fromToday: boolean }) {
   const t = useT()
   const locale = useLocale()
   const [showEarlier, setShowEarlier] = React.useState(false)
   const withContent = days.filter(dayHasContent)
-  const inMonth = days.some((day) => day.date === today)
+  const inMonth = fromToday && days.some((day) => day.date === today)
   const hidden = inMonth && !showEarlier ? withContent.filter((day) => day.date < today).length : 0
   const shown = hidden > 0 ? withContent.filter((day) => day.date >= today) : withContent
   return (
@@ -181,7 +194,7 @@ function DayList({ days, today }: { days: PublicScheduleDay[]; today: string }) 
           </li>
         ))}
       </ol>
-      {shown.length === 0 ? (
+      {shown.length === 0 && inMonth ? (
         <p className="text-muted-foreground text-sm" data-testid="public-schedule-rest-empty">
           {t('facilities.public.schedule.restEmpty')}
         </p>
@@ -191,7 +204,7 @@ function DayList({ days, today }: { days: PublicScheduleDay[]; today: string }) 
   )
 }
 
-/** The month from `md` up: weeks from Monday, each day with its stretches written out. */
+/** A week or the month from `md` up: rows of seven days from Monday, each day with its stretches written out. */
 function MonthGrid({ days, today }: { days: PublicScheduleDay[]; today: string }) {
   const locale = useLocale()
   const leading = days.length > 0 ? isoWeekday(days[0].date) - 1 : 0
@@ -366,37 +379,71 @@ function Breadcrumb({ page }: { page: ScheduleView }) {
   )
 }
 
-function MonthNavigation({ page, busy }: { page: ScheduleView; busy: boolean }) {
+/** One day at every width: its stretches as the slot list, with "Request a booking" where a guest may request. */
+function DayView({ day, date, today }: { day: PublicScheduleDay | null; date: string; today: string }) {
   const t = useT()
   const locale = useLocale()
-  const move = (month: string | null, label: string, testId: string) =>
-    month ? (
-      <Button asChild variant="outline" className="min-h-11">
-        <Link href={placeHref(page.club.slug, page.place.slug, month)} scroll={false} data-testid={testId}>
-          {label}
-        </Link>
-      </Button>
-    ) : (
-      <Button type="button" variant="outline" className="min-h-11" disabled data-testid={testId}>
-        {label}
-      </Button>
-    )
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3">
-      {move(page.previousMonth, t('facilities.public.schedule.earlier'), 'public-schedule-earlier')}
-      <h2
-        id="public-schedule-month"
-        className="text-lg font-semibold"
-        aria-live="polite"
-        aria-busy={busy}
-        data-testid="public-schedule-month"
-        data-month={page.month}
-      >
-        {formatMonth(page.month, locale)}
-      </h2>
-      {move(page.nextMonth, t('facilities.public.schedule.later'), 'public-schedule-later')}
+    <div
+      className={`bg-card flex flex-col gap-2 rounded-lg border p-3 ${date === today ? 'border-primary border-2' : ''}`}
+      aria-current={date === today ? 'date' : undefined}
+      data-testid={`public-schedule-day-${date}`}
+    >
+      <h3 className="font-medium">
+        {formatDayHeading(date, locale)}
+        {date === today ? (
+          <span className="text-muted-foreground font-normal" data-testid="public-schedule-today">
+            {' '}
+            ({t('facilities.public.schedule.today')})
+          </span>
+        ) : null}
+      </h3>
+      {day && dayHasContent(day) ? (
+        <DayContent day={day} />
+      ) : (
+        <p className="text-muted-foreground text-sm" data-testid="public-schedule-empty">
+          {t('facilities.public.schedule.emptyDay')}
+        </p>
+      )}
     </div>
   )
+}
+
+/** The calendar of the shown range: Day, Week (a list on a phone, seven cells from `md`) or the month. */
+function RangeBody({
+  page,
+  range,
+  anchor,
+  today,
+}: {
+  page: ScheduleView
+  range: CalendarRange
+  anchor: string
+  today: string
+}) {
+  const t = useT()
+  if (range === 'day') {
+    return <DayView day={page.days.find((day) => day.date === anchor) ?? null} date={anchor} today={today} />
+  }
+  const shown = rangeOf(range, anchor)
+  const days = page.days.filter((day) => windowHolds(shown, day.date))
+  if (!days.some(dayHasContent)) {
+    return (
+      <p className="text-muted-foreground" data-testid="public-schedule-empty">
+        {t(range === 'week' ? 'facilities.public.schedule.emptyWeek' : 'facilities.public.schedule.empty')}
+      </p>
+    )
+  }
+  return (
+    <>
+      <DayList key={`${range}-${anchor}`} days={days} today={today} fromToday={range === 'month'} />
+      <MonthGrid days={days} today={today} />
+    </>
+  )
+}
+
+function RangeLink({ replace, ...props }: CalendarRangeLinkProps) {
+  return <Link {...props} replace={replace} scroll={false} />
 }
 
 /**
@@ -417,18 +464,32 @@ function OnlineNotice({ owner }: { owner: string | null }) {
   )
 }
 
-function SchedulePage({ page, busy, onRefresh }: { page: ScheduleView; busy: boolean; onRefresh: () => void }) {
+function SchedulePage({
+  page,
+  busy,
+  onRefresh,
+  range,
+  anchor,
+  hrefFor,
+}: {
+  page: ScheduleView
+  busy: boolean
+  onRefresh: () => void
+  range: CalendarRange
+  anchor: CalendarDate
+  hrefFor: (range: string, anchor: CalendarDate) => string
+}) {
   const t = useT()
+  const locale = useLocale()
   const { place } = page
   const today = calendarDateInZone(new Date(), page.timeZone)
-  const hasContent = page.days.some(dayHasContent)
   const [target, setTarget] = React.useState<RequestTarget | null>(null)
   // A new key per opening starts the dialog fresh.
   const [targetKey, setTargetKey] = React.useState(0)
-  const openRequest = React.useCallback((next: RequestTarget) => {
+  const openRequest = (next: RequestTarget) => {
     setTargetKey((current) => current + 1)
     setTarget(next)
-  }, [])
+  }
   return (
     <RequestContext.Provider value={place.acceptsOnlineRequests ? openRequest : null}>
       <PublicFacilitiesFrame club={page.club} wide>
@@ -448,18 +509,24 @@ function SchedulePage({ page, busy, onRefresh }: { page: ScheduleView; busy: boo
           </p>
         </section>
         {place.acceptsOnlineRequests ? <OnlineNotice owner={page.owner} /> : null}
-        <section className="flex flex-col gap-3" aria-labelledby="public-schedule-month" data-testid="public-schedule">
-          <MonthNavigation page={page} busy={busy} />
-          {hasContent ? (
-            <>
-              <DayList key={page.month} days={page.days} today={today} />
-              <MonthGrid days={page.days} today={today} />
-            </>
-          ) : (
-            <p className="text-muted-foreground" data-testid="public-schedule-empty">
-              {t('facilities.public.schedule.empty')}
-            </p>
-          )}
+        <section
+          className="flex flex-col gap-3"
+          aria-label={t('facilities.public.schedule.pageTitle')}
+          aria-busy={busy}
+          data-testid="public-schedule"
+        >
+          <CalendarRangeSwitch
+            range={range}
+            anchor={anchor}
+            today={today}
+            locale={locale}
+            labels={calendarRangeLabels(t, 'facilities.rangeSwitch')}
+            hrefFor={hrefFor}
+            Link={RangeLink}
+            limits={publicReadableWindow(today)}
+            testId="public-schedule-switch"
+          />
+          <RangeBody page={page} range={range} anchor={anchor} today={today} />
         </section>
         <Legend />
         <Block id="hours" title={t('facilities.public.hours.title')}>
@@ -540,14 +607,21 @@ function SchedulePage({ page, busy, onRefresh }: { page: ScheduleView; busy: boo
 export function PublicScheduleView({
   clubSlug,
   placeSlug,
-  month,
+  range,
+  anchor,
+  today,
+  hrefFor,
 }: {
   clubSlug: string
   placeSlug: string
-  month: string | null
+  range: CalendarRange
+  anchor: CalendarDate
+  /** Today in the browser's zone: the readable window of the read (the page shows the club zone's). */
+  today: CalendarDate
+  hrefFor: (range: string, anchor: CalendarDate) => string
 }) {
   const t = useT()
-  const query = usePublicSchedule(clubSlug, placeSlug, month)
+  const query = usePublicSchedule(clubSlug, placeSlug, publicScheduleRead(range, anchor, today))
   const load = query.data
 
   if (!load && query.isFetching) return <PublicFacilitiesLoading />
@@ -584,15 +658,37 @@ export function PublicScheduleView({
       </PublicFacilitiesFrame>
     )
   }
-  return <SchedulePage page={load.page} busy={query.isFetching} onRefresh={() => void query.refetch()} />
+  return (
+    <SchedulePage
+      page={load.page}
+      busy={query.isFetching}
+      onRefresh={() => void query.refetch()}
+      range={range}
+      anchor={anchor}
+      hrefFor={hrefFor}
+    />
+  )
 }
 
 function ScheduleFromUrl({ clubSlug, placeSlug }: { clubSlug: string; placeSlug: string }) {
   const searchParams = useSearchParams()
-  return <PublicScheduleView clubSlug={clubSlug} placeSlug={placeSlug} month={monthParam(searchParams.get('month'))} />
+  const wide = useWideCalendar()
+  const today = calendarDateInZone(new Date(), browserTimeZone())
+  const { range, anchor } = publicRangeOf(searchParams, wide, today)
+  const path = placeHref(clubSlug, placeSlug)
+  return (
+    <PublicScheduleView
+      clubSlug={clubSlug}
+      placeSlug={placeSlug}
+      range={range}
+      anchor={anchor}
+      today={today}
+      hrefFor={(next, date) => publicRangeHref(path, searchParams, next, date)}
+    />
+  )
 }
 
-/** The page body: the month of `?month=` (`useSearchParams` needs a Suspense boundary while the page prerenders). */
+/** The page body: the range of `?range=&date=` (`useSearchParams` needs a Suspense boundary while the page prerenders). */
 export function PublicScheduleRoute({ clubSlug, placeSlug }: { clubSlug: string; placeSlug: string }) {
   return (
     <React.Suspense fallback={<PublicFacilitiesLoading />}>

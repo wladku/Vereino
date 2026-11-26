@@ -47,6 +47,11 @@ import {
   rosterRoleRank,
   rosterViewBounds,
   seasonDatesInverted,
+  GROUP_PLACES_LIMIT_MAX,
+  GROUP_PLACES_LIMIT_MIN,
+  isGroupFull,
+  parsePlacesLimitInput,
+  placesText,
 } from '../groups-rules'
 
 describe('group kinds and membership roles', () => {
@@ -532,5 +537,35 @@ describe('roster rules (parity spec REQ-A03, #267)', () => {
     expect(fitsRule('2020-09-01', '2026-08-31', skrzaty)).toBe(false)
     expect(fitsRule(null, '2026-09-01', orlik)).toBeNull()
     expect(fitsRule('2017-01-01', '2026-09-01', null)).toBeNull()
+  })
+})
+
+describe('places limit (sign-up form spec REQ-J01)', () => {
+  it('parses a typed limit: blank is no limit, 1–500 is a number, anything else is invalid', () => {
+    expect([GROUP_PLACES_LIMIT_MIN, GROUP_PLACES_LIMIT_MAX]).toEqual([1, 500])
+    expect(parsePlacesLimitInput(undefined)).toBeNull()
+    expect(parsePlacesLimitInput(null)).toBeNull()
+    expect(parsePlacesLimitInput('  ')).toBeNull()
+    expect(parsePlacesLimitInput(' 18 ')).toBe(18)
+    expect(parsePlacesLimitInput(500)).toBe(500)
+    expect(parsePlacesLimitInput('1')).toBe(1)
+    expect(parsePlacesLimitInput('0')).toBe('invalid')
+    expect(parsePlacesLimitInput('501')).toBe('invalid')
+    expect(parsePlacesLimitInput('1000')).toBe('invalid')
+    expect(parsePlacesLimitInput('1.5')).toBe('invalid')
+    expect(parsePlacesLimitInput(true)).toBe('invalid')
+  })
+
+  it('shows "x / limit" with a limit and the count alone without one', () => {
+    expect(placesText(18, 18)).toBe('18 / 18')
+    expect(placesText(19, 18)).toBe('19 / 18')
+    expect(placesText(7, null)).toBe('7')
+  })
+
+  it('is full only with a limit that the occupancy reached', () => {
+    expect(isGroupFull(18, 18)).toBe(true)
+    expect(isGroupFull(19, 18)).toBe(true)
+    expect(isGroupFull(17, 18)).toBe(false)
+    expect(isGroupFull(100, null)).toBe(false)
   })
 })

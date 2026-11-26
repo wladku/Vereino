@@ -124,7 +124,7 @@ test('TEST-R19 a one-off event outside the pitch opening hours is refused with t
     })
     await page.setViewportSize({ width: 375, height: 812 })
     const dialog = page.getByTestId('facilities-slot-dialog')
-    const dayUrl = `/backend/facilities/calendar?place=${pitch}&date=${tuesday}`
+    const dayUrl = `/backend/facilities/calendar?place=${pitch}&range=day&date=${tuesday}`
     await page.goto(dayUrl)
     for (const locale of ['en', 'pl']) {
       await page.context().addCookies([{ name: 'locale', value: locale, url: new URL(page.url()).origin }])

@@ -76,13 +76,23 @@ test('probeProblems accepts valid probes', () => {
     [],
   )
   assert.deepEqual(probeProblems('/api/a', 'POST', { probe: 'foreign-ref', body: { personId: '$B:person' } }), [])
+  assert.deepEqual(probeProblems('/api/a', 'GET', { probe: 'library', why: 'shared on purpose' }), [])
+  assert.deepEqual(
+    probeProblems('/api/a/[id]', 'POST', {
+      probe: 'library',
+      params: { id: '$B:libraryEntry' },
+      expect: [201],
+      why: 'a copy of a shared entry',
+    }),
+    [],
+  )
 })
 
 test('probeProblems reports every malformed probe', () => {
   assert.deepEqual(probeProblems('/api/a', 'GET', null), ['GET /api/a: a probe must be an object'])
   assert.deepEqual(probeProblems('/api/a', 'GET', []), ['GET /api/a: a probe must be an object'])
   assert.deepEqual(probeProblems('/api/a', 'GET', { probe: 'guess' }), [
-    'GET /api/a: unknown probe kind "guess" (one of read, foreign-id, foreign-ref, public, exempt)',
+    'GET /api/a: unknown probe kind "guess" (one of read, foreign-id, foreign-ref, public, exempt, library)',
   ])
   assert.deepEqual(probeProblems('/api/a', 'POST', { probe: 'exempt', why: ' ', extra: 1 }), [
     'POST /api/a: unknown key "extra"',
@@ -107,6 +117,11 @@ test('probeProblems reports every malformed probe', () => {
   ])
   assert.deepEqual(probeProblems('/api/a', 'GET', { probe: 'read', stable: false }), [
     'GET /api/a: an unstable read must say why',
+  ])
+  assert.deepEqual(probeProblems('/api/a', 'GET', { probe: 'library', expect: [500] }), [
+    'GET /api/a: a library probe must say why',
+    'GET /api/a: expect must list 2xx–4xx statuses',
+    'GET /api/a: a non-default expect must say why',
   ])
 })
 

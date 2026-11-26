@@ -18,7 +18,13 @@ import {
 } from '@open-mercato/shared/lib/crud/optimistic-lock-command'
 import { z } from 'zod'
 import type { ActingRole, GrantKind, ScopeTarget } from '@vereino/core'
-import { assertTransition, authorizeScoped, trustedScopeOf, type TargetLock } from '@/modules/foundation'
+import {
+  assertTransition,
+  authorizeScoped,
+  prefetchSessionScope,
+  trustedScopeOf,
+  type TargetLock,
+} from '@/modules/foundation'
 import { activitiesErrors } from '../api/errors'
 import { Attendance, Occurrence } from '../data/entities'
 import { attendanceMarkSchema } from '../data/validators'
@@ -126,6 +132,8 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
     const now = new Date()
     // The whole list is one write against the session version: a save without it could overwrite a newer list.
     if (!readOptimisticLockExpected(ctx.request ?? null)) await activitiesErrors.throw('attendance_version_required')
+    // The session scope is read before the transaction holds a pooled connection (#549; capacity test, #633).
+    const sessionScope = await prefetchSessionScope(ctx)
     const result = await inWriteTransaction(ctx, 'activities.attendance.mark', async (em) => {
       const load = loadOccurrence(ctx)
       // The default lock compares the session version the client sent with the locked row (409 when stale).
@@ -140,6 +148,7 @@ const markCommand: CommandHandler<Record<string, unknown>, CheckOffCommandResult
         rawInput,
         ctx,
         em,
+        { sessionScope },
       )
       const occurrence = authorized.entity as Occurrence
       const { parsed } = authorized

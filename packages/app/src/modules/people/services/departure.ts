@@ -13,7 +13,14 @@ import type { ErasurePart } from '../lib/erasure-rules'
 export type { ErasureKept, ErasurePart, ErasureTouched } from '../lib/erasure-rules'
 
 /** The modules that may contribute, in the order their parts are applied and shown. */
-export const DEPARTURE_CONTRIBUTOR_MODULES = ['groups', 'activities', 'payments', 'club_core', 'facilities'] as const
+export const DEPARTURE_CONTRIBUTOR_MODULES = [
+  'groups',
+  'activities',
+  'payments',
+  'club_core',
+  'facilities',
+  'training',
+] as const
 export type DepartureContributorModule = (typeof DEPARTURE_CONTRIBUTOR_MODULES)[number]
 
 /** DI token of a module's contributor, e.g. `people.departure.groups`. */

@@ -55,7 +55,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 409,
           description:
-            '`optimistic_lock_conflict`, `import_already_committed` (committed, and no row waits for a membership the hook can take), `import_cancelled`',
+            '`optimistic_lock_conflict`, `import_already_committed` (committed, and no row waits for a membership the hook can take), `import_cancelled`, `import_running` (another import of the club is running; #633)',
           schema: errorSchema,
         },
         { status: 422, description: '`import_review_pending` (`rowNos`)', schema: errorSchema },

@@ -120,7 +120,17 @@ export async function assertFree(
   if (existing > 0) await trainingErrors.throw('outline_exists')
 }
 
-/** A new session outline holding `content`, copied from `source` when given (DD-O07). */
+/**
+ * The library origin an outline carries to its copies (`origin_entry_id`, `origin_credit`): a session copy of an outline
+ * copied from the library still records a use of that library entry when its session closes (E24-S05, #685).
+ */
+export type OutlineOrigin = { originEntryId: string | null; originCredit: Record<string, unknown> | null }
+
+export function originFields(row: Pick<Outline, 'originEntryId' | 'originCredit'>): OutlineOrigin {
+  return { originEntryId: row.originEntryId ?? null, originCredit: row.originCredit ?? null }
+}
+
+/** A new session outline holding `content`, copied from `source` when given (DD-O07), keeping its library origin. */
 export function sessionOutline(
   em: EntityManager,
   scope: TrainingScope,
@@ -128,6 +138,7 @@ export function sessionOutline(
   content: OutlineContent,
   authorPersonId: string,
   sourceOutlineId: string | null,
+  origin: OutlineOrigin = { originEntryId: null, originCredit: null },
 ): Outline {
   // Both stamps of one insert: a copy untouched since is recognisable (`isUneditedCopy`).
   const now = new Date()
@@ -142,6 +153,7 @@ export function sessionOutline(
     activityId: null,
     occurrenceId: session.id,
     sourceOutlineId,
+    ...origin,
     ...outlineContent(content),
   })
   em.persist(row)
@@ -167,7 +179,9 @@ export async function copyIntoSessions(
   const has = new Set(taken.map((row) => row.occurrenceId))
   return sessions
     .filter((session) => !has.has(session.id))
-    .map((session) => sessionOutline(em, scope, session, contentOf(series), series.authorPersonId, series.id))
+    .map((session) =>
+      sessionOutline(em, scope, session, contentOf(series), series.authorPersonId, series.id, originFields(series)),
+    )
 }
 
 export type OutlineSnapshot = OutlineContent & {

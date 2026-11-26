@@ -39,11 +39,16 @@ export {
 export { isUnlinkedScope, scopeDenialCode, type ScopeDenialCode } from './lib/scope-denial'
 export {
   clubDataContributor,
+  clubDeleteBeyondTenantToken,
   clubDeleteContributorToken,
   clubExportContributorToken,
   type ClubDataContributor,
 } from './lib/club-data'
-export { registerClubDataContributor } from './services/club-data'
+export {
+  registerClubDataContributor,
+  registerClubDeleteBeyondTenant,
+  type ClubDeleteBeyondTenant,
+} from './services/club-data'
 export {
   assertInScope,
   authorizeScoped,
@@ -170,6 +175,14 @@ export {
   type PagedDeliveries,
 } from './services/dispatch'
 export { bareAddressKey, type BareAddress } from './lib/dispatch-rules'
+export { holdClubImportSlot } from './services/club-limits'
+export {
+  CLUB_REQUEST_LIMIT_DEFAULTS,
+  clubRequestLimitKey,
+  readClubRequestLimit,
+  routeLimitKey,
+  type ClubRequestLimit,
+} from './lib/club-limits'
 export {
   personDeliveriesForExport,
   type PersonDeliveriesExport,

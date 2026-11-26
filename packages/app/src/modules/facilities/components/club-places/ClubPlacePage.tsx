@@ -9,7 +9,10 @@
 // loading, an error with retry, a permission-denied state (403), "no zone rules" when the day has none and the axis's
 // own closed-day line. Planned maintenance (#128): a user who may plan on the place (`maintenance.canPlan`, the place
 // among `planPlaceIds` or every place) gets "Plan maintenance"; a place maintainer without `facilities.view` reads the
-// day redacted and cannot book.
+// day redacted and cannot book. Calendar range switch spec REQ-W05 (#784, A-W01): the shared Day / Week / Month
+// switch with the view in the address (`?range=&date=`; without `range` a phone opens on Day, a wider screen on Week);
+// Week is a list of days on a phone and seven axes side by side from `lg`; Month is a list of days. A day's heading
+// opens its Day; an entry opens its details sheet on every range.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -22,7 +25,20 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { Checkbox } from '@open-mercato/ui/primitives/checkbox'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { calendarDateInZone, isCalendarDate } from '@vereino/core'
-import { formatDayHeading, MemberSkeleton, Notice } from '@vereino/ui'
+import {
+  CalendarRangeSwitch,
+  calendarRangeHref,
+  calendarRangeLabels,
+  datesOf,
+  defaultCalendarRange,
+  formatDayHeading,
+  MemberSkeleton,
+  Notice,
+  parseCalendarRange,
+  rangeOf,
+  useWideCalendar,
+  type CalendarRangeLinkProps,
+} from '@vereino/ui'
 import { MaintenanceTaskDialog } from '../MaintenanceTaskDialog'
 import { flashFlagged } from '../maintenance-client'
 import { RENTALS_KEY } from '../rentals-client'
@@ -30,6 +46,7 @@ import { isToMoveView } from '../../lib/reschedule-notice'
 import { DayAxis } from '../day-axis/DayAxis'
 import { DayChips } from '../day-axis/DayChips'
 import { DayEntries } from '../day-axis/DayEntries'
+import { RangeEntryList, WeekAxes } from '../day-axis/RangeDays'
 import { SlotDialog, slotPresetAt, type SlotPreset } from '../slot/SlotDialog'
 import { useSlotKinds } from '../slot/slot-client'
 import { EntryDetails } from './EntryDetails'
@@ -53,6 +70,10 @@ import {
   type CalendarEntry,
 } from './places-client'
 
+function RangeLink({ replace, ...props }: CalendarRangeLinkProps) {
+  return <Link {...props} replace={replace} scroll={false} />
+}
+
 function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: string }) {
   const t = useT()
   const locale = useLocale()
@@ -63,24 +84,30 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const zone = profile.club.timezone
   const today = calendarDateInZone(new Date(), zone)
-  const requested = searchParams.get('date')
-  const date = requested && isCalendarDate(requested) ? requested : today
+  const wide = useWideCalendar()
+  const axes = useWideCalendar('(min-width: 1024px)')
+  const { range, anchor: date } = parseCalendarRange(searchParams, { today, fallback: defaultCalendarRange(wide) })
   // `view=to_move` (the reschedule notice's link, AC-R14; #287): the day's list shows only the entries to be moved.
   const toMove = isToMoveView(searchParams.get('view'))
   const filterId = React.useId()
-  const window = React.useMemo(() => ({ ...dayWindow(date, zone), placeId }), [date, zone, placeId])
+  const dates = React.useMemo(() => (range === 'day' ? [date] : datesOf(rangeOf(range, date))), [range, date])
+  const window = React.useMemo(
+    () => ({ from: dayWindow(dates[0], zone).from, to: dayWindow(dates[dates.length - 1], zone).to, placeId }),
+    [dates, zone, placeId],
+  )
   const query = useStaffCalendar(window)
   const [slotPreset, setSlotPreset] = React.useState<SlotPreset | null>(null)
   const [slotKey, setSlotKey] = React.useState(0)
-  const [details, setDetails] = React.useState<CalendarEntry | null>(null)
+  const [details, setDetails] = React.useState<{ entry: CalendarEntry; date: string } | null>(null)
   const [planKey, setPlanKey] = React.useState(0)
 
-  const dayHref = (next: string, filtered: boolean) =>
-    filtered ? `${placeHref(placeId, next)}&view=to_move` : placeHref(placeId, next)
+  // The view's address: the page's other parameters (the `view=to_move` filter) kept.
+  const rangeHref = (next: string, anchor: string) => calendarRangeHref(placeHref(placeId), searchParams, next, anchor)
+  const dayHref = (next: string) => rangeHref('day', next)
 
   const goTo = (next: string) => {
     if (!isCalendarDate(next)) return
-    router.replace(dayHref(next, toMove))
+    router.replace(dayHref(next))
   }
 
   const refresh = () => queryClient.invalidateQueries({ queryKey: [PLACES_CALENDAR_KEY] })
@@ -90,10 +117,37 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   const place = calendar?.places.find((entry) => entry.id === placeId) ?? null
   const day = calendar?.days.find((entry) => entry.date === date) ?? null
   const entries = calendar ? entriesOfDay(calendar.entries, date, timeZone) : []
+  const rangeDays = dates.map((shownDate) => {
+    const occupying = calendar ? entriesOfDay(calendar.entries, shownDate, timeZone) : []
+    return {
+      date: shownDate,
+      day: calendar?.days.find((entry) => entry.date === shownDate) ?? null,
+      entries: toMove ? occupying.filter((entry) => entry.needsReschedule) : occupying,
+      occupying,
+    }
+  })
+  const openEntry = (entry: CalendarEntry) => {
+    setDetails({ entry, date: zoneWallTime(new Date(entry.start), timeZone).date })
+  }
+  const bookHour = (onDate: string, time: string) => {
+    const shown = rangeDays.find((entry) => entry.date === onDate)
+    setSlotKey((current) => current + 1)
+    setSlotPreset(
+      slotPresetAt({
+        placeId,
+        placeName: name,
+        date: onDate,
+        time,
+        day: shown?.day ?? null,
+        entries: shown?.occupying ?? [],
+      }),
+    )
+  }
   const redacted = calendar?.maintenance?.redacted === true
   const canBook = slotKinds.kinds.length > 0 && !redacted
   const canPlan = calendar ? canPlanMaintenance(calendar, placeId) : false
   const name = place?.name ?? ''
+  const nowMinutes = zoneWallTime(new Date(), timeZone).minutes
 
   const cancelling = React.useRef(new Set<string>())
   const cancel = async (entry: CalendarEntry) => {
@@ -140,34 +194,61 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
   } else {
     body = (
       <>
-        {!day || day.zones.length === 0 ? (
+        {range === 'day' && (!day || day.zones.length === 0) ? (
           <Notice data-testid="club-place-no-zones">
             <p className="max-w-prose">{t('facilities.places.noZones')}</p>
           </Notice>
         ) : null}
-        <DayAxis
-          date={date}
-          timeZone={timeZone}
-          day={day}
-          entries={entries}
-          today={today}
-          nowMinutes={zoneWallTime(new Date(), timeZone).minutes}
-          redacted={redacted}
-          canBook={canBook}
-          onBookHour={(time) => {
-            setSlotKey((current) => current + 1)
-            setSlotPreset(slotPresetAt({ placeId, placeName: name, date, time, day, entries }))
-          }}
-          onEntry={setDetails}
-        />
-        <DayEntries
-          entries={toMove ? entries.filter((entry) => entry.needsReschedule) : entries}
-          filtered={toMove}
-          timeZone={timeZone}
-          placeId={placeId}
-          redacted={redacted}
-          onOpen={setDetails}
-        />
+        {range === 'day' ? (
+          <>
+            <DayAxis
+              date={date}
+              timeZone={timeZone}
+              day={day}
+              entries={entries}
+              today={today}
+              nowMinutes={nowMinutes}
+              redacted={redacted}
+              canBook={canBook}
+              onBookHour={(time) => {
+                bookHour(date, time)
+              }}
+              onEntry={openEntry}
+            />
+            <DayEntries
+              entries={toMove ? entries.filter((entry) => entry.needsReschedule) : entries}
+              filtered={toMove}
+              timeZone={timeZone}
+              placeId={placeId}
+              redacted={redacted}
+              onOpen={openEntry}
+            />
+          </>
+        ) : range === 'week' && axes ? (
+          <WeekAxes
+            days={rangeDays}
+            timeZone={timeZone}
+            today={today}
+            nowMinutes={nowMinutes}
+            redacted={redacted}
+            canBook={canBook}
+            onBookHour={bookHour}
+            onEntry={openEntry}
+            dayHref={dayHref}
+            Link={Link}
+          />
+        ) : (
+          <RangeEntryList
+            days={rangeDays}
+            timeZone={timeZone}
+            placeId={placeId}
+            redacted={redacted}
+            filtered={toMove}
+            onOpen={openEntry}
+            dayHref={dayHref}
+            Link={Link}
+          />
+        )}
       </>
     )
   }
@@ -183,17 +264,30 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
         </h1>
         {place?.parentName ? <p className="text-muted-foreground text-sm break-words">{place.parentName}</p> : null}
         <p className="text-muted-foreground text-sm" aria-live="polite" data-testid="club-place-day-heading">
-          {formatDayHeading(date, locale)}
-          {place ? ` · ${capacityText(t, locale, place.capacityGroups)}` : null}
+          {range === 'day' ? formatDayHeading(date, locale) : null}
+          {place ? `${range === 'day' ? ' · ' : ''}${capacityText(t, locale, place.capacityGroups)}` : null}
         </p>
       </div>
-      <DayChips today={today} date={date} onSelect={goTo} />
+      <CalendarRangeSwitch
+        range={range}
+        anchor={date}
+        today={today}
+        locale={locale}
+        labels={calendarRangeLabels(t, 'facilities.rangeSwitch')}
+        hrefFor={rangeHref}
+        Link={RangeLink}
+        testId="club-place-range"
+      />
+      {range === 'day' ? <DayChips today={today} date={date} onSelect={goTo} /> : null}
       <label htmlFor={filterId} className="flex min-h-11 cursor-pointer items-center gap-2 self-start pr-2">
         <Checkbox
           id={filterId}
           checked={toMove}
           onCheckedChange={(value) => {
-            router.replace(dayHref(date, value === true))
+            const params = new URLSearchParams(searchParams.toString())
+            if (value === true) params.set('view', 'to_move')
+            else params.delete('view')
+            router.replace(`${placeHref(placeId)}?${params.toString()}`)
           }}
           data-testid="club-place-to-move"
         />
@@ -238,8 +332,8 @@ function PlaceDay({ profile, placeId }: { profile: PlacesProfile; placeId: strin
       ) : null}
       {details ? (
         <EntryDetails
-          entry={details}
-          date={date}
+          entry={details.entry}
+          date={details.date}
           timeZone={timeZone}
           placeName={name}
           redacted={redacted}

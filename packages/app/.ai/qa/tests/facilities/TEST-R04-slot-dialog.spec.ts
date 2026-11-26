@@ -97,7 +97,7 @@ test('TEST-R04 slot dialog: rental, collision, non-bookable zone, group event ov
       if (message.type() === 'error' && !message.text().includes('status of 409')) consoleErrors.push(message.text())
     })
     await prepareForAccessibilityScan(page)
-    const dayUrl = `/backend/facilities/calendar?place=${pitch}&date=${saturday}`
+    const dayUrl = `/backend/facilities/calendar?place=${pitch}&range=day&date=${saturday}`
     const dialog = page.getByTestId('facilities-slot-dialog')
     const kind = dialog.getByTestId('facilities-slot-kind')
 

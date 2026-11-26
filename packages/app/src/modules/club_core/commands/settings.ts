@@ -159,6 +159,10 @@ function writeValues(row: ClubSettings, values: ClubSettingsValues): void {
   row.coachMayCancel = values.coachMayCancel
   row.orderSalesDocument = values.orderSalesDocument
   row.formerParticipantRetentionMonths = values.formerParticipantRetentionMonths
+  row.outlineLibraryMaxVisibility = values.outlineLibraryMaxVisibility
+  row.applicationAgeReferenceDay = values.applicationAgeReferenceDay
+  row.applicationAnswerDays = values.applicationAnswerDays
+  row.applicationInformation = values.applicationInformation
   row.updatedAt = new Date()
 }
 
@@ -186,6 +190,13 @@ function restoreSnapshot(row: ClubSettings, before: SettingsSnapshot): void {
     before.formerParticipantRetentionMonths,
     row.formerParticipantRetentionMonths,
   )
+  row.outlineLibraryMaxVisibility = text(before.outlineLibraryMaxVisibility, row.outlineLibraryMaxVisibility)
+  row.applicationAgeReferenceDay = text(before.applicationAgeReferenceDay, row.applicationAgeReferenceDay)
+  row.applicationAnswerDays = integer(before.applicationAnswerDays, row.applicationAnswerDays)
+  if (before.applicationInformation !== undefined) {
+    row.applicationInformation =
+      typeof before.applicationInformation === 'string' ? before.applicationInformation : null
+  }
   if (before.publicSlug !== undefined) row.publicSlug = before.publicSlug
   if (before.publicDescription !== undefined) row.publicDescription = before.publicDescription
   if (before.contactPhone !== undefined) row.contactPhone = before.contactPhone

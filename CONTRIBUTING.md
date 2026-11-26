@@ -15,7 +15,13 @@ corepack enable
 yarn setup          # install, .env, Docker services, generate, migrate, initialize, yarn dev
 ```
 
-`yarn setup` checks every step before it runs it, so you can repeat it at any time. The manual steps and options are in the [README](README.md#getting-started). The repository is a Yarn workspace monorepo: the Open Mercato application lives in `packages/app`, and the shared packages `@vereino/core`, `@vereino/db` and `@vereino/ui` in `packages/core`, `packages/db` and `packages/ui` (see the README's *Monorepo* section for what may import what).
+`yarn setup` checks every step before it runs it, so you can repeat it at any time. When it ends with `yarn dev`, open `http://localhost:3000/login` and sign in with the superadmin e-mail and password that the `initialize` step printed in its *Users created* box (the first page takes a while to compile). The ports `3000`, `5432` (PostgreSQL) and `6379` (Redis) must be free; change `POSTGRES_PORT` and `DATABASE_URL` in `packages/app/.env` when another PostgreSQL already uses `5432`.
+
+**Linux and WSL2: raise the file-watch limits first.** The dev server runs on Turbopack, which needs higher inotify limits than most distributions set. Run `node packages/app/scripts/fix-wsl-inotify.mjs` once before `yarn setup` (it needs no installed dependencies, asks for `sudo` and keeps the limits after a reboot; later it is also `yarn dev:fix-wsl-watchers`). When `yarn dev` cannot raise the limits itself, it warns "continuing with Next.js Webpack", and on webpack the app does not start or `/login` answers 500 (#808); stop it, raise the limits and run `yarn dev` again.
+
+A timed clean-clone run of these steps is recorded in [`docs/ops/clean-clone-setup.md`](docs/ops/clean-clone-setup.md) (ENG-TEST-19).
+
+The manual steps and options are in the [README](README.md#getting-started). The repository is a Yarn workspace monorepo: the Open Mercato application lives in `packages/app`, and the shared packages `@vereino/core`, `@vereino/db` and `@vereino/ui` in `packages/core`, `packages/db` and `packages/ui` (see the README's *Monorepo* section for what may import what).
 
 Recommended VS Code extensions are listed in [`.vscode/extensions.json`](.vscode/extensions.json); VS Code offers to install them when you open the folder.
 

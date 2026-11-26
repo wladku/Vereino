@@ -30,14 +30,16 @@ function monthsBetween(from: string, to: string): number {
   return months(to) - months(from)
 }
 
-/** Switches to the month list and moves forward to the month of `date`. */
+/** Switches to the month list and moves forward to the month of `date` (from the month the address shows, #784). */
 async function showMonthOf(page: Page, date: string): Promise<void> {
   await page.getByTestId('club-calendar-view-month').click()
-  await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-checked', 'true')
+  await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-current', 'page')
   const range = page.getByTestId('club-calendar-range')
-  for (let step = 0; step < monthsBetween(calendarDate(), date); step += 1) {
+  const shownDay = new URL(page.url()).searchParams.get('date') ?? calendarDate()
+  const months = monthsBetween(shownDay, date)
+  for (let step = 0; step < Math.abs(months); step += 1) {
     const shown = String(await range.textContent())
-    await page.getByTestId('club-calendar-next').click()
+    await page.getByTestId(months > 0 ? 'club-calendar-next' : 'club-calendar-previous').click()
     await expect(range).not.toHaveText(shown)
   }
 }
@@ -98,9 +100,9 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     // The week of both sections: the legend lists both once; each card carries its section's marker with the name, in
     // the colour of its legend entry, and the coach's name.
     await page.goto('/club/calendar')
-    // E20-S14 (#493, R01.7): the upcoming list is the default view; the week is the next tab.
-    await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'true')
-    await expect(page.getByTestId('club-calendar-previous')).toHaveCount(0)
+    // REQ-W06 (#784): a phone opens on Day; the upcoming list (#493) is the first tab, the week the third.
+    await expect(page.getByTestId('club-calendar-view-day')).toHaveAttribute('aria-current', 'page')
+    await expect(page.getByTestId('club-calendar-view-upcoming')).toBeVisible()
     await showCalendarWeekOf(page, tuesday)
     const training = page.getByTestId('calendar-item').filter({ hasText: TRAINING })
     const poolClass = page.getByTestId('calendar-item').filter({ hasText: POOL_CLASS })
@@ -136,11 +138,11 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     )
     await expect(page.getByTestId('calendar-legend')).toHaveCount(0)
     await expect(
-      page.getByRole('button', { name: uiText('activities.club.calendar.next', { exact: true }) }),
+      page.getByRole('link', { name: uiText('activities.rangeSwitch.next.week', { exact: true }) }),
     ).toHaveCount(1)
     const emptyWeekLabel = String(await page.getByTestId('club-calendar-range').textContent())
     const emptyNext = page.getByTestId('club-calendar-next')
-    await expect(emptyNext).toHaveAccessibleName(uiText('activities.club.calendar.next', { exact: true }))
+    await expect(emptyNext).toHaveAccessibleName(uiText('activities.rangeSwitch.next.week', { exact: true }))
     await emptyNext.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByTestId('club-calendar-range')).not.toHaveText(emptyWeekLabel)
@@ -166,7 +168,7 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
       page.getByTestId('calendar-item').filter({ hasText: TRAINING }).getByTestId('calendar-item-section'),
     ).toHaveText(ACADEMY)
     await expect(page.getByTestId('club-calendar-next')).toHaveAccessibleName(
-      uiText('activities.club.calendar.nextMonth', { exact: true }),
+      uiText('activities.rangeSwitch.next.month', { exact: true }),
     )
     const monthLabel = String(await page.getByTestId('club-calendar-range').textContent())
     await page.getByTestId('club-calendar-next').click()
@@ -186,19 +188,18 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await page.setViewportSize({ width: 375, height: 812 })
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
 
-    // The switch from the keyboard: the arrow moves from Upcoming to Week and Month, Space selects.
-    await page.reload()
-    // (Whether Radix also selects on the arrow depends on key timing — Playwright's instant press only moves the focus.)
-    await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'true')
-    await page.getByTestId('club-calendar-view-upcoming').focus()
-    await page.keyboard.press('ArrowRight')
+    // The switch from the keyboard: Tab moves from Day to Week and Month, Enter opens the month (#784: links).
+    await page.goto('/club/calendar')
+    await expect(page.getByTestId('club-calendar-view-day')).toHaveAttribute('aria-current', 'page')
+    await page.getByTestId('club-calendar-view-day').focus()
+    await page.keyboard.press('Tab')
     await expect(page.getByTestId('club-calendar-view-week')).toBeFocused()
-    await page.keyboard.press('ArrowRight')
+    await page.keyboard.press('Tab')
     await expect(page.getByTestId('club-calendar-view-month')).toBeFocused()
-    await page.keyboard.press('Space')
-    await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-checked', 'true')
+    await page.keyboard.press('Enter')
+    await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-current', 'page')
     await expect(page.getByTestId('club-calendar-previous')).toHaveAccessibleName(
-      uiText('activities.club.calendar.previousMonth', { exact: true }),
+      uiText('activities.rangeSwitch.previous.month', { exact: true }),
     )
 
     // A link asking for 90 days: the API answers 400 `calendar_range_invalid`, the page reads the first 62 days instead
@@ -218,9 +219,9 @@ test('E06-S18 a guardian on a phone: section legend and markers with the coach, 
     await expect(page.getByTestId('club-calendar-trimmed')).toContainText(/62/)
     await expect(page.getByTestId('calendar-item')).toHaveCount(3)
     await expect(page.getByTestId('calendar-legend').getByTestId('calendar-legend-section')).toHaveText([ACADEMY, POOL])
-    await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'false')
-    await expect(page.getByTestId('club-calendar-view-week')).toHaveAttribute('aria-checked', 'false')
-    await expect(page.getByTestId('club-calendar-view-month')).toHaveAttribute('aria-checked', 'false')
+    for (const view of ['upcoming', 'day', 'week', 'month']) {
+      await expect(page.getByTestId(`club-calendar-view-${view}`)).not.toHaveAttribute('aria-current', 'page')
+    }
     page.off('response', onResponse)
     expect(reads).toEqual(
       expect.arrayContaining([

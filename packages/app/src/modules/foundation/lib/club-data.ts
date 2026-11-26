@@ -24,6 +24,15 @@ export function clubDeleteContributorToken(module: string): string {
 }
 
 /**
+ * DI token of a module's deletion of a club's rows held outside the club's tenant, e.g.
+ * `club_core.clubDeleteBeyondTenant.training` (the shared outline library, training outlines spec *Events* → club
+ * offboarding; #685). Optional: `club_core delete-club` runs it in its own transaction when it is registered.
+ */
+export function clubDeleteBeyondTenantToken(module: string): string {
+  return `club_core.clubDeleteBeyondTenant.${module}`
+}
+
+/**
  * Declares a module's club tables. Throws on a malformed module id or table name, an empty list or a table listed
  * twice, so a typo fails when the module loads instead of leaving a table behind at deletion.
  */

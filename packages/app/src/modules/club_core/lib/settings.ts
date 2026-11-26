@@ -32,6 +32,39 @@ export const OWN_ACCOUNT_MIN_AGE_RANGE = { min: 13, max: 18 } as const
  */
 export const FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE = { min: 1, max: 120 } as const
 
+/** The days a section coordinator has to answer an application (sign-up form spec REQ-J02, B-J2): 1–60, default 7. */
+export const APPLICATION_ANSWER_DAYS_RANGE = { min: 1, max: 60 } as const
+
+/** The longest "Information for applicants" text (REQ-J02, B-J2; Markdown-light paragraphs and lists). */
+export const APPLICATION_INFORMATION_MAX_LENGTH = 6000
+
+/** The days of each month a reference day may name; 29 February is refused because most years lack it. */
+const MONTH_DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const
+
+/** A month and a day as `MM-DD`, or null when the month has no such day (29 February included). */
+export function monthDayOf(month: number, day: number): string | null {
+  if (!Number.isInteger(month) || !Number.isInteger(day) || month < 1 || month > 12) return null
+  if (day < 1 || day > MONTH_DAYS[month - 1]) return null
+  return `${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
+/**
+ * The month and day of an `MM-DD` value — the club's age reference day of applications (sign-up form spec DD-J03,
+ * REQ-J02; default `09-01`) — or null when it is not a day every year has.
+ */
+export function parseMonthDay(value: string): { month: number; day: number } | null {
+  const match = /^(\d{2})-(\d{2})$/.exec(value)
+  if (!match) return null
+  const month = Number(match[1])
+  const day = Number(match[2])
+  return monthDayOf(month, day) === null ? null : { month, day }
+}
+
+/** True for an `MM-DD` value every year has. */
+export function isMonthDay(value: string): boolean {
+  return parseMonthDay(value) !== null
+}
+
 export type ClubSettingsRuleProblem =
   | { code: 'timezone_unknown'; field: 'timezone' }
   | { code: 'account_age_threshold_out_of_range'; field: 'ownAccountMinAge' }
@@ -73,6 +106,13 @@ export type ActivityType = (typeof ACTIVITY_TYPES)[number]
 export const DECLARATION_KINDS = ['absence_only', 'confirm'] as const
 export type DeclarationKind = (typeof DECLARATION_KINDS)[number]
 export type DeclarationKinds = Record<ActivityType, DeclarationKind>
+
+/**
+ * The widest level the club's coaches may publish training outlines at (training outlines spec B-O1, BR-O4; #685):
+ * `club` (never published), `clubs` (clubs on Vereino) or `public`. A new club starts at `clubs` (D-038 §4).
+ */
+export const OUTLINE_LIBRARY_LEVELS = ['club', 'clubs', 'public'] as const
+export type OutlineLibraryLevel = (typeof OUTLINE_LIBRARY_LEVELS)[number]
 
 /** Who pays the online payment commission (R13). */
 export const ONLINE_FEE_MODES = ['club_pays', 'payer_pays'] as const
@@ -161,6 +201,22 @@ export const clubSettingFieldSchemas = {
     .int()
     .min(FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE.min)
     .max(FORMER_PARTICIPANT_RETENTION_MONTHS_RANGE.max),
+  /** The widest training outline library level (B-O1, BR-O4; #685). */
+  outlineLibraryMaxVisibility: z.enum(OUTLINE_LIBRARY_LEVELS),
+  /** The day (`MM-DD`) whose latest occurrence fixes an applicant's age (sign-up form spec DD-J03, REQ-J02). */
+  applicationAgeReferenceDay: z.string().refine(isMonthDay, { message: 'Expected a day of the year as MM-DD' }),
+  /** Days after confirmation before an application counts as overdue (REQ-J02; 1–60). */
+  applicationAnswerDays: z.number().int().min(APPLICATION_ANSWER_DAYS_RANGE.min).max(APPLICATION_ANSWER_DAYS_RANGE.max),
+  /**
+   * The club's "Information for applicants" (REQ-J02, B-J2; not a consent text); null or empty uses the built-in
+   * text of the sign-up form.
+   */
+  applicationInformation: z
+    .string()
+    .trim()
+    .max(APPLICATION_INFORMATION_MAX_LENGTH)
+    .transform((value) => (value === '' ? null : value))
+    .nullable(),
 } as const
 
 export const clubSettingsSchema = z.object(clubSettingFieldSchemas)
@@ -194,6 +250,10 @@ export const CLUB_SETTINGS_DEFAULTS: Readonly<ClubSettingsValues> = {
   coachMayCancel: true,
   orderSalesDocument: 'none',
   formerParticipantRetentionMonths: 12,
+  outlineLibraryMaxVisibility: 'clubs',
+  applicationAgeReferenceDay: '09-01',
+  applicationAnswerDays: 7,
+  applicationInformation: null,
 }
 
 export const CLUB_SETTING_KEYS = Object.keys(clubSettingFieldSchemas) as ClubSettingKey[]

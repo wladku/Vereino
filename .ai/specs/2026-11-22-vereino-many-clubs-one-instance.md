@@ -119,7 +119,7 @@ joins, and every guardian who opens a link from an e-mail.
 | Term / invariant | Precise meaning or rule | Source of truth | Failure behavior |
 |---|---|---|---|
 | Club | One tenant with exactly one organization and one `club_core_club_settings` row (DD-M01) | `directory`, `club_core` | `create-club` refuses a second organization in a club's tenant |
-| Club address | `https://<public_slug>.<VEREINO_CLUB_DOMAIN>`; the slug is lower-case, unique across the instance and not one of the reserved labels (`www`, `app`, `api`, `admin`, `mail`, `status`, `c1`…`c9`) | `club_core_club_settings.public_slug` | A reserved or taken slug is rejected at create and on edit (400 `club_core.slug_reserved`) |
+| Club address | `https://<public_slug>.<VEREINO_CLUB_DOMAIN>`; the slug is lower-case, unique across the instance and not one of the reserved labels (`www`, `app`, `api`, `admin`, `mail`, `status`, `demo`, `blog`, `c1`…`c9`) | `club_core_club_settings.public_slug` | A reserved or taken slug is rejected at create and on edit (400 `club_core.slug_reserved`) |
 | Club base URL | The club address when `VEREINO_CLUB_DOMAIN` is set, else `APP_URL` (one-club instances, tests) | `foundation` URL helper | E-mail rendering fails closed in production when neither resolves |
 | Job type | `<module>:<name>` of a registered per-club worker, for example `payments:generate-charges` | the module's job declaration | Unknown key → sweep logs and skips |
 | Job state | `foundation_club_jobs` row per (club, job type): `next_due_at`, `last_started_at`, `last_finished_at`, `lease_until`, `last_error` | `foundation` | A crashed run leaves `lease_until`; the next sweep after it expires retries |

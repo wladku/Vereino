@@ -49,6 +49,9 @@ known is an **open item**, never assumed (#468 negative case).
 - **Open Mercato** is installed software running inside Railway; its vendor receives no data.
 - No analytics, error-tracking, tracing or log vendor is used in 1.0 (ENG-Q-05, S15.3, S9.9). Adding one is a spec
   change and a new row here before it receives data.
+- No edge proxy (CDN, WAF or DDoS service) sits in front of `vereino.org` (D-043, #739). One terminates TLS and sees
+  every request, so when a trigger of D-043 fires it becomes the next row here, with its DPA signed and the clubs told,
+  before it carries real traffic ([`edge-proxy.md`](../ops/edge-proxy.md) → *Make it a sub-processor first*).
 - Social sign-in (`.ai/specs/2026-10-27-vereino-social-sign-in.md`) is not enabled in 1.0; each identity provider
   becomes a row here when it is.
 

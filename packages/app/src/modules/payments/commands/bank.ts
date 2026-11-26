@@ -31,7 +31,7 @@ import { CrudHttpError, isCrudHttpError } from '@open-mercato/shared/lib/crud/er
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import type { z } from 'zod'
 import type { Scope } from '@vereino/core'
-import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
+import { authorizeScoped, holdClubImportSlot, trustedScopeOf, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { paymentsErrors } from '../api/errors'
 import { BankImport, BankTransaction, Charge, PaymentsSettings, Payment } from '../data/entities'
 import { lockBankStatements } from '../data/queries'
@@ -242,6 +242,8 @@ const createImportCommand: CommandHandler<Record<string, unknown>, BankImportRes
       persistLink: async (tx: EntityManager, attachmentId: string) => {
         const authorized = await authorizeScoped(spec, fields, ctx, tx)
         const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
+        // One running import per club (many-clubs spec DD-M10, #633): 409 `import_running` instead of waiting.
+        await holdClubImportSlot(tx, scope.organizationId)
         await lockBankStatements(tx, scope.organizationId)
         const settings = await tx.findOne(PaymentsSettings, { ...scope, deletedAt: null })
         const autoBook = settings?.autoBookBankMatches ?? true

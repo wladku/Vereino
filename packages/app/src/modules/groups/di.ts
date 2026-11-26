@@ -3,6 +3,7 @@ import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { audienceProviderToken } from '@vereino/core'
 import { groupAudienceProvider, sectionAudienceProvider } from './services/audience'
+import { GROUPS_APPLICATION_TARGETS, createApplicationTargets } from './services/application-targets'
 import { GROUPS_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { GROUPS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { createGroupDirectory } from './services/group-directory'
@@ -57,6 +58,11 @@ export const GROUPS_DIRECTORY = 'groups.directory' as const
  * `people.dataExport.groups` (person data export spec DD-X01, #527): the subject's memberships for the art. 15/20 file,
  * which `people` reads with `hasRegistration` (`people/services/data-export.ts`). It reads with the caller's
  * EntityManager; the container gives the club's day for each membership's status.
+ *
+ * `groups.applicationTargets` (sign-up form spec DD-J05, #798): the groups of a section with their age fit rule, limit
+ * of places and places taken on a date, for the section sign-up form (`enrolment`), which reads it with
+ * `hasRegistration` (`services/application-targets.ts`). With `lockGroupId` and the caller's `em` it row-locks that
+ * group first, inside the caller's transaction (DD-J10a).
  */
 export function register(container: AppContainer) {
   registerClubDataContributor(container, 'groups', GROUPS_CLUB_TABLES)
@@ -67,6 +73,7 @@ export function register(container: AppContainer) {
     [GROUPS_PERSON_FILTER]: asValue(personFilter),
     [GROUPS_DEPARTURE_CONTRIBUTOR]: asValue(departureContribution),
     [GROUPS_PUBLIC_CATALOG]: asFunction(() => createPublicCatalog(container)).scoped(),
+    [GROUPS_APPLICATION_TARGETS]: asFunction(() => createApplicationTargets(container)).scoped(),
     [GROUPS_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     [audienceProviderToken('section')]: asValue(sectionAudienceProvider),
     [audienceProviderToken('group')]: asValue(groupAudienceProvider),

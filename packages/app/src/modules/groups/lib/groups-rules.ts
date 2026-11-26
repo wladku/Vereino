@@ -3,13 +3,26 @@
 // parameter (engineering standards S3.5); nothing here reads the database.
 import {
   addCalendarDays,
-  ageOn,
   endsBefore,
   isActiveAt,
   isInvertedPeriod,
   periodsOverlap,
   type CalendarDate,
   type Validity,
+} from '@vereino/core'
+import type { AgeCategoryRange, BirthYears } from '@vereino/core'
+
+// The age "fits" rule moved to `@vereino/core` (sign-up form spec DD-J04); re-exported so callers keep their imports.
+export {
+  birthYearsOf,
+  fitRuleOf,
+  fitsAgeCategory,
+  fitsAgeRange,
+  fitsRule,
+  referenceYear,
+  type AgeCategoryRange,
+  type BirthYears,
+  type FitRule,
 } from '@vereino/core'
 
 /** `team` (e.g. Żaki) or `class_group` (e.g. "Basen — początkujący"); both kinds follow the same rules. */
@@ -49,6 +62,37 @@ export function parseAgeInput(value: unknown): number | null | 'invalid' {
   return /^\d{1,2}$/.test(textValue) ? Number(textValue) : 'invalid'
 }
 
+/** The bounds of a group's limit of participant places (sign-up form spec, `groups_groups.places_limit`, REQ-J01). */
+export const GROUP_PLACES_LIMIT_MIN = 1
+export const GROUP_PLACES_LIMIT_MAX = 500
+
+/**
+ * A limit of places as typed in a form (REQ-J01): blank → null (no limit), a whole number within
+ * `GROUP_PLACES_LIMIT_MIN`…`GROUP_PLACES_LIMIT_MAX` → the number, anything else → `invalid`.
+ */
+export function parsePlacesLimitInput(value: unknown): number | null | 'invalid' {
+  if (value === null || value === undefined) return null
+  const textValue = typeof value === 'number' ? String(value) : typeof value === 'string' ? value.trim() : null
+  if (textValue === null) return 'invalid'
+  if (textValue === '') return null
+  if (!/^\d{1,3}$/.test(textValue)) return 'invalid'
+  const limit = Number(textValue)
+  return limit >= GROUP_PLACES_LIMIT_MIN && limit <= GROUP_PLACES_LIMIT_MAX ? limit : 'invalid'
+}
+
+/**
+ * The roster's occupancy (REQ-J01, B-J2): "18 / 18" with a limit, "18" without one. The limit binds applications
+ * only, so a roster above it shows "19 / 18" (DD-J10a).
+ */
+export function placesText(occupied: number, placesLimit: number | null): string {
+  return placesLimit === null ? String(occupied) : `${String(occupied)} / ${String(placesLimit)}`
+}
+
+/** True when the group has a limit and `occupied` reached it (BR-J4). */
+export function isGroupFull(occupied: number, placesLimit: number | null): boolean {
+  return placesLimit !== null && occupied >= placesLimit
+}
+
 /** The fields only a `team` may carry: the PZPN age category (a `dictionaries` entry), the league and the season. */
 export const TEAM_FIELDS = ['ageCategoryEntryId', 'league', 'seasonId'] as const
 export type TeamField = (typeof TEAM_FIELDS)[number]
@@ -77,12 +121,6 @@ export function needsMatchGuard(from: GroupKind, to: GroupKind): boolean {
 
 /** The key of the club dictionary (`dictionaries` module) that holds the age categories of `team` groups. */
 export const AGE_CATEGORY_DICTIONARY_KEY = 'groups.age_categories'
-
-/**
- * The PZPN "U" range of an age category (people life-cycle spec REQ-L16, DD-L17; #384): a child belongs to
- * "U{from}–U{to}" in a reference year R when `R − birth year + 1` lies in the range. `uTo` null is open (Senior).
- */
-export type AgeCategoryRange = { readonly uFrom: number; readonly uTo: number | null }
 
 /** The bounds of a "U" year, as typed by the club administrator. */
 export const AGE_U_MIN = 1
@@ -122,27 +160,6 @@ export function parseUInput(value: string): number | null | 'invalid' {
 /** True when both "U" bounds are set and "U od" is above "U do" (422 `age_range_inverted`). */
 export function ageCategoryRangeInverted(range: AgeCategoryRange): boolean {
   return range.uTo !== null && range.uFrom > range.uTo
-}
-
-/**
- * The reference year of the birth-year rule (Q-L25, confirmed 2026-11-19): the calendar year in which the season
- * starts (2026/27 → 2026); without a season, the year of `fallbackDate` (the move date or today).
- */
-export function referenceYear(seasonStartsOn: CalendarDate | null, fallbackDate: CalendarDate): number {
-  return Number((seasonStartsOn ?? fallbackDate).slice(0, 4))
-}
-
-/** The birth years of a range in reference year R: `R − u_to + 1` … `R − u_from + 1`; `from` null when open. */
-export type BirthYears = { readonly from: number | null; readonly to: number }
-
-export function birthYearsOf(range: AgeCategoryRange, year: number): BirthYears {
-  return { from: range.uTo === null ? null : year - range.uTo + 1, to: year - range.uFrom + 1 }
-}
-
-/** Whether a child born in `birthYear` belongs to the range in reference year R (DD-L17: by birth year, not by day). */
-export function fitsAgeCategory(birthYear: number, range: AgeCategoryRange, year: number): boolean {
-  const u = year - birthYear + 1
-  return u >= range.uFrom && (range.uTo === null || u <= range.uTo)
 }
 
 /**
@@ -343,59 +360,6 @@ export type MoveOutcome = (typeof MOVE_OUTCOMES)[number]
 export function moveOutcome(plan: MovePlan, alreadyMember: boolean): MoveOutcome {
   if (!plan.ok) return 'skip_not_active'
   return alreadyMember ? 'skip_already_member' : 'move'
-}
-
-/**
- * The age-fit rule of the roster's **Fits {group}** filter (REQ-L15): a child fits the target group when their age in
- * completed years on the move date lies within the group's `age_from`–`age_to` (either bound may be open). Null when
- * it cannot be told: the group has no age range, or the child has no birth date.
- */
-export function fitsAgeRange(
-  birthDate: CalendarDate | null,
-  date: CalendarDate,
-  range: { ageFrom: number | null; ageTo: number | null },
-): boolean | null {
-  if (range.ageFrom === null && range.ageTo === null) return null
-  if (!birthDate) return null
-  const age = ageOn(birthDate, date)
-  return (range.ageFrom === null || age >= range.ageFrom) && (range.ageTo === null || age <= range.ageTo)
-}
-
-/**
- * The rule the roster's **Fits {group}** filter applies (REQ-L15 with REQ-L16, DD-L17, AC-L16): a team whose age
- * category has a "U" range fits by birth year in the reference year R (`birth_years`, with the birth years shown on
- * the chip); any other group fits by age on the move date within its `age_from`–`age_to` (`age`). Null when the group
- * has neither.
- */
-export type FitRule =
-  | {
-      kind: 'birth_years'
-      uFrom: number
-      uTo: number | null
-      referenceYear: number
-      from: number | null
-      to: number
-    }
-  | { kind: 'age'; ageFrom: number | null; ageTo: number | null }
-
-export function fitRuleOf(
-  category: AgeCategoryRange | null,
-  year: number,
-  ages: { ageFrom: number | null; ageTo: number | null },
-): FitRule | null {
-  if (category) {
-    const { uFrom, uTo } = category
-    return { kind: 'birth_years', uFrom, uTo, referenceYear: year, ...birthYearsOf(category, year) }
-  }
-  if (ages.ageFrom === null && ages.ageTo === null) return null
-  return { kind: 'age', ageFrom: ages.ageFrom, ageTo: ages.ageTo }
-}
-
-/** Whether a child fits the target by `rule` on the move date; null without a rule or a birth date. */
-export function fitsRule(birthDate: CalendarDate | null, date: CalendarDate, rule: FitRule | null): boolean | null {
-  if (!rule || !birthDate) return null
-  if (rule.kind === 'age') return fitsAgeRange(birthDate, date, rule)
-  return fitsAgeCategory(Number(birthDate.slice(0, 4)), rule, rule.referenceYear)
 }
 
 /**

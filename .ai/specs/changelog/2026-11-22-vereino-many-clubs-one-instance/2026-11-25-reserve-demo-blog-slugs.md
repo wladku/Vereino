@@ -1,0 +1,1 @@
+| 2026-11-25 | Reserved club slugs: `demo` and `blog` join the reserved labels (owner, 2026-11-25), next to `www` and `app`, which were already reserved; the product keeps those hosts of `vereino.org` for itself. No club on `main` seeds or uses either slug |

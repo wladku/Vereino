@@ -1,0 +1,1 @@
+| 2026-11-26 | E25-S02 (#736, PR #805): the owner answered Q-2F01…Q-2F05 — Q-2F01 refuse password sign-in for a Google-linked required user; Q-2F02 the platform super-admin is challenged too (not exempt; REQ-2F03, actors, data flow, TEST-2F01 item 9, AC-2F01, risks and fixtures updated); Q-2F03, Q-2F04, Q-2F05 accepted as proposed. Status set to `Ready for implementation` |

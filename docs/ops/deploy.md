@@ -10,7 +10,8 @@ club together: [Production release](#production-release) is the process that kee
 [checklist](#production-release-checklist) is what a maintainer runs for each release.
 
 Security headers (E18-S02), nightly off-site backups and the restore drill (E18-S03, [`backups.md`](backups.md)) and
-uptime monitoring and alerts (E18-S04, [`monitoring.md`](monitoring.md)) have their own runbooks.
+uptime monitoring and alerts (E18-S04, [`monitoring.md`](monitoring.md)) and the edge proxy that D-043 adds on a
+trigger ([`edge-proxy.md`](edge-proxy.md)) have their own runbooks.
 
 ## Environments
 
@@ -64,8 +65,11 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `SYSTEM_EMAIL_PROVIDER`, `RESEND_API_KEY`, `NOTIFICATIONS_EMAIL_FROM` | outbound e-mail (S12.6) |
 | `OM_ENABLE_ENTERPRISE_MODULES=false` | no effect since the enterprise package was removed (ADR-023, #466); keep it false so a reinstalled package stays off |
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
-| `OM_INIT_ADMIN_PASSWORD` | only for the one-time initialisation below; remove it afterwards |
+| `OM_PASSWORD_MIN_LENGTH=12`, `OM_PASSWORD_REQUIRE_DIGIT=false`, `OM_PASSWORD_REQUIRE_UPPERCASE=false`, `OM_PASSWORD_REQUIRE_SPECIAL=false` | the password policy (#747, see *Password policy* below); app and worker. Unset, the platform default applies: 6 characters with a digit, an upper-case letter and a special character |
+| `OM_INIT_SUPERADMIN_EMAIL`, `OM_INIT_SUPERADMIN_PASSWORD`, `OM_INIT_ADMIN_EMAIL`, `OM_INIT_EMPLOYEE_EMAIL` | only for the one-time initialisation below; remove them afterwards. Unset, `yarn initialize` creates a `superadmin` account at the platform's demo domain `acme.com` with the password `secret` |
 | `VEREINO_CLUB_DOMAIN` | optional; the club domain of an instance with many clubs (see *Club addresses* below). Unset: one club per instance |
+| `RATE_LIMIT_STRATEGY=redis` | the app's request limits (per route, per club) count in Redis, so every app replica shares them; with the default `memory` each process counts alone (many-clubs spec DD-M10, #633) |
+| `VEREINO_CLUB_RATE_LIMIT_POINTS`, `VEREINO_CLUB_RATE_LIMIT_DURATION` | optional; each club's budget of authenticated API requests, default 600 per 60 s; `0` points switch it off. Tune from the capacity report ([`capacity.md`](capacity.md)) |
 | `VEREINO_HOME_CLUB_SLUG` | **deprecated**; the public slug of the one club of an instance without `VEREINO_CLUB_DOMAIN`, which `/` leads a guest to. Ignored once `VEREINO_CLUB_DOMAIN` is set; kept as the single-club fallback |
 | `VEREINO_INSTANCE_ID` | optional; the id of this deployment that Vereino Enterprise licence keys are bound to (one for the shared cloud, its own for each dedicated instance). See *Enterprise licence keys* below |
 | `VEREINO_LICENCE_KEYS`, `VEREINO_LICENCE_KEYS_FILE` | optional, sealed; the installed Enterprise licence keys. Unset: every Enterprise feature is off |
@@ -80,7 +84,9 @@ table in the same pull request.
 ## Rate limits
 
 Railway's edge has no configurable rate limiting, so every limit is the app's (#738; inventory of the routes and their
-limits: `docs/compliance/asvs-checklist.md` → *Sessionless route inventory*). The platform limiter keys a client by its
+limits: `docs/compliance/asvs-checklist.md` → *Sessionless route inventory*). There is no edge proxy in front of the
+app until a trigger of D-043 fires; an attack the app's limits cannot absorb follows [`edge-proxy.md`](edge-proxy.md),
+which also says how to measure the depth below again behind a proxy. The platform limiter keys a client by its
 address, which it reads from `X-Forwarded-For` only as deep as `RATE_LIMIT_TRUST_PROXY_DEPTH` allows: with `0` (the
 default) it trusts no header and every client falls into one shared counter.
 
@@ -258,12 +264,60 @@ with many clubs it costs tens of thousands of queries per deploy. The pre-deploy
 The start and pre-deploy commands never initialise a database. On a new, empty database:
 
 1. Deploy once; the pre-deploy command creates the schema through the migrations.
-2. From a Railway shell on the app service (`railway ssh` or the service's shell), with `OM_INIT_ADMIN_PASSWORD` set,
-   run `yarn initialize --no-examples` once. It refuses to run on a database that already has users.
-3. Remove `OM_INIT_ADMIN_PASSWORD`. Create each club, starting with the demo club, with `yarn mercato club_core
-   create-club` ([`clubs.md`](clubs.md)); it runs the per-club setup below itself.
-4. On `production`: run the [lock-down checklist](#lock-down-production) and record the pass before the first real
+2. Prepare the maintainers' accounts. `yarn initialize` is the platform's `mercato init`: without the variables below
+   it creates the super-administrator `superadmin` at the platform's demo domain `acme.com` with the password `secret`,
+   skipping the password policy for it, and it always creates two more accounts, `admin` and `employee` at the same
+   demo domain (#747, ASVS V6.3.2;
+   checked on a throwaway database 2026-11-25). On the app service set, as sealed variables:
+   - `OM_INIT_SUPERADMIN_EMAIL`: the address of the maintainer who signs in as super-administrator (a mailbox the
+     maintainers control; never an `@acme.com` or a made-up address);
+   - `OM_INIT_SUPERADMIN_PASSWORD`: a generated password (`openssl rand -base64 24`), stored in the team password
+     manager first;
+   - `OM_INIT_ADMIN_EMAIL` and `OM_INIT_EMPLOYEE_EMAIL`: two more addresses of the maintainers' own mailbox (for
+     example plus-addresses of it), so that the two extra accounts never carry an `@acme.com` address.
+
+   Leave `OM_INIT_ADMIN_PASSWORD` and `OM_INIT_EMPLOYEE_PASSWORD` unset: with `NODE_ENV=production` the platform gives
+   the two extra accounts random passwords.
+3. From a Railway shell on the app service (`railway ssh` or the service's shell), run `yarn initialize --no-examples`
+   once. It refuses to run on a database that already has users. It prints the three accounts with their passwords
+   in a closing box: copy nothing from it, and clear the terminal afterwards. Never pass `--password=` on the command
+   line instead of the variable (it lands in the shell history).
+4. Remove the four `OM_INIT_*` variables. Sign in as the super-administrator, open **Settings → Users** and delete the
+   two extra accounts of step 2; then run the [default account check](#default-account-check).
+5. Create each club, starting with the demo club, with `yarn mercato club_core create-club` ([`clubs.md`](clubs.md));
+   it runs the per-club setup below itself.
+6. On `production`: run the [lock-down checklist](#lock-down-production) and record the pass before the first real
    club data is entered.
+
+### Default account check
+
+Run it on every environment after its first deploy, and on staging and production once for the environments that were
+initialised before #747. From a Railway shell on the app service:
+
+```bash
+yarn mercato auth list-users | grep -iE '@acme\.com|^[^|]*\| *(admin|employee)@'
+```
+
+The command lists every user with its e-mail (decrypted; it needs the environment's
+`TENANT_DATA_ENCRYPTION_FALLBACK_KEY`, which the app service has); the filter prints only the platform's default
+accounts. It
+must print nothing. For each line it prints: delete the account in **Settings → Users** when nobody uses it; otherwise
+set a generated password at once (`yarn mercato auth set-password --email <e-mail> --password "$(openssl rand -base64
+24)"`; the command echoes its arguments, password included, so clear the terminal and keep nothing; the owner then
+sets a password of their own through the sign-in page's password reset) and move the owner to a personal account. Record the result, without e-mails of real people, in the run log of
+the deploy or the lock-down pass.
+
+### Password policy
+
+The platform checks a new password against four variables (`OM_PASSWORD_*`, table above) on the server: the user
+create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
+the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment. Two
+limits remain (`docs/compliance/asvs-requirements.md`, V6.2.x):
+
+- The platform's browser forms (change password, password reset, user create and edit) read the policy in the browser,
+  where these server variables are not set, so they keep showing and checking the platform default (a digit, an
+  upper-case letter and a special character) until the app-owned check of #779 replaces them.
+- No check against common or breached passwords or against club words exists yet (#779).
 
 ## After every deploy
 

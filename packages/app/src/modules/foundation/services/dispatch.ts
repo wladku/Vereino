@@ -13,14 +13,17 @@ import type { ActingRole, AudienceReason, AudienceSpec, Recipient, RecipientChan
 import { foundationErrors } from '../api/errors'
 import { Delivery, Dispatch } from '../data/entities'
 import {
+  clubEmailBacklogUntil,
   deliveryCountsOf,
   lockDispatchKey,
   markPublished,
+  paceEmailDeliveries,
   queuedDeliveriesOf,
   type DispatchScope,
 } from '../data/queries'
 import {
   chunk,
+  paceClubEmails,
   planAddressDeliveries,
   planDeliveries,
   type BareAddress,
@@ -185,6 +188,39 @@ export async function enqueueDispatch(
   return { dispatchId: dispatch.id, created: true }
 }
 
+/** A paced job waits this much past its row's due time, so a database clock a little behind never finds it early. */
+const PACED_JOB_SLACK_MS = 250
+
+/**
+ * Enqueues one job per e-mail delivery of a club at the club's pace (many-clubs spec DD-M10, #633): the send times
+ * follow the club's queued mail (`paceClubEmails`, 2 per second per club) and become each job's delay; on `publish` they
+ * are also written on the rows, so the sweeper does not republish them early. The sweeper's republish (`writeRows`
+ * false) only spreads its jobs: the rows stay due for the jobs already queued. Another club's mail is enqueued without
+ * waiting behind them.
+ */
+export async function enqueuePacedEmails(
+  em: EntityManager,
+  queue: Queue<DispatchJob>,
+  scope: DispatchScope,
+  deliveryIds: readonly string[],
+  writeRows = true,
+): Promise<void> {
+  if (deliveryIds.length === 0) return
+  const delays = paceClubEmails(deliveryIds.length, Date.now(), await clubEmailBacklogUntil(em, scope))
+  const rows = deliveryIds.map((id, index) => ({ id, delayMs: delays[index] }))
+  if (writeRows) await paceEmailDeliveries(em, scope, rows)
+  for (const batch of chunk(rows, 100)) {
+    await Promise.all(
+      batch.map((row) =>
+        queue.enqueue(
+          { deliveryId: row.id, ...scope },
+          row.delayMs > 0 ? { delayMs: row.delayMs + PACED_JOB_SLACK_MS } : undefined,
+        ),
+      ),
+    )
+  }
+}
+
 /**
  * Enqueues the jobs of a committed dispatch: one per queued e-mail delivery and one for its in-app deliveries. A
  * failure is logged and left to the sweeper (`foundation:dispatch-sweep`), never thrown into the caller's response.
@@ -199,9 +235,7 @@ export async function publishDispatch(
     const { emailIds, hasInApp } = await queuedDeliveriesOf(em, scope, dispatchId)
     const queue = getDispatchQueue()
     if (hasInApp) await queue.enqueue({ dispatchId, ...scope })
-    for (const batch of chunk(emailIds, 100)) {
-      await Promise.all(batch.map((deliveryId) => queue.enqueue({ deliveryId, ...scope })))
-    }
+    await enqueuePacedEmails(em, queue, scope, emailIds)
     await markPublished(em, scope, dispatchId)
   } catch (error: unknown) {
     logger.warn('Dispatch publish failed; the sweeper will resume it', { dispatchId, err: error })

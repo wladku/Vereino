@@ -24,6 +24,7 @@ import {
   COACH_SETTLEMENT_MODELS,
   ONLINE_FEE_MODES,
   ORDER_SALES_DOCUMENTS,
+  OUTLINE_LIBRARY_LEVELS,
   declarationKindsPatchSchema,
 } from '../../lib/settings'
 import { CONSENT_TEXT_KEYS, parseConsentTexts } from '../../lib/consent-texts'
@@ -158,6 +159,20 @@ const settingsResponseSchema = z.object({
     .number()
     .int()
     .describe("Months without membership after which a former participant's data are anonymised (1–120)"),
+  outlineLibraryMaxVisibility: z
+    .enum(OUTLINE_LIBRARY_LEVELS)
+    .describe('The widest level coaches may publish training outlines at: club (never), clubs on Vereino, public'),
+  applicationAgeReferenceDay: z
+    .string()
+    .describe("`MM-DD`: an applicant's age is counted on the latest occurrence of this day on or before 60 days ahead"),
+  applicationAnswerDays: z
+    .number()
+    .int()
+    .describe('Days after confirmation before a section application counts as overdue (1–60)'),
+  applicationInformation: z
+    .string()
+    .nullable()
+    .describe('The information for applicants of the sign-up form (≤ 6000); null uses the built-in text'),
   publicSlug: z.string().nullable().describe('Globally unique slug of `/p/{publicSlug}`'),
   publicDescription: z.string().nullable(),
   contactPhone: z.string().nullable(),
@@ -208,7 +223,7 @@ export const openApi: OpenApiRouteDoc = {
     PUT: {
       summary: 'Update the club settings',
       description:
-        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 and `formerParticipantRetentionMonths` 1–120 (422 with a field error otherwise); `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them), `accentColor` (the club colour, a hex colour such as `#1b8f3a` or `#fd0`, stored as `#rrggbb`; blank or null restores the default) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. `consentTexts` (`{ <key>: string }`, at most 1000 characters each) sets the club consent texts; an empty string restores the built-in text, and a changed text keeps every consent given earlier valid (it reads "given to an earlier wording"). Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
+        'Partial update by the club administrator; `timezone` must be an IANA zone and `ownAccountMinAge` 13–18 and `formerParticipantRetentionMonths` 1–120 (422 with a field error otherwise); `outlineLibraryMaxVisibility` (`club`, `clubs` or `public`) caps the training outline library, and lowering it withdraws the club’s published outlines above it; `clubName` renames the platform organization of the club; `declarationKinds` may name a subset of the activity types, `shortName: null` clears the short name and `orderSalesDocument` accepts only `none` in 1.0. `publicSlug` (lower-case letters, digits and single hyphens, 3–60 characters; globally unique), `publicDescription`, `contactPhone`, `rulesUrl` and `privacyPolicyUrl` (absolute http(s) URLs of the footer links; blank or null clears them), `accentColor` (the club colour, a hex colour such as `#1b8f3a` or `#fd0`, stored as `#rrggbb`; blank or null restores the default) and a partial `publication` (`{ enabled?, blocks?: { <block>: boolean } }`, which also needs `club_core.publication.manage`) configure the public page. `consentTexts` (`{ <key>: string }`, at most 1000 characters each) sets the club consent texts; an empty string restores the built-in text, and a changed text keeps every consent given earlier valid (it reads "given to an earlier wording"). Send the lock token in the platform optimistic-lock header once the settings exist (the read returns `updatedAt`); without it the save answers 400 `lock_token_required` unless it is the first one.',
       requestBody: {
         contentType: 'application/json',
         schema: clubSettingsUpdateSchema.extend({ clubName: clubNameSchema.optional() }),

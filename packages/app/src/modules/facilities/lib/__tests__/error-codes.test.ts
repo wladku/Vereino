@@ -47,6 +47,7 @@ describe('facilities error codes', () => {
       'public_place_not_found',
       'public_places_disabled',
       'public_schedule_month_invalid',
+      'public_schedule_range_invalid',
       'slot_unavailable',
       'requests_not_accepted',
       'request_zone_invalid',

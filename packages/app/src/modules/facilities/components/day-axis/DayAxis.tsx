@@ -127,6 +127,29 @@ export type DayAxisProps = {
    * dnia" gives every entry the same action as a button.
    */
   onEntry?: (entry: CalendarEntry) => void
+  /** One hour scale shared by a week's seven axes (DD-W06); without it the day's own. */
+  bounds?: Span
+  /** The colour legend above the axis; a week shows it once above its seven axes. */
+  legend?: boolean
+}
+
+/** The opening windows of a day as minutes; null = no limit. */
+function openingSpans(day: CalendarDay | null): Span[] | null {
+  return day?.opening ? day.opening.map((window) => ({ from: minutesOf(window.from), to: minutesOf(window.to) })) : null
+}
+
+/** The hours a day's own axis spans: 08:00–22:00 widened to its opening windows and entries (DD-R01). */
+export function dayAxisBounds(
+  date: string,
+  timeZone: string,
+  day: CalendarDay | null,
+  entries: readonly CalendarEntry[],
+): Span {
+  const busy = entries.map((entry) => ({
+    from: minutesOnDate(entry.start, date, timeZone),
+    to: minutesOnDate(entry.end, date, timeZone),
+  }))
+  return axisBounds(openingSpans(day), busy)
 }
 
 export function DayAxis({
@@ -142,6 +165,8 @@ export function DayAxis({
   pastFrom = null,
   onBookHour,
   onEntry,
+  bounds: sharedBounds,
+  legend = true,
 }: DayAxisProps) {
   const t = useT()
   const spanOf = React.useCallback(
@@ -154,15 +179,13 @@ export function DayAxis({
   )
   const drawn = entries.map(spanOf).filter((item) => item.to > item.from)
   const busy = occupying.map(spanOf).filter((item) => item.to > item.from)
-  const opening: Span[] | null = day?.opening
-    ? day.opening.map((window) => ({ from: minutesOf(window.from), to: minutesOf(window.to) }))
-    : null
+  const opening = openingSpans(day)
   const zones = (day?.zones ?? []).map((zone) => ({
     from: minutesOf(zone.from),
     to: minutesOf(zone.to),
     zone: zone.zone,
   }))
-  const bounds = axisBounds(opening, busy)
+  const bounds = sharedBounds ?? axisBounds(opening, busy)
   const hours = axisHours(bounds)
   const laned = layoutLanes(drawn)
   const lanes = maxLanes(laned)
@@ -173,8 +196,8 @@ export function DayAxis({
   const clip = (span: Span) => ({ from: Math.max(span.from, bounds.from), to: Math.min(span.to, bounds.to) })
 
   return (
-    <div className="flex flex-col gap-3" data-testid="facilities-day-axis">
-      <AxisLegend />
+    <div className="flex flex-col gap-3" data-testid="facilities-day-axis" data-date={date}>
+      {legend ? <AxisLegend /> : null}
       {closed ? (
         <p className="text-sm font-medium" data-testid="facilities-axis-closed">
           {t('facilities.axis.closedDay')}

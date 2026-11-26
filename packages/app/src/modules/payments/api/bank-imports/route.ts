@@ -184,6 +184,11 @@ export const openApi: OpenApiRouteDoc = {
       errors: [
         { status: 400, description: 'Invalid input', schema: errorSchema },
         { status: 403, description: 'scope_denied', schema: errorSchema },
+        {
+          status: 409,
+          description: '`import_running` — another import of the club is running (one per club; #633)',
+          schema: errorSchema,
+        },
         { status: 413, description: '`bank_statement_too_large`, `bank_statement_too_many`', schema: errorSchema },
         {
           status: 422,

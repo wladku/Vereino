@@ -143,9 +143,10 @@ Rule sources: `AGENTS.md`, `.ai/specs/2026-10-21-engineering-standards-and-patte
 ## Validation gate
 
 - **`yarn verify`** is the single gate, identical locally and in CI (`gate` job). `yarn verify --list` prints the
-  19 steps: generate, typecheck, typecheck:packages, typecheck:qa, lint, secrets:check, format:check,
-  ds:check, i18n:check-hardcoded --strict, contracts:check, settings-prefixes:check, glossary:check,
-  qa-texts:check, di-commands:check, lessons:check, spec-changelogs:check, test, test:scripts, build.
+  23 steps: generate, typecheck, typecheck:packages, typecheck:qa, lint, secrets:check, format:check,
+  ds:check, i18n:check-hardcoded --strict, contracts:check, route-isolation:check, settings-prefixes:check,
+  glossary:check, qa-texts:check, di-commands:check, forbidden-packages:check, lessons:check,
+  spec-changelogs:check, spec-questions:check, dockerfiles:check, test, test:scripts, build.
   `yarn verify --from <step>` resumes after a fix.
 - Integration: **`yarn test:integration:vereino`** (Testcontainers PostgreSQL 17, production build, Playwright;
   focused `--filter <TEST-ID>`). Never `yarn test:integration:ephemeral` — it waits for the `customers` module,

@@ -8,7 +8,7 @@
 // run their tests at once; `start` stays on 5001. `--shard i/n` passes Playwright's shard option through, so CI can
 // split the suite over several jobs, each with its own database and build.
 import { spawn, spawnSync } from 'node:child_process'
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import net from 'node:net'
 import os from 'node:os'
@@ -119,6 +119,11 @@ export function buildAppEnv({
   baseEnv = process.env,
   secret = randomBytes(32).toString('hex'),
   oauthFakePort = null,
+  library = {
+    tenantId: randomUUID(),
+    organizationId: randomUUID(),
+    raterSecret: randomBytes(32).toString('hex'),
+  },
 }) {
   const baseUrl = `http://127.0.0.1:${String(port)}`
   return {
@@ -150,6 +155,11 @@ export function buildAppEnv({
     DEMO_MODE: 'false',
     // The club `/` leads a guest to (#485); the test of the home route publishes a club under this slug.
     VEREINO_HOME_CLUB_SLUG: 'qa-home-club',
+    // The shared outline library (training outlines spec DD-O10, #685): ids the tests create the library tenant under
+    // with `training library-init`, and a test-only rater secret.
+    VEREINO_LIBRARY_TENANT_ID: library.tenantId,
+    VEREINO_LIBRARY_ORGANIZATION_ID: library.organizationId,
+    VEREINO_LIBRARY_RATER_SECRET: library.raterSecret,
     TENANT_DATA_ENCRYPTION_FALLBACK_KEY: 'vereino-ephemeral-fallback-key',
     DB_POOL_MIN: '2',
     DB_POOL_MAX: '20',

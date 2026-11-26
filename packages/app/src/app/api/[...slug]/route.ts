@@ -15,7 +15,13 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { RateLimitConfig } from '@open-mercato/shared/lib/ratelimit/types'
 // Vereino local patch (#738): the limiter comes from the foundation, which hands an integration run that opts in
 // (`x-om-test-rate-limit: on`) an enabled limiter, and logs an unresolved client address behind a proxy.
-import { noteClientAddress, sessionlessRateLimiter } from '@/modules/foundation'
+import {
+  clubRequestLimitKey,
+  noteClientAddress,
+  readClubRequestLimit,
+  routeLimitKey,
+  sessionlessRateLimiter,
+} from '@/modules/foundation'
 import { checkRateLimit, getClientIp, RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FALLBACK, RATE_LIMIT_FALLBACK_KEY } from '@open-mercato/shared/lib/ratelimit/helpers'
 import { getGlobalEventBus } from '@open-mercato/shared/modules/events'
 import { applicationLifecycleEvents, type ApplicationLifecycleEventId } from '@open-mercato/shared/lib/runtime/events'
@@ -26,6 +32,10 @@ bootstrap()
 registerApiRouteManifests(apiRouteFacades)
 
 const warnedDeprecatedRequireRoles = new Set<string>()
+
+// Each club's budget of authenticated API requests (many-clubs spec DD-M10, Q-M04; #633): 600 per minute by default,
+// `VEREINO_CLUB_RATE_LIMIT_POINTS=0` switches it off. Counted per tenant (one club = one tenant, DD-M01).
+const clubRequestLimit = readClubRequestLimit(process.env)
 
 function warnDeprecatedRequireRoles(pathname: string, method: HttpMethod): void {
   const warnKey = `${method} ${pathname}`
@@ -425,7 +435,8 @@ async function handleRequest(
       const rateLimitError = await checkRateLimit(
         rateLimiterService,
         methodMetadata.rateLimit,
-        clientIp ?? RATE_LIMIT_FALLBACK_KEY,
+        // Per club on the club's public routes (DD-M10, #633): one club's visitors do not use up another's.
+        routeLimitKey(clientIp ?? RATE_LIMIT_FALLBACK_KEY, match.params),
         t(RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FALLBACK),
       )
       if (rateLimitError) {
@@ -435,6 +446,29 @@ async function handleRequest(
           clientIp,
           userId: auth?.sub ?? null,
           tenantId: auth?.tenantId ?? null,
+          durationMs: Date.now() - startedAt,
+        })
+        return rateLimitError
+      }
+    }
+  }
+
+  if (clubRequestLimit && auth?.tenantId) {
+    const rateLimiterService = await sessionlessRateLimiter(req)
+    if (rateLimiterService) {
+      const rateLimitError = await checkRateLimit(
+        rateLimiterService,
+        clubRequestLimit,
+        clubRequestLimitKey(auth.tenantId),
+        t(RATE_LIMIT_ERROR_KEY, RATE_LIMIT_ERROR_FALLBACK),
+      )
+      if (rateLimitError) {
+        await emitLifecycleEvent(applicationLifecycleEvents.requestRateLimited, {
+          ...receivedPayload,
+          status: rateLimitError.status,
+          clientIp: null,
+          userId: auth.sub ?? null,
+          tenantId: auth.tenantId,
           durationMs: Date.now() - startedAt,
         })
         return rateLimitError

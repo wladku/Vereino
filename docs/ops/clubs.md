@@ -22,7 +22,7 @@ Time: about 15 minutes of operator time (steps 1–4); the rest is the club's ow
 - [ ] **The slug**: lower-case letters, digits and single hyphens, 3–60 characters, for example `orlik-zielonka`. It
       becomes the club's address (`https://<slug>.<club domain>` once `VEREINO_CLUB_DOMAIN` is set, until then
       `<APP_URL>/p/<slug>`) and is printed on notice boards and QR codes, so agree it with the club. Reserved, never a
-      club's: `www`, `app`, `api`, `admin`, `mail`, `status`, `c1`…`c9`.
+      club's: `www`, `app`, `api`, `admin`, `mail`, `status`, `demo`, `blog`, `c1`…`c9`.
 - [ ] **The administrator's e-mail** has no account on the instance yet. One address can administer one club through
       this command; for a person who already has an account in another club, ask for another address, or have the
       club's administrator add them later from the panel.

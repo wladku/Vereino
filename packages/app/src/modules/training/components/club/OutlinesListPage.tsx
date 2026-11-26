@@ -12,6 +12,7 @@ import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton, StatusTag } from '@vereino/ui'
 import { TrainingClubFrame } from './TrainingClubFrame'
+import { LIBRARY_HREF } from './library-client'
 import {
   newOutlineHref,
   outlineHref,
@@ -109,11 +110,18 @@ function Outlines() {
         <h1 id="training-outlines-heading" className="text-xl font-semibold">
           {t('training.list.title')}
         </h1>
-        <Button asChild className="min-h-11">
-          <Link href={newOutlineHref()} data-testid="training-outline-new">
-            {t('training.list.new')}
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline" className="min-h-11">
+            <Link href={LIBRARY_HREF} data-testid="training-library-link">
+              {t('training.library.title')}
+            </Link>
+          </Button>
+          <Button asChild className="min-h-11">
+            <Link href={newOutlineHref()} data-testid="training-outline-new">
+              {t('training.list.new')}
+            </Link>
+          </Button>
+        </div>
       </div>
       <div role="group" aria-label={t('training.list.views')} className="flex flex-wrap gap-2">
         {VIEWS.map((view) => (

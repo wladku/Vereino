@@ -110,22 +110,22 @@ test('ISSUE-493 Today holds at most three tiles under the club header and the ca
       await expectNoPageOverflow(page)
       await evidence(page, `today-guardian-${locale}`)
 
-      // --- The calendar: the upcoming list first, no arrows; the week tab has one set of navigation in one row ---
+      // --- The calendar: a phone opens on Day since #784 (REQ-W06); the upcoming list is a tab without arrows; the
+      // week tab has one set of navigation in one row ---
       await page.goto('/club/calendar')
-      await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-checked', 'true')
+      await expect(page.getByTestId('club-calendar-view-day')).toHaveAttribute('aria-current', 'page')
+      await page.getByTestId('club-calendar-view-upcoming').click()
+      await expect(page.getByTestId('club-calendar-view-upcoming')).toHaveAttribute('aria-current', 'page')
       await expect(page.getByTestId('calendar-item').filter({ hasText: 'Trening dodatkowy' })).toHaveCount(1)
       await expect(page.getByTestId('club-calendar-next')).toHaveCount(0)
       await expectNoPageOverflow(page)
       await evidence(page, `calendar-upcoming-${locale}`)
       await page.getByTestId('club-calendar-view-week').click()
-      await expect(page.getByTestId('club-calendar-view-week')).toHaveAttribute('aria-checked', 'true')
-      const nextWeek = uiTextIn(locale, 'activities.club.calendar.next')
-      await expect(page.getByRole('button', { name: nextWeek, exact: true })).toHaveCount(1)
-      await expect(page.getByText(nextWeek, { exact: true })).toHaveCount(0)
+      await expect(page.getByTestId('club-calendar-view-week')).toHaveAttribute('aria-current', 'page')
+      const nextWeek = uiTextIn(locale, 'activities.rangeSwitch.next.week')
+      await expect(page.getByRole('link', { name: nextWeek, exact: true })).toHaveCount(1)
       const boxes = await Promise.all(
-        ['club-calendar-previous', 'club-calendar-current', 'club-calendar-next'].map((id) =>
-          page.getByTestId(id).boundingBox(),
-        ),
+        ['club-calendar-previous', 'club-calendar-next'].map((id) => page.getByTestId(id).boundingBox()),
       )
       for (const box of boxes) {
         expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
@@ -154,7 +154,8 @@ test('ISSUE-493 Today holds at most three tiles under the club header and the ca
         testInfo,
         '/club/calendar guardian',
         async () => {
-          await page.goto('/club/calendar')
+          // The upcoming list is a tab since #784 (a phone opens on Day).
+          await page.goto('/club/calendar?range=upcoming')
           await expect(page.getByTestId('calendar-item').first()).toBeVisible()
         },
         { platformBaseline: true },
