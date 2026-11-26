@@ -57,6 +57,26 @@ const AUTHENTICATED_REQUEST_MARKERS = [
   { type: 'header', key: 'x-api-key' },
 ] as const
 
+// S8.9 (#744): `src/proxy.ts` runs on `/api` for the cross-site check, and Next.js buffers the body of every proxied
+// request and silently truncates it at `proxyClientMaxBodySize` (default 10 MB): a larger upload reached its route cut
+// short and was answered `400 Invalid multipart/form-data`. The proxy reads headers only, so the cap is the largest
+// body the API accepts: the platform attachment limit (`OM_ATTACHMENT_MAX_UPLOAD_MB`, default 25 MB) plus its 1 MB
+// multipart allowance, as `resolveAttachmentMultipartMaxBytes` of `@open-mercato/core` attachments computes it. Every
+// Vereino upload limit is lower (10 MB at most).
+const ATTACHMENT_MAX_UPLOAD_MB_DEFAULT = 25
+const MULTIPART_OVERHEAD_BYTES = 1024 * 1024
+const attachmentMaxUploadMb = Number(
+  process.env.OM_ATTACHMENT_MAX_UPLOAD_MB ?? process.env.OPENMERCATO_ATTACHMENT_MAX_UPLOAD_MB,
+)
+const proxyClientMaxBodySize =
+  Math.floor(
+    (Number.isFinite(attachmentMaxUploadMb) && attachmentMaxUploadMb > 0
+      ? attachmentMaxUploadMb
+      : ATTACHMENT_MAX_UPLOAD_MB_DEFAULT) *
+      1024 *
+      1024,
+  ) + MULTIPART_OVERHEAD_BYTES
+
 const nextConfig: NextConfig & { agentRules?: boolean } = {
   distDir: '.mercato/next',
   // Mirror apps/mercato: scaffolded apps ship their own AGENTS.md/CLAUDE.md
@@ -73,6 +93,7 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
     //   - recharts: pairs with the next/dynamic chart split in @open-mercato/ui.
     //   - date-fns: already deep-imported; listed here as defense-in-depth.
     optimizePackageImports: ['lucide-react', 'recharts', 'date-fns'],
+    proxyClientMaxBodySize,
     ...(isDevelopment
       ? {
           preloadEntriesOnStart: false,

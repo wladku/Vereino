@@ -190,6 +190,24 @@ export function findPersons(
   return personDirectory(container).findPersons(scope, ids, em)
 }
 
+/**
+ * The persons holding the club administrator or the treasurer role on `date`, by role: the confirmers a sent cash
+ * handover is announced to (`payments.cash.settle` holders through their roles; D-042, REQ-033a, #791).
+ */
+export async function handoverConfirmerRoles(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<{ admins: string[]; treasurers: string[] }> {
+  const directory = personDirectory(container)
+  const [admins, treasurers] = await Promise.all([
+    directory.roleHolderIdsOn(scope, 'club_admin', date, em),
+    directory.roleHolderIdsOn(scope, 'treasurer', date, em),
+  ])
+  return { admins, treasurers }
+}
+
 /** The persons whose name matches every word of `term` (three letters or more), or null when none is long enough. */
 export function searchPersonIds(
   container: AwilixContainer,
