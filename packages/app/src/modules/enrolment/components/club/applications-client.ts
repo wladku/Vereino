@@ -5,6 +5,7 @@
 // changed by someone else, 404: gone) instead of a thrown error.
 import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { grantsFeature } from '@vereino/ui'
 import type { ApplicationTab } from '../../lib/applications'
 import type { ApplicationDetail, ApplicationList, ApplicationListItem } from '../../services/views'
 
@@ -86,12 +87,26 @@ export function useApplications(filters: ApplicationFilters, extraKey: readonly 
   })
 }
 
-/** M-J1: the open `new` applications and how many of them are past the answer time. */
+const VIEW_FEATURE = 'enrolment.applications.view'
+
+/**
+ * M-J1: the open `new` applications and how many of them are past the answer time; `null` for a caller without
+ * `enrolment.applications.view` (a guardian, a coach). The `/club` Today spot does not enforce a widget's `features`,
+ * so the platform feature check runs first and such a caller makes no read of the inbox (#483, lesson
+ * `club-spot-widgets-hide-themselves-when-refused`).
+ */
 export function useApplicationCounts() {
   return useQuery({
     queryKey: [APPLICATIONS_QUERY_KEY, 'counts'],
     retry: 1,
-    queryFn: async (): Promise<{ fresh: number; overdue: number }> => {
+    queryFn: async (): Promise<{ fresh: number; overdue: number } | null> => {
+      const check = await apiCall<{ granted?: unknown[] }>('/api/auth/feature-check', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ features: [VIEW_FEATURE] }),
+      })
+      const granted = check.ok && Array.isArray(check.result?.granted) ? check.result.granted.map(String) : []
+      if (!grantsFeature(granted, VIEW_FEATURE)) return null
       const [all, late] = await Promise.all([
         fetchApplications({ tab: 'new', pageSize: 1 }),
         fetchApplications({ tab: 'new', overdue: true, pageSize: 1 }),
