@@ -68,3 +68,17 @@
 ## Open problems / next steps
 
 - Owner: re-home the `__Host-` cookie-prefix rows (V3.3.1, V3.3.3) that still name #744.
+
+## Follow-up run 2026-11-26: CI shard 2 red (TEST-U08)
+
+- **Trigger:** required check `integration (shard 2/6)` failed twice (runs 45784860343, 45794220161), both attempts
+  of `TEST-U08`: the 10 MB + 1 byte regulations PDF got `400 {"error":"Invalid multipart/form-data"}` instead of
+  `422 place_file_too_large`.
+- **Cause (this PR, not a flake):** `src/proxy.ts` now matches `/api`, and Next.js buffers the body of every proxied
+  request and truncates it at `experimental.proxyClientMaxBodySize` (default 10 MB, `next/dist/server/body-streams.js`
+  `cloneBodyStream`), so any upload above 10 MB — including platform attachments, which accept 25 MB — reached its
+  route cut short.
+- **Fix:** `next.config.ts` sets `proxyClientMaxBodySize` to the platform's multipart cap
+  (`OM_ATTACHMENT_MAX_UPLOAD_MB`, default 25 MB, + 1 MB), the largest body the API accepts; the proxy itself reads
+  headers only.
+- **Files:** `packages/app/next.config.ts`, this run log.
