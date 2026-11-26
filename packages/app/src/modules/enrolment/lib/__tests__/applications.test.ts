@@ -37,8 +37,18 @@ describe('contact data (BR-J1, BR-J3)', () => {
   })
 
   it('builds the same identity for the same application typed differently', () => {
-    const a = applicantKeySource({ email: 'A@x.pl', firstName: 'Óla', lastName: 'Nowak', birthDate: '2017-03-14' })
-    const b = applicantKeySource({ email: ' a@x.pl', firstName: 'ola ', lastName: 'NOWAK', birthDate: '2017-03-14' })
+    const a = applicantKeySource({
+      email: 'A@example.org',
+      firstName: 'Óla',
+      lastName: 'Nowak',
+      birthDate: '2017-03-14',
+    })
+    const b = applicantKeySource({
+      email: ' a@example.org',
+      firstName: 'ola ',
+      lastName: 'NOWAK',
+      birthDate: '2017-03-14',
+    })
     expect(a).toBe(b)
   })
 })

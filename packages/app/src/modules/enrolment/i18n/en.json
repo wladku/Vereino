@@ -140,6 +140,8 @@
   "enrolment.club.waiting.submit": "Put on the waiting list",
   "enrolment.club.waiting.title": "Put on the waiting list",
   "enrolment.club.yes": "Yes",
+  "enrolment.dashboard.widgets.overdueApplications.description": "Section applications waiting longer than the club's answer time.",
+  "enrolment.dashboard.widgets.overdueApplications.title": "Applications past the answer time",
   "enrolment.email.confirm.action": "Confirm the application",
   "enrolment.email.confirm.lead": "Confirm your application to {section} within 1 hour using the button below.",
   "enrolment.email.confirm.subject": "Confirm your application: {section}",

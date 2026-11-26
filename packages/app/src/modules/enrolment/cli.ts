@@ -26,7 +26,7 @@ function jobCli(command: 'expire-unconfirmed' | 'daily', commandId: string): Mod
         process.stderr.write(
           `Usage: mercato enrolment ${command} --tenant <tenantId> --org <organizationId> [--now <ISO instant>]\n`,
         )
-        throw new Error(`[internal] enrolment ${command}: invalid options`)
+        throw new Error('[internal] enrolment job command: invalid options')
       }
       const container = await createRequestContainer()
       const { result } = await container

@@ -204,7 +204,7 @@ const SELECT_CLASS =
   'border-input bg-background text-foreground focus-visible:ring-ring min-h-11 w-full rounded-md border px-3 text-sm focus-visible:ring-2 focus-visible:outline-none'
 const CHECK_CLASS = 'accent-primary mt-0.5 size-5 shrink-0'
 const OPTION_CLASS =
-  'has-[:checked]:border-primary has-[:focus-visible]:ring-ring flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 has-[:focus-visible]:ring-2'
+  'has-checked:border-primary has-focus-visible:ring-ring flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border p-3 has-focus-visible:ring-2'
 const LINK_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6'
 
 function FieldError({ field, errors }: { field: Field; errors: Errors }) {
