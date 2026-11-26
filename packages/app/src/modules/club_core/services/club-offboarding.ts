@@ -45,6 +45,7 @@ import {
   presentTables,
   redactExportRow,
   safeAttachmentLocation,
+  sanitizeRestoreRow,
   uncoveredTables,
   type ClubArchiveManifest,
   type ClubTable,
@@ -687,8 +688,9 @@ async function insertRows(em: EntityManager, table: string, columns: string[], r
  * Restores a club from its archive into this database, in one transaction: the club's tombstone (when the club was
  * deleted here) is replaced, the encryption maps go in first, then every table in foreign-key order, each row
  * encrypted again with this database's key for the club's tenant, then the attachment files through the storage
- * driver. Refuses — before writing — an archive that is not a club export or fails a checksum, a database that holds
- * the tenant, the slug of another club or any row of the club, and a schema without a column the archive has.
+ * driver. Refuses — before writing — an archive that is not a club export or fails a checksum, one whose rows or
+ * references reach beyond its club, a database that holds the tenant, the slug of another club or any row of the club,
+ * and a schema without a column the archive has. What it writes grants no privilege beyond the club (#806).
  */
 export async function restoreClub(
   container: AwilixContainer,
@@ -724,8 +726,10 @@ export async function restoreClub(
       `delete from club_core_club_settings where public_slug = ? and organization_id = ? and deleted_at is not null`,
       [club.slug, club.organizationId],
     )
+    // The archive is untrusted (#806): its rows are written without a privilege no club holds (`sanitizeRestoreRow`).
+    const organizationIds = new Set(archiveTableRows(plan, 'organizations').map((row) => row.id))
     for (const table of ordered) {
-      const rows = archiveRows(plan, table)
+      const rows = archiveRows(plan, table).map((row) => sanitizeRestoreRow(table.table, row, organizationIds))
       if (rows.length === 0) continue
       const writable = new Set(catalogue.columns.get(table.table) ?? [])
       const columns = Object.keys(rows[0]).filter((column) => writable.has(column))

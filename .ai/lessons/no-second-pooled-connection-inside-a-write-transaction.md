@@ -2,7 +2,7 @@
 title: "A write transaction never waits for a second pooled connection"
 modules: ["foundation", "payments", "people"]
 areas: ["architecture", "debugging"]
-topics: ["db-pool", "transactions", "concurrency", "authorize-scoped"]
+topics: ["db-pool", "transactions", "concurrency", "authorize-scoped", "scope-provider"]
 ---
 
 # A write transaction never waits for a second pooled connection
@@ -30,6 +30,15 @@ are read before the transaction as well (`readConfirmations`), and the transacti
 A value read early is used only when the transaction authorized the same scope object (`authorized.scope ===
 prefetched.scope`); otherwise the command reads it again inside, as before.
 
+**Since #728** the scope itself no longer needs a prefetch: `authorizeScoped` passes its transactional `em` to the
+scope contract (`resolveScope(ctx, { em })`, `ScopeProvider.grantsForUser(subject, { em })`), and the `people`
+provider and `clubCoreSettings.get(scope, em)` read with `em.fork({ keepTransactionContext: true })` — a fork with
+its own identity map on the transaction's connection. A service that a command calls inside its transaction takes
+the caller's `em` the same way instead of forking the root (`container.resolve('em').fork()`); a service that cannot
+(the payments gate, RBAC) is called before the transaction, as `payments.orders.*` now does with the session payer.
+ISSUE-728 (50 person creates and 50 updates against `DB_POOL_MAX=20`) hung past the 30 s request timeout before.
+
 **Applies to**: `packages/app/src/modules/*/commands/**`, `foundation/services/authorize-scoped.ts`
-(`prefetchSessionScope`), `payments/commands/cash.ts` (`cashAcceptanceFacts`, `readConfirmations`),
-`payments/commands/group-charges.ts` (`groupChildFacts`). ISSUE-554 repeats ISSUE-549 with `notify: true`.
+(`prefetchSessionScope`), `foundation/services/scope-contract.ts`, `people/services/scope-service.ts`,
+`payments/commands/cash.ts` (`cashAcceptanceFacts`, `readConfirmations`), `payments/commands/group-charges.ts`
+(`groupChildFacts`). ISSUE-554 repeats ISSUE-549 with `notify: true`.

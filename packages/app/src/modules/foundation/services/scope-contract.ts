@@ -1,6 +1,7 @@
 // P-03 scope resolver (DD-F03): the registered scope provider (`people.scopeService`, registered under
 // `vereino.scopeProvider`) supplies the person grants; the foundation adds `self_user` from `ctx.auth.sub`.
 // No provider, no linked person or no organization yields only `self_user`, so record reads see nothing.
+import type { EntityManager } from '@mikro-orm/postgresql'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { sanitizeProviderGrants, unionScopes, type Scope } from '@vereino/core'
@@ -23,23 +24,33 @@ export type PersonScopeSubject = {
 }
 
 /**
+ * How the provider reads (#728). `em`: the caller's EntityManager — inside a command's write transaction, its
+ * transactional one — so the grants are read on the transaction's connection (`fork({ keepTransactionContext: true })`)
+ * instead of a second pooled connection: a command that holds one connection and waits for another deadlocks the pool
+ * once as many commands run at once as the pool has connections (#549). Omitted: the provider forks the root
+ * EntityManager, as before.
+ */
+export type ScopeReadOptions = { em?: EntityManager }
+
+/**
  * Contract of the scope provider: the grants of the person linked to the user (an empty list when no person is
  * linked), and the grants of a person by id for a token link's subject (an empty list for an unknown person). Only
  * the kinds `club_admin`, `coordinator`, `coach`, `guardian` and `self` are accepted; any other or malformed grant
  * is dropped.
  */
 export type ScopeProvider = {
-  grantsForUser(subject: ScopeSubject): Promise<Scope>
-  grantsForPerson(subject: PersonScopeSubject): Promise<Scope>
+  grantsForUser(subject: ScopeSubject, options?: ScopeReadOptions): Promise<Scope>
+  grantsForPerson(subject: PersonScopeSubject, options?: ScopeReadOptions): Promise<Scope>
 }
 
 export type ScopeResolutionContext = Pick<CommandRuntimeContext, 'container' | 'auth' | 'selectedOrganizationId'>
 
 /**
  * Resolves the session user's scope. A provider that throws fails closed: the error is reported with the
- * fingerprint `foundation.scope.provider_failed` and an uncoded 500 follows.
+ * fingerprint `foundation.scope.provider_failed` and an uncoded 500 follows. Inside a write transaction pass its `em`
+ * (`options.em`, #728) so the provider reads on the transaction's connection.
  */
-export async function resolveScope(ctx: ScopeResolutionContext): Promise<Scope> {
+export async function resolveScope(ctx: ScopeResolutionContext, options: ScopeReadOptions = {}): Promise<Scope> {
   const userId = ctx.auth?.sub
   if (!userId) return []
   const selfUser: Scope = [{ kind: 'self_user', ids: [userId] }]
@@ -49,7 +60,7 @@ export async function resolveScope(ctx: ScopeResolutionContext): Promise<Scope> 
   const provider = ctx.container.resolve<ScopeProvider>(SCOPE_PROVIDER_TOKEN)
   let grants: unknown
   try {
-    grants = await provider.grantsForUser({ userId, tenantId, organizationId })
+    grants = await provider.grantsForUser({ userId, tenantId, organizationId }, options)
   } catch (error: unknown) {
     getTelemetryRuntime()?.reportError(error, { module: 'foundation', code: 'foundation.scope.provider_failed' })
     throw new Error('[internal] the scope provider failed', { cause: error })
@@ -60,17 +71,18 @@ export async function resolveScope(ctx: ScopeResolutionContext): Promise<Scope> 
 /**
  * The current grants of a token link's subject (P-10; foundation spec REQ-F07): the person's grants on today's date,
  * without `self_user` (a link carries no session). No provider yields no grants; a provider that throws fails closed
- * like `resolveScope`.
+ * like `resolveScope`; `options.em` as in `resolveScope`.
  */
 export async function resolveScopeForPerson(
   ctx: Pick<CommandRuntimeContext, 'container'>,
   subject: PersonScopeSubject,
+  options: ScopeReadOptions = {},
 ): Promise<Scope> {
   if (!ctx.container.hasRegistration(SCOPE_PROVIDER_TOKEN)) return []
   const provider = ctx.container.resolve<ScopeProvider>(SCOPE_PROVIDER_TOKEN)
   let grants: unknown
   try {
-    grants = await provider.grantsForPerson(subject)
+    grants = await provider.grantsForPerson(subject, options)
   } catch (error: unknown) {
     getTelemetryRuntime()?.reportError(error, { module: 'foundation', code: 'foundation.scope.provider_failed' })
     throw new Error('[internal] the scope provider failed', { cause: error })

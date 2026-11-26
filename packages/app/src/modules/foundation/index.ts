@@ -148,6 +148,7 @@ export {
   scopeContract,
   type PersonScopeSubject,
   type ScopeProvider,
+  type ScopeReadOptions,
   type ScopeResolutionContext,
   type ScopeSubject,
 } from './services/scope-contract'
