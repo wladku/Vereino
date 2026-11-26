@@ -144,3 +144,65 @@ export function handOverKit(orderId: string, input: { groupId: string; confirmUn
     errorMessage,
   )
 }
+
+// --- The collector's cash handover (D-042, REQ-033a, #791) ---
+
+export type HeldCashPayment = {
+  paymentId: string
+  receiptNumber: string
+  paidOn: string
+  amount: number
+  description: string
+  payer: PersonName | null
+  pendingHandoverId: string | null
+}
+
+export type MyHandover = {
+  id: string
+  number: string
+  status: 'pending' | 'confirmed' | 'rejected' | 'withdrawn'
+  decidedBy: PersonName | null
+  sentByCollector: boolean
+  amount: number
+  paymentCount: number
+  receiptNumbers: string[]
+  rejectionReason: string | null
+  sentAt: string | null
+  decidedAt: string | null
+  createdAt: string
+}
+
+export type MyCashHandovers = { held: HeldCashPayment[]; total: number; handovers: MyHandover[] }
+
+export function useMyCashHandovers() {
+  return useQuery({
+    queryKey: [COACH_PAYMENTS_QUERY_KEY, 'handovers'],
+    retry: false,
+    // A caller without `payments.groups.collect` (e.g. a coach in a `view` club role set) gets no section: null.
+    // Without the header `apiFetch` throws `ForbiddenError` on the 403 (lesson `apifetch-403-throws-before-page-branch`).
+    queryFn: async (): Promise<MyCashHandovers | null> => {
+      const call = await apiCall<MyCashHandovers>('/api/payments/my-cash-handovers', {
+        headers: { 'x-om-forbidden-redirect': '0' },
+      })
+      if (call.status === 401 || call.status === 403) return null
+      if (!call.ok || !call.result) throw new GroupChargesLoadError(call.status)
+      return call.result
+    },
+  })
+}
+
+export function sendHandover(paymentIds: string[], errorMessage: string) {
+  return post<{ id: string; number: string; amount: number }>(
+    '/api/payments/my-cash-handovers',
+    { paymentIds },
+    errorMessage,
+  )
+}
+
+export function withdrawHandover(id: string, errorMessage: string) {
+  return post<{ id: string; number: string }>(
+    `/api/payments/my-cash-handovers/${encodeURIComponent(id)}/withdraw`,
+    {},
+    errorMessage,
+  )
+}

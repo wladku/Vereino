@@ -10,6 +10,10 @@ import {
 } from '@/modules/foundation'
 import { OrderLink } from './data/entities'
 import {
+  cashHandoverConfirmedTemplate,
+  cashHandoverRejectedTemplate,
+  cashHandoverSentTemplate,
+  cashHandoverSettledTemplate,
   cashReceivedTemplate,
   chargeReminderTemplate,
   orderCopyTemplate,
@@ -74,6 +78,11 @@ export function register(container: AppContainer) {
   registerEmailTemplate(container, orderCopyTemplate)
   registerEmailTemplate(container, orderLinkTemplate)
   registerEmailTemplate(container, chargeReminderTemplate)
+  // The two-sided cash handover's notices (D-042, REQ-033a, #791): in the app and by e-mail.
+  registerEmailTemplate(container, cashHandoverSentTemplate)
+  registerEmailTemplate(container, cashHandoverConfirmedTemplate)
+  registerEmailTemplate(container, cashHandoverRejectedTemplate)
+  registerEmailTemplate(container, cashHandoverSettledTemplate)
   container.register({
     [PAYMENTS_ORDER_LINKS]: asValue(orderLinks),
     [PAYMENTS_CHARGE_SERVICE]: asValue(chargeService),

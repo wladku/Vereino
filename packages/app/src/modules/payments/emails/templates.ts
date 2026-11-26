@@ -7,7 +7,7 @@
 import * as React from 'react'
 import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
-import { defineEmailTemplate } from '@/modules/foundation'
+import { clubText, defineEmailTemplate } from '@/modules/foundation'
 import { formatZloty } from '../lib/charge-ledger'
 import { orderLinkPath } from '../lib/orders'
 
@@ -365,10 +365,151 @@ export const chargeReminderTemplate = defineEmailTemplate<ChargeReminderParams>(
   link: () => '/club/payments',
 })
 
+// --- The two-sided cash handover (D-042, REQ-033a, #791) ---
+
+const handoverParams = z
+  .object({
+    handoverId: z.uuid(),
+    number: z.string().min(1).max(40),
+    amount: z.number().int(),
+    paymentCount: z.number().int().min(1),
+    collectorName: z.string().max(200).nullable(),
+  })
+  .strict()
+
+export type CashHandoverParams = z.output<typeof handoverParams>
+
+const handoverDecisionParams = handoverParams
+  .extend({ reason: z.string().max(500).nullable(), deciderName: z.string().max(200).nullable() })
+  .strict()
+
+export type CashHandoverDecisionParams = z.output<typeof handoverDecisionParams>
+
+/** The handover template ids: sent (to the confirmers), and the three outcomes the collector is told. */
+export const CASH_HANDOVER_SENT_TEMPLATE = 'payments.cash_handover_sent'
+export const CASH_HANDOVER_CONFIRMED_TEMPLATE = 'payments.cash_handover_confirmed'
+export const CASH_HANDOVER_REJECTED_TEMPLATE = 'payments.cash_handover_rejected'
+export const CASH_HANDOVER_SETTLED_TEMPLATE = 'payments.cash_handover_settled'
+
+function handoverValues(params: CashHandoverParams) {
+  return {
+    number: params.number,
+    amount: formatZloty(params.amount),
+    count: params.paymentCount,
+    name: params.collectorName ?? '',
+  }
+}
+
+function sentCopy(t: TranslateWithFallbackFn, params: CashHandoverParams) {
+  const values = handoverValues(params)
+  return {
+    subject: t('payments.email.cashHandoverSent.subject', 'Cash handover {number} to confirm: {amount}', values),
+    lead: t(
+      'payments.email.cashHandoverSent.lead',
+      '{name} sent the cash handover {number}: {amount} in {count} payments. Count the cash and confirm or reject it.',
+      values,
+    ),
+  }
+}
+
+/**
+ * `payments.cash_handover_sent`: the club administrators and the treasurers are told a collector sent a handover that
+ * waits for them; in the app too (`payments.cash_handover_sent`). `optOut: 'never'`: the club's own money.
+ */
+export const cashHandoverSentTemplate = defineEmailTemplate<CashHandoverParams>({
+  id: CASH_HANDOVER_SENT_TEMPLATE,
+  notificationType: CASH_HANDOVER_SENT_TEMPLATE,
+  optOut: 'never',
+  params: handoverParams,
+  subject: (t, params) => sentCopy(t, params).subject,
+  preheader: (t, params) => sentCopy(t, params).lead,
+  body: (t, params) => h('div', null, h('p', { style: { margin: '0', fontWeight: 600 } }, sentCopy(t, params).lead)),
+  text: (t, params) => sentCopy(t, params).lead,
+  actionLabel: (t) => t('payments.email.cashHandoverSent.action', 'Open the handovers to confirm'),
+  link: () => '/club/cash-handovers',
+})
+
+type DecisionOutcome = 'confirmed' | 'rejected' | 'settled'
+
+function decisionCopy(t: TranslateWithFallbackFn, outcome: DecisionOutcome, params: CashHandoverDecisionParams) {
+  const values = { ...handoverValues(params), decider: params.deciderName ?? '' }
+  if (outcome === 'confirmed') {
+    return {
+      subject: t('payments.email.cashHandoverConfirmed.subject', 'Cash handover {number} confirmed', values),
+      lead: t(
+        'payments.email.cashHandoverConfirmed.lead',
+        "{decider} confirmed receiving {amount} in cash (handover {number}, {count} payments). The cash is now the club's.",
+        values,
+      ),
+      reason: null,
+    }
+  }
+  if (outcome === 'rejected') {
+    return {
+      subject: t('payments.email.cashHandoverRejected.subject', 'Cash handover {number} rejected', values),
+      lead: t(
+        'payments.email.cashHandoverRejected.lead',
+        '{decider} rejected the cash handover {number} ({amount}). The payments are with you again; correct the handover and send it again.',
+        values,
+      ),
+      reason: params.reason
+        ? t('payments.email.cashHandoverRejected.reason', 'Reason: {reason}', { reason: params.reason })
+        : null,
+    }
+  }
+  return {
+    subject: t('payments.email.cashHandoverSettled.subject', 'Your cash was settled: {amount}', values),
+    lead: t(
+      'payments.email.cashHandoverSettled.lead',
+      '{decider} recorded receiving {amount} in cash from you (handover {number}, {count} payments).',
+      values,
+    ),
+    reason: null,
+  }
+}
+
+function decisionTemplate(id: string, outcome: DecisionOutcome) {
+  return defineEmailTemplate<CashHandoverDecisionParams>({
+    id,
+    notificationType: id,
+    optOut: 'never',
+    params: handoverDecisionParams,
+    subject: (t, params) => decisionCopy(t, outcome, params).subject,
+    preheader: (t, params) => decisionCopy(t, outcome, params).lead,
+    body: (t, params) => {
+      const copy = decisionCopy(t, outcome, params)
+      // The reason is typed by the confirmer: escaped paragraphs (R09).
+      return h(
+        'div',
+        null,
+        h('p', { style: { margin: '0 0 12px', fontWeight: 600 } }, copy.lead),
+        copy.reason ? clubText(copy.reason) : null,
+      )
+    },
+    text: (t, params) => {
+      const copy = decisionCopy(t, outcome, params)
+      return [copy.lead, copy.reason].filter((line): line is string => line !== null).join('\n\n')
+    },
+    actionLabel: (t) => t('payments.email.cashHandover.action', "Open my groups' payments"),
+    link: () => '/club/coach/payments',
+  })
+}
+
+/** `payments.cash_handover_confirmed`: the collector's handover was confirmed (in the app too). */
+export const cashHandoverConfirmedTemplate = decisionTemplate(CASH_HANDOVER_CONFIRMED_TEMPLATE, 'confirmed')
+/** `payments.cash_handover_rejected`: the collector's handover was rejected; the e-mail carries the reason. */
+export const cashHandoverRejectedTemplate = decisionTemplate(CASH_HANDOVER_REJECTED_TEMPLATE, 'rejected')
+/** `payments.cash_handover_settled`: the club accepted the collector's cash one-sided (the fallback of REQ-033). */
+export const cashHandoverSettledTemplate = decisionTemplate(CASH_HANDOVER_SETTLED_TEMPLATE, 'settled')
+
 export const paymentsEmailTemplates = [
   cashReceivedTemplate,
   orderReminderTemplate,
   orderCopyTemplate,
   orderLinkTemplate,
   chargeReminderTemplate,
+  cashHandoverSentTemplate,
+  cashHandoverConfirmedTemplate,
+  cashHandoverRejectedTemplate,
+  cashHandoverSettledTemplate,
 ]

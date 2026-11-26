@@ -1,0 +1,1 @@
+| 2026-11-26 | Initial spec (#779): one Vereino password check in `foundation` — the server policy handed to the platform forms, the built-in NCSC/HIBP top-100k list (owner decision), context words, a 64-character / 72-byte cap and exact current-password matching, enforced by a command interceptor and two route wrappers |

@@ -71,7 +71,9 @@ async function actorCounts(em: EntityManager, scope: Scope, subject: PersonDataE
       $or: [
         { collectorPersonId: subject.personId },
         { receivedByPersonId: subject.personId },
-        ...(subject.userId ? [{ receivedByUserId: subject.userId }] : []),
+        // Who confirmed, rejected or withdrew a handover (D-042, #791).
+        { decidedByPersonId: subject.personId },
+        ...(subject.userId ? [{ receivedByUserId: subject.userId }, { decidedByUserId: subject.userId }] : []),
       ],
     }),
     em.count(OrderCampaign, { ...live, createdByPersonId: subject.personId }),

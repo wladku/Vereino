@@ -68,6 +68,8 @@ describe('payments vocabularies', () => {
       cash_handover_payments_invalid: 422,
       cash_already_settled: 409,
       cash_payment_reversed: 409,
+      cash_handover_payment_pending: 409,
+      cash_handover_not_pending: 409,
       order_closes_on_past: 422,
       order_payment_due_before_close: 422,
       order_section_unknown: 422,
