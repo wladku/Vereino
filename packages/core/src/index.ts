@@ -1,5 +1,6 @@
 // Public API of @vereino/core: framework-free domain logic shared by Vereino modules.
 export * from '#src/account-policy'
+export * from '#src/age-fit'
 export * from '#src/audience'
 export * from '#src/bank-account'
 export * from '#src/birth-date'

@@ -77,6 +77,8 @@ export function groupListItem(row: Row) {
     ageFrom: int(row.age_from),
     ageTo: int(row.age_to),
     levelLabel: text(row.level_label),
+    placesLimit: int(row.places_limit),
+    acceptsApplications: bool(row.accepts_applications),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -181,6 +183,14 @@ export const groupListItemSchema = z.object({
   ageFrom: z.number().int().nullable(),
   ageTo: z.number().int().nullable(),
   levelLabel: z.string().nullable(),
+  placesLimit: z
+    .number()
+    .int()
+    .nullable()
+    .describe('The limit of participant places (1–500); null = no limit. Binds online applications only.'),
+  acceptsApplications: z
+    .boolean()
+    .describe("Whether the section's sign-up form offers the group (it must also be public and active)."),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
 })
@@ -199,6 +209,12 @@ export const groupListRowSchema = groupListItemSchema.extend({
 })
 
 export const groupDetailSchema = groupListItemSchema.extend({
+  participantCount: z
+    .number()
+    .int()
+    .describe(
+      'The number of distinct persons with an active `participant` membership on the club day; the roster shows it against `placesLimit`.',
+    ),
   actingRole: z.string().describe('The role the caller reads the group as: `coach`, `coordinator` or `club_admin`.'),
 })
 

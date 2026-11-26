@@ -54,6 +54,9 @@ export type GroupRow = {
   ageFrom?: number | null
   ageTo?: number | null
   levelLabel?: string | null
+  /** The sign-up fields (sign-up form spec REQ-J01). */
+  placesLimit?: number | null
+  acceptsApplications?: boolean
   createdAt: string | null
   updatedAt: string | null
 }
@@ -65,7 +68,7 @@ export type GroupListRow = GroupRow & {
 }
 
 /** `GET /api/groups/groups/{id}`: the group with the role the caller reads it as. */
-export type GroupDetail = GroupRow & { actingRole: string }
+export type GroupDetail = GroupRow & { actingRole: string; participantCount?: number }
 
 export type MembershipRow = {
   id: string

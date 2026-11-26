@@ -162,6 +162,17 @@ const settingsResponseSchema = z.object({
   outlineLibraryMaxVisibility: z
     .enum(OUTLINE_LIBRARY_LEVELS)
     .describe('The widest level coaches may publish training outlines at: club (never), clubs on Vereino, public'),
+  applicationAgeReferenceDay: z
+    .string()
+    .describe("`MM-DD`: an applicant's age is counted on the latest occurrence of this day on or before 60 days ahead"),
+  applicationAnswerDays: z
+    .number()
+    .int()
+    .describe('Days after confirmation before a section application counts as overdue (1–60)'),
+  applicationInformation: z
+    .string()
+    .nullable()
+    .describe('The information for applicants of the sign-up form (≤ 6000); null uses the built-in text'),
   publicSlug: z.string().nullable().describe('Globally unique slug of `/p/{publicSlug}`'),
   publicDescription: z.string().nullable(),
   contactPhone: z.string().nullable(),

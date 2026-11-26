@@ -25,6 +25,8 @@ export type SectionRow = {
   publicContactEmail: string | null
   publicContactPhone: string | null
   shortDescription: string | null
+  /** The sign-up switch (sign-up form spec REQ-J01); absent from responses of older servers. */
+  acceptsApplications?: boolean
   createdAt: string | null
   updatedAt: string | null
   _people?: { coordinators: SectionCoordinatorView[]; coordinatorMissing: boolean }

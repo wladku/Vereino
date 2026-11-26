@@ -9,6 +9,8 @@ import {
   GROUP_AGE_MAX,
   GROUP_AGE_MIN,
   GROUP_KINDS,
+  GROUP_PLACES_LIMIT_MAX,
+  GROUP_PLACES_LIMIT_MIN,
   MEMBERSHIP_ROLES,
   ROSTER_VIEWS,
 } from '../lib/groups-rules'
@@ -38,6 +40,9 @@ const publicShape = {
   ageFrom: ageSchema,
   ageTo: ageSchema,
   levelLabel: optionalText(100),
+  /** The limit of participant places (sign-up form spec REQ-J01); null clears it (no limit). */
+  placesLimit: z.number().int().min(GROUP_PLACES_LIMIT_MIN).max(GROUP_PLACES_LIMIT_MAX).nullable().optional(),
+  acceptsApplications: z.boolean().optional(),
 }
 
 // --- Groups ---
