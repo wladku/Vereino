@@ -56,7 +56,7 @@ export async function writeOneOffEvent(
   // REQ-A07: the event's own deadline must still be ahead (a series default is not checked: it is an offset).
   const confirmBy = confirmByAt(startAt, input.confirmByMinutesBefore)
   if (confirmBy && confirmBy.getTime() < Date.now()) await activitiesErrors.throw('occurrence_confirm_by_in_past')
-  const { timeZone } = await clubClock(ctx.container, scope)
+  const { timeZone } = await clubClock(ctx.container, scope, undefined, em)
   const start = localDateTime(startAt, timeZone)
   const end = localDateTime(endAt, timeZone)
   // REQ-R19 (DD-R15): a club place's opening hours bound the event; a typed venue has no place and no hours.

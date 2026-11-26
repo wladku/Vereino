@@ -112,11 +112,12 @@ function applyFields(row: FacilityLog, fields: LogFields): void {
  */
 async function assertEditable(
   ctx: CommandRuntimeContext,
+  em: EntityManager,
   scope: FacilitiesScope,
   logDate: string,
   grants: Scope,
 ): Promise<void> {
-  const today = calendarDateInZone(new Date(), await clubTimeZone(ctx.container, scope))
+  const today = calendarDateInZone(new Date(), await clubTimeZone(ctx.container, scope, em))
   if (!logEditable(logDate, today, hasKind(grants, 'club_admin'))) await facilitiesErrors.throw('log_edit_closed')
 }
 
@@ -172,9 +173,9 @@ const createLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
       const scope = { tenantId, organizationId }
       const personId = await callerPersonId(authorized.scope)
       await assertPlaces(ctx, em, scope, [parsed.placeId])
-      const today = calendarDateInZone(new Date(), await clubTimeZone(ctx.container, scope))
+      const today = calendarDateInZone(new Date(), await clubTimeZone(ctx.container, scope, em))
       if (!logDateAllowed(parsed.logDate, today)) await throwFieldError('log_date_invalid', 'logDate')
-      await assertEditable(ctx, scope, parsed.logDate, authorized.scope)
+      await assertEditable(ctx, em, scope, parsed.logDate, authorized.scope)
       const existing = await em.findOne(
         FacilityLog,
         { ...scope, placeId: parsed.placeId, logDate: parsed.logDate },
@@ -244,7 +245,7 @@ const updateLogCommand: CommandHandler<Record<string, unknown>, LogCommandResult
       const row = authorized.entity as FacilityLog
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       const before = logSnapshot(row)
-      await assertEditable(ctx, scope, row.logDate, authorized.scope)
+      await assertEditable(ctx, em, scope, row.logDate, authorized.scope)
       applyFields(row, authorized.parsed)
       await assertContent(ctx, em, scope, row)
       // The operator is who ran the day: set on the first write; a later correction is recorded in the audit log.

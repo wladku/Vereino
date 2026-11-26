@@ -178,11 +178,17 @@ async function sessionActivity(em: EntityManager, row: Occurrence): Promise<Sess
 }
 
 /** Whether the session's declaration kind is `confirm` (the club setting for its activity type, D-026). */
-async function confirmKind(ctx: CommandRuntimeContext, row: Occurrence, activity: SessionActivity): Promise<boolean> {
-  const settings = await attendanceSettings(ctx.container, {
-    tenantId: row.tenantId,
-    organizationId: row.organizationId,
-  })
+async function confirmKind(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  row: Occurrence,
+  activity: SessionActivity,
+): Promise<boolean> {
+  const settings = await attendanceSettings(
+    ctx.container,
+    { tenantId: row.tenantId, organizationId: row.organizationId },
+    em,
+  )
   return (settings.declarationKinds[activity.type] ?? 'confirm') === 'confirm'
 }
 
@@ -385,7 +391,7 @@ const updateOccurrenceCommand: CommandHandler<Record<string, unknown>, Occurrenc
         moved,
         current: row.confirmByMinutesBefore ?? null,
         submitted: patch.confirmBy,
-        applies: moved && (await confirmKind(ctx, row, activity)),
+        applies: moved && (await confirmKind(ctx, em, row, activity)),
         now: new Date(),
       })
       if (!confirmBy.ok) return activitiesErrors.throw(confirmBy.code)
@@ -501,7 +507,7 @@ export async function cancelRolesOf(
       roles.set(row.id, actingRole)
       continue
     }
-    mayCancel ??= coachMayCancel(container, { tenantId: row.tenantId, organizationId: row.organizationId })
+    mayCancel ??= coachMayCancel(container, { tenantId: row.tenantId, organizationId: row.organizationId }, em)
     roles.set(row.id, permittedCancelRole(await mayCancel, actingRole, findActingRole(grants, PLAN_KINDS, target)))
   }
   return roles

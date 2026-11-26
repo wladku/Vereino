@@ -102,11 +102,19 @@ export async function accountEmail(
 
 type AccountScope = { tenantId: string; organizationId: string }
 
-/** The live platform user `userId` inside `scope`, or null (gone, or of another tenant or organization). */
-async function scopedUser(container: AwilixContainer, scope: AccountScope, userId: string): Promise<User | null> {
-  const em = container.resolve<EntityManager>('em').fork()
+/**
+ * The live platform user `userId` inside `scope`, or null (gone, or of another tenant or organization). Read with `em`
+ * when given — a command's write transaction, so no second pooled connection (#836) — on a fork with its own identity
+ * map; otherwise on a fork of the request's EntityManager.
+ */
+async function scopedUser(
+  container: AwilixContainer,
+  scope: AccountScope,
+  userId: string,
+  em?: EntityManager,
+): Promise<User | null> {
   return findOneWithDecryption(
-    em,
+    em ? em.fork({ keepTransactionContext: true }) : container.resolve<EntityManager>('em').fork(),
     User,
     { id: userId, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
     {},
@@ -140,9 +148,10 @@ export async function accountView(
   container: AwilixContainer,
   scope: AccountScope,
   userId: string | null | undefined,
+  em?: EntityManager,
 ): Promise<AccountView> {
   if (!userId) return NO_ACCOUNT
-  const user = await scopedUser(container, scope, userId)
+  const user = await scopedUser(container, scope, userId, em)
   if (!user) return NO_ACCOUNT
   const lastSignInAt = user.lastLoginAt ?? null
   return {

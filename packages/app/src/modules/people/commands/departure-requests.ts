@@ -123,7 +123,7 @@ const fileCommand: CommandHandler<Record<string, unknown>, DepartureRequestComma
             await foundationErrors.throw('scope_denied')
           }
         }
-        const today = await clubToday(ctx.container, scope)
+        const today = await clubToday(ctx.container, scope, undefined, em)
         if (!mayFileDepartureRequest(caller.birthDate, today)) await peopleErrors.throw('departure_request_minor')
         if (input.lastDay && isDepartureDateInPast(input.lastDay, today)) {
           await peopleErrors.throw('departure_date_in_past', { field: 'lastDay' })
@@ -241,7 +241,7 @@ const recordCommand: CommandHandler<Record<string, unknown>, DepartureRequestCom
         )
         const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
         const input = authorized.parsed
-        const today = await clubToday(ctx.container, scope)
+        const today = await clubToday(ctx.container, scope, undefined, em)
         if (input.lastDay && isDepartureDateInPast(input.lastDay, today)) {
           await peopleErrors.throw('departure_date_in_past', { field: 'lastDay' })
         }

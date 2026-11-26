@@ -273,13 +273,17 @@ export async function payerFactsOf(
   }
 }
 
-/** The club's settings zone and today's date in it. */
+/**
+ * The club's settings zone and today's date in it. Read with `em` when given — a command's write transaction, so the
+ * read runs on the connection it holds instead of waiting for a second pooled one (#549, #836).
+ */
 export async function clubClock(
   container: AwilixContainer,
   scope: PaymentsScope,
   now: Date = new Date(),
+  em?: EntityManager,
 ): Promise<{ today: CalendarDate; timeZone: string }> {
-  const settings = await settingsService(container).get(scope)
+  const settings = await settingsService(container).get(scope, em)
   const timeZone = settings.values.timezone
   return { today: calendarDateInZone(now, timeZone), timeZone }
 }
