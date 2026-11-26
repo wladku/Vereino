@@ -97,8 +97,9 @@ export function findEphemeralPort({ createServer = net.createServer } = {}) {
 }
 
 /**
- * Social sign-in in test runs (#566, spec *Integration Coverage*): a test-only Google client whose endpoints point at
- * the OAuth fake a spec starts on `VEREINO_QA_OAUTH_FAKE_PORT` (`.ai/qa/tests/foundation/identity/_fixtures/`).
+ * Social sign-in in test runs (#566, #567, spec *Integration Coverage*): test-only Google and Facebook clients whose
+ * endpoints point at the OAuth fake a spec starts on `VEREINO_QA_OAUTH_FAKE_PORT`
+ * (`.ai/qa/tests/foundation/identity/_fixtures/`); the fake serves Facebook under `/facebook/`.
  */
 export function oauthFakeEnv(port) {
   const base = `http://127.0.0.1:${String(port)}`
@@ -108,6 +109,11 @@ export function oauthFakeEnv(port) {
     VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'fake-qa-google-secret',
     VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL: `${base}/authorize`,
     VEREINO_OAUTH_GOOGLE_TOKEN_URL: `${base}/token`,
+    VEREINO_OAUTH_FACEBOOK_CLIENT_ID: 'vereino-qa-facebook-client',
+    VEREINO_OAUTH_FACEBOOK_CLIENT_SECRET: 'fake-qa-facebook-secret',
+    VEREINO_OAUTH_FACEBOOK_AUTHORIZATION_URL: `${base}/facebook/dialog/oauth`,
+    VEREINO_OAUTH_FACEBOOK_TOKEN_URL: `${base}/facebook/oauth/access_token`,
+    VEREINO_OAUTH_FACEBOOK_USERINFO_URL: `${base}/facebook/me`,
   }
 }
 

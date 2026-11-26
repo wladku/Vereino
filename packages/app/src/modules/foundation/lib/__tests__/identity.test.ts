@@ -1,11 +1,21 @@
-// Social sign-in rules (#566; spec TEST-S01 unit part, V-S04 option 1): provider configuration, id-token claims, the
-// state marker, the outcome paths, the last-method rule and the token-endpoint timeout.
+// Social sign-in rules (#566, Facebook #567; spec TEST-S01/S03 unit part, V-S04 option 1): provider configuration,
+// id-token claims, the Graph `/me` answer, the state marker, the outcome paths, the last-method rule, the deletion
+// status page and the token-endpoint timeout.
 import { afterEach, describe, expect, it, jest } from '@jest/globals'
 import {
+  DELETION_STATUS_PATH,
+  FACEBOOK_AUTHORIZATION_URL,
+  FACEBOOK_ME_URL,
+  FACEBOOK_TOKEN_URL,
   GOOGLE_AUTHORIZATION_URL,
   GOOGLE_ISSUERS,
   GOOGLE_TOKEN_URL,
+  IdentityProviderError,
   IdentityTimeoutError,
+  accessTokenOf,
+  deletionStatusUrl,
+  graphIdentity,
+  isConfirmationCode,
   STATE_TTL_MS,
   callbackPath,
   canRemoveMethod,
@@ -27,6 +37,10 @@ const GOOGLE_ENV = {
   VEREINO_OAUTH_GOOGLE_CLIENT_ID: 'client-1',
   VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'fake-secret',
 }
+const FACEBOOK_ENV = {
+  VEREINO_OAUTH_FACEBOOK_CLIENT_ID: 'app-1',
+  VEREINO_OAUTH_FACEBOOK_CLIENT_SECRET: 'fake-app-secret',
+}
 const APP_URL = 'https://club.example'
 
 describe('isIdentityProvider', () => {
@@ -42,10 +56,12 @@ describe('identityProviderConfig', () => {
   it("returns Google's endpoints and the callback on the app URL when only the client is configured", () => {
     expect(identityProviderConfig('google', GOOGLE_ENV, APP_URL)).toEqual({
       id: 'google',
+      protocol: 'oidc',
       clientId: 'client-1',
       clientSecret: 'fake-secret',
       authorizationUrl: GOOGLE_AUTHORIZATION_URL,
       tokenUrl: GOOGLE_TOKEN_URL,
+      userInfoUrl: null,
       redirectUri: 'https://club.example/api/foundation/identity/google/callback',
       issuers: GOOGLE_ISSUERS,
       scopes: ['openid', 'email'],
@@ -115,20 +131,104 @@ describe('identityProviderConfig', () => {
     )
   })
 
-  it('ships no Facebook configuration in phase 1', () => {
+  it("returns Facebook's Graph endpoints when its app id and secret are configured", () => {
+    expect(identityProviderConfig('facebook', FACEBOOK_ENV, APP_URL)).toEqual({
+      id: 'facebook',
+      protocol: 'graph',
+      clientId: 'app-1',
+      clientSecret: 'fake-app-secret',
+      authorizationUrl: FACEBOOK_AUTHORIZATION_URL,
+      tokenUrl: FACEBOOK_TOKEN_URL,
+      userInfoUrl: FACEBOOK_ME_URL,
+      redirectUri: 'https://club.example/api/foundation/identity/facebook/callback',
+      issuers: [],
+      scopes: ['email', 'public_profile'],
+    })
+    expect(FACEBOOK_AUTHORIZATION_URL).toMatch(/^https:\/\/www\.facebook\.com\/v\d+\.\d+\/dialog\/oauth$/)
+  })
+
+  it('takes the Facebook endpoint overrides of the test fake and is disabled without credentials or a usable me URL', () => {
+    const config = identityProviderConfig(
+      'facebook',
+      {
+        ...FACEBOOK_ENV,
+        VEREINO_OAUTH_FACEBOOK_AUTHORIZATION_URL: 'http://127.0.0.1:6001/facebook/dialog/oauth',
+        VEREINO_OAUTH_FACEBOOK_TOKEN_URL: 'http://127.0.0.1:6001/facebook/oauth/access_token',
+        VEREINO_OAUTH_FACEBOOK_USERINFO_URL: 'http://127.0.0.1:6001/facebook/me',
+      },
+      APP_URL,
+    )
+    expect(config).toMatchObject({
+      authorizationUrl: 'http://127.0.0.1:6001/facebook/dialog/oauth',
+      tokenUrl: 'http://127.0.0.1:6001/facebook/oauth/access_token',
+      userInfoUrl: 'http://127.0.0.1:6001/facebook/me',
+    })
+    expect(identityProviderConfig('facebook', { VEREINO_OAUTH_FACEBOOK_CLIENT_ID: 'app-1' }, APP_URL)).toBeNull()
+    expect(identityProviderConfig('facebook', GOOGLE_ENV, APP_URL)).toBeNull()
     expect(
       identityProviderConfig(
         'facebook',
-        { VEREINO_OAUTH_FACEBOOK_CLIENT_ID: 'f', VEREINO_OAUTH_FACEBOOK_CLIENT_SECRET: 's' },
+        { ...FACEBOOK_ENV, VEREINO_OAUTH_FACEBOOK_USERINFO_URL: 'http://graph.example.com/me' },
         APP_URL,
       ),
     ).toBeNull()
+    // Google's variables never enable Facebook and the reverse.
+    expect(identityProviderConfig('google', FACEBOOK_ENV, APP_URL)).toBeNull()
   })
 })
 
 describe('callbackPath', () => {
   it('names the provider callback route', () => {
     expect(callbackPath('google')).toBe('/api/foundation/identity/google/callback')
+    expect(callbackPath('facebook')).toBe('/api/foundation/identity/facebook/callback')
+  })
+})
+
+describe('accessTokenOf', () => {
+  it('reads the access token of a token answer and nothing else', () => {
+    expect(accessTokenOf({ access_token: 'tok', token_type: 'bearer' })).toBe('tok')
+    expect(accessTokenOf({ access_token: '' })).toBeNull()
+    expect(accessTokenOf({ access_token: 3 })).toBeNull()
+    expect(accessTokenOf({})).toBeNull()
+    expect(accessTokenOf(null)).toBeNull()
+    expect(accessTokenOf('tok')).toBeNull()
+  })
+})
+
+describe('graphIdentity', () => {
+  it('returns the app-scoped id and the e-mail Facebook shares, or no e-mail', () => {
+    expect(graphIdentity({ id: '1029384756', email: 'marta@example.com' })).toEqual({
+      subject: '1029384756',
+      email: 'marta@example.com',
+    })
+    expect(graphIdentity({ id: '1029384756' })).toEqual({ subject: '1029384756', email: null })
+    expect(graphIdentity({ id: '1029384756', email: '' })).toEqual({ subject: '1029384756', email: null })
+    expect(graphIdentity({ id: '1029384756', email: 7 })).toEqual({ subject: '1029384756', email: null })
+  })
+
+  it('refuses an answer without a usable id', () => {
+    expect(graphIdentity(null)).toBeNull()
+    expect(graphIdentity('x')).toBeNull()
+    expect(graphIdentity({ email: 'marta@example.com' })).toBeNull()
+    expect(graphIdentity({ id: 1029384756 })).toBeNull()
+    expect(graphIdentity({ id: '' })).toBeNull()
+    expect(graphIdentity({ id: 'x'.repeat(256) })).toBeNull()
+  })
+})
+
+describe('deletion status', () => {
+  it('recognises the 16-hex confirmation code of the deletion callback', () => {
+    expect(isConfirmationCode('0123456789abcdef')).toBe(true)
+    expect(isConfirmationCode('0123456789ABCDEF')).toBe(false)
+    expect(isConfirmationCode('0123456789abcde')).toBe(false)
+    expect(isConfirmationCode(['0123456789abcdef'])).toBe(false)
+    expect(isConfirmationCode(undefined)).toBe(false)
+  })
+
+  it('puts the status page on the redirect base with the code', () => {
+    expect(deletionStatusUrl('https://club.example/api/foundation/identity/facebook/callback', '0123456789abcdef')).toBe(
+      `https://club.example${DELETION_STATUS_PATH}?code=0123456789abcdef`,
+    )
   })
 })
 
@@ -261,6 +361,7 @@ describe('outcome paths', () => {
     expect(loginOutcomePath('failed')).toBe('/login?identity=failed')
     expect(profileOutcomePath('linked', 'google')).toBe('/club/profile?identity=linked&provider=google')
     expect(profileOutcomePath('failed', 'google')).toBe('/club/profile?identity=failed&provider=google')
+    expect(profileOutcomePath('linked', 'facebook')).toBe('/club/profile?identity=linked&provider=facebook')
   })
 })
 
@@ -269,6 +370,14 @@ describe('canRemoveMethod', () => {
     expect(canRemoveMethod(true, 1)).toBe(true)
     expect(canRemoveMethod(false, 2)).toBe(true)
     expect(canRemoveMethod(false, 1)).toBe(false)
+  })
+})
+
+describe('IdentityProviderError', () => {
+  it('names itself and keeps the short reason', () => {
+    const error = new IdentityProviderError('token_400')
+    expect(error.name).toBe('IdentityProviderError')
+    expect(error.message).toBe('token_400')
   })
 })
 

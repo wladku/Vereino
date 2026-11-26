@@ -18,6 +18,7 @@ import { buildSafeRedirectResponse } from '@open-mercato/core/modules/auth/lib/r
 import type { NextResponse } from 'next/server'
 import type { IdentityCommandResult } from '../../../../commands/identity'
 import {
+  IdentityProviderError,
   IdentityTimeoutError,
   isWellFormedState,
   loginOutcomePath,
@@ -57,6 +58,7 @@ function finish(request: Request, path: string): NextResponse {
 
 function failureReason(error: unknown): string {
   if (error instanceof IdentityTimeoutError) return 'timeout'
+  if (error instanceof IdentityProviderError) return error.message
   if (error instanceof Error) return error.name
   return 'unknown'
 }

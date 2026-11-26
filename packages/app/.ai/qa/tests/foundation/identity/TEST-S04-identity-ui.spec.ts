@@ -3,20 +3,20 @@ import { scanInColorSchemes } from '../../_fixtures/axe'
 import { createClub, createStaff, uniqueSuffix } from '../../_fixtures/club'
 import { signInBrowser, signOutBrowser } from '../../_fixtures/club-structure'
 import { uiText } from '../../_fixtures/ui-text'
-import { startGoogleFake, type GoogleFake } from './_fixtures/google-fake'
+import { startOAuthFake, type OAuthFake } from './_fixtures/oauth-fake'
 import { probeClearPassword } from './_fixtures/identity'
 
-// TEST-S04 (social sign-in spec; REQ-S01, REQ-S02; J-S01, J-S02; #566), at 375 px: `/login` shows one Google button
-// (Facebook is not enabled in phase 1) at least 44 px high after the password form; `?identity=unlinked|invalid|failed`
+// TEST-S04 (social sign-in spec; REQ-S01, REQ-S02; J-S01, J-S02; #566, #567), at 375 px: `/login` shows one button per
+// enabled provider (Google, then Facebook since phase 2) at least 44 px high after the password form; `?identity=unlinked|invalid|failed`
 // all show the same sentence in the form's polite alert area; a member connects Google from "Connected accounts" on
 // `/club/profile` (outcome announced) and then signs in with the keyboard on the Google button and reaches `/club`; for
 // a member whose only sign-in method is Google, "Disconnect" is disabled with the explanation. `/login` and
 // `/club/profile` are axe-clean in light and dark mode.
 test.describe.configure({ timeout: 300_000, mode: 'serial' })
 
-let fake: GoogleFake
+let fake: OAuthFake
 test.beforeAll(async () => {
-  fake = await startGoogleFake()
+  fake = await startOAuthFake()
 })
 test.afterAll(async () => {
   await fake.stop()
@@ -37,14 +37,19 @@ test('TEST-S04 the Google button, the generic sentence and connected accounts wo
     const subject = `google-marta-${marker}`
     await page.setViewportSize({ width: 375, height: 812 })
 
-    // `/login`: one Google button below the form, full width, at least 44 px high; no Facebook button.
+    // `/login`: a Google and a Facebook button below the form, full width, at least 44 px high.
     await openLogin(page)
     const google = page.getByTestId('login-identity-google')
     await expect(google).toBeVisible()
     await expect(google).toContainText(
       uiText('foundation.identity.login.signInWith', { params: { provider: 'Google' } }),
     )
-    await expect(page.getByTestId('login-identity-facebook')).toHaveCount(0)
+    const facebook = page.getByTestId('login-identity-facebook')
+    await expect(facebook).toBeVisible()
+    await expect(facebook).toContainText(
+      uiText('foundation.identity.login.signInWith', { params: { provider: 'Facebook' } }),
+    )
+    expect((await facebook.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44)
     const box = await google.boundingBox()
     expect(box?.height ?? 0).toBeGreaterThanOrEqual(44)
     const passwordBox = await page.locator('input[name="password"]').boundingBox()

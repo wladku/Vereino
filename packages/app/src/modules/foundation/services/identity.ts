@@ -39,6 +39,7 @@ export type IdentityFingerprint =
   | 'foundation.identity.callback_failed'
   | 'foundation.identity.subject_conflict'
   | 'foundation.identity.state_store_unavailable'
+  | 'foundation.identity.deletion_bad_signature'
 
 /** Logs and reports a sign-in failure by its fingerprint; `details` carries codes and ids only. */
 export function reportIdentityFailure(fingerprint: IdentityFingerprint, details: Record<string, unknown> = {}): void {
@@ -182,6 +183,32 @@ export async function findLinkForSignIn(
     organizationId: link.organizationId,
     provider: link.provider,
   }
+}
+
+/**
+ * Facebook's data-deletion request (REQ-S03; #567): deletes the link of (`provider`, `subject`) found by the same
+ * system-scope lookup as the sign-in (DD-S03), narrowed at once to that link's tenant and organization, and emits
+ * `foundation.identity.unlinked`. Unlike the unlink command it ignores the last-method rule: the person asked the
+ * provider to remove the connection, and the administrator can re-invite an account left without a method. False when
+ * no link exists (a repeat, or a person who never linked) — the caller answers the same either way.
+ */
+export async function deleteLinkBySubject(
+  container: AwilixContainer,
+  provider: IdentityProvider,
+  subject: string,
+): Promise<boolean> {
+  const link = await findLinkForSignIn(container, provider, subject)
+  if (!link) return false
+  const em = container.resolve<EntityManager>('em').fork()
+  const removed = await em.nativeDelete(IdentityLink, {
+    id: link.id,
+    tenantId: link.tenantId,
+    organizationId: link.organizationId,
+  })
+  if (removed > 0) {
+    void emitFoundationEvent('foundation.identity.unlinked', identityEventPayload(link)).catch(() => undefined)
+  }
+  return removed > 0
 }
 
 /** The link's live, unblocked user in the link's own tenant and organization, or null. */

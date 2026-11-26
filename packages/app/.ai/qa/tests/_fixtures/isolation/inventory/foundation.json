@@ -19,6 +19,12 @@
         "why": "The OAuth callback names no club record: it consumes a single-use state bound to an HttpOnly cookie and finds the link by (provider, subject), the approved system-scope lookup of D-027, which narrows to the linked user's tenant and organization. TEST-S01 covers it; without the provider round trip the probe engine can only reach the invalid-state redirect."
       }
     },
+    "/api/foundation/identity/[provider]/deletion": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Facebook's sessionless data-deletion callback names no club record: it carries a signed_request (HMAC with the app secret) whose app-scoped user id is looked up by (provider, subject), the approved system-scope lookup of D-027, which narrows to the link's tenant and organization. Without the app secret the probe engine can only reach the 400 for a bad signature. TEST-S03 covers it."
+      }
+    },
     "/api/foundation/identity/[provider]/link": {
       "POST": {
         "probe": "exempt",

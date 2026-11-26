@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { call, createClub, createStaff, signInAs, uniqueSuffix, type Club } from '../../_fixtures/club'
 import { setUserFeatures } from '../../_fixtures/members'
-import { startGoogleFake, type GoogleFake } from './_fixtures/google-fake'
+import { startOAuthFake, type OAuthFake } from './_fixtures/oauth-fake'
 import {
   CookieJar,
   STATE_COOKIE,
@@ -20,7 +20,7 @@ import {
 // `last_signed_in_at` updated; a sign-in without a link, a reused, tampered or cookie-less state, a provider refusal, a
 // token endpoint that times out and an id token for another client all end without a session; a user of another
 // tenant cannot take the subject (generic link failure, nothing revealed); a session without
-// `foundation.identity.self` cannot start a link (403); a disabled or unknown provider answers 404; no sign-in route
+// `foundation.identity.self` cannot start a link (403); an unknown provider answers 404; no sign-in route
 // creates a platform user. The state-store-down path (503) is not driven here: a running app's cache cannot be stopped
 // from a test.
 test.describe.configure({ timeout: 300_000, mode: 'serial' })
@@ -31,9 +31,9 @@ type IdentityList = {
   providers: Array<{ id: string; enabled: boolean; linked: boolean }>
 }
 
-let fake: GoogleFake
+let fake: OAuthFake
 test.beforeAll(async () => {
-  fake = await startGoogleFake()
+  fake = await startOAuthFake()
 })
 test.afterAll(async () => {
   await fake.stop()
@@ -64,12 +64,12 @@ test('TEST-S01 Google sign-in links, signs in and refuses every other path witho
     // Between here and the end of the failure paths no test step creates a user: every change would be a sign-in route's.
     const usersBefore = probeUserCount()
 
-    // The provider list on `/login` and `me` name Google enabled and Facebook (phase 2) disabled.
+    // The provider list on `/login` and `me` name Google and Facebook (phase 2, #567) enabled.
     const providers = await request.get('/api/foundation/identity/providers')
     expect(await providers.json()).toEqual({
       providers: [
         { id: 'google', enabled: true },
-        { id: 'facebook', enabled: false },
+        { id: 'facebook', enabled: true },
       ],
     })
 
@@ -84,7 +84,7 @@ test('TEST-S01 Google sign-in links, signs in and refuses every other path witho
     expect(annaList.body?.canUnlink).toBe(true)
     expect(annaList.body?.providers).toEqual([
       { id: 'google', enabled: true, linked: true },
-      { id: 'facebook', enabled: false, linked: false },
+      { id: 'facebook', enabled: true, linked: false },
     ])
     const stored = probeLink('google', subject, annaEmail)
     expect(stored).toMatchObject({
@@ -210,11 +210,10 @@ test('TEST-S01 Google sign-in links, signs in and refuses every other path witho
     expect(refused.status).toBe(403)
     expect(refused.setCookie).not.toContain(`${STATE_COOKIE}=`)
 
-    // A disabled (phase 2) and an unknown provider.
-    const facebook = await http.get('/api/foundation/identity/facebook/start')
-    expect(facebook.status).toBe(404)
-    expect((JSON.parse(facebook.body) as { code?: string }).code).toBe('identity_provider_disabled')
-    expect((await http.get('/api/foundation/identity/apple/start')).status).toBe(404)
+    // An unknown provider answers like a disabled one.
+    const apple = await http.get('/api/foundation/identity/apple/start')
+    expect(apple.status).toBe(404)
+    expect((JSON.parse(apple.body) as { code?: string }).code).toBe('identity_provider_disabled')
     const unknownCallback = await http.get('/api/foundation/identity/apple/callback?code=x&state=y')
     expect(appPath(location(unknownCallback))).toBe('/login?identity=invalid')
   } finally {

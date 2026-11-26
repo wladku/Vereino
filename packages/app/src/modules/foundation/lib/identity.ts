@@ -1,5 +1,5 @@
-// Social sign-in rules (`.ai/specs/2026-10-27-vereino-social-sign-in.md`; #566). Pure: the provider configuration read
-// from the environment, the id-token claim checks, the single-use state marker's shape, the outcome redirects and the
+// Social sign-in rules (`.ai/specs/2026-10-27-vereino-social-sign-in.md`; #566, Facebook #567). Pure: the provider
+// configuration read from the environment, the id-token claim checks (Google), the Graph `/me` answer (Facebook), the single-use state marker's shape, the outcome redirects and the
 // last-method rule. The services bind them to `arctic`, the platform cache, the session and the ORM.
 //
 // V-S04 (decided on #566, option 1): `arctic` decodes the id token but does not verify it. The token comes straight
@@ -21,20 +21,68 @@ export const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 export const GOOGLE_ISSUERS = ['https://accounts.google.com', 'accounts.google.com'] as const
 export const GOOGLE_SCOPES = ['openid', 'email'] as const
 
+/**
+ * Facebook's endpoints (phase 2, #567): OAuth 2.0 without an id token, so the identity comes from the Graph API's
+ * `/me?fields=id,email` called with the access token of the back-channel exchange (spec *Architecture and Data Flow*).
+ * The Graph version is pinned here; a newer one is a one-line change.
+ */
+export const FACEBOOK_GRAPH_VERSION = 'v21.0'
+export const FACEBOOK_AUTHORIZATION_URL = `https://www.facebook.com/${FACEBOOK_GRAPH_VERSION}/dialog/oauth`
+export const FACEBOOK_TOKEN_URL = `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/oauth/access_token`
+export const FACEBOOK_ME_URL = `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/me`
+export const FACEBOOK_SCOPES = ['email', 'public_profile'] as const
+
 /** The callback route of a provider, relative to the redirect base. */
 export function callbackPath(provider: IdentityProvider): string {
   return `/api/foundation/identity/${provider}/callback`
 }
 
+/**
+ * How a provider names the user: `oidc` — an id token from the token endpoint (Google); `graph` — the user-info
+ * endpoint called with the access token (Facebook).
+ */
+export type IdentityProtocol = 'oidc' | 'graph'
+
 export type IdentityProviderConfig = {
   id: IdentityProvider
+  protocol: IdentityProtocol
   clientId: string
   clientSecret: string
   authorizationUrl: string
   tokenUrl: string
+  /** The user-info endpoint of a `graph` provider; null for `oidc`. */
+  userInfoUrl: string | null
   redirectUri: string
   issuers: readonly string[]
   scopes: readonly string[]
+}
+
+type ProviderDefaults = {
+  protocol: IdentityProtocol
+  authorizationUrl: string
+  tokenUrl: string
+  userInfoUrl: string | null
+  issuers: readonly string[]
+  scopes: readonly string[]
+}
+
+const PROVIDER_DEFAULTS: Record<IdentityProvider, ProviderDefaults> = {
+  google: {
+    protocol: 'oidc',
+    authorizationUrl: GOOGLE_AUTHORIZATION_URL,
+    tokenUrl: GOOGLE_TOKEN_URL,
+    userInfoUrl: null,
+    issuers: GOOGLE_ISSUERS,
+    scopes: GOOGLE_SCOPES,
+  },
+  facebook: {
+    protocol: 'graph',
+    authorizationUrl: FACEBOOK_AUTHORIZATION_URL,
+    tokenUrl: FACEBOOK_TOKEN_URL,
+    userInfoUrl: FACEBOOK_ME_URL,
+    issuers: [],
+    scopes: FACEBOOK_SCOPES,
+  },
 }
 
 type Env = Readonly<Record<string, string | undefined>>
@@ -65,8 +113,9 @@ function absoluteHttpUrl(value: string | null): string | null {
 }
 
 /**
- * A provider endpoint: `https:` only, except `http:` on a loopback host (the integration runner's fake). The id token
- * is trusted because it comes from the token endpoint over TLS (V-S04), so a plain-HTTP endpoint elsewhere is refused.
+ * A provider endpoint: `https:` only, except `http:` on a loopback host (the integration runner's fake). The identity
+ * is trusted because it comes from the provider over TLS in the back channel (V-S04), so a plain-HTTP endpoint
+ * elsewhere is refused.
  */
 function providerEndpoint(value: string | null): string | null {
   return absoluteUrl(value, true)
@@ -74,40 +123,48 @@ function providerEndpoint(value: string | null): string | null {
 
 /**
  * The configuration of an enabled provider, or null when it is disabled — no client id or secret (the feature flag
- * of the spec's *Rollout*), no usable redirect base, or a provider this phase does not ship (Facebook is phase 2).
- * `VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL` and `…_TOKEN_URL` point the client at the test fake (V-S04); unset, they
- * are Google's own. The redirect base is `VEREINO_OAUTH_REDIRECT_BASE_URL`, else the app URL.
+ * of the spec's *Rollout*) or no usable redirect base. `VEREINO_OAUTH_<PROVIDER>_CLIENT_ID` and `…_CLIENT_SECRET`
+ * enable a provider; the test-only `…_AUTHORIZATION_URL`, `…_TOKEN_URL` and (Facebook) `…_USERINFO_URL` point the
+ * client at the integration runner's fake (V-S04); unset, they are the provider's own. The redirect base is
+ * `VEREINO_OAUTH_REDIRECT_BASE_URL`, else the app URL.
  */
 export function identityProviderConfig(
   provider: IdentityProvider,
   env: Env,
   appUrl: string | null,
 ): IdentityProviderConfig | null {
-  if (provider !== 'google') return null
-  const clientId = envValue(env, 'VEREINO_OAUTH_GOOGLE_CLIENT_ID')
-  const clientSecret = envValue(env, 'VEREINO_OAUTH_GOOGLE_CLIENT_SECRET')
+  const defaults = PROVIDER_DEFAULTS[provider]
+  const prefix = `VEREINO_OAUTH_${provider.toUpperCase()}`
+  const clientId = envValue(env, `${prefix}_CLIENT_ID`)
+  const clientSecret = envValue(env, `${prefix}_CLIENT_SECRET`)
   const base = absoluteHttpUrl(envValue(env, 'VEREINO_OAUTH_REDIRECT_BASE_URL') ?? appUrl)
-  const authorizationUrl = providerEndpoint(
-    envValue(env, 'VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL') ?? GOOGLE_AUTHORIZATION_URL,
-  )
-  const tokenUrl = providerEndpoint(envValue(env, 'VEREINO_OAUTH_GOOGLE_TOKEN_URL') ?? GOOGLE_TOKEN_URL)
+  const authorizationUrl = providerEndpoint(envValue(env, `${prefix}_AUTHORIZATION_URL`) ?? defaults.authorizationUrl)
+  const tokenUrl = providerEndpoint(envValue(env, `${prefix}_TOKEN_URL`) ?? defaults.tokenUrl)
+  const userInfoUrl =
+    defaults.userInfoUrl === null
+      ? null
+      : providerEndpoint(envValue(env, `${prefix}_USERINFO_URL`) ?? defaults.userInfoUrl)
   if (!clientId || !clientSecret || !base || !authorizationUrl || !tokenUrl) return null
+  if (defaults.protocol === 'graph' && !userInfoUrl) return null
   return {
     id: provider,
+    protocol: defaults.protocol,
     clientId,
     clientSecret,
     authorizationUrl,
     tokenUrl,
+    userInfoUrl,
     redirectUri: `${base}${callbackPath(provider)}`,
-    issuers: GOOGLE_ISSUERS,
-    scopes: GOOGLE_SCOPES,
+    issuers: defaults.issuers,
+    scopes: defaults.scopes,
   }
 }
 
 /** The subject and the e-mail an id token names; the e-mail only when the provider marks it verified. */
 export type ProviderIdentity = { subject: string; email: string | null }
 
-const MAX_SUBJECT_LENGTH = 255
+/** The longest provider subject a link stores. */
+export const MAX_SUBJECT_LENGTH = 255
 
 /**
  * The identity of a decoded id-token payload, or null when a claim fails: the issuer is not the provider's, the
@@ -130,6 +187,43 @@ export function idTokenIdentity(
   if (typeof subject !== 'string' || subject.length === 0 || subject.length > MAX_SUBJECT_LENGTH) return null
   const email = claims.email_verified === true && typeof claims.email === 'string' ? claims.email : null
   return { subject, email }
+}
+
+/** The access token of a token-endpoint answer (RFC 6749 §5.1), or null when it carries none. */
+export function accessTokenOf(body: unknown): string | null {
+  if (typeof body !== 'object' || body === null) return null
+  const token = (body as Record<string, unknown>).access_token
+  return typeof token === 'string' && token.length > 0 ? token : null
+}
+
+/**
+ * The identity of a Graph `/me` answer, or null without a usable id. Facebook shares an e-mail only when the person
+ * granted the `email` permission and has a confirmed address; without one the link stores none (J-S03).
+ */
+export function graphIdentity(body: unknown): ProviderIdentity | null {
+  if (typeof body !== 'object' || body === null) return null
+  const me = body as Record<string, unknown>
+  const subject = me.id
+  if (typeof subject !== 'string' || subject.length === 0 || subject.length > MAX_SUBJECT_LENGTH) return null
+  const email = typeof me.email === 'string' && me.email.length > 0 ? me.email : null
+  return { subject, email }
+}
+
+/** The public page where a person checks a Facebook data-deletion request by its confirmation code. */
+export const DELETION_STATUS_PATH = '/identity/deletion'
+
+const CONFIRMATION_CODE_PATTERN = /^[a-f0-9]{16}$/
+
+/** True for a confirmation code as the deletion callback makes it: 8 random bytes, hex. */
+export function isConfirmationCode(value: unknown): value is string {
+  return typeof value === 'string' && CONFIRMATION_CODE_PATTERN.test(value)
+}
+
+/** The absolute status URL of a deletion request, on the app's redirect base. */
+export function deletionStatusUrl(redirectUri: string, code: string): string {
+  const url = new URL(DELETION_STATUS_PATH, redirectUri)
+  url.searchParams.set('code', code)
+  return url.toString()
 }
 
 /** How long a state marker lives (DD-S04). */
@@ -244,6 +338,11 @@ export const TOKEN_TIMEOUT_MS = 5000
 
 export class IdentityTimeoutError extends Error {
   override name = 'IdentityTimeoutError'
+}
+
+/** A provider answer the exchange cannot use (an error status, or no access token); its message is a short reason. */
+export class IdentityProviderError extends Error {
+  override name = 'IdentityProviderError'
 }
 
 /**
