@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { birthDateTurning, calendarDate, call, createClub, createPerson, type Club } from '../_fixtures/club'
