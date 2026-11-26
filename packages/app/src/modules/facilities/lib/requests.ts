@@ -54,7 +54,9 @@ export function blockingHolds<T extends RequestHoldShape>(
 /**
  * The per-e-mail limit of `POST …/requests` (V-10, TEST-036): 5 requests an hour per address, whatever the IP. The key
  * is the SHA-256 of the normalized address alone, so rotating IPs does not reset it and the store never holds the
- * address; the check fails closed (503 when the store is down).
+ * address; the check fails closed (503 when the store is down). The same key as the foundation's `emailSubjectLimit`
+ * (DD-J08), which the route counts it with (`enforceFailClosedLimit`); computed here because a pure `lib/` file cannot
+ * import the foundation's server entry.
  */
 export const REQUEST_EMAIL_RATE_LIMIT = { points: 5, duration: 60 * 60, keyPrefix: 'facilities_request_email' }
 

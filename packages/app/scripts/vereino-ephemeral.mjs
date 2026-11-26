@@ -171,6 +171,9 @@ export function buildAppEnv({
     DEMO_MODE: 'false',
     // The club `/` leads a guest to (#485); the test of the home route publishes a club under this slug.
     VEREINO_HOME_CLUB_SLUG: 'qa-home-club',
+    // The staff idle timeout (ENG-Q-12, #737) above the 45-minute token cache of the platform's `getAuthToken`, so a cached
+    // staff token outlives no session; TEST-737 checks the timeout the server reports, production keeps 30.
+    VEREINO_STAFF_IDLE_MINUTES: '60',
     // The shared outline library (training outlines spec DD-O10, #685): ids the tests create the library tenant under
     // with `training library-init`, and a test-only rater secret.
     VEREINO_LIBRARY_TENANT_ID: library.tenantId,

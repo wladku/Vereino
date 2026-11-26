@@ -225,6 +225,15 @@ function buildSecurityHeaders(allowLoopbackFraming: boolean) {
         ],
       },
       {
+        // The application confirmation and status pages carry the e-mailed token in their path, like the request
+        // confirmation (section sign-up form spec P-J3, P-J4, DD-J06, DD-J07; #799).
+        source: '/p/:clubSlug/applications/:page(confirm|status)/:token',
+        headers: [
+          { key: 'Referrer-Policy', value: 'no-referrer' },
+          { key: 'Cache-Control', value: 'no-store' },
+        ],
+      },
+      {
         // Marker header consumed by the custom-domain DNS reverse-resolve check
         // (see SPEC 2026-04-08-portal-custom-domain-routing). Lets the verifier
         // tell "request reached our origin" from "request was answered by an

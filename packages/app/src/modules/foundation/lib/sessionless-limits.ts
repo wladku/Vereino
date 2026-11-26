@@ -61,6 +61,27 @@ export function linkRequestEmailLimit(keyPrefix: string, clubSlug: string, email
   }
 }
 
+/** A layer that fails closed: when the limiter's store is down the caller answers 503 instead of letting it through. */
+export type FailClosedSessionlessLimit = SessionlessLimit & { options: { failClosed: true } }
+
+/**
+ * The per-address layer of a public form whose subject is one e-mail address across every club (a booking request, a
+ * section sign-up; DD-J08): rotating clients or clubs does not reset it. The key is the SHA-256 of the normalized
+ * address alone, so the store never holds the address. Fails closed (`services/sessionless-limits.ts`
+ * `enforceFailClosedLimit` answers 503 when the store is down).
+ */
+export function emailSubjectLimit(
+  keyPrefix: string,
+  email: string,
+  window: { points: number; duration: number },
+): FailClosedSessionlessLimit {
+  return {
+    config: { points: window.points, duration: window.duration, keyPrefix },
+    key: hashKeyPart(normalizeEmail(email)),
+    options: { failClosed: true },
+  }
+}
+
 /** The per-account layer of a sign-in or a password-reset request. */
 export function accountEmailLimit(
   config: typeof SIGN_IN_EMAIL_LIMIT | typeof PASSWORD_RESET_EMAIL_LIMIT,

@@ -38,9 +38,9 @@ const CLUB_JOBS = [
 
 /**
  * Declared job types (the 17 above, `people:life-cycle`, `people:retention-sweep` and `people:medical-reminders` of
- * #682) plus the dispatch sweep: one sweep schedule each.
+ * #682, `enrolment:expire-unconfirmed` and `enrolment:daily` of #799) plus the dispatch sweep: one sweep schedule each.
  */
-const SWEEP_SCHEDULES = 21
+const SWEEP_SCHEDULES = 23
 
 type RetireRun = { dryRun: boolean; jobs: Array<{ job: string; clubs: number; retired: number; rowsCreated: number }> }
 
