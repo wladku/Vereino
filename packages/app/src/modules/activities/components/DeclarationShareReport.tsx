@@ -109,7 +109,10 @@ export function DeclarationShareReport() {
       ? defaultSharePeriod(today)
       : mode === 'month'
         ? monthRange(month)
-        : resolveSharePeriod(range, today)
+        : // Both days are required here: two empty fields are no range (the API would answer the last 28 days).
+          range.from && range.to
+          ? resolveSharePeriod(range, today)
+          : null
   const periodInvalid = period === null
   const query = mode === 'last28' ? null : period
 
@@ -215,7 +218,11 @@ export function DeclarationShareReport() {
             />
           ) : null
         }
-        emptyState={<p data-testid="declaration-share-empty">{t('activities.reports.declarationShare.empty')}</p>}
+        emptyState={
+          periodInvalid ? null : (
+            <p data-testid="declaration-share-empty">{t('activities.reports.declarationShare.empty')}</p>
+          )
+        }
         disableRowClick
       />
     </div>

@@ -1,4 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
+import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { createActivity } from '../_fixtures/activities'
 import { prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
@@ -55,15 +56,15 @@ async function session(
   request: APIRequestContext,
   club: Club,
   family: Family,
-  input: { name: string; type: string; time: string },
+  input: { name: string; type: string; time: string; pool?: boolean },
 ): Promise<string> {
   const [hours] = input.time.split(':').map(Number)
   const { id } = await createActivity(request, club.adminToken, {
-    groupId: family.zaki,
+    groupId: input.pool ? family.poolGroup : family.zaki,
     name: input.name,
     type: input.type,
-    placeId: family.pitch,
-    coachPersonId: family.coach.personId,
+    placeId: input.pool ? family.poolPlace : family.pitch,
+    coachPersonId: input.pool ? family.instructor.personId : family.coach.personId,
     startsOn: calendarDate(),
     startTime: input.time,
     endTime: `${String(hours).padStart(2, '0')}:45`,
@@ -221,7 +222,9 @@ test('E27-S01 the administrator sees, per section, the share of declarations mad
     expect((await updateClubSettings(request, club.adminToken, { defaultLocale: 'en' })).status).toBe(200)
     page.setDefaultTimeout(30_000)
     await prepareForAccessibilityScan(page)
-    await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+    // `signInBrowser` ends the administrator's API token: take a fresh one for the API calls after the page checks.
+    const adminPassword = await signInBrowser(page, request, club, club.adminUserId, club.tenant.email)
+    club.adminToken = await getAuthToken(request, club.tenant.email, adminPassword)
     const route = '/backend/activities/reports/declaration-share'
     await page.goto(route)
     const confirmCell = page.getByTestId(`declaration-share-confirm-${family.academy}`)
@@ -287,6 +290,44 @@ test('E27-S01 the administrator sees, per section, the share of declarations mad
     await expect(page.getByTestId(`declaration-share-confirm-${family.pool}`)).toHaveText(
       uiText('activities.reports.declarationShare.noSessions', { exact: true }),
     )
+
+    // --- The period's edges follow the session's club-zone date, not its start instant ---
+    // Both pool sessions (type `other`, a confirm kind) start today; one is dated on the first day of the default period, one the day before.
+    const onFirstDay = await session(request, club, family, {
+      name: 'Zajęcia na brzegu',
+      type: 'other',
+      time: '13:00',
+      pool: true,
+    })
+    const dayBefore = await session(request, club, family, {
+      name: 'Zajęcia przed okresem',
+      type: 'other',
+      time: '14:00',
+      pool: true,
+    })
+    await seedSession(club, onFirstDay, 'done', [{ personId: family.younger.personId }])
+    await seedSession(club, dayBefore, 'done', [{ personId: family.younger.personId, source: 'staff' }])
+    await withClient(async (client) => {
+      await client.query('update activities_occurrences set occurrence_date = $2 where id = $1', [
+        onFirstDay,
+        calendarDate(-27),
+      ])
+      await client.query('update activities_occurrences set occurrence_date = $2 where id = $1', [
+        dayBefore,
+        calendarDate(-28),
+      ])
+    })
+    const edges = await report(request, club.adminToken)
+    expect(rowOf(edges.body, family.pool)).toMatchObject({
+      sessions: 1,
+      confirm: { declared: 1, total: 1, percent: 100 },
+    })
+    const before = await report(request, club.adminToken, `from=${calendarDate(-28)}&to=${calendarDate(-28)}`)
+    expect(rowOf(before.body, family.pool)).toMatchObject({
+      sessions: 1,
+      confirm: { declared: 0, total: 1, percent: 0 },
+    })
+    expect(rowOf(before.body, family.academy)).toMatchObject({ sessions: 0 })
   } finally {
     await club.cleanup()
   }

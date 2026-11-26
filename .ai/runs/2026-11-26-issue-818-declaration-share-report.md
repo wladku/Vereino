@@ -51,3 +51,8 @@
 ## Browser evidence
 
 - Screenshots (en desktop, en 375 px, pl desktop) from an E27-S01 run with temporary, uncommitted screenshot lines. The first set showed the DataTable truncating the count cells ("14 of 20 (70%) declar…"); the count columns now set `meta: { truncate: false }`. Second set full text; E27-S01 passed again and a full `yarn verify` passed (23 steps).
+
+## Independent review (subagent, fresh read of the diff)
+
+- No blocking findings. Fixed: (1) roster reads for long periods ran all at once — now deduplicated per group and date and read at most 8 at a time (a bulk roster read in `groups` would widen that module's DI contract, left out); (2) no test of the period edges — E27-S01 now dates one session on the first day of the default period and one the day before, both starting today, so a filter on `start_at` instead of the club-zone date fails. Nits fixed: two empty range fields are an invalid range in the page (not a silent fallback), the empty state is hidden while the range is invalid, the OpenAPI text says the kind comes from the club's current `declaration_kinds`. Left: the page's initial month comes from the club's "today" at first render (shared `useClubToday` pattern of the coach units report).
+- Reruns: E27-S01 failed twice while adding the edge case — 401 on `POST /api/activities/activities` (the API call ran after `signInBrowser`, which ends the admin token; fresh token taken) and 422 `activity_type_requires_team` (a match in the pool's class group; the edge sessions use type `other`, also a confirm kind). Then 1 passed (59.9 s); full `yarn verify` all 23 steps passed.

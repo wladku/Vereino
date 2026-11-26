@@ -49,6 +49,13 @@ export type DeclarationShareReport = {
   items: DeclarationShareRow[]
 }
 
+/** How many roster reads run at the same time (each takes a pooled connection). */
+const ROSTER_READS_AT_ONCE = 8
+
+function participantsOf(roster: readonly RosterEntry[]): string[] {
+  return roster.filter((member) => member.role === 'participant').map((member) => member.personId)
+}
+
 function withPercent(counts: ShareCounts): DeclarationShareCounts {
   return { ...counts, percent: sharePercent(counts) }
 }
@@ -126,29 +133,36 @@ export async function readDeclarationShare(
   const kindOf = (activityId: string) =>
     settings.declarationKinds[activities.get(activityId)?.type ?? 'other'] ?? 'confirm'
   // The roster is read once per group and date, and only for `confirm` sessions (absences need no roster).
-  const rosters = new Map<string, Promise<RosterEntry[]>>()
-  const rosterOf = (groupId: string, date: string) => {
-    const key = `${groupId}:${date}`
-    let roster = rosters.get(key)
-    if (!roster) {
-      roster = rosterOn(ctx.container, scope, groupId, date)
-      rosters.set(key, roster)
-    }
-    return roster
+  // The roster of each `confirm` session's group on its date (absences need none), read once per group and date and
+  // at most ROSTER_READS_AT_ONCE at a time: a 12-month range can hold hundreds of matches, and every read takes a
+  // pooled connection.
+  const rosterKeys = [
+    ...new Set(
+      occurrences
+        .filter((row) => kindOf(row.activityId) === 'confirm')
+        .map((row) => `${row.groupId}|${row.occurrenceDate}`),
+    ),
+  ]
+  const rosters = new Map<string, string[]>()
+  for (let start = 0; start < rosterKeys.length; start += ROSTER_READS_AT_ONCE) {
+    const batch = rosterKeys.slice(start, start + ROSTER_READS_AT_ONCE)
+    const read = await Promise.all(
+      batch.map((key) => {
+        const [groupId, date] = key.split('|')
+        return rosterOn(ctx.container, scope, groupId, date)
+      }),
+    )
+    batch.forEach((key, index) => {
+      rosters.set(key, participantsOf(read[index]))
+    })
   }
-  const sessions: ShareSession[] = await Promise.all(
-    occurrences.map(async (row): Promise<ShareSession> => {
-      const kind = kindOf(row.activityId)
-      const roster = kind === 'confirm' ? await rosterOf(row.groupId, row.occurrenceDate) : []
-      return {
-        sectionId: row.sectionId,
-        kind,
-        startAt: row.startAt,
-        participantIds: roster.filter((member) => member.role === 'participant').map((member) => member.personId),
-        rows: rowsBySession.get(row.id) ?? [],
-      }
-    }),
-  )
+  const sessions: ShareSession[] = occurrences.map((row) => ({
+    sectionId: row.sectionId,
+    kind: kindOf(row.activityId),
+    startAt: row.startAt,
+    participantIds: rosters.get(`${row.groupId}|${row.occurrenceDate}`) ?? [],
+    rows: rowsBySession.get(row.id) ?? [],
+  }))
   const names = new Map(sections.map((section) => [section.id, section.name]))
   const items = sectionShares(reach, sessions).map((share): DeclarationShareRow => ({
     sectionId: share.sectionId,
