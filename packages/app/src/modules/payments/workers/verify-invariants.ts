@@ -2,7 +2,8 @@
 // at 03:00 in the club's time zone, `payments.invariants.verify` recomputes the club's charges from their payments and
 // checks its `KP` and `RG` numbering, and reports drift as an operations alert (`docs/ops/monitoring.md`); it changes
 // no data. The scheduler injects the registration's `tenantId` and `organizationId`; the worker re-validates them and
-// dispatches the job command with a session-less job context (acting role `system`).
+// dispatches the job command with a session-less job context (acting role `system`). On the club job sweep a run
+// pings nothing and reports drift as its problem code; the sweep run's round pings once for its clubs (#852).
 import type { QueuedJob, WorkerMeta } from '@open-mercato/queue'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'

@@ -64,12 +64,15 @@ export function mercato(args: string[]): unknown {
   return lastJsonLine(result.stdout)
 }
 
-/** The same as `mercato`, without blocking the test (for races with API calls). */
-export function mercatoAsync(args: string[]): Promise<unknown> {
+/**
+ * The same as `mercato`, without blocking the test (for races with API calls, or a server the command calls back);
+ * `env` adds variables to the command's environment.
+ */
+export function mercatoAsync(args: string[], env: Record<string, string> = {}): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const child = spawn('yarn', ['mercato', ...args], {
       cwd: APP_ROOT,
-      env: CLI_ENV,
+      env: { ...CLI_ENV, ...env },
       shell: process.platform === 'win32',
     })
     let stdout = ''
