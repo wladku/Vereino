@@ -68,7 +68,7 @@ test('TEST-A19 the session cards and the session page show the dot, the map, the
     await expect(card.getByTestId('session-facts-substitute')).toHaveText(substituteText)
     await expectNoPageOverflow(page)
 
-    await page.goto('/club/calendar')
+    await page.goto('/club/calendar?range=upcoming')
     const item = page.locator(`[data-testid="calendar-item"][data-item-id="${sessionId}"]`)
     await expect(item.getByTestId('calendar-item-section')).toContainText('Akademia piłkarska')
     await expect(item.getByTestId('calendar-item-map')).toHaveAttribute('href', /openstreetmap\.org/)
@@ -93,7 +93,7 @@ test('TEST-A19 the session cards and the session page show the dot, the map, the
     // --- The group's coach: the card opens the session page and carries "Attendance list" ---
     await switchBrowserUser(page, request, club, family.coach.userId, family.coach.email)
     await page.emulateMedia({ colorScheme: 'light', reducedMotion: 'reduce' })
-    await page.goto('/club/calendar')
+    await page.goto('/club/calendar?range=upcoming')
     const coachItem = page.locator(`[data-testid="calendar-item"][data-item-id="${sessionId}"]`).last()
     await expect(coachItem.getByRole('link', { name: /Sparing wyjazdowy/ })).toHaveAttribute(
       'href',

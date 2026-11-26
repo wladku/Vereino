@@ -154,7 +154,8 @@ test('ISSUE-493 Today holds at most three tiles under the club header and the ca
         testInfo,
         '/club/calendar guardian',
         async () => {
-          await page.goto('/club/calendar')
+          // The upcoming list is a tab since #784 (a phone opens on Day).
+          await page.goto('/club/calendar?range=upcoming')
           await expect(page.getByTestId('calendar-item').first()).toBeVisible()
         },
         { platformBaseline: true },
