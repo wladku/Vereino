@@ -2,7 +2,13 @@
 // the verification of the data-deletion callback's `signed_request`.
 import { createHmac } from 'node:crypto'
 import { describe, expect, it } from '@jest/globals'
-import { appSecretProof, graphMeUrl, signedRequestUserId } from '../facebook'
+import {
+  MAX_DELETION_BODY_BYTES,
+  appSecretProof,
+  deletionBodyAllowed,
+  graphMeUrl,
+  signedRequestUserId,
+} from '../facebook'
 
 const SECRET = 'fake-app-secret'
 
@@ -66,5 +72,25 @@ describe('signedRequestUserId', () => {
     expect(signedRequestUserId(signed({ ...payload, user_id: 1029384756 }), SECRET)).toBeNull()
     expect(signedRequestUserId(signed({ ...payload, user_id: '' }), SECRET)).toBeNull()
     expect(signedRequestUserId(signed({ ...payload, user_id: 'x'.repeat(256) }), SECRET)).toBeNull()
+  })
+})
+
+describe('deletionBodyAllowed (#833)', () => {
+  it('allows a decimal content-length up to the limit', () => {
+    expect(MAX_DELETION_BODY_BYTES).toBe(16384)
+    expect(deletionBodyAllowed('0')).toBe(true)
+    expect(deletionBodyAllowed('512')).toBe(true)
+    expect(deletionBodyAllowed(' 512 ')).toBe(true)
+    expect(deletionBodyAllowed(String(MAX_DELETION_BODY_BYTES))).toBe(true)
+  })
+
+  it('refuses a missing, oversized or malformed content-length', () => {
+    expect(deletionBodyAllowed(null)).toBe(false)
+    expect(deletionBodyAllowed(String(MAX_DELETION_BODY_BYTES + 1))).toBe(false)
+    expect(deletionBodyAllowed('9999999999999')).toBe(false)
+    expect(deletionBodyAllowed('')).toBe(false)
+    expect(deletionBodyAllowed('-1')).toBe(false)
+    expect(deletionBodyAllowed('1e3')).toBe(false)
+    expect(deletionBodyAllowed('12, 12')).toBe(false)
   })
 })
