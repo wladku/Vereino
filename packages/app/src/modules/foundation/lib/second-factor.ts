@@ -15,7 +15,11 @@ export const MAX_ATTEMPTS = 5
 export const MAX_RESENDS = 3
 export const RESEND_SPACING_MS = 60 * 1000
 /** Challenges per user per hour (DD-2F05), counted through the platform rate limiter (atomic). */
-export const CHALLENGE_HOURLY_LIMIT = { points: 5, duration: 3600, keyPrefix: 'vereino_second_factor_challenge' } as const
+export const CHALLENGE_HOURLY_LIMIT = {
+  points: 5,
+  duration: 3600,
+  keyPrefix: 'vereino_second_factor_challenge',
+} as const
 /** The method a challenge asks for; a later spec may add another (Non-goals). */
 export const SECOND_FACTOR_METHOD = 'email_code'
 /** The page that asks for the code. */

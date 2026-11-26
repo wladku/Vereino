@@ -17,7 +17,7 @@ import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { SECOND_FACTOR_METHOD } from '../lib/second-factor'
 import { authorizeScoped } from '../services/authorize-scoped'
-import { holdsSecondFactorRequirement } from '../second-factor/requirement'
+import { holdsSecondFactorRequirement } from '../services/second-factor/requirement'
 
 export const SECOND_FACTOR_RESOURCE_KIND = 'foundation.second_factor'
 
@@ -76,10 +76,10 @@ const resetSecondFactorCommand: CommandHandler<Record<string, unknown>, ResetSec
           resolveTarget: (_parsed, entity) => {
             const user = entity as User
             return {
-              id: String(user.id),
+              id: user.id,
               tenantId: String(user.tenantId),
               organizationId: String(user.organizationId),
-              userId: String(user.id),
+              userId: user.id,
             }
           },
         },

@@ -3,7 +3,7 @@
 // gate like `verify`.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { resendSecondFactor } from '../../../second-factor/complete'
+import { resendSecondFactor } from '../../../services/second-factor/complete'
 
 export const metadata = {
   POST: { requireAuth: true, rateLimit: { points: 5, duration: 60, keyPrefix: 'foundation_second_factor_resend' } },

@@ -75,9 +75,15 @@ test('TEST-2F03 Google signs a treasurer in; the reset removes links and session
     expect(noNote.status).toBe(400)
 
     // (3) The administrator resets the treasurer: the Google link is gone, (4) the Google session ends.
-    const reset = await call<{ ok?: boolean; unlinked?: number; sessionsEnded?: boolean }>(api, 'POST', RESET, club.adminToken, {
-      data: { userId: treasurer.userId, note: 'phoned back 2026-12-03' },
-    })
+    const reset = await call<{ ok?: boolean; unlinked?: number; sessionsEnded?: boolean }>(
+      api,
+      'POST',
+      RESET,
+      club.adminToken,
+      {
+        data: { userId: treasurer.userId, note: 'phoned back 2026-12-03' },
+      },
+    )
     expect(reset.status, JSON.stringify(reset.body)).toBe(200)
     expect(reset.body).toEqual({ ok: true, unlinked: 1, sessionsEnded: true })
     expect(probeLink('google', subject).count).toBe(0)

@@ -8,8 +8,8 @@ import { NextResponse } from 'next/server'
 import { signJwt, verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { parseBooleanToken } from '@open-mercato/shared/lib/boolean'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
-import { foundationErrors } from '../api/errors'
-import { emitFoundationEvent } from '../events'
+import { foundationErrors } from '../../api/errors'
+import { emitFoundationEvent } from '../../events'
 import {
   CHALLENGE_TTL_MS,
   SECOND_FACTOR_METHOD,
@@ -22,9 +22,9 @@ import {
   provisionalTokenClaims,
   readIssuedClaims,
   type ChallengeMarker,
-} from '../lib/second-factor'
-import type { FoundationErrorCode } from '../lib/error-codes'
-import { sessionlessRateLimiter } from '../services/sessionless-limits'
+} from '../../lib/second-factor'
+import type { FoundationErrorCode } from '../../lib/error-codes'
+import { sessionlessRateLimiter } from '../sessionless-limits'
 import {
   SecondFactorUnavailable,
   deleteChallenge,
@@ -53,7 +53,8 @@ async function rememberOf(request: Request): Promise<boolean> {
       return parseBooleanToken(new URLSearchParams(await request.text()).get('remember')) === true
     }
     const form = await request.formData()
-    return parseBooleanToken(form.get('remember')?.toString()) === true
+    const remember = form.get('remember')
+    return typeof remember === 'string' && parseBooleanToken(remember) === true
   } catch {
     return false
   }

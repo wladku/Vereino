@@ -165,7 +165,10 @@ test('signIn completes a second-factor challenge with the captured code (#736)',
   })
   const call = createApi({ baseUrl: 'http://app', fetchImpl: app.fetchImpl })
   assert.equal(await signIn(call, 'admin@b.test', 'x', () => capture), 'full')
-  await assert.rejects(signIn(call, 'admin@b.test', 'x', () => ''), /no sign-in code in the e-mail capture/)
+  await assert.rejects(
+    signIn(call, 'admin@b.test', 'x', () => ''),
+    /no sign-in code in the e-mail capture/,
+  )
   const refused = createApi({
     baseUrl: 'http://app',
     fetchImpl: fakeApp({
@@ -173,7 +176,10 @@ test('signIn completes a second-factor challenge with the captured code (#736)',
       'POST /api/foundation/second-factor/verify': () => reply(400, { code: 'second_factor_code_invalid' }),
     }).fetchImpl,
   })
-  await assert.rejects(signIn(refused, 'admin@b.test', 'x', () => capture), /second factor admin@b\.test: HTTP 400/)
+  await assert.rejects(
+    signIn(refused, 'admin@b.test', 'x', () => capture),
+    /second factor admin@b\.test: HTTP 400/,
+  )
 })
 
 test('passwordAndToken sets the seed password and signs in', async () => {

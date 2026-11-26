@@ -41,7 +41,7 @@ export function SecondFactorReset({ url }: { url: string }) {
       return call.result
     },
   })
-  const state = (query.data as { secondFactor?: SecondFactorState } | undefined)?.secondFactor
+  const state = query.data?.secondFactor
   const [open, setOpen] = React.useState(false)
   const [note, setNote] = React.useState('')
   const [verified, setVerified] = React.useState(false)
@@ -59,7 +59,7 @@ export function SecondFactorReset({ url }: { url: string }) {
     setError(null)
   }
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = async (event: { preventDefault(): void }) => {
     event.preventDefault()
     if (!noteValid || !verified || pending) return
     setPending(true)
@@ -92,13 +92,21 @@ export function SecondFactorReset({ url }: { url: string }) {
           type="button"
           variant="outline"
           className="min-h-11"
-          onClick={() => setOpen(true)}
+          onClick={() => {
+            setOpen(true)
+          }}
           data-testid="second-factor-reset-open"
         >
           {t('foundation.secondFactor.reset.action')}
         </Button>
       </div>
-      <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : close())}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (next) setOpen(true)
+          else close()
+        }}
+      >
         <DialogContent data-testid="second-factor-reset-dialog">
           <form onSubmit={(event) => void submit(event)} className="flex flex-col gap-4">
             <DialogHeader>
@@ -113,7 +121,9 @@ export function SecondFactorReset({ url }: { url: string }) {
                 maxLength={NOTE_MAX}
                 required
                 aria-describedby={`${ids}-note-help`}
-                onChange={(event) => setNote(event.target.value)}
+                onChange={(event) => {
+                  setNote(event.target.value)
+                }}
                 data-testid="second-factor-reset-note"
               />
               <p id={`${ids}-note-help`} className="text-muted-foreground text-xs">
@@ -125,7 +135,9 @@ export function SecondFactorReset({ url }: { url: string }) {
                 id={`${ids}-verified`}
                 checked={verified}
                 disabled={pending}
-                onCheckedChange={(value) => setVerified(value === true)}
+                onCheckedChange={(value) => {
+                  setVerified(value === true)
+                }}
                 data-testid="second-factor-reset-verified"
               />
               <Label htmlFor={`${ids}-verified`}>{t('foundation.secondFactor.reset.verified')}</Label>

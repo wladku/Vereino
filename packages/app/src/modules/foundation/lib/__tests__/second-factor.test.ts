@@ -118,7 +118,7 @@ describe('parseChallengeMarker', () => {
 })
 
 describe('claims', () => {
-  const issued = { sub: 'u1', sid: 's1', tenantId: 't1', orgId: 'o1', email: 'e@x.pl', roles: ['r'] }
+  const issued = { sub: 'u1', sid: 's1', tenantId: 't1', orgId: 'o1', email: 'e@club.example.test', roles: ['r'] }
 
   it('builds a provisional token for the same session and reads it back', () => {
     const claims = provisionalTokenClaims(issued, ID)
@@ -186,9 +186,9 @@ describe('marker rules', () => {
 
 describe('emailHint', () => {
   it('masks the local part', () => {
-    expect(emailHint('ewa@klub.pl')).toBe('e•••@klub.pl')
+    expect(emailHint('ewa@klub.example.test')).toBe('e•••@klub.example.test')
     expect(emailHint('broken')).toBe('•••')
-    expect(emailHint('@klub.pl')).toBe('•••')
+    expect(emailHint('@klub.example.test')).toBe('•••')
   })
 })
 

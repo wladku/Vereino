@@ -17,8 +17,8 @@ import {
   displayCode,
   parseChallengeMarker,
   type ChallengeMarker,
-} from '../lib/second-factor'
-import { emailSender } from '../services/email-sender'
+} from '../../lib/second-factor'
+import { emailSender } from '../email-sender'
 
 const logger = createLogger('foundation').child({ component: 'second-factor' })
 
@@ -53,7 +53,9 @@ export async function storeChallenge(
   const ttl = Math.max(1, marker.expiresAt - Date.now())
   try {
     await runWithCacheTenant(null, () =>
-      cacheOf(container).set(challengeKey(challengeId), JSON.stringify(marker), { ttl: Math.min(ttl, CHALLENGE_TTL_MS) }),
+      cacheOf(container).set(challengeKey(challengeId), JSON.stringify(marker), {
+        ttl: Math.min(ttl, CHALLENGE_TTL_MS),
+      }),
     )
   } catch (error: unknown) {
     reportSecondFactor('foundation.second_factor.unavailable', { step: 'store', err: error })
@@ -152,7 +154,9 @@ export async function sendCodeEmail(
         organizationId: message.organizationId,
       }),
       new Promise((_, reject) => {
-        timer = setTimeout(() => reject(new Error('send timed out')), SEND_TIMEOUT_MS)
+        timer = setTimeout(() => {
+          reject(new Error('[internal] send timed out'))
+        }, SEND_TIMEOUT_MS)
       }),
     ])
   } catch (error: unknown) {

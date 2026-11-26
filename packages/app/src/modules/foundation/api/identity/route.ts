@@ -11,7 +11,7 @@ import { listIdentities } from '../../services/identity-links'
 import { providerConfig } from '../../services/identity-providers'
 import { commandContextForRequest, errorResponse } from '../../services/route-context'
 import { resolveScope } from '../../services/scope-contract'
-import { holdsSecondFactorRequirement } from '../../second-factor/requirement'
+import { holdsSecondFactorRequirement } from '../../services/second-factor/requirement'
 import { identityErrorSchema, identityListSchema, sessionHasFeatures } from './shared'
 
 export const metadata = {
@@ -40,14 +40,13 @@ export async function GET(request: Request): Promise<Response> {
       : { items: [], canUnlink: false, providers: [] }
     // Staff second factor (#736, DD-2F07): whether the person signs in with a second factor and whether this
     // administrator may reset it (never their own; `foundation.second_factor.reset`).
-    const required = contact.userId
-      ? await holdsSecondFactorRequirement(ctx.container, contact.userId, scope)
-      : false
+    const required = contact.userId ? await holdsSecondFactorRequirement(ctx.container, contact.userId, scope) : false
     const canReset =
-      required &&
-      contact.userId !== ctx.auth.sub &&
-      (await sessionHasFeatures(ctx, ['foundation.second_factor.reset']))
-    return Response.json({ ...list, secondFactor: { userId: contact.userId ?? null, required, canReset } }, { headers: { 'Cache-Control': 'private, no-store' } })
+      required && contact.userId !== ctx.auth.sub && (await sessionHasFeatures(ctx, ['foundation.second_factor.reset']))
+    return Response.json(
+      { ...list, secondFactor: { userId: contact.userId ?? null, required, canReset } },
+      { headers: { 'Cache-Control': 'private, no-store' } },
+    )
   } catch (error: unknown) {
     return errorResponse(error, 'foundation.identity.admin_list')
   }

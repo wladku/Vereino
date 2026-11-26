@@ -1,7 +1,7 @@
 // Shared steps of the staff second factor tests (#736): staff with a role and a known password, a challenged sign-in
 // with its e-mailed code, and a clean API context without the shared request fixture's cookie jar.
 import { expect, type APIRequest, type APIRequestContext } from '@playwright/test'
-import { capturedCount, isChallenge, postLogin, waitForCode, type LoginAnswer } from '../../../_fixtures/auth'
+import { capturedCount, isChallenge, postLogin, textOf, waitForCode, type LoginAnswer } from '../../../_fixtures/auth'
 import {
   assignRole,
   birthDateTurning,
@@ -65,8 +65,8 @@ export async function challenged(
 ): Promise<Challenge> {
   const since = capturedCount(email)
   const answer = await postLogin(api, email, password, {}, headers)
-  expect(isChallenge(answer), `POST /api/auth/login ${answer.status} ${JSON.stringify(answer.body)}`).toBe(true)
-  return { answer, token: String(answer.body?.token), code: await waitForCode(email, since), since }
+  expect(isChallenge(answer), `POST /api/auth/login ${String(answer.status)} ${JSON.stringify(answer.body)}`).toBe(true)
+  return { answer, token: textOf(answer.body, 'token'), code: await waitForCode(email, since), since }
 }
 
 /** A six-digit code that is not `code`. */

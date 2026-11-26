@@ -5,6 +5,7 @@
 // sentence; the right code lands on the page the sign-in was heading to. The provisional token rides in its HttpOnly
 // cookie, so the page never handles it.
 import * as React from 'react'
+import Link from 'next/link'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Input } from '@open-mercato/ui/primitives/input'
@@ -36,8 +37,12 @@ export function SecondFactorForm({ emailHint }: { emailHint: string }) {
 
   React.useEffect(() => {
     if (wait <= 0) return
-    const timer = setTimeout(() => setWait((seconds) => seconds - 1), 1000)
-    return () => clearTimeout(timer)
+    const timer = setTimeout(() => {
+      setWait((seconds) => seconds - 1)
+    }, 1000)
+    return () => {
+      clearTimeout(timer)
+    }
   }, [wait])
 
   const leave = (path: string) => {
@@ -46,7 +51,10 @@ export function SecondFactorForm({ emailHint }: { emailHint: string }) {
 
   const refused = (status: number, answer: CodeAnswer | null) => {
     const errorCode = errorCodeOf(answer)
-    if (status === 401 || errorCode === 'second_factor_challenge_expired') return leave(EXPIRED_PATH)
+    if (status === 401 || errorCode === 'second_factor_challenge_expired') {
+      leave(EXPIRED_PATH)
+      return
+    }
     if (errorCode === 'second_factor_code_invalid' && typeof answer?.attemptsLeft === 'number') {
       setStatus({ kind: 'error', text: t('foundation.secondFactor.page.attemptsLeft', { count: answer.attemptsLeft }) })
       return
@@ -67,7 +75,7 @@ export function SecondFactorForm({ emailHint }: { emailHint: string }) {
     setStatus({ kind: 'error', text: t('foundation.errors.second_factor_unavailable') })
   }
 
-  const submit = async (event: React.FormEvent) => {
+  const submit = async (event: { preventDefault(): void }) => {
     event.preventDefault()
     const typed = code.replace(/\s+/g, '')
     if (!/^\d{6}$/.test(typed)) {
@@ -81,7 +89,10 @@ export function SecondFactorForm({ emailHint }: { emailHint: string }) {
         headers: { 'content-type': 'application/json', ...NO_REDIRECT },
         body: JSON.stringify({ code: typed }),
       })
-      if (call.ok && call.result?.redirect) return leave(call.result.redirect)
+      if (call.ok && call.result?.redirect) {
+        leave(call.result.redirect)
+        return
+      }
       refused(call.status, call.result)
       setCode('')
       inputRef.current?.focus()
@@ -128,7 +139,9 @@ export function SecondFactorForm({ emailHint }: { emailHint: string }) {
           autoComplete="one-time-code"
           maxLength={7}
           value={code}
-          onChange={(event) => setCode(event.target.value)}
+          onChange={(event) => {
+            setCode(event.target.value)
+          }}
           aria-invalid={status?.kind === 'error'}
           aria-describedby={`${inputId}-status`}
           className="min-h-11 text-center text-lg tracking-widest"
@@ -165,9 +178,9 @@ export function SecondFactorForm({ emailHint }: { emailHint: string }) {
             ? t('foundation.secondFactor.page.resendIn', { seconds: wait })
             : t('foundation.secondFactor.page.resend')}
         </Button>
-        <a href="/login" className="text-muted-foreground inline-flex min-h-11 items-center underline">
+        <Link href="/login" className="text-muted-foreground inline-flex min-h-11 items-center underline">
           {t('foundation.secondFactor.page.back')}
-        </a>
+        </Link>
       </div>
     </form>
   )

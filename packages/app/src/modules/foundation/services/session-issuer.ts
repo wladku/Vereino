@@ -42,15 +42,15 @@ export async function issueUserSession(
     rememberUntil ?? new Date(Date.now() + ACCESS_TOKEN_MAX_AGE_SECONDS * 1000),
   )
   const token = signJwt({
-    sub: String(user.id),
-    sid: String(session.id),
+    sub: user.id,
+    sid: session.id,
     tenantId: scope.tenantId,
     orgId: scope.organizationId,
     email: user.email,
     roles,
   })
   void emitAuthEvent('auth.login.success', {
-    id: String(user.id),
+    id: user.id,
     email: user.email,
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,

@@ -36,6 +36,12 @@ function resolveUrl(path: string): string {
 
 export type JsonBody = Record<string, unknown> | null
 
+/** A string field of a JSON body, or '' when it is missing or not a string. */
+export function textOf(body: JsonBody, field: string): string {
+  const value = body?.[field]
+  return typeof value === 'string' ? value : ''
+}
+
 /** One password sign-in answer: the status and the JSON body. */
 export type LoginAnswer = { status: number; body: JsonBody }
 
@@ -121,10 +127,10 @@ export async function completeSecondFactorAnswer(
       tried.add(code)
       const answer = await postVerify(request, provisionalToken, code)
       if (answer.status === 200 && typeof answer.body?.token === 'string') {
-        return { token: answer.body.token, redirect: String(answer.body.redirect ?? '') }
+        return { token: answer.body.token, redirect: textOf(answer.body, 'redirect') }
       }
       if (answer.status !== 400) {
-        throw new Error(`Second-factor verify failed (status ${answer.status}): ${JSON.stringify(answer.body)}`)
+        throw new Error(`Second-factor verify failed (status ${String(answer.status)}): ${JSON.stringify(answer.body)}`)
       }
     }
     await new Promise((resolve) => setTimeout(resolve, 250))
@@ -154,8 +160,11 @@ export async function signInWithPassword(
     if (answer.status !== 429) break
     await new Promise((resolve) => setTimeout(resolve, 1000 * 2 ** retry))
   }
-  throw new Error(`Failed to obtain auth token (status ${lastStatus})`)
+  throw new Error(`Failed to obtain auth token (status ${String(lastStatus)})`)
 }
+
+/** The seeded platform accounts' password, as the platform helper assumes it (`DEFAULT_CREDENTIALS.admin`). */
+const SEEDED_PASSWORD = DEFAULT_CREDENTIALS.admin.password
 
 const tokenCache = new Map<string, { token: string; mintedAt: number }>()
 const TOKEN_TTL_MS = 45 * 60 * 1000
@@ -172,16 +181,16 @@ export function clearAuthTokenCache(): void {
  */
 export async function getAuthToken(
   request: APIRequestContext,
-  roleOrEmail: Role | string = 'admin',
+  roleOrEmail: string = 'admin',
   password?: string,
 ): Promise<string> {
   const role = roleOrEmail in DEFAULT_CREDENTIALS ? (roleOrEmail as Role) : null
   const attempts: Array<{ email: string; password: string }> = []
   if (role) {
     attempts.push({ email: DEFAULT_CREDENTIALS[role].email, password: password ?? DEFAULT_CREDENTIALS[role].password })
-    if (!password) attempts.push({ email: `${role}@acme.com`, password: 'secret' })
+    if (!password) attempts.push({ email: `${role}@acme.com`, password: SEEDED_PASSWORD })
   } else {
-    attempts.push({ email: roleOrEmail, password: password ?? 'secret' })
+    attempts.push({ email: roleOrEmail, password: password ?? SEEDED_PASSWORD })
   }
   const cacheKey = attempts.map((entry) => `${entry.email}:${entry.password}`).join('|')
   const cached = tokenCache.get(cacheKey)
@@ -222,8 +231,8 @@ export async function signInBrowserAnswer(
   const since = capturedCount(email)
   const answer = await postLogin(request, email, password, extra)
   expect(answer.status, `POST /api/auth/login ${String(answer.status)} ${JSON.stringify(answer.body)}`).toBe(200)
-  const token = String(answer.body?.token ?? '')
-  if (!isChallenge(answer)) return { token, redirect: String(answer.body?.redirect ?? '') }
+  const token = textOf(answer.body, 'token')
+  if (!isChallenge(answer)) return { token, redirect: textOf(answer.body, 'redirect') }
   return completeSecondFactorAnswer(request, email, token, since)
 }
 

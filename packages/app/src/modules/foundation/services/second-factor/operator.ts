@@ -33,9 +33,9 @@ export async function endRequiredUsersSessions(
   let required = 0
   let sessionsEnded = 0
   for (const user of users) {
-    if (!(await holdsSecondFactorRequirement(container, String(user.id), scope))) continue
+    if (!(await holdsSecondFactorRequirement(container, user.id, scope))) continue
     required += 1
-    sessionsEnded += await em.nativeDelete(Session, { user: String(user.id) })
+    sessionsEnded += await em.nativeDelete(Session, { user: user.id })
   }
   return { users: users.length, required, sessionsEnded }
 }

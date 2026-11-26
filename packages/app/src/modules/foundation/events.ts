@@ -35,7 +35,12 @@ const events = [
     entity: 'second_factor',
     category: 'custom',
   },
-  { id: 'foundation.second_factor.verified', label: 'Second factor verified', entity: 'second_factor', category: 'custom' },
+  {
+    id: 'foundation.second_factor.verified',
+    label: 'Second factor verified',
+    entity: 'second_factor',
+    category: 'custom',
+  },
   {
     id: 'foundation.second_factor.locked',
     label: 'Second factor challenge locked',

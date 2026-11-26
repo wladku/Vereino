@@ -175,8 +175,12 @@ export async function signIn(call, email, password, readCapture = captureText) {
   const body = expectStatus(result, [200], `sign in ${email}`)
   if (!body.secondFactor) return String(body.token)
   const code = latestSignInCode(readCapture(), email)
-  if (!code) throw new Error(`sign in ${email}: no sign-in code in the e-mail capture (run the stack with OM_TEST_MODE=1)`)
-  const verified = await call('POST', '/api/foundation/second-factor/verify', { token: String(body.token), json: { code } })
+  if (!code)
+    throw new Error(`sign in ${email}: no sign-in code in the e-mail capture (run the stack with OM_TEST_MODE=1)`)
+  const verified = await call('POST', '/api/foundation/second-factor/verify', {
+    token: String(body.token),
+    json: { code },
+  })
   return String(expectStatus(verified, [200], `second factor ${email}`).token)
 }
 

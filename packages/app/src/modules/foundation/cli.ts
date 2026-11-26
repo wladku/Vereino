@@ -31,7 +31,7 @@ import {
 import { readInstanceModuleConfigValue } from './data/queries'
 import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { ResetSecondFactorResult } from './commands/second-factor'
-import { endRequiredUsersSessions, findClubUserByEmail } from './second-factor/operator'
+import { endRequiredUsersSessions, findClubUserByEmail } from './services/second-factor/operator'
 import { jobCommandContext } from './services/authorize-scoped'
 import { buildLicenceRegistry, licenceStatusReport } from './lib/licence-verify'
 import {
@@ -273,10 +273,12 @@ const secondFactor: ModuleCli = {
     const { result } = await container
       .resolve<CommandBus>('commandBus')
       .execute<unknown, ResetSecondFactorResult>('foundation.second_factor.reset', {
-        input: { userId: String(user.id), note },
+        input: { userId: user.id, note },
         ctx: jobCommandContext(container, scope),
       })
-    process.stdout.write(`${JSON.stringify({ userId: result.userId, unlinked: result.unlinked, sessionsEnded: true })}\n`)
+    process.stdout.write(
+      `${JSON.stringify({ userId: result.userId, unlinked: result.unlinked, sessionsEnded: true })}\n`,
+    )
   },
 }
 

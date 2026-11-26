@@ -20,7 +20,9 @@ async function openAccount(page: Page, personId: string) {
   await page.goto(`/backend/people/persons/${personId}?tab=account`)
   await expect(page.getByTestId('person-identities')).toBeVisible()
   // The list request settles before the action decides whether to show.
-  await expect(page.getByTestId('identity-links-empty').or(page.locator('[data-testid^="identity-link-"]')).first()).toBeVisible()
+  await expect(
+    page.getByTestId('identity-links-empty').or(page.locator('[data-testid^="identity-link-"]')).first(),
+  ).toBeVisible()
 }
 
 test('TEST-2F04 the reset dialog: shown for a treasurer only, note and confirmation required, flash on success', async ({

@@ -10,7 +10,7 @@ import { User } from '@open-mercato/core/modules/auth/data/entities'
 import { verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import { emitFoundationEvent } from '../events'
+import { emitFoundationEvent } from '../../events'
 import {
   SECOND_FACTOR_METHOD,
   afterWrongCode,
@@ -23,8 +23,8 @@ import {
   resendDecision,
   type ChallengeMarker,
   type ProvisionalClaims,
-} from '../lib/second-factor'
-import { clearSessionCookies, issueUserSession, setSessionCookies } from '../services/session-issuer'
+} from '../../lib/second-factor'
+import { clearSessionCookies, issueUserSession, setSessionCookies } from '../session-issuer'
 import {
   SecondFactorUnavailable,
   deleteChallenge,

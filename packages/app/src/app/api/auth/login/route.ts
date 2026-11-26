@@ -3,7 +3,7 @@ import { POST as loginPost } from '@open-mercato/core/modules/auth/api/login'
 import { SIGN_IN_EMAIL_LIMIT, withAccountEmailLimit } from '@/modules/foundation'
 // Imported from its file, not the module index: the gate pulls in `next/server`, which plain-Node loaders of the index
 // (the CLI, the generated registries) cannot resolve.
-import { PROVISIONAL_HEADER, withSecondFactor } from '@/modules/foundation/second-factor/gate'
+import { PROVISIONAL_HEADER, withSecondFactor } from '@/modules/foundation/services/second-factor/gate'
 export { metadata, openApi } from '@open-mercato/core/modules/auth/api/login'
 
 bootstrap()
