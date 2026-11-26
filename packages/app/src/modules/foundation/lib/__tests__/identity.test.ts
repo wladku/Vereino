@@ -226,9 +226,9 @@ describe('deletion status', () => {
   })
 
   it('puts the status page on the redirect base with the code', () => {
-    expect(deletionStatusUrl('https://club.example/api/foundation/identity/facebook/callback', '0123456789abcdef')).toBe(
-      `https://club.example${DELETION_STATUS_PATH}?code=0123456789abcdef`,
-    )
+    expect(
+      deletionStatusUrl('https://club.example/api/foundation/identity/facebook/callback', '0123456789abcdef'),
+    ).toBe(`https://club.example${DELETION_STATUS_PATH}?code=0123456789abcdef`)
   })
 })
 

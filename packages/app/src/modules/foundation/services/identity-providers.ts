@@ -98,7 +98,10 @@ export async function exchangeCode(
   if (config.protocol === 'graph' && config.userInfoUrl) {
     const abort = new AbortController()
     try {
-      return await withTimeout(graphExchange(config, config.userInfoUrl, code, verifier, abort.signal), TOKEN_TIMEOUT_MS)
+      return await withTimeout(
+        graphExchange(config, config.userInfoUrl, code, verifier, abort.signal),
+        TOKEN_TIMEOUT_MS,
+      )
     } finally {
       abort.abort()
     }

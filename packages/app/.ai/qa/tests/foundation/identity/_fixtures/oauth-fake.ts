@@ -224,14 +224,21 @@ export async function startOAuthFake(port: number = fakePort()): Promise<OAuthFa
     void (async () => {
       const url = new URL(request.url ?? '/', `http://127.0.0.1:${String(port)}`)
       const route = `${request.method ?? 'GET'} ${url.pathname}`
-      if (route === 'GET /authorize') return authorize('google', url, response)
-      if (route === 'GET /facebook/dialog/oauth') return authorize('facebook', url, response)
-      if (route === 'GET /facebook/me') return facebookMe(request, url, response)
-      if (route === 'POST /token' || route === 'POST /facebook/oauth/access_token') {
+      if (route === 'GET /authorize') {
+        authorize('google', url, response)
+      } else if (route === 'GET /facebook/dialog/oauth') {
+        authorize('facebook', url, response)
+      } else if (route === 'GET /facebook/me') {
+        facebookMe(request, url, response)
+      } else if (route === 'POST /token') {
         tokenCount += 1
-        return route === 'POST /token' ? googleToken(request, response) : facebookToken(request, response)
+        await googleToken(request, response)
+      } else if (route === 'POST /facebook/oauth/access_token') {
+        tokenCount += 1
+        await facebookToken(request, response)
+      } else {
+        json(response, 404, { error: 'not_found' })
       }
-      json(response, 404, { error: 'not_found' })
     })().catch(() => {
       if (!response.headersSent) json(response, 500, { error: 'fake_failed' })
     })

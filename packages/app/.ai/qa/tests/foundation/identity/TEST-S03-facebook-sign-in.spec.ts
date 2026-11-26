@@ -2,7 +2,15 @@ import { expect, test, type APIRequest } from '@playwright/test'
 import { call, createClub, createStaff, signInAs, uniqueSuffix } from '../../_fixtures/club'
 import { uiText } from '../../_fixtures/ui-text'
 import { facebookSignedRequest, startOAuthFake, type OAuthFake } from './_fixtures/oauth-fake'
-import { CookieJar, STATE_COOKIE, cleanHttp, probeLink, probeUserCount, roundTrip, sessionJar } from './_fixtures/identity'
+import {
+  CookieJar,
+  STATE_COOKIE,
+  cleanHttp,
+  probeLink,
+  probeUserCount,
+  roundTrip,
+  sessionJar,
+} from './_fixtures/identity'
 
 // TEST-S03 (social sign-in spec; REQ-S03, AC-S03; J-S03; #567): against the in-process Facebook fake, a signed-in user
 // connects Facebook from the profile while Facebook shares no e-mail (the link stores none and says so), then signs in
