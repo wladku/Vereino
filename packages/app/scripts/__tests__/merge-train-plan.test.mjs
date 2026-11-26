@@ -13,12 +13,14 @@ import {
   RETARGET_REASONS,
   checksState,
   hasQaInstruction,
+  isSameRepoHead,
   linkedIssue,
   planMergeTrain,
   planRetargets,
   qaHold,
   qaHoldComment,
   qaHoldCommentAction,
+  sameRepoPulls,
 } from '../../../../scripts/merge-train-plan.mjs'
 
 const REQUIRED = ['gate', 'integration', 'browser-smoke']
@@ -363,5 +365,35 @@ describe('ST-TEST-01: planRetargets', () => {
       'no-base-pr',
     ])
     assert.deepEqual(planRetargets([], []), [])
+  })
+})
+
+describe('fork-headed pull requests (#823)', () => {
+  const REPO = 'owner/vereino'
+  const pull = (number, fullName) => ({
+    number,
+    head: { ref: `feat/x-${number}`, repo: fullName === undefined ? null : { full_name: fullName } },
+  })
+
+  it('counts only a head in this repository', () => {
+    assert.equal(isSameRepoHead(pull(1, REPO), REPO), true)
+    assert.equal(isSameRepoHead(pull(2, 'stranger/vereino'), REPO), false)
+    assert.equal(isSameRepoHead(pull(3), REPO), false, 'a deleted fork has no head repository')
+    assert.equal(isSameRepoHead({ number: 4 }, REPO), false)
+    assert.equal(isSameRepoHead(null, REPO), false)
+  })
+
+  it('never matches without a repository name', () => {
+    assert.equal(isSameRepoHead(pull(1, ''), ''), false)
+    assert.equal(isSameRepoHead(pull(1, REPO), undefined), false)
+  })
+
+  it('selects the train candidates without forks, in their order', () => {
+    const pulls = [pull(5, REPO), pull(6, 'stranger/vereino'), pull(7), pull(8, REPO), pull(9, 'OWNER/vereino')]
+    assert.deepEqual(
+      sameRepoPulls(pulls, REPO).map((entry) => entry.number),
+      [5, 8],
+    )
+    assert.deepEqual(sameRepoPulls([], REPO), [])
   })
 })
