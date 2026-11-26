@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { clearAuthTokenCache, getAuthToken } from '../../_fixtures/auth'
 import { call, createClub, mercato, uniqueSuffix, type Club } from '../../_fixtures/club'
-import { startGoogleFake, type GoogleFake } from '../identity/_fixtures/google-fake'
+import { startOAuthFake, type OAuthFake } from '../identity/_fixtures/google-fake'
 import { CookieJar, cleanHttp, probeLink, roundTrip, sessionJar } from '../identity/_fixtures/identity'
 import { challenged, cleanApi, staffAccount } from './_fixtures/second-factor'
 
@@ -10,23 +10,23 @@ import { challenged, cleanApi, staffAccount } from './_fixtures/second-factor'
 // the treasurer's second factor with a note: the link is gone and (4) the session issued by Google ends; (5) the
 // treasurer then signs in with the password and the e-mailed code; (6) the administrator cannot reset themselves (403);
 // (7) a user of another club and a user without the requirement answer 404; (8) the operator's shell reset ends the
-// administrator's sessions, and `end-sessions` ends every required user's sessions of the club. Item (2), a Facebook
-// sign-in refused for a required user, needs Facebook sign-in, which social sign-in phase 1 does not ship (every
-// Facebook start answers 404 `identity_provider_disabled`), so it is not driven here; item (9) is phase 2.
+// administrator's sessions, and `end-sessions` ends every required user's sessions of the club; (2) the same treasurer
+// may connect Facebook (#567), but a Facebook sign-in ends on `/login?second_factor=use_google` without a session.
+// Item (9) is phase 2.
 test.describe.configure({ timeout: 300_000, mode: 'serial' })
 
 const STAFF_API = '/api/foundation/identity/me'
 const RESET = '/api/foundation/second-factor/reset'
 
-let fake: GoogleFake
+let fake: OAuthFake
 test.beforeAll(async () => {
-  fake = await startGoogleFake()
+  fake = await startOAuthFake()
 })
 test.afterAll(async () => {
   await fake.stop()
 })
 
-test('TEST-2F03 Google signs a treasurer in; the reset removes links and sessions; self, other clubs and the shell', async ({
+test('TEST-2F03 Google signs a treasurer in, Facebook does not; the reset removes links and sessions; self, other clubs and the shell', async ({
   request,
   playwright,
   baseURL,
@@ -53,6 +53,17 @@ test('TEST-2F03 Google signs a treasurer in; the reset removes links and session
     const googleToken = String(google.get('auth_token'))
     expect(googleToken).not.toBe('undefined')
     expect((await call(api, 'GET', STAFF_API, googleToken)).status).toBe(200)
+
+    // (2) Facebook is no second factor: the treasurer may connect it, but signing in with it sets no session.
+    const facebookSubject = `facebook-ewa-${marker}`
+    fake.next({ sub: facebookSubject, email: null })
+    expect((await roundTrip(http, sessionJar(treasurerToken), { provider: 'facebook' })).target).toBe(
+      '/club/profile?identity=linked&provider=facebook',
+    )
+    fake.next({ sub: facebookSubject })
+    const facebook = new CookieJar()
+    expect((await roundTrip(http, facebook, { provider: 'facebook' })).target).toBe('/login?second_factor=use_google')
+    expect(facebook.get('auth_token')).toBeFalsy()
 
     // The person record's list tells the administrator the treasurer may be reset; not the coach, not oneself.
     const listOf = async (personId: string) =>
@@ -85,8 +96,9 @@ test('TEST-2F03 Google signs a treasurer in; the reset removes links and session
       },
     )
     expect(reset.status, JSON.stringify(reset.body)).toBe(200)
-    expect(reset.body).toEqual({ ok: true, unlinked: 1, sessionsEnded: true })
+    expect(reset.body).toEqual({ ok: true, unlinked: 2, sessionsEnded: true })
     expect(probeLink('google', subject).count).toBe(0)
+    expect(probeLink('facebook', facebookSubject).count).toBe(0)
     expect((await call(api, 'GET', STAFF_API, googleToken)).status).toBe(401)
     expect((await call(api, 'GET', STAFF_API, treasurerToken)).status).toBe(401)
 
