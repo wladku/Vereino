@@ -20,7 +20,11 @@
 
 ## Commands and results
 - `yarn generate` — ok. `yarn typecheck` — exit 0. `yarn format` — 9 files reformatted (all touched by this change). `yarn lessons:check` — valid.
-- Integration and gate results: see the PR body.
+- `yarn test:integration:vereino --filter ISSUE-836` **with the fix:** `1 passed` (test 8.3 s). First drafts failed on test data only (`venue_or_place_required` for activities without a place; `medical_consent_missing` for a date without consent); fixed in the test.
+- Same **without the fix** (`packages/app/src` checked out from the base, test kept): failed both attempts after 1.1 min, `TimeoutError` on `POST /api/payments/charges`, server log `timeout exceeded when trying to connect`.
+- Regression runs, all `passed`: ISSUE-728 (1), ISSUE-549 (1), ISSUE-554 (1), TEST-009 (4), TEST-L03 (3), TEST-L16 (2), TEST-R08 (1), TEST-L01 (3), TEST-O01 (2), TEST-019 (1).
+- `yarn verify`: steps up to `typecheck:qa` passed; `lint` hit a V8 heap out-of-memory on this machine (twice; the first time the gitignored Playwright report under `packages/app/.ai/qa/test-results` was also linted, removed). `NODE_OPTIONS=--max-old-space-size=8192 yarn lint` in `packages/app`: exit 0, 0 errors, 166 warnings, none on a changed line. `yarn verify --from secrets:check`: all 18 remaining steps passed.
+- `yarn guard`: no blocking findings.
 
 ## Open problems / next steps
 - None known; the PR body lists every audited site.
