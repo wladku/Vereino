@@ -10,5 +10,19 @@
   "stories.badge.request": "request",
   "stories.empty.title": "No sessions today",
   "stories.empty.description": "Next session: Thu 16:00 — Swimming class.",
-  "stories.empty.action": "Open the calendar"
+  "stories.empty.action": "Open the calendar",
+  "stories.range.group": "Range",
+  "stories.range.day": "Day",
+  "stories.range.week": "Week",
+  "stories.range.month": "Month",
+  "stories.range.earlier": "‹ Earlier",
+  "stories.range.later": "Later ›",
+  "stories.range.today": "Today",
+  "stories.range.previous.day": "previous day",
+  "stories.range.previous.week": "previous week",
+  "stories.range.previous.month": "previous month",
+  "stories.range.next.day": "next day",
+  "stories.range.next.week": "next week",
+  "stories.range.next.month": "next month",
+  "stories.range.upcoming": "Upcoming"
 }

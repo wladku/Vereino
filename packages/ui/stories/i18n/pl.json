@@ -10,5 +10,19 @@
   "stories.badge.request": "zgłoszenie",
   "stories.empty.title": "Dziś nie ma zajęć",
   "stories.empty.description": "Najbliższy termin: czw 16:00 — Zajęcia na basenie.",
-  "stories.empty.action": "Zobacz kalendarz"
+  "stories.empty.action": "Zobacz kalendarz",
+  "stories.range.group": "Zakres",
+  "stories.range.day": "Dzień",
+  "stories.range.week": "Tydzień",
+  "stories.range.month": "Miesiąc",
+  "stories.range.earlier": "‹ Wcześniej",
+  "stories.range.later": "Później ›",
+  "stories.range.today": "Dziś",
+  "stories.range.previous.day": "poprzedni dzień",
+  "stories.range.previous.week": "poprzedni tydzień",
+  "stories.range.previous.month": "poprzedni miesiąc",
+  "stories.range.next.day": "następny dzień",
+  "stories.range.next.week": "następny tydzień",
+  "stories.range.next.month": "następny miesiąc",
+  "stories.range.upcoming": "Najbliższe"
 }
