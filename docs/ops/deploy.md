@@ -10,7 +10,8 @@ club together: [Production release](#production-release) is the process that kee
 [checklist](#production-release-checklist) is what a maintainer runs for each release.
 
 Security headers (E18-S02), nightly off-site backups and the restore drill (E18-S03, [`backups.md`](backups.md)) and
-uptime monitoring and alerts (E18-S04, [`monitoring.md`](monitoring.md)) have their own runbooks.
+uptime monitoring and alerts (E18-S04, [`monitoring.md`](monitoring.md)) and the edge proxy that D-043 adds on a
+trigger ([`edge-proxy.md`](edge-proxy.md)) have their own runbooks.
 
 ## Environments
 
@@ -83,7 +84,9 @@ table in the same pull request.
 ## Rate limits
 
 Railway's edge has no configurable rate limiting, so every limit is the app's (#738; inventory of the routes and their
-limits: `docs/compliance/asvs-checklist.md` → *Sessionless route inventory*). The platform limiter keys a client by its
+limits: `docs/compliance/asvs-checklist.md` → *Sessionless route inventory*). There is no edge proxy in front of the
+app until a trigger of D-043 fires; an attack the app's limits cannot absorb follows [`edge-proxy.md`](edge-proxy.md),
+which also says how to measure the depth below again behind a proxy. The platform limiter keys a client by its
 address, which it reads from `X-Forwarded-For` only as deep as `RATE_LIMIT_TRUST_PROXY_DEPTH` allows: with `0` (the
 default) it trusts no header and every client falls into one shared counter.
 
