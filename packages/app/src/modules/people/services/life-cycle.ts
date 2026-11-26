@@ -119,8 +119,10 @@ async function enqueueNotice(
 ): Promise<EnqueuedNotice> {
   const ids = [...new Set(notice.personIds)]
   if (ids.length === 0) return { dispatchId: null, recipientIds: [] }
-  // The members are read on the caller's transaction (`em: tx`), not on a second pooled connection (#836).
-  const context = { container, ...scope, scope: [{ kind: 'system_job' as const }], em: tx }
+  // The members are read on the caller's transaction, not on a second pooled connection (#836), on a fork with its
+  // own identity map so the decrypted persons stay out of the transaction's.
+  const reader = tx.fork({ keepTransactionContext: true })
+  const context = { container, ...scope, scope: [{ kind: 'system_job' as const }], em: reader }
   const audience = await resolveMembers(
     ids.map((personId) => ({ personId, reason: 'direct' as const })),
     context,

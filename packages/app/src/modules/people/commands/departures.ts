@@ -236,11 +236,16 @@ async function contributorsAfterCommit(
     const moduleChanges = changes[module]
     if (!moduleChanges || moduleChanges.length === 0) continue
     try {
-      await contributor.afterCommit(
-        moduleChanges,
-        { container: ctx.container, ...scope, em: ctx.transactionalEm },
-        undo,
-      )
+      // Inside the replay transaction (undo, redo) the contributor reads on its connection (#836), in a savepoint, so a
+      // failed read is rolled back alone and never aborts the undo; otherwise after the commit, on its own fork.
+      const replay = ctx.transactionalEm
+      if (replay) {
+        await replay.transactional((savepoint) =>
+          contributor.afterCommit(moduleChanges, { container: ctx.container, ...scope, em: savepoint }, undo),
+        )
+      } else {
+        await contributor.afterCommit(moduleChanges, { container: ctx.container, ...scope }, undo)
+      }
     } catch (error: unknown) {
       logger.warn('A departure contributor failed after the commit', { module, err: error })
       getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.departure.after_commit_failed' })

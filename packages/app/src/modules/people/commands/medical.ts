@@ -44,7 +44,12 @@ async function assertStaffMayWrite(
   const rbac = ctx.container.resolve<RbacService>('rbacService')
   // On the command's transaction: the cached check reads on a second pooled connection on a miss (#836).
   const allowed = userId
-    ? await rbac.userHasAllFeaturesWithEntityManager(em, userId, [MEDICAL_MANAGE_FEATURE], scope)
+    ? await rbac.userHasAllFeaturesWithEntityManager(
+        em.fork({ keepTransactionContext: true }),
+        userId,
+        [MEDICAL_MANAGE_FEATURE],
+        scope,
+      )
     : false
   if (!allowed) await foundationErrors.throw('scope_denied')
   if (actingRole !== 'coordinator') return

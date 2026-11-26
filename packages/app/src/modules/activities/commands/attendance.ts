@@ -192,7 +192,15 @@ async function assertStaffMayDeclare(
   if (!STAFF_ROLES.includes(actingRole)) return
   const userId = ctx.auth?.sub
   const rbac = ctx.container.resolve<RbacService>('rbacService')
-  if (!userId || !(await rbac.userHasAllFeaturesWithEntityManager(em, userId, ['activities.coach'], scope))) {
+  if (
+    !userId ||
+    !(await rbac.userHasAllFeaturesWithEntityManager(
+      em.fork({ keepTransactionContext: true }),
+      userId,
+      ['activities.coach'],
+      scope,
+    ))
+  ) {
     await foundationErrors.throw('scope_denied')
   }
 }

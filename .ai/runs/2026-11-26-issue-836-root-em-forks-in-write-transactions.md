@@ -26,5 +26,7 @@
 - `yarn verify`: steps up to `typecheck:qa` passed; `lint` hit a V8 heap out-of-memory on this machine (twice; the first time the gitignored Playwright report under `packages/app/.ai/qa/test-results` was also linted, removed). `NODE_OPTIONS=--max-old-space-size=8192 yarn lint` in `packages/app`: exit 0, 0 errors, 166 warnings, none on a changed line. `yarn verify --from secrets:check`: all 18 remaining steps passed.
 - `yarn guard`: no blocking findings.
 
+- Review (independent subagent, read-only): no correctness bugs. Three low-severity notes, all fixed in a follow-up commit: the RBAC reads and the life-cycle audience read now use a `keepTransactionContext` fork (no decrypted rows in the transaction's identity map); a departure contributor's `afterCommit` inside the replay transaction runs in a savepoint, so a failed read can no longer abort an undo. Re-run after the fix, all `passed`: ISSUE-836 (1), TEST-009 (4), TEST-O01 (2), TEST-L03 (3), TEST-L06 (1), TEST-L09 (2), TEST-L10 (2); lint (8 GB heap) exit 0; `yarn verify --from secrets:check` 18/18; `yarn guard` no blocking findings.
+
 ## Open problems / next steps
 - None known; the PR body lists every audited site.
