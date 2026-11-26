@@ -8,6 +8,7 @@ import {
   accountEmailLimit,
   emailFromBody,
   emailFromUrlEncoded,
+  emailSubjectLimit,
   forwardedEntryCount,
   hashKeyPart,
   linkRequestEmailLimit,
@@ -43,6 +44,17 @@ describe('sessionless limit keys', () => {
     expect(limit.key).toBe(`club-a:${sha('ann@example.org')}`)
     expect(limit.key).not.toContain('ann')
     expect(linkRequestEmailLimit('p_email', 'club-b', 'ann@example.org').key).not.toBe(limit.key)
+  })
+
+  it('counts a public form per address across clubs, failing closed, never the address in clear', () => {
+    const window = { points: 5, duration: 3600, keyPrefix: 'other' }
+    const limit = emailSubjectLimit('p_subject', '  Guest@Example.org ', window)
+    expect(limit).toEqual({
+      config: { points: 5, duration: 3600, keyPrefix: 'p_subject' },
+      key: sha('guest@example.org'),
+      options: { failClosed: true },
+    })
+    expect(limit.key).not.toContain('guest')
   })
 
   it('counts sign-in and reset per account from any client', () => {

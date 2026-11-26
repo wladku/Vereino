@@ -28,10 +28,11 @@ a DPIA is carried out.
 - **Nature.** A web application for one club: membership register, guardianships and consents, groups and session
   attendance, messages and e-mail notices, fees and payments (manual, bank import, online through Stripe), orders,
   place rentals for outside renters, facility logs and incidents, the validity date of sports medical certificates
-  (art. 9 data, with explicit consent; #682). The activities A1–A15 and their tables are in [`ropa.md`](ropa.md).
-- **Scope.** The pilot club: its members, wards, guardians, staff and outside renters — in the order of hundreds of
-  people, one organization. No profiling, no automated decisions with legal effect, no monitoring of public places,
-  no biometric, genetic or location data.
+  (art. 9 data, with explicit consent; #682), the shared outline library, applications to a section from people who
+  are not members (#799). The activities A1–A17 and their tables are in [`ropa.md`](ropa.md).
+- **Scope.** The pilot club: its members, wards, guardians, staff, outside renters and applicants — in the order of
+  hundreds of people, one organization. No profiling, no automated decisions with legal effect, no monitoring of
+  public places, no biometric, genetic or location data.
 - **Context.** Children cannot judge the processing themselves; guardians act for them (S9.3). Accounts of 13–17-year
   olds are enabled by a guardian, never by self sign-up; consent-based options follow the 16-year rule (B1). Staff
   are volunteers or part-time coaches using their own phones.
@@ -46,7 +47,7 @@ a DPIA is carried out.
 | Lawful basis | art. 6(1)(b) for core processing, 6(1)(c) for accounting, 6(1)(f) for safety logs, 6(1)(a) only for optional processing, art. 9(2)(a) explicit consent for the medical certificate date (S9.2; [`ropa.md`](ropa.md) A15) |
 | Minimisation | a field exists only if a club spec requirement needs it; PESEL optional; of a medical certificate only the "valid until" date; public pages show no participant or guardian names; no personal data in logs, events, URLs or errors (S9.4) |
 | Accuracy | members correct their contacts themselves (`PUT /api/people/me`); staff correct the rest ([`data-subject-requests.md`](data-subject-requests.md)) |
-| Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3; R9 enforced since #525) |
+| Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3; R9 enforced since #525); applications to a section are deleted or anonymised by the `enrolment` jobs (R22–R24) |
 | Information | privacy notices in Polish and English and a short version for children (E19-S03, #469) |
 | Data subjects' rights | [`data-subject-requests.md`](data-subject-requests.md) |
 | Processors and transfers | [`processors.md`](processors.md); DPA not yet signed (P-0) |
@@ -73,6 +74,7 @@ open measures are listed in §5.
 | D-12 | A child's name or image is published without permission | low | high | public pages show no participant names (S9.4); image and name publication only with recorded consent (S9.2) | low |
 | D-13 | A person cannot get a copy of their data (no export) or the request is missed | medium | low | procedure ([`data-subject-requests.md`](data-subject-requests.md)) and the logged person data export (#527) | low |
 | D-14 | A coach sees health-related data of players (medical certificate validity); exposed if a staff account is taken over (#682) | medium | medium | only a "valid until" date, no scan, result, doctor or diagnosis; encrypted with the club's tenant key; coaches see status and date only for their own groups, and every coach read is logged through `auditedRead`; stored only with explicit consent of the adult or a guardian, cleared on withdrawal, erasure, or 12 months after the date passed (R20) | low — legal basis to be confirmed by the lawyer before the production release (Q-O06); account takeover as D-4 |
+| D-15 | Applications to a section (A17, #799): a stranger submits a child's data that is not theirs; a mistyped e-mail sends the confirmation or status link to someone else, who sees the child's name and the application; the public form is used for spam or to probe who applied | medium | medium | one-time confirmation link valid 1 hour, and nothing reaches the club (no notice, no inbox row) before it is confirmed; unconfirmed applications deleted after 24 hours (R22); only the fields of BR-J1 — no address, PESEL, school or health data; honeypot, per-IP limits and a fail-closed per-e-mail limit; names, contacts and note encrypted with the club's tenant key, lookups by keyed hashes only; the status page shows only that one application and no person of the club; the form and the link requests answer a uniform 202, so they reveal nothing about who applied; closed applications anonymised 30 days after closing (R23, R24) | low — legal basis and information text to be confirmed by the lawyer before the production release (Q-J09) |
 
 ## 4. Measures (art. 35(7)(d))
 
