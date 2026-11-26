@@ -255,6 +255,15 @@ has no MCC table on its page, so nothing is restricted there.
 No other conclusion changes a default or a requirement: B1 and B12 are confirmed, and the corrections of B2 and B10
 change only which source the DPIA and the privacy notices cite.
 
+## Items for the lawyer
+
+Questions that the verification above cannot settle from primary texts; each blocks the production release it names,
+not the build.
+
+| Id | Question | Source | Blocks |
+|---|---|---|---|
+| Q-J09 | Confirm **art. 6(1)(b) GDPR** (steps taken at the request of the data subject, or of the child's parent, before entering into a membership contract) as the legal basis for applications to a section by people who are not members ([`ropa.md`](ropa.md) A17), and the default information text shown to applicants (club setting `application_information`; null = the built-in default) | section sign-up form spec (`.ai/specs/2026-11-25-vereino-section-sign-up-form.md`), owner decision 2026-11-26 | the production release of E26 phase 2 (#799) |
+
 ## Acceptance
 
 Accepted by the product owner on: _(date, to be filled in by the owner)_.
