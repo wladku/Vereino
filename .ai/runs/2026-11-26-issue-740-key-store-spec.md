@@ -50,3 +50,19 @@
 - Owner answers Q-K01–Q-K05 on the spec PR; then the spec moves to `Ready for implementation` and phase 1 starts.
 - Upstream issues of DD-K07 (fail-closed writes, versioned DEKs, rotation of credentials, token renewal) are filed in
   phase 3, or earlier if the owner chooses the upstream route for Q-K04.
+
+## Follow-up run (2026-11-26): owner answers recorded
+
+- **Trigger:** cezar task `om-auto-fix-pr 803` — the owner accepted all recommended defaults for Q-K01…Q-K05 (PR #803
+  comment "Owner decision (2026-11-26)").
+- **Steps:** merged `origin/main` into the PR branch (clean); recorded each answer in the Open Questions table, marked
+  A-K01, A-K02, A-K03 and A-K07 confirmed (and their ⚠ references in the design table, scope and risks), set the
+  compliance verdict to ready and the status line to `Ready for implementation`; added the changelog file
+  `2026-11-26-owner-answers-ready.md`; promoted the PR from draft to ready for review.
+- **Decision:** Q-K04 keeps the recommended wording — report the fail-open write upstream now, build Vereino's own guard
+  in phase 2 unless an upstream release that fails closed is out by then. Filing the upstream report is an
+  outward-facing action left to the owner or the phase 2 run; this run did not file it.
+- **Commands:** `yarn spec-changelogs:check`, `yarn spec-questions:check`, `yarn format:check`, `yarn guard` (results
+  in the PR comment of this run).
+- **Next steps:** phase 1 (Vault service, boot guard, key inventory) via `om-auto-implement-spec`; the upstream
+  fail-closed report before phase 2.
