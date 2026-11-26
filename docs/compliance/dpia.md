@@ -62,7 +62,7 @@ open measures are listed in §5.
 | D-1 | Another club or an outsider reads a child's data through a scope or authorization bug | low | high | server-derived tenant and organization scope, fail closed; feature-based ACL; second-tenant and insufficient-feature tests per route (S8.3, S13.4) | low |
 | D-2 | A staff member reads more than needed (e.g. all guardians' phone numbers) | medium | medium | contacts shown to coaches only with the `share_contact_with_coaches` consent; every read logged in `activities_contact_access_log` | low |
 | D-3 | A personal link (declaration, order, rental) is forwarded or leaked and opened by someone else | medium | medium | 32-byte tokens stored as hashes, one purpose and one subject, expiry, `no-referrer`, `no-store` (S8.6, S8.7) | medium — dead tokens are deleted 30 days after use or expiry (R9, #525) |
-| D-4 | An administrator's or treasurer's account is taken over (phishing, reused password) and payment or child data is exposed or changed | medium | high | platform sign-in rate limits; audit log | **medium** — no MFA in 1.0 (ENG-Q-09) and 8-hour sessions without idle timeout (ENG-Q-12) |
+| D-4 | An administrator's or treasurer's account is taken over (phishing, reused password) and payment or child data is exposed or changed | medium | high | platform sign-in rate limits; audit log; staff sessions end after 30 min idle and within 8 h, no "remember me" for staff, an e-mail change needs the current password (ENG-Q-12, #737) | **medium** — no MFA in 1.0 (ENG-Q-09) |
 | D-5 | Data are lost (database failure, operator mistake) | low | medium | nightly encrypted off-site dump, restore drill, RTO ≤ 60 min ([`backups.md`](../ops/backups.md)) | medium — up to 24 h of data can be lost (no PITR, ENG-Q-03) |
 | D-6 | Payment data are misused (wrong person charged, fraud with account numbers from bank imports) | low | high | encrypted counterparty data; only exact payer-code matches booked automatically (S10.7); immutable payments; no card data stored | low |
 | D-7 | E-mail goes to the wrong person or reveals another family's data | low | medium | templates without other participants' names; addresses from the person record; staging only to an allowlist (S12.6) | low |
@@ -84,7 +84,7 @@ and [`asvs-checklist.md`](asvs-checklist.md); the incident and breach path is in
 | Id | Measure | Reduces | Owner |
 |---|---|---|---|
 | DP-1 | Sign the DPA; confirm regions and transfer mechanisms of Railway and Resend; choose the backup provider and the uptime monitor (P-0 … P-5) | D-11 | product owner |
-| DP-2 | Decide ENG-Q-09 (MFA) and ENG-Q-12 (session lifetime); at least hide "remember me" for staff roles | D-4 | product owner |
+| DP-2 | Decide ENG-Q-09 (MFA); ENG-Q-12 (session lifetime) answered and built on 2026-11-26 (#737) | D-4 | product owner |
 | DP-3 | Build the retention jobs: former participants after 12 months (#471), dead tokens, and the open periods (R-A … R-G) | D-3, D-9, D-10 | #471, #525, #526, #528 |
 | DP-4 | Club instruction to staff on free text; decide the art. 9(2) basis for incident and substitution notes (e.g. art. 9(2)(c) vital interests or (f) legal claims) | D-8 | club |
 | DP-5 | ~~Person data export for access and portability~~ — done (#527) | D-13 | #527 |

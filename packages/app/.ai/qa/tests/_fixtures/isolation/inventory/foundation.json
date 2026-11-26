@@ -36,6 +36,18 @@
     },
     "/api/foundation/identity/providers": {
       "GET": { "probe": "read" }
+    },
+    "/api/foundation/profile/email": {
+      "PUT": {
+        "probe": "exempt",
+        "why": "Changes the caller's own login e-mail (the user is taken from the session) after checking the current password; the request names no record of any club. TEST-737 covers it."
+      }
+    },
+    "/api/foundation/session/activity": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Moves the expiry of the caller's own session (the session id comes from the signed JWT); the request names no record of any club. TEST-737 covers it."
+      }
     }
   }
 }

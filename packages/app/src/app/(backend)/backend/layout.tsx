@@ -19,6 +19,8 @@ import { SidebarNavBadges } from '@/components/SidebarNavBadges'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { ClubTimeZone } from '@/components/ClubTimeZone'
 import { PlatformA11yRepairs } from '@/components/PlatformA11yRepairs'
+import { StaffSessionActivity } from '@/components/StaffSessionActivity'
+import { isStaffAccount, readStaffIdleMinutes } from '@vereino/core'
 import { redirect } from 'next/navigation'
 import { requestHost } from '@/modules/club_core/lib/club-host'
 import { requestClub, sessionRedirectForHost } from '@/modules/club_core/services/request-club'
@@ -213,6 +215,10 @@ export default async function BackendLayout({
         <BrowserTelemetry config={browserTelemetryConfig} />
         <SidebarNavBadges />
         <PlatformA11yRepairs />
+        {/* The staff idle timeout (S8.5, ENG-Q-12; #737). */}
+        {auth && !auth.isApiKey && isStaffAccount(auth.roles) ? (
+          <StaffSessionActivity idleMinutes={readStaffIdleMinutes(process.env)} />
+        ) : null}
       </AppShell>
     </I18nProvider>
   )
