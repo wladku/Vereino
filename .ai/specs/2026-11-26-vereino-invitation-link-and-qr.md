@@ -1,7 +1,7 @@
 # Personal invitation link and QR code: staff hand a guardian's pending invitation over in person or on WhatsApp
 
 **Date**: 2026-11-26
-**Status**: Draft — written by an autonomous run for #868 (E29-S01, epic #865); Q-IL01…Q-IL05 wait for the owner
+**Status**: Ready for implementation — owner decisions on Q-IL01…Q-IL05 of 2026-11-26 (#868 comment 7203995227)
 
 > Related: #868 (this story), epic #865, #869 (E29-S02, group QR code — the second consumer of the QR component), decisions D44 (PR #864, `research/decisions/D-044-reach-guardians-invitation-links-and-club-page.md`), D27 (`D-027-social-sign-in.md`), D29 (phone first). Reused: the people life-cycle spec (`implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md`, REQ-L01, DD-L01, V-L01), the foundation token links (P-10, `foundation/services/token-link.ts`, REQ-F07), the social sign-in spec (`2026-10-27-vereino-social-sign-in.md`, DD-S02). Code read: `people/commands/accounts.ts`, `people/api/persons/[id]/account/invitation/route.ts`, `people/lib/account-limits.ts`, `people/services/account-limits.ts`, `people/components/AccountPanel.tsx`, `people/components/PersonRecord.tsx`, `foundation/services/accounts.ts` (`resendInvitation`, `sendAccountInvitation`), `packages/core/src/account-policy.ts`, `packages/core/src/scope.ts`, `packages/core/src/roles.ts`, `activities/services/guardian-contacts.ts`, the platform page `auth/frontend/reset/[token]`. Identifiers: decisions `IL-D01…`, requirements `REQ-IL01…`, tests `TEST-IL01…`, acceptance `IL-AC-01…`.
 
@@ -301,19 +301,19 @@ One additive migration (`people_invitation_links`), generated and reviewed in ph
 | UI contracts identify references, canonical components, and theme/state coverage | pass | UI contracts table |
 | Every phase has dependencies, bounded slices, tests, value, and an observable exit gate | pass | phases |
 
-Verdict: `Blocked — Q-IL01…Q-IL05 (Ask First: new dependency, migration, system-scope lookup, D27 change)`.
+Verdict: `Ready for implementation` for phases 1–2 (Q-IL01, Q-IL02, Q-IL04, Q-IL05 approved 2026-11-26); phase 3 waits for a separate decision on Q-IL03.
 
 ## Open Questions
 
-Each question carries the run's recommendation (⚠ NEEDS HUMAN CONFIRMATION: all are Ask First items under `AGENTS.md`).
+Answered by the owner on 2026-11-26 (#868 comment 7203995227; all recommendations accepted). Anything beyond these answers (another table, column, module or dependency) is Ask First again.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-IL01 | May `@vereino/ui` add the `qrcode` package (MIT, ~40 kB, types already present) for client-side QR rendering, reused by #869? Alternative: an app-owned encoder. | Władek Kuć | phase 1 | pending — recommended: yes, `qrcode` |
-| Q-IL02 | How long does a shared link live? Options: 48 h (as the e-mail), 7 days, 14 days. | Władek Kuć | phase 1 | pending — recommended: 7 days (a WhatsApp message read days later) |
-| Q-IL03 | May the link activate an invited account through Google without a password (a change to D27 / DD-S02, which allow linking only from a signed-in session or by the administrator)? If no, the guardian sets a password and can connect Google later from `/club/profile`, which is today's behaviour. | Władek Kuć | phase 3 | pending — recommended: decide separately; phases 1–2 ship without it |
-| Q-IL04 | Which link do staff share: a Vereino token link on the club's address (IL-D01: club card, "ask your club" when invalid, 7-day life, needs the migration and the lookup of Q-IL05) or the platform's own `/reset/{raw}` password-setup link (48 h, no migration, no new lookup, but no club on the page and an invalid state that offers a self-service reset)? | Władek Kuć | phase 1 | pending — recommended: the Vereino token link, the only one that meets the story's page criteria |
-| Q-IL05 | Approve the migration `people_invitation_links` and its sessionless lookup of `token_hash` in `people/services/invitation-links.ts` as a new entry of the `AGENTS.md` system-scope exception list, and the new routes and feature `people.invitations.share` (granted to coach and coordinator)? | Władek Kuć | phases 1, 2 | pending |
+| Q-IL01 | May `@vereino/ui` add the `qrcode` package (MIT, ~40 kB, types already present) for client-side QR rendering, reused by #869? Alternative: an app-owned encoder. | Władek Kuć | phase 1 | 2026-11-26 — approved: add `qrcode` (MIT) to `@vereino/ui` for `QrCode`; #869 reuses it; this one dependency only |
+| Q-IL02 | How long does a shared link live? Options: 48 h (as the e-mail), 7 days, 14 days. | Władek Kuć | phase 1 | 2026-11-26 — 7 days; a new link replaces the older one |
+| Q-IL03 | May the link activate an invited account through Google without a password (a change to D27 / DD-S02, which allow linking only from a signed-in session or by the administrator)? If no, the guardian sets a password and can connect Google later from `/club/profile`, which is today's behaviour. | Władek Kuć | phase 3 | 2026-11-26 — not in this story; a separate decision before phase 3 |
+| Q-IL04 | Which link do staff share: a Vereino token link on the club's address (IL-D01: club card, "ask your club" when invalid, 7-day life, needs the migration and the lookup of Q-IL05) or the platform's own `/reset/{raw}` password-setup link (48 h, no migration, no new lookup, but no club on the page and an invalid state that offers a self-service reset)? | Władek Kuć | phase 1 | 2026-11-26 — the Vereino token link (P-10, hash only) that shows the club and then hands over to the platform's password setup |
+| Q-IL05 | Approve the migration `people_invitation_links` and its sessionless lookup of `token_hash` in `people/services/invitation-links.ts` as a new entry of the `AGENTS.md` system-scope exception list, and the new routes and feature `people.invitations.share` (granted to coach and coordinator)? | Władek Kuć | phases 1, 2 | 2026-11-26 — approved: the migration, the system-scope exception (recorded in `AGENTS.md` like D-024/D-027), both staff routes, and `people.invitations.share` for coach and coordinator scoped to their own groups and sections |
 
 ## Changelog
 
