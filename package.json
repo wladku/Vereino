@@ -57,6 +57,7 @@
     "spec-questions:check": "node ./scripts/check-spec-questions.mjs",
     "dockerfiles:check": "node ./scripts/check-dockerfiles.mjs",
     "secrets:check": "node ./scripts/check-secrets.mjs",
+    "ops:mail-dns": "node ./scripts/check-mail-dns.mjs",
     "guard": "node ./scripts/guard.mjs",
     "licenses:check": "node ./scripts/check-licenses.mjs",
     "typecheck:packages": "yarn workspaces foreach -Apt --include '@vereino/core' --include '@vereino/db' --include '@vereino/ui' run typecheck",
