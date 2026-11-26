@@ -68,7 +68,8 @@ export async function requestWebApp(productName: string, withLogo: boolean): Pro
     const identity = clubIdentity({ name: club.name, accentColor: club.accent?.color ?? null, logo })
     return {
       identity,
-      logo: identity.icon === 'logo' && logo?.bytes ? { bytes: logo.bytes, mimeType: logo.mimeType ?? 'image/png' } : null,
+      logo:
+        identity.icon === 'logo' && logo?.bytes ? { bytes: logo.bytes, mimeType: logo.mimeType ?? 'image/png' } : null,
     }
   } catch (error: unknown) {
     logger.warn('The web app identity of the request host could not be read; Vereino is shown', { err: error })

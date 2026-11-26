@@ -36,7 +36,11 @@ type Manifest = {
 
 async function manifestAt(base: string): Promise<{ status: number; type: string | null; body: Manifest }> {
   const response = await fetch(`${base}/manifest.webmanifest`)
-  return { status: response.status, type: response.headers.get('content-type'), body: (await response.json()) as Manifest }
+  return {
+    status: response.status,
+    type: response.headers.get('content-type'),
+    body: (await response.json()) as Manifest,
+  }
 }
 
 /** The width and height of a PNG from its IHDR chunk. */
@@ -62,7 +66,8 @@ async function signInAtClub(page: Page): Promise<void> {
   await form.locator('input[name="password"]').press('Enter')
   expect((await answer).ok()).toBe(true)
   await page.goto(`${origin}/club`)
-  await expect(page.getByTestId('club-name')).toContainText(name)
+  // The bar appears once the member's profile has loaded (the header shows the club's short name, unset here).
+  await expect(page.getByTestId('club-bottom-bar')).toBeVisible()
 }
 
 async function memberPage(browser: Browser, options: BrowserContextOptions = {}): Promise<Page> {
@@ -81,7 +86,14 @@ test.beforeAll(async ({ request }) => {
   slug = `qa-e31-${uniqueSuffix()}`
   await publish(request, club.adminToken, slug, [], { accentColor: ACCENT })
   const settings = await getSettings(request, club.adminToken)
-  const logo = await upload(request, club.adminToken, '/api/club_core/logo', png([200, 30, 30], 64), {}, settings.updatedAt)
+  const logo = await upload(
+    request,
+    club.adminToken,
+    '/api/club_core/logo',
+    png([200, 30, 30], 64),
+    {},
+    settings.updatedAt,
+  )
   expect(logo.status, JSON.stringify(logo.body)).toBe(200)
   const page = await publicGet(request, `/api/club_core/public/${slug}`)
   expect(page.status).toBe(200)
@@ -122,7 +134,12 @@ test('E31-S01 the manifest and icons of a club address, and Vereino elsewhere', 
   // The instance's own address and the shared one-club app name no club: Vereino's name, colour and mark.
   for (const base of [app.appUrl, app.bareUrl]) {
     const own = await manifestAt(base)
-    expect(own.body).toMatchObject({ name: 'Vereino', start_url: '/club', display: 'standalone', theme_color: '#171717' })
+    expect(own.body).toMatchObject({
+      name: 'Vereino',
+      start_url: '/club',
+      display: 'standalone',
+      theme_color: '#171717',
+    })
     const mark = await iconAt(base, own.body.icons[0].src)
     expect(pngSize(mark)).toEqual([192, 192])
     expect(mark.equals(clubIcons[0])).toBe(false)
@@ -145,6 +162,21 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
   browser,
 }) => {
   const page = await memberPage(browser)
+  // Counts every request for notification or push permission (N02: none).
+  await page.context().addInitScript(() => {
+    const counted = window as unknown as { __permissionAsks: number }
+    counted.__permissionAsks = 0
+    const ask = Notification.requestPermission.bind(Notification)
+    Notification.requestPermission = (...args: Parameters<typeof Notification.requestPermission>) => {
+      counted.__permissionAsks += 1
+      return ask(...args)
+    }
+    const subscribe = PushManager.prototype.subscribe
+    PushManager.prototype.subscribe = function (this: PushManager, ...args: Parameters<PushManager['subscribe']>) {
+      counted.__permissionAsks += 1
+      return subscribe.apply(this, args)
+    }
+  })
   await signInAtClub(page)
   await page.evaluate(async () => {
     await navigator.serviceWorker.ready
@@ -175,7 +207,7 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
   await expect(install).toHaveCount(0)
 
   // No notification permission asked (N02), and no iPhone hint in Chromium.
-  expect(await page.evaluate(() => Notification.permission)).toBe('default')
+  expect(await page.evaluate(() => (window as unknown as { __permissionAsks: number }).__permissionAsks)).toBe(0)
   await expect(page.getByTestId('web-app-ios-hint')).toHaveCount(0)
 
   // The worker keeps the offline page only: no API response and no member page.
@@ -222,7 +254,7 @@ test('E31-S01 Safari on an iPhone shows the Add to Home Screen hint once per dev
   await page.keyboard.press('Enter')
   await expect(hint).toHaveCount(0)
   await page.reload()
-  await expect(page.getByTestId('club-name')).toContainText(name)
+  await expect(page.getByTestId('club-bottom-bar')).toBeVisible()
   await expect(page.getByTestId('web-app-ios-hint')).toHaveCount(0)
   await page.context().close()
 })

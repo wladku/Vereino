@@ -56,7 +56,14 @@ export function clubIdentity(input: {
   logo: { attachmentId: string; mimeType: string | null } | null
 }): WebAppIdentity {
   const colour = input.accentColor ? input.accentColor.replace('#', '') : 'none'
-  if (!input.logo) return { name: input.name, accentColor: input.accentColor, icon: 'mark', initial: nameInitial(input.name), version: `mark-${colour}` }
+  if (!input.logo)
+    return {
+      name: input.name,
+      accentColor: input.accentColor,
+      icon: 'mark',
+      initial: nameInitial(input.name),
+      version: `mark-${colour}`,
+    }
   const drawable = DRAWABLE_LOGO_TYPES.includes((input.logo.mimeType ?? '').toLowerCase())
   return {
     name: input.name,

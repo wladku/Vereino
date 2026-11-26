@@ -106,12 +106,7 @@ function InstallItem() {
   const available = useInstallAvailable()
   if (!label || !available) return null
   return (
-    <button
-      type="button"
-      className={MORE_ITEM_CLASS}
-      data-testid="club-install"
-      onClick={promptInstall}
-    >
+    <button type="button" className={MORE_ITEM_CLASS} data-testid="club-install" onClick={promptInstall}>
       <Download className="size-4" aria-hidden />
       <span>{label}</span>
     </button>
