@@ -181,10 +181,12 @@ async function handoverRows(
   }
   const byId = new Map(payments.map((payment) => [payment.id, payment]))
   return rows.map((row) => {
-    const own = row.paymentIds.flatMap((id) => {
-      const payment = byId.get(id)
-      return payment ? [payment] : []
-    })
+    const own = row.paymentIds
+      .flatMap((id) => {
+        const payment = byId.get(id)
+        return payment ? [payment] : []
+      })
+      .sort((a, b) => (a.receiptNumber ?? '').localeCompare(b.receiptNumber ?? '') || a.id.localeCompare(b.id))
     return {
       id: row.id,
       number: row.number,
