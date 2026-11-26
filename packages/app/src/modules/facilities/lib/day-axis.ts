@@ -34,6 +34,12 @@ export function axisBounds(opening: readonly Span[] | null, entries: readonly Sp
   return { from: Math.max(0, from), to: Math.min(DAY_MINUTES, to) }
 }
 
+/** One hour scale for several axes side by side (a week's seven days, DD-W06): the earliest start, the latest end. */
+export function unionBounds(bounds: readonly Span[]): Span {
+  if (bounds.length === 0) return { from: AXIS_START, to: AXIS_END }
+  return { from: Math.min(...bounds.map((b) => b.from)), to: Math.max(...bounds.map((b) => b.to)) }
+}
+
 /** The whole hours of the axis, as the minute each starts at. */
 export function axisHours(bounds: Span): number[] {
   const hours: number[] = []

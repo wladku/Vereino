@@ -1401,5 +1401,8 @@
   "facilities.rangeSwitch.previous.month": "poprzedni miesiąc",
   "facilities.rangeSwitch.next.day": "następny dzień",
   "facilities.rangeSwitch.next.week": "następny tydzień",
-  "facilities.rangeSwitch.next.month": "następny miesiąc"
+  "facilities.rangeSwitch.next.month": "następny miesiąc",
+  "facilities.calendar.range.weekAxes": "Tydzień godzina po godzinie",
+  "facilities.calendar.range.openDay": "Pokaż {day}",
+  "facilities.calendar.range.noEntries": "Nic w tym okresie."
 }

@@ -93,11 +93,16 @@ export function supersededRequests<T extends RequestHold>(
 export const MAX_CALENDAR_DAYS = 31
 
 const DAY_MS = 24 * 60 * 60 * 1000
+/** The hour a club-zone day gains when the clocks go back: 31 days of October are 31 days and one hour (#784). */
+const DST_HOUR_MS = 60 * 60 * 1000
 
-/** Why a calendar window is not valid (400), or null: it must end after it starts and span at most 31 days. */
+/**
+ * Why a calendar window is not valid (400), or null: it must end after it starts and span at most 31 days — 31
+ * club-zone days, so one more hour where the clocks go back inside them (a month view of October, #784).
+ */
 export function calendarWindowProblem(from: Date, to: Date): 'inverted' | 'too_long' | null {
   if (to.getTime() <= from.getTime()) return 'inverted'
-  return to.getTime() - from.getTime() > MAX_CALENDAR_DAYS * DAY_MS ? 'too_long' : null
+  return to.getTime() - from.getTime() > MAX_CALENDAR_DAYS * DAY_MS + DST_HOUR_MS ? 'too_long' : null
 }
 
 /** The club-zone calendar dates a window touches, from the date of `from` to the date of its last instant. */

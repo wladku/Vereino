@@ -74,7 +74,7 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
 
     // Given a saved rental, it appears on the day axis of B-23 and in "Wpisy dnia" (#276).
     const soonDate = zoneDate(soonAt)
-    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${soonDate}`)
+    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&range=day&date=${soonDate}`)
     await expect(page.getByTestId(`facilities-axis-entry-${String(soon.body?.id)}`)).toBeVisible()
     await expect(page.getByTestId(`facilities-day-entry-${String(soon.body?.id)}`)).toContainText('KS Sąsiedzi')
     await page.goto('/backend/facilities/rentals')
@@ -92,7 +92,7 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     // B-23: a rental from a free hour of next week's Thursday on the day axis (the slot dialog, #277), the live
     // quote, save.
     const enteredDate = nextWeekday(addDays(calendarDate(), 7), 'TH')
-    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&date=${enteredDate}`)
+    await page.goto(`/backend/facilities/calendar?place=${setup.pitch}&range=day&date=${enteredDate}`)
     await page.waitForLoadState('networkidle')
     await page.locator('[data-testid^="facilities-axis-hour-"]').first().click()
     const dialog = page.getByTestId('facilities-slot-dialog')
