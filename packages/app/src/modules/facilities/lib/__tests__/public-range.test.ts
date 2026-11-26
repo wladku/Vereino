@@ -5,6 +5,7 @@ import {
   publicRangeHref,
   publicRangeOf,
   publicReadableWindow,
+  publicSafeWindow,
   publicScheduleQuery,
   publicScheduleRead,
 } from '../public-range'
@@ -15,6 +16,16 @@ const params = (query: string) => new URLSearchParams(query)
 describe('publicReadableWindow', () => {
   it('runs from the first day of last month to the last day twelve months ahead', () => {
     expect(publicReadableWindow(today)).toEqual({ min: '2026-10-01', max: '2027-11-30' })
+  })
+})
+
+describe('publicSafeWindow', () => {
+  it('stays inside the club zone’s window a day ahead or behind the browser', () => {
+    // 30 November in the browser: the club may already be on 1 December (min 1 November) or still on 29 November.
+    expect(publicSafeWindow('2026-11-30')).toEqual({ min: '2026-11-01', max: '2027-11-30' })
+    // 1 December in the browser: the club may still be on 30 November (max 30 November next year).
+    expect(publicSafeWindow('2026-12-01')).toEqual({ min: '2026-11-01', max: '2027-11-30' })
+    expect(publicSafeWindow(today)).toEqual({ min: '2026-10-01', max: '2027-11-30' })
   })
 })
 

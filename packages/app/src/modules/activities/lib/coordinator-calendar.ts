@@ -2,8 +2,8 @@
 // switch spec REQ-W07, DD-W02, DD-W03, A-W02): Day / Week / Month on the shared switch and "Agenda" after them (the
 // next 14 days from today, without arrows); the view, its day and the section filter live in the address
 // (`&range=&date=&section=`), so a reload and a shared link reopen them. Without `range` a phone opens on Day and a
-// wider screen on Week. The installed grid (react-big-calendar) starts a week on the locale's first day — Sunday in
-// English — so a week's read also covers the Sunday before its Monday. Pure: the page passes today and the width.
+// wider screen on Week (the page sets the grid's week to start on Monday in every language, DD-W04). Pure: the page
+// passes today and the width.
 import { addCalendarDays, type CalendarDate, type DateWindow } from '@vereino/core'
 import {
   calendarRangeHref,
@@ -38,10 +38,9 @@ export function coordinatorGridDates(view: CoordinatorView, anchor: CalendarDate
   return rangeOf(view, anchor)
 }
 
-/** The dates the calendar reads: the grid's, a week from the Sunday before its Monday. */
+/** The dates the calendar reads: exactly the grid's. */
 export function coordinatorReadWindow(view: CoordinatorView, anchor: CalendarDate, today: CalendarDate): DateWindow {
-  const shown = coordinatorGridDates(view, anchor, today)
-  return view === 'week' ? { from: addCalendarDays(shown.from, -1), to: shown.to } : shown
+  return coordinatorGridDates(view, anchor, today)
 }
 
 /** The address of a view: the page's other parameters (`view=calendar`, `activity`) kept, the section set or dropped. */

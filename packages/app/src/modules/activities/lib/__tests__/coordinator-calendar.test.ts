@@ -39,8 +39,8 @@ describe('coordinatorGridDates and coordinatorReadWindow', () => {
     expect(coordinatorGridDates('agenda', '2027-03-01', today)).toEqual({ from: today, to: '2026-12-09' })
   })
 
-  it('reads a week from the Sunday before its Monday, every other view as shown', () => {
-    expect(coordinatorReadWindow('week', '2026-12-02', today)).toEqual({ from: '2026-11-29', to: '2026-12-06' })
+  it('reads exactly the dates the grid shows', () => {
+    expect(coordinatorReadWindow('week', '2026-12-02', today)).toEqual({ from: '2026-11-30', to: '2026-12-06' })
     expect(coordinatorReadWindow('month', '2026-12-02', today)).toEqual({ from: '2026-12-01', to: '2026-12-31' })
   })
 })

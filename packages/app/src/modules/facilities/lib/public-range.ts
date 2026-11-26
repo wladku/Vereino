@@ -4,7 +4,7 @@
 // the current one to twelve months ahead), and what the page reads for it: a month by `?month=`, a day or a week by
 // `?from=&to=` of the whole week (a day is inside its week, so moving through a week's days reads nothing new). Pure:
 // the page passes the club-zone today and whether the screen is wide.
-import { calendarMonth, type CalendarDate } from '@vereino/core'
+import { addDays, calendarMonth, type CalendarDate } from '@vereino/core'
 import {
   calendarRangeHref,
   clampToWindow,
@@ -28,14 +28,27 @@ export function publicReadableWindow(today: CalendarDate): Required<CalendarRang
   }
 }
 
+/**
+ * The window a browser may ask for when it knows only its own date: the server checks the club zone's today, which
+ * can be a day ahead or behind. Starting a day later and ending a day earlier stays inside the server's window on
+ * either side of midnight, so a visitor in another zone never gets a 400 at the window's edge.
+ */
+export function publicSafeWindow(browserToday: CalendarDate): Required<CalendarRangeLimits> {
+  return {
+    min: publicReadableWindow(addDays(browserToday, 1)).min,
+    max: publicReadableWindow(addDays(browserToday, -1)).max,
+  }
+}
+
 export type PublicRange = { range: CalendarRange; anchor: CalendarDate }
 
 /**
  * The view and the anchor of the address: `?range=&date=`; without `range`, an old `?month=` opens that month and
- * anything else the screen's default (Day on a phone, Week from `md`). The anchor stays inside the readable window.
+ * anything else the screen's default (Day on a phone, Week from `md`). The anchor stays inside the safe window of the
+ * browser's `today`.
  */
 export function publicRangeOf(params: CalendarRangeParams, wide: boolean, today: CalendarDate): PublicRange {
-  const limits = publicReadableWindow(today)
+  const limits = publicSafeWindow(today)
   const parsed = parseCalendarRange(params, { today, fallback: defaultCalendarRange(wide) })
   const month = params.get('month')
   if (!parsed.explicit && month && MONTH_PATTERN.test(month)) {
@@ -54,7 +67,7 @@ export function publicScheduleRead(
   today: CalendarDate,
 ): PublicScheduleRead {
   if (range === 'month') return { month: anchor.slice(0, 7) }
-  return readableRange(rangeOf('week', anchor), publicReadableWindow(today))
+  return readableRange(rangeOf('week', anchor), publicSafeWindow(today))
 }
 
 /** The query string of a read: `?month=YYYY-MM` or `?from=…&to=…`. */

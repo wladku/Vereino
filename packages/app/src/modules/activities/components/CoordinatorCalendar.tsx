@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
 import type { ScheduleRange } from '@open-mercato/ui/backend/schedule'
+import { scheduleLocales } from '@open-mercato/ui/backend/schedule/localization'
 import type { ScheduleCalendarProps } from '@open-mercato/ui/backend/schedule/ScheduleCalendar'
 import { ErrorMessage, LoadingMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
@@ -35,7 +36,6 @@ import {
   coordinatorCalendarState,
   coordinatorGridDates,
   coordinatorReadWindow,
-  type CoordinatorView,
 } from '../lib/coordinator-calendar'
 import { localCalendarDate } from '../lib/occurrence-list'
 import type { CalendarEntry, CalendarResponse } from './club/club-client'
@@ -64,6 +64,16 @@ const ScheduleCalendar = dynamic<ScheduleCalendarProps>(
   () => import('@open-mercato/ui/backend/schedule/ScheduleCalendar'),
   { ssr: false, loading: GridLoading },
 )
+
+// DD-W04: a week starts on Monday in every language. The grid's localizer reads its week start from the platform's
+// exported locale registry, whose English entry starts on Sunday; so the grid, the heading and the read agree.
+for (const [key, locale] of Object.entries(scheduleLocales)) {
+  if (locale.options?.weekStartsOn !== 1) {
+    scheduleLocales[key] = { ...locale, options: { ...locale.options, weekStartsOn: 1 } }
+  }
+}
+
+function ignoreGridNavigation(): void {}
 
 function RangeLink({ replace, ...props }: CalendarRangeLinkProps) {
   return <Link {...props} replace={replace} scroll={false} />
@@ -152,8 +162,6 @@ export function CoordinatorCalendar() {
   const grid: ScheduleRange = { start: localDay(gridDates.from), end: localDay(gridDates.to, true) }
   const hrefFor = (next: string, date: CalendarDate) =>
     coordinatorCalendarHref(OCCURRENCES_HREF, searchParams, next, date)
-  // A drill-down inside the grid (a day's header in the month) names the view first, then the range.
-  const pendingView = React.useRef<CoordinatorView | null>(null)
 
   const sections = useQuery({
     queryKey: ['activities-calendar-sections', scopeVersion],
@@ -268,14 +276,10 @@ export function CoordinatorCalendar() {
             items={items}
             view={view}
             range={grid}
-            onViewChange={(next) => {
-              pendingView.current = next
-            }}
-            onRangeChange={(next) => {
-              const nextView = pendingView.current ?? view
-              pendingView.current = null
-              router.push(hrefFor(nextView, localCalendarDate(next.start)))
-            }}
+            // The shared switch is the only navigation: the grid's own drill-down (a day's number or header)
+            // reports several ranges and never the clicked day, so it moves nothing (review of #796).
+            onViewChange={ignoreGridNavigation}
+            onRangeChange={ignoreGridNavigation}
             onItemClick={(item) => {
               router.push(occurrenceHref(item.id))
             }}

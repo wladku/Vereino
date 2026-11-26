@@ -57,6 +57,11 @@ test('TEST-W07 B-15 view, day and section in the address; Agenda; no installed t
     await page.getByTestId('occurrences-calendar-range-next').click()
     await expect(page).toHaveURL(/range=week&date=/)
     await expect(event).toBeVisible()
+    // The grid's week starts on Monday in every language, like the heading (DD-W04).
+    await expect(calendar.locator('.rbc-time-header .rbc-header time').first()).toHaveAttribute(
+      'datetime',
+      addDays(tuesday, -1),
+    )
     expect(await scanBlockingViolations(page, testInfo, { platformBaseline: true })).toEqual([])
 
     // The section filter joins the address; a reload keeps the week, the view and the section.
