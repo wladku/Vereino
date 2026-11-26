@@ -54,6 +54,20 @@ export function qaHold(labels) {
 }
 
 /**
+ * Whether a pull request from the GitHub REST listing (`GET /pulls`) has its head in `repo` (`owner/name`). A head in a
+ * fork, or one whose repository is gone (`head.repo` is `null` after the fork was deleted), is not: the train never
+ * updates, builds or merges it and never labels it (#823, `SDLC.md` → "Who the agents take work and decisions from").
+ */
+export function isSameRepoHead(pull, repo) {
+  return typeof repo === 'string' && repo !== '' && pull?.head?.repo?.full_name === repo
+}
+
+/** The pull requests of a REST listing whose head is in `repo` (`isSameRepoHead`), in their order. */
+export function sameRepoPulls(pulls, repo) {
+  return pulls.filter((pull) => isSameRepoHead(pull, repo))
+}
+
+/**
  * The issue a PR works on, read from its head branch: `feat/issue-123-x` → 123. `null` when the branch names none.
  * The train mirrors its labels onto that issue, so an issue-label automation (Cezar) reacts to a broken PR at once.
  */

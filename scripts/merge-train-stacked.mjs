@@ -5,7 +5,7 @@
 //
 // The GitHub client is injected (`api(method, path, body)` → `{ status, body }`, as in `scripts/merge-train.mjs`), so
 // ST-TEST-02 drives this file with recorded responses.
-import { BASE_CLOSED_MARKER, RETARGET_MARKER, RETARGET_REASONS, planRetargets } from './merge-train-plan.mjs'
+import { BASE_CLOSED_MARKER, RETARGET_MARKER, RETARGET_REASONS, planRetargets, sameRepoPulls } from './merge-train-plan.mjs'
 
 /** The skip label a stacked PR on a closed base gets; the owner decides what happens to it. */
 export const BLOCKED_LABEL = 'blocked'
@@ -31,7 +31,7 @@ async function readAll(api, path) {
  * forks never count, as in the queue.
  */
 export async function readStacked({ api, repo, baseBranch }) {
-  const open = (await readAll(api, `/repos/${repo}/pulls?state=open`)).filter((pull) => pull.head.repo?.full_name === repo)
+  const open = sameRepoPulls(await readAll(api, `/repos/${repo}/pulls?state=open`), repo)
   const stacked = open
     .filter((pull) => pull.base.ref !== baseBranch)
     .map((pull) => ({ number: pull.number, base: pull.base.ref, labels: pull.labels.map((label) => label.name) }))
