@@ -304,7 +304,7 @@ type TransitionSpec = {
   fallback: string
   schema: typeof rentalActionSchema | typeof rentalCancelSchema
   /** A check after the transition table allows the move (a no-show only after the start, a confirm once paid). */
-  guard?: (row: Rental, now: Date, ctx: CommandRuntimeContext) => Promise<void>
+  guard?: (row: Rental, now: Date, ctx: CommandRuntimeContext, em: EntityManager) => Promise<void>
 }
 
 /** Cancels (free) or forfeits (late) the rental's charge in `em`'s transaction; nothing without `payments` or a charge. */
@@ -343,7 +343,7 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
         const before = rentalSnapshot(row)
         const to = typeof spec.to === 'function' ? spec.to(row, now) : spec.to
         await assertTransition(rentalTransitions, row.status, to)
-        if (spec.guard) await spec.guard(row, now, ctx)
+        if (spec.guard) await spec.guard(row, now, ctx, em)
         row.status = to
         row.updatedAt = now
         if (to === 'cancelled_free' || to === 'cancelled_late') {
@@ -371,10 +371,10 @@ function transitionCommand(spec: TransitionSpec): CommandHandler<Record<string, 
 }
 
 /** The live state of the rental's charge (`none` without a charge or without the charge service). */
-async function chargeStateOf(ctx: CommandRuntimeContext, row: Rental): Promise<RentalChargeState> {
+async function chargeStateOf(ctx: CommandRuntimeContext, em: EntityManager, row: Rental): Promise<RentalChargeState> {
   const charges = chargeService(ctx.container)
   if (!charges || !row.chargeId) return 'none'
-  return rentalChargeState(row.chargeId, await charges.statusOf([row.chargeId], ctx))
+  return rentalChargeState(row.chargeId, await charges.statusOf([row.chargeId], ctx, em))
 }
 
 /**
@@ -389,8 +389,8 @@ const confirmRentalCommand = transitionCommand({
   labelKey: 'facilities.audit.rentals.confirm',
   fallback: 'Confirm a rental',
   schema: rentalActionSchema,
-  guard: async (row, _now, ctx) => {
-    if (awaitsPayment(row.chargeId, await chargeStateOf(ctx, row))) {
+  guard: async (row, _now, ctx, em) => {
+    if (awaitsPayment(row.chargeId, await chargeStateOf(ctx, em, row))) {
       await facilitiesErrors.throw('rental_awaits_payment', { chargeId: row.chargeId as string })
     }
   },
@@ -506,7 +506,7 @@ const moveRentalCommand: CommandHandler<Record<string, unknown>, RentalCommandRe
       // A charge that holds a payment is never repriced or re-dated: such a rental keeps its amount and its deadline.
       // Every other move re-dates the deadline (and the charge, #221 L2), and a move to another place re-quotes the
       // amount from that place's rates, so a missing rate there answers `rental_rate_missing` as an entry does.
-      const chargeState = await chargeStateOf(ctx, row)
+      const chargeState = await chargeStateOf(ctx, em, row)
       const holdsPayment = chargeState === 'partially_paid' || (chargeState === 'paid' && row.amount > 0)
       const requote = placeChanged && !holdsPayment
       const assessment = await assessRentalSlot(
@@ -665,7 +665,7 @@ async function assignRenter(
       : await personNames(ctx.container, scope, [renterId], em)
   const name = names.get(renterId)
   if (!name) return throwFieldError('rental_renter_invalid', 'renterId')
-  const date = calendarDateInZone(row.startsAt, await clubTimeZone(ctx.container, scope))
+  const date = calendarDateInZone(row.startsAt, await clubTimeZone(ctx.container, scope, em))
   if (await renterBanned(ctx.container, em, scope, { placeId: row.placeId, renterType, renterId }, date)) {
     await throwFieldError('entry_ban_active', 'renterId')
   }
@@ -780,8 +780,9 @@ async function expiringRentals(
   if (unpaid.length === 0) return []
   const charges = chargeService(ctx.container)
   const chargeIds = unpaid.flatMap((row) => (row.chargeId ? [row.chargeId] : []))
-  const statuses = charges && chargeIds.length > 0 ? await charges.statusOf(chargeIds, ctx) : new Map<string, string>()
-  const timeZone = await clubTimeZone(ctx.container, scope)
+  const statuses =
+    charges && chargeIds.length > 0 ? await charges.statusOf(chargeIds, ctx, em) : new Map<string, string>()
+  const timeZone = await clubTimeZone(ctx.container, scope, em)
   const agreements = new Map<string, RentalAgreementTerms | null>()
   const expiring: Rental[] = []
   for (const row of unpaid) {
@@ -937,7 +938,7 @@ const confirmPaidCommand: CommandHandler<Record<string, unknown>, ConfirmPaidRes
       // No index on `charge_id` (facilities parity spec *Data Models*): the organization's requested rentals are few.
       const rental = await em.findOne(Rental, { ...trusted, chargeId, status: 'requested', deletedAt: null })
       if (!rental) return none
-      if (rentalChargeState(chargeId, await charges.statusOf([chargeId], ctx)) !== 'paid') return none
+      if (rentalChargeState(chargeId, await charges.statusOf([chargeId], ctx, em)) !== 'paid') return none
       const moved = await advanceWhere(em, Rental, {
         transitions: rentalTransitions,
         where: { ...trusted, id: rental.id, chargeId, deletedAt: null },

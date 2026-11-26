@@ -91,8 +91,9 @@ export async function feeAccessFor(
   container: AwilixContainer,
   scope: PaymentsScope,
   grants: Scope,
+  em?: EntityManager,
 ): Promise<{ setting: CoachFeeAccess; access: CoachFeeAccess }> {
-  const settings = await storedPaymentsSettings(container, scope)
+  const settings = await storedPaymentsSettings(container, scope, em)
   const setting = settings?.coachFeeAccess ?? 'collect'
   return {
     setting,
@@ -211,6 +212,7 @@ async function rawCharges(
     container,
     scope,
     [...feeCharges, ...orderCharges].map((charge) => charge.id),
+    em,
   )
 
   const base = (charge: Charge) => {

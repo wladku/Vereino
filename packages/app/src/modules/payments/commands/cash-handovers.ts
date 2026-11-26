@@ -102,7 +102,7 @@ async function lockCandidates(
 
 /** The next `RG/YYYY/MM/NNN` of the club's month, under the club's advisory lock (held until the commit). */
 async function issueNumber(ctx: CommandRuntimeContext, em: EntityManager, scope: PaymentsScope): Promise<string> {
-  const { today } = await clubClock(ctx.container, scope)
+  const { today } = await clubClock(ctx.container, scope, undefined, em)
   await lockHandoverNumbering(em, scope.organizationId)
   const last = await lastHandoverNumber(em, scope, handoverPrefix(today))
   return nextHandoverNumber(today, (last && handoverSequence(last)) || 0)
