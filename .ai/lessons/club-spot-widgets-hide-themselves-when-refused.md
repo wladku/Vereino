@@ -1,6 +1,6 @@
 ---
 title: "A widget on a /club injection spot hides itself when its API refuses the caller"
-modules: ["payments", "people", "communication", "activities"]
+modules: ["payments", "people", "communication", "activities", "enrolment"]
 areas: ["backend-ui", "umes", "testing"]
 topics: ["injection-widgets", "member-pages", "acl", "feature-gating"]
 ---
@@ -14,3 +14,5 @@ topics: ["injection-widgets", "member-pages", "acl", "feature-gating"]
 **Rule**: A widget on a `/club` spot treats `metadata.features` as documentation only. It renders nothing while its first read is pending and nothing when the read answers 401 or 403 (keep the HTTP status on the thrown error); only other failures fall back to the plain link or "Try again". When the tile's text can match another test's negative assertion (e.g. "Payments"), run that test too.
 
 **Applies to**: `packages/app/src/modules/*/widgets/injection/club-*/widget.client.tsx`, the spots `vereino:club:today:sections` and `vereino:club:today:payments` of `people`'s `ClubTodayPage`.
+
+**Repeated (PR #830, #799)**: the enrolment "Applications" Today tile declared `features: ['enrolment.applications.view']` but read `GET /api/enrolment/applications` for every member; `ISSUE-483` failed in CI shard 5/6 with two 403s for the guardian. It now calls `POST /api/auth/feature-check` first (like `payments`' `club-today-cash-handovers`) and a caller without the feature makes no read. A new `/club` spot widget whose API needs a feature runs the feature check before its first read — hiding on 403 is not enough, because `ISSUE-483` fails on the refused call itself.

@@ -67,3 +67,16 @@
 - Q-J09: the lawyer confirms Art. 6(1)(b) and the default information text before the production release.
 - Phase 3 (#800): accept, freed places, season rollover/end, export/erasure, applicant CLI, the visible section switch.
 - P-J4 shows no trial session details until phase 4.
+
+## Follow-up run: CI fix on PR #830 (2026-11-26, om-auto-fix-pr)
+
+- Trigger: required check `integration (shard 5/6)` failed: `ISSUE-483` saw `GET /api/enrolment/applications?tab=new… 403`
+  (twice) for the guardian on `/club`. Cause: the Today spot does not enforce `metadata.features`, and the
+  Applications tile read the inbox for every member.
+- Fix: `useApplicationCounts` (`components/club/applications-client.ts`) runs `POST /api/auth/feature-check` for
+  `enrolment.applications.view` first and returns `null` without it; the tile renders nothing for `null`.
+  Lesson `club-spot-widgets-hide-themselves-when-refused` extended (enrolment, feature check before the read).
+- Merged `origin/main` (e19d87dc) into the branch on a detached HEAD, pushed with `git push origin HEAD:<branch>`.
+- `yarn typecheck` — pass (after `yarn install` and `yarn generate` in the fresh worktree).
+- `yarn test:integration:vereino --filter ISSUE-483` — `1 passed`; `--filter TEST-J05` (asserts the tile) — `1 passed`.
+
