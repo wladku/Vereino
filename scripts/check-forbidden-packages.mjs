@@ -5,7 +5,14 @@
 // workspace manifest lists a forbidden package, when `yarn.lock` resolves it (also as a transitive dependency), or
 // when a source file imports it or registers a module from it (`from: '<package>'` in `src/modules.ts`).
 //
-// Usage: node scripts/check-forbidden-packages.mjs [--root <repo-root>]
+// Second rule (DD-E10 of the enterprise package spec): the public core never depends on the private package
+// `@vereino/enterprise`. A public source file may reference it only inside an enterprise switch: in
+// `packages/app/src/modules.ts` and `packages/app/next.config.ts`, on lines between `// enterprise-switch:start`
+// and `// enterprise-switch:end`. The overlaid package (`packages/enterprise/`) and its public CI fixture are
+// skipped. The overlay build adds the package to `packages/app/package.json` and `yarn.lock`; `--overlay`
+// accepts exactly those lines, every other manifest or lockfile reference still fails.
+//
+// Usage: node scripts/check-forbidden-packages.mjs [--root <repo-root>] [--overlay]
 // Exit 0 when nothing references a forbidden package, 1 naming every file (and line) that does.
 import fs from 'node:fs'
 import path from 'node:path'
@@ -21,6 +28,18 @@ export const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDe
 export const SOURCE_ROOTS = ['packages', 'scripts']
 export const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs'])
 export const SKIPPED_DIRS = new Set(['node_modules', '.mercato', '.next', 'dist', 'coverage', 'test-results', '.turbo'])
+
+// The private Enterprise package (DD-E10): only the enterprise switches of the public core may reference it.
+export const ENTERPRISE_PACKAGE = '@vereino/enterprise'
+export const ENTERPRISE_REASON = 'the public core never depends on the private Enterprise package (DD-E10)'
+export const ENTERPRISE_SWITCH_FILES = ['packages/app/src/modules.ts', 'packages/app/next.config.ts']
+export const ENTERPRISE_SWITCH_START = '// enterprise-switch:start'
+export const ENTERPRISE_SWITCH_END = '// enterprise-switch:end'
+// The overlaid package itself and the public fixture CI copies into its place (DD-E11).
+export const ENTERPRISE_SKIPPED_PATHS = ['packages/enterprise/', 'packages/app/.ai/qa/fixtures/enterprise-overlay/']
+// The one manifest the overlay build may extend, and the package's own manifest (present only in that build).
+export const ENTERPRISE_OVERLAY_MANIFEST = 'packages/app/package.json'
+export const ENTERPRISE_OWN_MANIFEST = 'packages/enterprise/package.json'
 
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')
@@ -67,6 +86,66 @@ export function checkSource(relativePath, source, forbidden = FORBIDDEN_PACKAGES
   return errors
 }
 
+// The second rule for a manifest: only the overlay build's app manifest may list the package, in `dependencies`.
+export function checkEnterpriseManifest(relativePath, manifest, { overlay = false } = {}) {
+  if (relativePath === ENTERPRISE_OWN_MANIFEST) return []
+  const errors = []
+  for (const field of DEPENDENCY_FIELDS) {
+    if (!Object.hasOwn(manifest[field] ?? {}, ENTERPRISE_PACKAGE)) continue
+    if (overlay && relativePath === ENTERPRISE_OVERLAY_MANIFEST && field === 'dependencies') continue
+    errors.push(`${relativePath}: ${field} lists ${ENTERPRISE_PACKAGE} (${ENTERPRISE_REASON})`)
+  }
+  return errors
+}
+
+// The second rule for the lockfile. With `--overlay`, the package's own stanza (every descriptor a
+// `workspace:` one) and its dependency line in the `@vereino/app` stanza are accepted; anything else fails.
+export function checkEnterpriseLockfile(relativePath, source, { overlay = false } = {}) {
+  const errors = []
+  const descriptor = new RegExp(`^"?${escapeRegExp(ENTERPRISE_PACKAGE)}@`)
+  const dependency = new RegExp(`^\\s+"?${escapeRegExp(ENTERPRISE_PACKAGE)}"?:`)
+  let stanza = ''
+  source.split('\n').forEach((line, index) => {
+    const at = `${relativePath}:${String(index + 1)}`
+    if (/^\S/.test(line)) stanza = line
+    if (descriptor.test(line)) {
+      const descriptors = line.replace(/:$/, '').replaceAll('"', '').split(/,\s*/)
+      const workspace = descriptors.every((value) => value.startsWith(`${ENTERPRISE_PACKAGE}@workspace:`))
+      if (!(overlay && workspace)) errors.push(`${at}: resolves ${ENTERPRISE_PACKAGE} (${ENTERPRISE_REASON})`)
+    } else if (dependency.test(line) && !(overlay && stanza.startsWith('"@vereino/app@workspace:'))) {
+      errors.push(`${at}: depends on ${ENTERPRISE_PACKAGE} (${ENTERPRISE_REASON})`)
+    }
+  })
+  return errors
+}
+
+// The second rule for a source file: a reference fails unless it sits inside an enterprise switch of an allowed
+// file. In those files a nested or unclosed start marker and an end marker without a start fail too.
+export function checkEnterpriseSource(relativePath, source) {
+  if (ENTERPRISE_SKIPPED_PATHS.some((prefix) => relativePath.startsWith(prefix))) return []
+  const switchFile = ENTERPRISE_SWITCH_FILES.includes(relativePath)
+  const where = switchFile ? ' outside an enterprise switch' : ''
+  const pattern = referencePattern(ENTERPRISE_PACKAGE)
+  const errors = []
+  let openAt = null
+  source.split('\n').forEach((line, index) => {
+    const at = `${relativePath}:${String(index + 1)}`
+    if (switchFile && line.includes(ENTERPRISE_SWITCH_END)) {
+      if (openAt === null) errors.push(`${at}: ${ENTERPRISE_SWITCH_END} without a matching start`)
+      openAt = null
+    }
+    if (openAt === null && pattern.test(line)) {
+      errors.push(`${at}: imports ${ENTERPRISE_PACKAGE}${where} (${ENTERPRISE_REASON})`)
+    }
+    if (switchFile && line.includes(ENTERPRISE_SWITCH_START)) {
+      if (openAt !== null) errors.push(`${at}: ${ENTERPRISE_SWITCH_START} inside the switch opened on line ${String(openAt)}`)
+      openAt = index + 1
+    }
+  })
+  if (openAt !== null) errors.push(`${relativePath}:${String(openAt)}: ${ENTERPRISE_SWITCH_START} is never closed`)
+  return errors
+}
+
 // Source files under the given folder (repository-relative paths, `/`-separated, sorted).
 export function listSourceFiles(rootDir, folder) {
   const files = []
@@ -99,29 +178,49 @@ export function listManifests(rootDir) {
   return manifests.filter((relativePath) => fs.existsSync(path.join(rootDir, relativePath)))
 }
 
-export function checkForbiddenPackages(rootDir, forbidden = FORBIDDEN_PACKAGES) {
+// `overlay`: the tree is the overlay build (DD-E10), so its app manifest and lockfile lines are accepted.
+export function checkForbiddenPackages(rootDir, forbidden = FORBIDDEN_PACKAGES, { overlay = false } = {}) {
   const read = (relativePath) => fs.readFileSync(path.join(rootDir, relativePath), 'utf8')
   const errors = []
-  for (const manifest of listManifests(rootDir)) errors.push(...checkManifest(manifest, JSON.parse(read(manifest)), forbidden))
-  if (fs.existsSync(path.join(rootDir, 'yarn.lock'))) errors.push(...checkLockfile('yarn.lock', read('yarn.lock'), forbidden))
+  for (const manifest of listManifests(rootDir)) {
+    const content = JSON.parse(read(manifest))
+    errors.push(...checkManifest(manifest, content, forbidden), ...checkEnterpriseManifest(manifest, content, { overlay }))
+  }
+  if (fs.existsSync(path.join(rootDir, 'yarn.lock'))) {
+    const lockfile = read('yarn.lock')
+    errors.push(...checkLockfile('yarn.lock', lockfile, forbidden), ...checkEnterpriseLockfile('yarn.lock', lockfile, { overlay }))
+  }
   for (const folder of SOURCE_ROOTS) {
-    for (const file of listSourceFiles(rootDir, folder)) errors.push(...checkSource(file, read(file), forbidden))
+    for (const file of listSourceFiles(rootDir, folder)) {
+      const source = read(file)
+      errors.push(...checkSource(file, source, forbidden), ...checkEnterpriseSource(file, source))
+    }
   }
   return errors
 }
 
-export function parseRoot(args) {
-  if (args.length === 0) return process.cwd()
-  if (args.length === 2 && args[0] === '--root') return path.resolve(args[1])
-  throw new Error('Usage: check-forbidden-packages.mjs [--root <repo-root>]')
+// `[--root <repo-root>] [--overlay]` in any order; the root defaults to the working directory.
+export function parseArgs(args) {
+  const usage = 'Usage: check-forbidden-packages.mjs [--root <repo-root>] [--overlay]'
+  const options = { rootDir: process.cwd(), overlay: false }
+  for (let index = 0; index < args.length; index += 1) {
+    if (args[index] === '--overlay') options.overlay = true
+    else if (args[index] === '--root' && index + 1 < args.length) options.rootDir = path.resolve(args[(index += 1)])
+    else throw new Error(usage)
+  }
+  return options
 }
 
 export function main({ args, log, logError }) {
-  const rootDir = parseRoot(args)
-  const errors = checkForbiddenPackages(rootDir)
+  const { rootDir, overlay } = parseArgs(args)
+  const errors = checkForbiddenPackages(rootDir, FORBIDDEN_PACKAGES, { overlay })
   for (const error of errors) logError(`- ${error}`)
   if (errors.length > 0) return 1
   log(`No forbidden package is installed or imported: ${Object.keys(FORBIDDEN_PACKAGES).join(', ')}`)
+  log(
+    `No public file references ${ENTERPRISE_PACKAGE} outside an enterprise switch`
+      + (overlay ? ' (overlay build: its app manifest and lockfile lines accepted)' : ''),
+  )
   return 0
 }
 

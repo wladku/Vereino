@@ -29,7 +29,8 @@ import {
   storedRoleAclHash,
 } from './lib/role-acl-defaults'
 import { readInstanceModuleConfigValue } from './data/queries'
-import { buildLicenceRegistry, licenceStatusReport } from './lib/licence-verify'
+import { licenceStatusReport } from './lib/licence-verify'
+import { installedLicenceRegistry } from './services/enterprise-features'
 import {
   clubJobDeclarations,
   clubJobsStatus,
@@ -142,7 +143,7 @@ const licenceStatus: ModuleCli = {
     const { now, badNow } = readOptions(argv)
     if (badNow) fail('licence-status', '--now must be an ISO instant')
     // Built afresh, not the process registry: the command reports what this environment holds right now.
-    const registry = buildLicenceRegistry({ env: process.env, readFile: (file) => readFileSync(file, 'utf8') })
+    const registry = installedLicenceRegistry()
     process.stdout.write(`${JSON.stringify(licenceStatusReport(registry, now ?? new Date()))}\n`)
     return Promise.resolve()
   },

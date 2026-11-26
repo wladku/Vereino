@@ -485,6 +485,18 @@ Expiry: a feature stays `on` until `expiresAt` plus the key's grace period (14 d
 `off` (404 `enterprise_feature_disabled`), so remove it only after the customer's export or termination. A renewal is a
 new key added next to the old one; the key whose grace period ends last wins.
 
+### Building an Enterprise image
+
+The image ships Enterprise modules only when it is built with the private package (spec DD-E12, #713). Set two Railway
+**build** variables on the service that should carry them: `ENTERPRISE_REF` (a tag of `wladku/vereino-enterprise`) and
+`ENTERPRISE_TOKEN` (a fine-grained, read-only token for that one repository, sealed); `ENTERPRISE_REPO` overrides the
+repository. The Dockerfile clones the tag in a stage of its own, so the token reaches neither the builder layers nor the
+deployed image, runs `scripts/enterprise-overlay.mjs` (which fails when the package would change a third-party
+resolution in `yarn.lock`) and sets `NEXT_PUBLIC_VEREINO_ENTERPRISE=true` for the build and in the image. Without
+`ENTERPRISE_REF` the image is the public one. The server refuses to start when the switch, the installed package and the
+generated module registry disagree (`Refusing to start: NEXT_PUBLIC_VEREINO_ENTERPRISE is set but @vereino/enterprise is
+not installed`, and the other way round). Build the app and the worker from the same variables.
+
 Staging and production never trust the committed test key pair (`packages/app/.ai/qa/fixtures/licence-test-key-pair.json`,
 kid `test-…`): a test-signed key shows as `unknown_kid` there. That is the exit check of phase 1a.
 

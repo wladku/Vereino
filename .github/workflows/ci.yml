@@ -242,6 +242,57 @@ jobs:
           node-version-file: .nvmrc
       - run: scripts/image-smoke.sh
 
+  # The Enterprise overlay shape (enterprise package spec DD-E11, ENT-TEST-03..05; #713): the public fixture package
+  # `@vereino/enterprise` (`packages/app/.ai/qa/fixtures/enterprise-overlay/`) is overlaid the way the cloud build
+  # overlays the private one, without any secret. Every other job runs the public shape. The overlay script fails when
+  # the install changes a third-party resolution in `yarn.lock`; `--ci` trusts the committed TEST licence key pair,
+  # which the app accepts only with `VEREINO_CI=true` (set by ENT-TEST-03 for the server it starts).
+  enterprise-overlay:
+    name: enterprise-overlay
+    needs: changes
+    if: ${{ needs.changes.outputs.code == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      NEXT_PUBLIC_VEREINO_ENTERPRISE: 'true'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: corepack enable
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: yarn
+          cache-dependency-path: yarn.lock
+      - name: Install dependencies (public lockfile)
+        # The npm registry sometimes answers Yarn's hardened-mode metadata requests with 409; retry once.
+        run: yarn install --immutable || (sleep 20 && yarn install --immutable)
+      - name: Overlay the fixture Enterprise package
+        run: |
+          cp -R packages/app/.ai/qa/fixtures/enterprise-overlay packages/enterprise
+          node scripts/enterprise-overlay.mjs --ci
+      - run: yarn generate
+      - run: yarn typecheck
+      - run: yarn licenses:check
+      - run: yarn forbidden-packages:check --overlay
+      - name: Module checks on the Enterprise package (as the private CI runs them)
+        run: |
+          yarn contracts:check --modules-root ../enterprise/src/modules
+          yarn route-isolation:check --modules-root ../enterprise/src/modules
+          yarn i18n:check-hardcoded --strict --modules-root ../enterprise/src/modules
+      - name: Install Playwright browser
+        working-directory: packages/app
+        run: npx playwright install --with-deps chromium
+      # The production build of the overlay shape, then ENT-TEST-03 (skipped by every public run).
+      - run: yarn test:integration:vereino --filter ENT-TEST-03
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: playwright-report-enterprise-overlay
+          path: packages/app/.ai/qa/test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
   perf:
     name: perf
     needs: changes

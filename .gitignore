@@ -147,3 +147,7 @@ docs/ux-concept/vereino-mockupy.zip
 
 # Storybook static build (packages/ui)
 packages/ui/storybook-static/
+
+# Vereino Enterprise overlay (enterprise package spec DD-E02, DD-E11): the private package is copied here only by an
+# overlay build; `--ci` writes the test-key trust file into packages/app/.mercato/ (ignored above).
+packages/enterprise/
