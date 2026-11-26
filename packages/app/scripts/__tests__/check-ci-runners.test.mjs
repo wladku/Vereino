@@ -7,6 +7,7 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import {
   checkRepository,
+  checkSetupScript,
   checkWorkflow,
   HOSTED_RUNS_ON,
   parseRunsOn,
@@ -14,9 +15,12 @@ import {
   SELF_HOSTED_JOBS,
   SELF_HOSTED_RUNS_ON,
   SELF_HOSTED_WORKFLOW,
+  SETUP_ISOLATION,
+  SETUP_SCRIPT,
 } from '../../../../scripts/check-ci-runners.mjs'
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../..')
+const SETUP_SOURCE = fs.readFileSync(path.join(REPO_ROOT, SETUP_SCRIPT), 'utf8')
 
 function job(name, runsOn) {
   return `  ${name}:\n    name: ${name}\n    runs-on: ${runsOn}\n    steps:\n      - run: echo ${name}\n`
@@ -104,8 +108,22 @@ test('another workflow may not use the expression or name a self-hosted runner a
   ])
 })
 
-test('checkRepository reads .yml and .yaml files and requires ci.yml', () => {
+test('the setup script keeps every isolation line', () => {
+  assert.deepEqual(checkSetupScript(SETUP_SOURCE), [])
+})
+
+test('checkSetupScript names each isolation line that is gone', () => {
+  const opened = SETUP_SOURCE.replace('chmod 0750 "$home"', 'chmod 0755 "$home"').replaceAll('  audit_subids\n', '')
+  assert.deepEqual(checkSetupScript(opened), [
+    `${SETUP_SCRIPT}: missing \`chmod 0750 "$home"\` (${SETUP_ISOLATION[0].why})`,
+    `${SETUP_SCRIPT}: missing \`audit_homes; audit_subids\` (install and status audit homes and subordinate ID ranges)`,
+  ])
+  assert.equal(checkSetupScript('').length, SETUP_ISOLATION.length)
+})
+
+test('checkRepository reads .yml and .yaml files and requires ci.yml and the setup script', () => {
   const good = tempRepo({
+    [SETUP_SCRIPT]: SETUP_SOURCE,
     [SELF_HOSTED_WORKFLOW]: ciWorkflow(),
     '.github/workflows/other.yaml': `jobs:\n${job('x', HOSTED_RUNS_ON)}`,
     '.github/workflows/README.md': 'self-hosted',
@@ -117,6 +135,7 @@ test('checkRepository reads .yml and .yaml files and requires ci.yml', () => {
     errors: [
       '.github/workflows/other.yml:4 (job x): runs-on must be ubuntu-latest (only .github/workflows/ci.yml may use self-hosted runners)',
       `${SELF_HOSTED_WORKFLOW}: file not found`,
+      `${SETUP_SCRIPT}: file not found`,
     ],
   })
   assert.deepEqual(checkRepository(tempRepo({})), { files: 0, errors: ['.github/workflows: directory not found'] })
@@ -129,7 +148,7 @@ test('runCli reports success, problems and honours --root', () => {
   const error = (line) => errors.push(line)
   assert.equal(runCli({ argv: [], cwd: REPO_ROOT, log, error }), 0)
   assert.match(lines[0], /^ci-runners:check: \d+ workflow\(s\)/)
-  const bad = tempRepo({ [SELF_HOSTED_WORKFLOW]: ciWorkflow({ gate: '[self-hosted]' }) })
+  const bad = tempRepo({ [SETUP_SCRIPT]: SETUP_SOURCE, [SELF_HOSTED_WORKFLOW]: ciWorkflow({ gate: '[self-hosted]' }) })
   assert.equal(runCli({ argv: ['--root', bad], cwd: REPO_ROOT, log, error }), 1)
   assert.equal(errors.at(-1), 'ci-runners:check: 2 problem(s)')
   assert.equal(runCli({ argv: ['--root'], cwd: bad, log, error }), 1)

@@ -6,6 +6,7 @@ import {
   DEFAULT_REPO,
   findWaitingJobs,
   parseArgs,
+  RUNNER_LABEL,
   runCli,
   waitingJobs,
 } from '../../../../scripts/ci-runner-wait.mjs'
@@ -42,10 +43,23 @@ const RUNS = {
   },
 }
 
-test('parseArgs takes the defaults, --repo and --minutes, and refuses anything else', () => {
-  assert.deepEqual(parseArgs([]), { repo: DEFAULT_REPO, minutes: DEFAULT_MINUTES })
-  assert.deepEqual(parseArgs(['--repo', 'a-b/c.d', '--minutes', '5']), { repo: 'a-b/c.d', minutes: 5 })
-  for (const argv of [['--repo'], ['--minutes'], ['--repo', 'no-slash'], ['--minutes', 'x'], ['--other', '1']]) {
+test('parseArgs takes the defaults, --repo, --minutes and --label, and refuses anything else', () => {
+  assert.deepEqual(parseArgs([]), { repo: DEFAULT_REPO, minutes: DEFAULT_MINUTES, label: RUNNER_LABEL })
+  assert.deepEqual(parseArgs(['--repo', 'a-b/c.d', '--minutes', '5', '--label', 'other-ci']), {
+    repo: 'a-b/c.d',
+    minutes: 5,
+    label: 'other-ci',
+  })
+  const invalid = [
+    ['--repo'],
+    ['--minutes'],
+    ['--label'],
+    ['--repo', 'no-slash'],
+    ['--minutes', 'x'],
+    ['--label', 'Bad Label'],
+    ['--other', '1'],
+  ]
+  for (const argv of invalid) {
     assert.throws(() => parseArgs(argv), /unknown or invalid argument/, argv.join(' '))
   }
 })
@@ -60,6 +74,10 @@ test('waitingJobs keeps queued vereino-ci jobs that waited at least the threshol
   ]
   assert.deepEqual(waitingJobs(jobs, { minutes: 10, now: NOW }), [
     { name: 'a', waitedMinutes: 10, url: 'https://example.test/a' },
+  ])
+  const other = [job('f', { labels: ['self-hosted', 'other-ci'] }), job('g')]
+  assert.deepEqual(waitingJobs(other, { minutes: 10, now: NOW, label: 'other-ci' }), [
+    { name: 'f', waitedMinutes: 15, url: 'https://example.test/f' },
   ])
 })
 
@@ -85,6 +103,17 @@ test('runCli exits 0 when nothing waits, 1 listing waiting jobs, 2 when GitHub c
     'perf: waiting for a vereino-ci runner for 3 min https://example.test/perf',
     'ci-runner-wait: 2 job(s) waiting; is a vereino-ci runner online? (docs/ops/ci-runners.md)',
   ])
+  assert.equal(
+    runCli({
+      argv: ['--repo', 'o/r', '--minutes', '2', '--label', 'other-ci'],
+      run: fakeRun(RUNS),
+      now: () => NOW,
+      log,
+      error,
+    }),
+    0,
+  )
+  assert.equal(lines.at(-1), 'ci-runner-wait: no other-ci job of o/r has waited 2 min or more')
   assert.equal(runCli({ argv: ['--repo', 'x/y'], run: fakeRun(RUNS), log, error }), 2)
   assert.match(errors.at(-1), /^ci-runner-wait: gh: no fake for repos\/x\/y/)
   assert.equal(runCli({ argv: ['--bad'], log, error }), 2)

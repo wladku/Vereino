@@ -20,7 +20,7 @@ Each of the five jobs in `.github/workflows/ci.yml` uses the same `runs-on` expr
 runs-on: ${{ vars.CI_SELF_HOSTED == 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('["self-hosted","vereino-ci"]') || 'ubuntu-latest' }}
 ```
 
-`yarn ci-runners:check` (a step of `yarn verify`, `scripts/check-ci-runners.mjs`) fails when any workflow uses another runner value, when another workflow than `ci.yml` uses the expression, when one of the five jobs does not, or when any other line names `self-hosted` or `vereino-ci`. Required check names do not change, so the `main` ruleset and the merge train keep working.
+`yarn ci-runners:check` (a step of `yarn verify`, `scripts/check-ci-runners.mjs`) fails when any workflow uses another runner value, when another workflow than `ci.yml` uses the expression, when one of the five jobs does not, when any other line names `self-hosted` or `vereino-ci`, or when `scripts/ci-runner-setup.sh` loses one of the lines that keep runner instances apart (see "Another repository on the same machine"). Required check names do not change, so the `main` ruleset and the merge train keep working.
 
 Why fork PRs never reach the server: the repository is public (owner, 2026-11-26, #823), and a fork PR runs code nobody with write access has read. Only people with write access push to this repository, so a push or a same-repository PR runs code a maintainer or a maintainer's agent wrote.
 
@@ -34,9 +34,9 @@ What the jobs do differently on a self-hosted runner, so they work when several 
 
 `scripts/ci-runner-setup.sh` builds everything below; it is idempotent.
 
-- **Dedicated user.** `vereino-ci` is a system user with no login shell, no sudo and no supplementary group (the script refuses to continue if it has one, the `docker` group above all). Its home is `0750`.
-- **Hidden homes.** Each runner slot runs with `ProtectHome=tmpfs` and its own home bound back in, `PrivateTmp=yes` and `ProtectSystem=full`: a job sees no other home (the owner's, `~/.cezar`, the Claude login, `~/vereino-alerts`, the sandboxes of the owner, Ola and Kacper). Rootless Docker runs outside those namespaces, so a job could mount into a container anything the `vereino-ci` user may read: every other home must be closed to "others" (`chmod o-rwx`). `install` and `status` audit this and print a warning for each open home.
-- **Rootless Docker.** The runner user's own Docker daemon (`dockerd-rootless-setuptool.sh`, package `docker-ce-rootless-extras`). Containers run in that user's user namespace and cannot reach the system Docker daemon, the sandbox containers (`vereino-sandbox-db`, `vereino-ola-db`, `vereino-kacper-db`) or their volumes. On Ubuntu, which denies unprivileged user namespaces to unconfined programs, the script adds two AppArmor profiles that allow them for `rootlesskit` and for the Chromium builds under the runner's home, and for nothing else.
+- **Dedicated user.** `vereino-ci` is a system user with no login shell, no sudo and no supplementary group (the script refuses to continue if it has one, the `docker` group above all). Its home is `0750`, and the runners' work directories (checkouts, Yarn cache, build output) live in it, so no other user, another runner instance's included, can read them.
+- **Hidden homes.** Each runner slot runs with `ProtectHome=tmpfs` and its own home bound back in, `PrivateTmp=yes` and `ProtectSystem=full`: a job sees no other home (the owner's, `~/.cezar`, the Claude login, `~/vereino-alerts`, the sandboxes of the owner, Ola and Kacper). Rootless Docker runs outside those namespaces, so a job could mount into a container anything the `vereino-ci` user may read: every other home must be closed to "others" (`chmod o-rwx`). `install` and `status` audit this and print a warning for each open home: every home of a uid of 1000 or more, and every home under `/home` of a system user, which covers the other runner instances.
+- **Rootless Docker.** The runner user's own Docker daemon (`dockerd-rootless-setuptool.sh`, package `docker-ce-rootless-extras`), with its own range of 65536 subordinate user and group IDs (the first free block at or above 1000000 in `/etc/subuid` and `/etc/subgid`; `install` and `status` warn when it overlaps another user's). Containers run in that user's user namespace and cannot reach the system Docker daemon, the sandbox containers (`vereino-sandbox-db`, `vereino-ola-db`, `vereino-kacper-db`) or their volumes. On Ubuntu, which denies unprivileged user namespaces to unconfined programs, the script adds two AppArmor profiles that allow them for `rootlesskit` and for the Chromium builds under the runner's home, and for nothing else. The `rootlesskit` profile is left out when another profile already attaches to `/usr/bin/rootlesskit` (recent Ubuntu releases ship one, and two profiles for one binary conflict).
 - **Ephemeral runners.** Each slot asks GitHub for a just-in-time (JIT) runner configuration when it starts, runs exactly one job and exits; systemd starts it again with a new registration. Nothing of a job's runner registration survives the job. The token that asks for JIT configurations is readable by root only (`ExecStartPre=+` runs as root); the runner user gets only the single-use configuration of its own slot.
 - **Repository only.** `wladku` is a personal account, and runner groups exist only for organizations: a runner registered on the repository is usable by this repository only, which is what a runner group limited to `wladku/Vereino` would give. If the repository moves to an organization, create a runner group limited to `wladku/Vereino`, put its id into `runner_group_id` of `jit-config` and rerun `install`.
 - **Ports.** Jobs use 5001–5999 for the ephemeral app and random ports for containers; the sandboxes use 4200–4202, 5442, 6441 and 6442.
@@ -47,6 +47,38 @@ What the jobs do differently on a self-hosted runner, so they work when several 
 - **One cap for all of it.** The slots run in the runner user's slice (`user-<uid>.slice`), next to its rootless Docker and every container the jobs start. A drop-in on that slice caps them together: `CPUQuota=1200%` (12 of 32 cores), `MemoryHigh=20G`, `MemoryMax=24G`, `TasksMax=16384`. The Cezar service is limited to 96 GiB of the server's 121 GB, so CI and Cezar at their limits still fit, and the 5 parallel Cezar builds and the sandboxes keep their cores.
 - Change a cap: rerun `sudo CPU_QUOTA=1600% MEMORY_MAX=32G scripts/ci-runner-setup.sh install` (each setting is an environment variable named in the script's header).
 - **Disk.** `vereino-ci-prune.timer` removes Docker images, containers and build cache older than two days, every day at 04:30. The Yarn cache stays in the runner user's home, so repeated installs read it from disk.
+
+## Another repository on the same machine
+
+`wladku` is a personal account, so GitHub registers runners per repository: a second repository needs its own runner instance. `scripts/ci-runner-setup.sh` builds one instance per `INSTANCE` (default `vereino-ci`, which is everything above), and every name comes from it:
+
+| `INSTANCE=<name>` gives | |
+|---|---|
+| user and home | `<name>`, `/home/<name>` (`0750`; `CI_USER` overrides the user name) |
+| runner label | `self-hosted`, `Linux`, `X64`, `<name>` |
+| paths | `/opt/<name>`, `/usr/local/libexec/<name>`, `/run/<name>` |
+| GitHub token | `/etc/<name>/github-token` (`TOKEN_FILE` overrides it) |
+| systemd | `<name>-runner@<n>.service`, `<name>-prune.timer`, caps in `user-<uid>.slice.d/50-<name>.conf` |
+| AppArmor | `<name>-rootlesskit`, `<name>-browsers` |
+| subordinate IDs | the next free 65536 block (`SUBID_START` sets the first ID) |
+
+Set for the other instance, from this checkout:
+
+```bash
+export INSTANCE=<name> REPO=<owner>/<repository>   # REPO is required for any INSTANCE but vereino-ci
+export REPO_ROOT=<checkout of that repository>      # or NODE_MAJOR=<major> and PLAYWRIGHT_VERSION=<x.y.z>
+export SLOTS=2 CPU_QUOTA=400% MEMORY_HIGH=6G MEMORY_MAX=8G
+scripts/ci-runner-setup.sh config                   # prints every name and version; changes nothing
+sudo -E scripts/ci-runner-setup.sh install          # then the token, start and status, as in the owner steps below
+```
+
+- **Toolchain.** Node comes from `$REPO_ROOT/.nvmrc` unless `NODE_MAJOR` is set; Playwright's browser libraries come from `@playwright/test` in `$REPO_ROOT/packages/app/package.json` unless `PLAYWRIGHT_VERSION` is set, and are skipped when neither exists.
+- **Token.** A fine-grained token limited to that repository, in that instance's token file; never reuse this repository's token.
+- **Workflows.** That repository's jobs ask for `runs-on: [self-hosted, <name>]`, behind its own guard against untrusted events (as in "What runs where").
+- **Caps add up.** Every instance has its own slice, its own CPU and memory caps and its own prune timer. Keep the sum of every instance's `CPU_QUOTA` and `MEMORY_MAX` below what the machine has left after the Cezar service (96 GiB) and its parallel builds; with the Vereino caps (12 cores, 24 GiB) that leaves little room, so lower the caps of both instances before adding slots.
+- **Isolation.** Each instance's user cannot read another instance's home or work directories (homes are `0750`, and each slot sees only its own home). `status` of any instance audits every home and its own subordinate ID range; `yarn ci-runners:check` fails when the setup script loses one of the lines that keep instances apart.
+- **Alerts.** `node scripts/ci-runner-wait.mjs --repo <owner>/<repository> --label <name>` checks that instance's waiting jobs.
+- Every command takes the same variables: `sudo -E scripts/ci-runner-setup.sh status|start|stop` acts on that instance only.
 
 ## Owner steps
 

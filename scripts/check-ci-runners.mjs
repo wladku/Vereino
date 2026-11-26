@@ -11,7 +11,11 @@
 //   - every job of SELF_HOSTED_JOBS uses SELF_HOSTED_RUNS_ON, so the set of jobs that move stays the documented one;
 //   - no other line names `self-hosted` or `vereino-ci` (a matrix, an `env` or a second expression could route a job
 //     there behind this guard's back).
-// Exits 0 when every workflow passes, 1 listing each problem.
+// And for the runner setup SETUP_SCRIPT, which can build several runner instances (one per repository) on one machine,
+// every line of SETUP_ISOLATION is still there: the home and work directories of an instance's user stay closed to the
+// other instances, each slot sees no other home, and the audits that warn about an open home or a shared subordinate
+// ID range still run.
+// Exits 0 when every workflow and the setup script pass, 1 listing each problem.
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -22,6 +26,19 @@ export const SELF_HOSTED_WORKFLOW = '.github/workflows/ci.yml'
 export const SELF_HOSTED_JOBS = ['gate', 'integration-shard', 'browser-smoke', 'image-smoke', 'perf']
 export const SELF_HOSTED_RUNS_ON =
   "${{ vars.CI_SELF_HOSTED == 'true' && (github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)) && fromJSON('[\"self-hosted\",\"vereino-ci\"]') || 'ubuntu-latest' }}"
+
+export const SETUP_SCRIPT = 'scripts/ci-runner-setup.sh'
+/** The lines of SETUP_SCRIPT that keep runner instances apart, each with what it guarantees. */
+export const SETUP_ISOLATION = [
+  { line: 'chmod 0750 "$home"', why: "the instance user's home (and its runners' work directories) is closed to others" },
+  { line: 'install -d -m 0700 -o "$CI_USER" -g "$CI_USER" "$RUN_DIR"', why: 'the JIT configurations are readable by their instance only' },
+  { line: 'chmod 0700 "$(dirname "$TOKEN_FILE")"', why: 'the GitHub token directory is root only' },
+  { line: 'ProtectHome=tmpfs', why: 'a slot sees no other home' },
+  { line: 'BindPaths=$home', why: "a slot sees its own instance's home only" },
+  { line: '[ "$uid" -ge 1000 ] || [[ "$home" == "$HOMES_DIR"/* ]] || continue', why: 'the home audit covers the other instances' },
+  { line: '  audit_homes\n  audit_subids\n', why: 'install and status audit homes and subordinate ID ranges' },
+  { line: 'start="${SUBID_START:-$(next_subid_start /etc/subuid /etc/subgid)}"', why: 'every instance gets its own subordinate IDs' },
+]
 
 const SELF_HOSTED_MARKER = /self-hosted|vereino-ci/
 
@@ -93,6 +110,16 @@ export function checkWorkflow(file, source) {
 }
 
 /**
+ * @param {string} source the text of SETUP_SCRIPT
+ * @returns {string[]} the problems found
+ */
+export function checkSetupScript(source) {
+  return SETUP_ISOLATION.filter(({ line }) => !source.includes(line)).map(
+    ({ line, why }) => `${SETUP_SCRIPT}: missing \`${line.trim().replace(/\n\s*/g, '; ')}\` (${why})`,
+  )
+}
+
+/**
  * @param {string} rootDir
  * @returns {{ files: number, errors: string[] }}
  */
@@ -106,6 +133,9 @@ export function checkRepository(rootDir) {
     .map((name) => `${WORKFLOWS_DIR}/${name}`)
   const errors = files.flatMap((file) => checkWorkflow(file, fs.readFileSync(path.join(rootDir, file), 'utf8')))
   if (!files.includes(SELF_HOSTED_WORKFLOW)) errors.push(`${SELF_HOSTED_WORKFLOW}: file not found`)
+  const setup = path.join(rootDir, SETUP_SCRIPT)
+  if (fs.existsSync(setup)) errors.push(...checkSetupScript(fs.readFileSync(setup, 'utf8')))
+  else errors.push(`${SETUP_SCRIPT}: file not found`)
   return { files: files.length, errors }
 }
 
@@ -123,7 +153,7 @@ export function runCli({
   const rootDir = rootIndex >= 0 && argv[rootIndex + 1] ? path.resolve(argv[rootIndex + 1]) : cwd
   const { files, errors } = checkRepository(rootDir)
   if (errors.length === 0) {
-    log(`ci-runners:check: ${String(files)} workflow(s); self-hosted runners only for trusted events in ci.yml`)
+    log(`ci-runners:check: ${String(files)} workflow(s); self-hosted runners only for trusted events in ci.yml; runner instances isolated`)
     return 0
   }
   for (const message of errors) error(message)
