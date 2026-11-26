@@ -12,6 +12,7 @@ import { uiText } from '../_fixtures/ui-text'
 // E20-S18 (#497): gaps inside Open Mercato components, worked around on the Vereino side.
 // - B-10 (person record), "Add person" and "New fee schedule": `CrudForm` controls are named by their labels, so axe
 //   finds no `label` or `button-name` violation although the platform baseline no longer lists them; light and dark.
+//   Since Open Mercato 0.10.1 (#498) `CrudForm` associates the labels itself and Vereino's repair is gone.
 // - The table search box has a name; the AppShell breadcrumb and brand link pass axe without a baseline entry.
 // - A list whose API answers 500 shows its own message with "Try again" — not the server's "Internal error" and no
 //   loading text under it (negative case) — and "Try again" loads the rows; also at 375 px.
