@@ -28,7 +28,7 @@ REDIS="$RUN_ID-redis"
 APP="$RUN_ID-app"
 WORKER="$RUN_ID-worker"
 SMOKE_EMAIL="smoke@vereino.test"
-SMOKE_PASSWORD="smoke-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
+SMOKE_PASSWORD="Smoke-1-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
 STARTED=()
 
 log() { printf '[image-smoke] %s\n' "$*"; }

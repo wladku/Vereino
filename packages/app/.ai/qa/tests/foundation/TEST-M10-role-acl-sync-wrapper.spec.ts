@@ -63,7 +63,8 @@ async function tenantIds(): Promise<string[]> {
 /** The features of the club's role ACL; `drop` removes one of them first. */
 async function roleFeatures(club: Club, drop?: string): Promise<string[]> {
   return withClient(async (client) => {
-    const where = `role_id = (select id from roles where name = $1 and tenant_id = $2) and tenant_id = $2`
+    // Live rows only: Open Mercato 0.10 grants through live ACL rows and soft-deletes duplicates (#498).
+    const where = `role_id = (select id from roles where name = $1 and tenant_id = $2 and deleted_at is null) and tenant_id = $2 and deleted_at is null`
     if (drop) {
       await client.query(
         `update role_acls set features_json = (select coalesce(jsonb_agg(f), '[]'::jsonb)

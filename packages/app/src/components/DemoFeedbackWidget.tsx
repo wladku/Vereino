@@ -14,6 +14,7 @@ import { Spinner } from '@open-mercato/ui/primitives/spinner'
 import { useAiDock } from '@open-mercato/ui/ai/AiDock'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useContentSecurityPolicyNonce } from '@open-mercato/ui/theme/ContentSecurityPolicyProvider'
 import { isContactWidgetHidden } from './demoFeedbackFlag'
 
 const SUPPRESS_COOKIE = 'om_feedback_suppress'
@@ -66,6 +67,7 @@ type SubmitState = 'idle' | 'sending' | 'sent' | 'error'
 
 export function DemoFeedbackWidget({ demoModeEnabled }: { demoModeEnabled: boolean }) {
   const t = useT()
+  const nonce = useContentSecurityPolicyNonce()
   const aiDock = useAiDock()
   const aiDockActive = Boolean(aiDock.state.assistant)
   const [open, setOpen] = useState(false)
@@ -244,7 +246,9 @@ export function DemoFeedbackWidget({ demoModeEnabled }: { demoModeEnabled: boole
 
   if (otherModalOpen && !open) return null
 
-  // Brand-gradient floating CTA. Uses brand CSS vars (no hardcoded hex) +
+  // Brand-gradient floating CTA, collapsed to an icon-only circle that widens
+  // to show the rotating caption on hover or keyboard focus, so the resting
+  // button covers as little of the page corner as possible. Uses brand CSS vars (no hardcoded hex) +
   // z-sticky so it stays DS-compliant while keeping the bespoke 135deg /
   // 0-50-100 gradient that the marketing visual depends on. `z-sticky` (10)
   // is the layer for viewport-pinned chrome: it floats over page content but
@@ -268,7 +272,7 @@ export function DemoFeedbackWidget({ demoModeEnabled }: { demoModeEnabled: boole
       className="om-demo-feedback-floating fixed bottom-6 right-6 z-sticky flex max-w-[calc(100vw-3rem)] items-center gap-2 rounded-full bg-linear-135/srgb from-brand-lime via-brand-yellow to-brand-violet px-5 py-3 text-sm font-semibold text-brand-lime-foreground shadow-xl transition-all hover:scale-105 hover:shadow-2xl active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 animate-[subtle-bounce_2s_ease-in-out_infinite]"
       aria-label={t('demoFeedback.button.ariaLabel', 'Open feedback form')}
     >
-      <MessageCircle className="size-4" />
+      <MessageCircle className="size-5 shrink-0" />
       <span
         key={captionIndex}
         className="inline-block min-w-22.5 text-center animate-[caption-slide_0.3s_ease-out]"
@@ -421,7 +425,7 @@ export function DemoFeedbackWidget({ demoModeEnabled }: { demoModeEnabled: boole
         </DialogContent>
       </Dialog>
 
-      <style jsx global>{`
+      <style nonce={nonce}>{`
         @keyframes subtle-bounce {
           0%, 100% { transform: translateY(0); }
           15% { transform: translateY(-4px); }

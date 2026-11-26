@@ -2440,13 +2440,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@ioredis/commands@npm:1.10.0":
-  version: 1.10.0
-  resolution: "@ioredis/commands@npm:1.10.0"
-  checksum: 10c0/baf91e62d0e64ef2b5f7ca4413dc2456fe250e87483beac4a1c8ef1fe5ad0d2fcdeb9b89d4556d8ef6c7455c64a964359d729601fdb06b2f4c76c35dd59afa99
-  languageName: node
-  linkType: hard
-
 "@ioredis/commands@npm:2.0.0":
   version: 2.0.0
   resolution: "@ioredis/commands@npm:2.0.0"
@@ -3650,7 +3643,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@modelcontextprotocol/sdk@npm:^1.29.0, @modelcontextprotocol/sdk@npm:^1.30.0":
+"@modelcontextprotocol/sdk@npm:^1.29.0":
   version: 1.32.1
   resolution: "@modelcontextprotocol/sdk@npm:1.32.1"
   dependencies:
@@ -3680,6 +3673,39 @@ __metadata:
     zod:
       optional: false
   checksum: 10c0/8b6c8ff6aa5358aeb316fedfa2094a4241ce12d98a0f818cee42510ec9149fed21fc75244c5f0e8cb453337f243c09fa8a90425cd2533fd481964d8583a1f0c9
+  languageName: node
+  linkType: hard
+
+"@modelcontextprotocol/sdk@npm:^1.32.0":
+  version: 1.32.2
+  resolution: "@modelcontextprotocol/sdk@npm:1.32.2"
+  dependencies:
+    "@hono/node-server": "npm:^1.19.9 || ^2.0.5"
+    ajv: "npm:^8.17.1"
+    ajv-formats: "npm:^3.0.1"
+    content-type: "npm:^1.0.5"
+    cors: "npm:^2.8.5"
+    cross-spawn: "npm:^7.0.5"
+    eventsource: "npm:^3.0.2"
+    eventsource-parser: "npm:^3.0.0"
+    express: "npm:^5.2.1"
+    express-rate-limit: "npm:^8.2.1"
+    hono: "npm:^4.11.4"
+    jose: "npm:^6.1.3"
+    json-schema-typed: "npm:^8.0.2"
+    pkce-challenge: "npm:^5.0.0"
+    raw-body: "npm:^3.0.0"
+    zod: "npm:^3.25 || ^4.0"
+    zod-to-json-schema: "npm:^3.25.1"
+  peerDependencies:
+    "@cfworker/json-schema": ^4.1.1
+    zod: ^3.25 || ^4.0
+  peerDependenciesMeta:
+    "@cfworker/json-schema":
+      optional: true
+    zod:
+      optional: false
+  checksum: 10c0/31d045fe1121242ee7871f5fc9d5dc1f2ad622d9a9750fab5c14d1a1da227dd7225b16df0e8f22783356981255b22f5da84d1f74985df264ad79f2f00cc6ac7b
   languageName: node
   linkType: hard
 
@@ -4023,15 +4049,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@open-mercato/ai-assistant@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/ai-assistant@npm:0.9.0"
+"@open-mercato/ai-assistant@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/ai-assistant@npm:0.10.1"
   dependencies:
     "@ai-sdk/anthropic": "npm:^4.0.44"
     "@ai-sdk/azure": "npm:^4.0.0"
     "@ai-sdk/google": "npm:^4.0.56"
     "@ai-sdk/openai": "npm:^4.0.50"
-    "@modelcontextprotocol/sdk": "npm:^1.30.0"
+    "@modelcontextprotocol/sdk": "npm:^1.32.0"
     ai: "npm:^7.0.83"
     cmdk: "npm:^1.0.0"
     framer-motion: "npm:^13.1.1"
@@ -4040,18 +4066,18 @@ __metadata:
     react-markdown: "npm:^10.1.0"
     zod-to-json-schema: "npm:^3.25.2"
   peerDependencies:
-    "@open-mercato/shared": 0.9.0
-    "@open-mercato/ui": 0.9.0
+    "@open-mercato/shared": 0.10.1
+    "@open-mercato/ui": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
     zod: ">=3.23.0"
-  checksum: 10c0/6ac4b494108f237c667b02b71def150f34188b3bb997529a4ecd79320d0f7d2712771af8e462e0a921a852b92bfe0bcfecc362bb96fcac450b38fe453df434ae
+  checksum: 10c0/fb2354f57ac8d364001e908899313653ad7a6dd751464e60eed4cfc5d54ea14343b4b2a80e49806d0abbbef1d165b980caaa0a62de1b0fdf5a5d932cc50c970a
   languageName: node
   linkType: hard
 
-"@open-mercato/cache@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/cache@npm:0.9.0"
+"@open-mercato/cache@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/cache@npm:0.10.1"
   dependencies:
     "@types/better-sqlite3": "npm:^7.6.13"
   peerDependencies:
@@ -4062,181 +4088,195 @@ __metadata:
       optional: true
     ioredis:
       optional: true
-  checksum: 10c0/f7167228cb7740454952fb73715d28a515a8e1846af8f5a890650779f7849a14346663e01481a8ef05bf665ffd9f5758d9d9656fb9de144a5fc39fcab8f3b148
+  checksum: 10c0/a84b4567c6e1b24ce34eff4b05bc0bf342d70912e2d254df068ea20692602614285d032fb1e4a974bde90004462ab728fbf07f1aeca9b017e106882cbf2b9247
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-apns@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-apns@npm:0.9.0"
+"@open-mercato/channel-apns@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-apns@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     "@parse/node-apn": "npm:^6.0.1"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/95682972fe2102f73e96c1ce4381acfb95aafa025a1888b310864380887789ca588be7ee863b6d3e58223ab17b5382e9f2d5af561127aef307d9cd38425c186b
+    react-is: ">=18.0.0"
+  checksum: 10c0/e7795e14fa86dc847c351a249f0aab34ef576bc117a976a50e07ac6a7d7389ee78b4f311abfc64f3df35a148671044629163cd4324f173f26cf756da54c1dd48
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-discord@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-discord@npm:0.9.0"
+"@open-mercato/channel-discord@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-discord@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/ai-assistant": 0.9.0
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
+    react-is: ">=18.0.0"
   peerDependenciesMeta:
     "@open-mercato/ai-assistant":
       optional: true
-  checksum: 10c0/086291badc34d639d9ee5f5a5d3ad5b78591c5c72bb37f1245809a34b2c2f8e303e46a9242613cef96933c4b0913b7c634eb4cd01159b1fe9b81f56b75155f2f
+  checksum: 10c0/e5140428b913e6b91e3ddf73dfd5dbc5718d56e477050f6b3eac6bf5584b746c466e0300f2aec60f02976240d1ef0e0a51486eb7c40de65ff4378317ce035f4b
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-expo@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-expo@npm:0.9.0"
+"@open-mercato/channel-expo@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-expo@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     expo-server-sdk: "npm:^3.15.0"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/4d4fe93f77832c61ea0fe14739dfc412eda31de9f7da46a80edbad4dc84da0a1f5cda5150808e7bd8df464cb53aef43dfb16dddfb227089da4227c1ab8376d14
+    react-is: ">=18.0.0"
+  checksum: 10c0/4ffa074c2abb2621a64ec9ca05da9036b3c54500f127022df2d3dc71c6c53331199b5f1d06ef972924c9032f146611d90ae8dd429bb9760cc82949fb8270b039
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-fcm@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-fcm@npm:0.9.0"
+"@open-mercato/channel-fcm@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-fcm@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     firebase-admin: "npm:^13.0.2"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/a391b10ddda28a1478936036d184eb1dfa1dbb7d9348160e93f984529a86b534e95b213dcd6c8bb5765349f53828b5bde7e2a1a8d2690a242ef33bb4924543eb
+    react-is: ">=18.0.0"
+  checksum: 10c0/1ab91e23ea86a9bc8c5133ce97ca3694df3ae62870f609abe14b1c0d8ca8a66e83fe6c90293e98b6cdaf2c892a39f7ee5bd895c6649f0b60992036d7f75a356a
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-gmail@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-gmail@npm:0.9.0"
+"@open-mercato/channel-gmail@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-gmail@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     "@types/mailparser": "npm:^3.4.5"
     mailparser: "npm:^3.9.17"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/bc81ef4cad769cb5242c5f57e56a0f77caf7e7afb4656cf7a19889d1ef04eaabfcf7f1e2ca2324a373d1ab2fe7755fe76b35bd27fe9c33a3511986feb5a39869
+    react-is: ">=18.0.0"
+  checksum: 10c0/f61e82ad8438cb3b64881427b6d1704433e54c97dff7c2dee9ab566d1fa8c62c00e7f8bb88b8176b6addc70045d36785cd3ea8b5a2ca1fc6d02f5c6422d2d684
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-imap@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-imap@npm:0.9.0"
+"@open-mercato/channel-imap@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-imap@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     "@types/mailparser": "npm:^3.4.5"
     "@types/nodemailer": "npm:^8.0.1"
     imapflow: "npm:^1.7.6"
     mailparser: "npm:^3.9.17"
-    nodemailer: "npm:^10.0.10"
+    nodemailer: "npm:^10.1.4"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/11753d0f0856cffbe28a3f8b9bcfb28557f42557814a7aafad2ca172b9767ea5c2f53e3b8b103c49824b35780208f7d049e37f8b05a3527e1d839241ff3f5d61
+    react-is: ">=18.0.0"
+  checksum: 10c0/aa9a54f679513f8598e811e28ce97691ca51ad8fe956f7e650b08ffaa2eb15d1db1dd70642316a1bb5952fdbdce9e303a65d6007afa6136e58622f93b81baeb6
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-resend@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-resend@npm:0.9.0"
+"@open-mercato/channel-resend@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-resend@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
     resend: "npm:^6.24.0"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/ai-assistant": 0.9.0
-    "@open-mercato/shared": 0.9.0
-    "@open-mercato/ui": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
+    "@open-mercato/ui": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/578e6acf2b5182cfbfcbdce4a89567d427d61f91cbc74fe6b67b23a8b1ca4a29818f4fdf8c595d728ea53457ef6d8f37975d32514aaf8be8e73633310761769a
+  checksum: 10c0/aafc629e8b13165c923d89cfbe965fac00304bda16413a9152841d09304f8debe62962b381bde998af45f77e404b8813e3a7072795cada477b2073d049ac98a5
   languageName: node
   linkType: hard
 
-"@open-mercato/channel-ses@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/channel-ses@npm:0.9.0"
+"@open-mercato/channel-ses@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/channel-ses@npm:0.10.1"
   dependencies:
     "@aws-sdk/client-sesv2": "npm:^3.946.0"
-    "@open-mercato/core": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
     "@types/nodemailer": "npm:^8.0.1"
-    nodemailer: "npm:^10.0.10"
+    nodemailer: "npm:^10.1.4"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/ai-assistant": 0.9.0
-    "@open-mercato/shared": 0.9.0
-    "@open-mercato/ui": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
+    "@open-mercato/ui": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/4254381a901955c362994f99baa8dc409ce18fc34cdf2ba3c61fdbd6a3b84876a58d8684bcc5c8c7f17107b81f5e5a086bda4c748401d79cec3127baf3cdfbb0
+  checksum: 10c0/1ffb7a913aaf57b76b788bccc2a4b50b24b938df77a451b2475f208e8e4e4776cb00a76b291feccf77feae481a1c7c1f41491d30e121badad43cee953bbb85ff
   languageName: node
   linkType: hard
 
-"@open-mercato/checkout@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/checkout@npm:0.9.0"
+"@open-mercato/checkout@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/checkout@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     bcryptjs: "npm:^3.0.3"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/db945e04fda55aa7513edb4d0dba8427a3abb434027ea795f315df7d4c18940ec1a098bfe0a2e89c161cef6c589b6c21e2902739f793e116bcb894651d2b4ad8
+    react-is: ">=18.0.0"
+  checksum: 10c0/04fc70910d78f2512a9ab682d47df212f011b83161c3e6ee4ac60faef59492ef8e31e0372df56b4240856ac26deb6ff9c045af84e71ecabe918f20f0c67f4903
   languageName: node
   linkType: hard
 
-"@open-mercato/cli@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/cli@npm:0.9.0"
+"@open-mercato/cli@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/cli@npm:0.10.1"
   dependencies:
     "@mikro-orm/core": "npm:^7.1.14"
     "@mikro-orm/decorators": "npm:^7.1.14"
     "@mikro-orm/migrations": "npm:^7.1.14"
     "@mikro-orm/postgresql": "npm:^7.1.14"
-    "@open-mercato/events": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/shared": "npm:0.9.0"
-    "@open-mercato/telemetry": "npm:0.9.0"
+    "@open-mercato/events": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/shared": "npm:0.10.1"
+    "@open-mercato/telemetry": "npm:0.10.1"
     cross-spawn: "npm:^7.0.6"
+    minisearch: "npm:7.2.0"
     pg: "npm:8.23.0"
     semver: "npm:^7.8.5"
     testcontainers: "npm:^12.0.4"
@@ -4245,25 +4285,25 @@ __metadata:
     typescript: "npm:7.0.2"
     typescript-js: "npm:typescript@6.0.3"
   peerDependencies:
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/shared": 0.10.1
   bin:
     mercato: bin/mercato
-  checksum: 10c0/7c89b1aad79d7d1dacbcd49f7244f0a2dd55d9c34f62b5886ed25218d8bc7af3a541d4c3a369dbedcae122fa4a5b67f7184137aeb068a2ea82985caa7bafc1cc
+  checksum: 10c0/d4fb8479c87cc4354e35e1b75a8ba889bb409e04448fadbaa1504dd4038c5fd85cec2946d8629e4193346935e090f0e6db04d387b7e3626a933c6729994a2e8c
   languageName: node
   linkType: hard
 
-"@open-mercato/content@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/content@npm:0.9.0"
+"@open-mercato/content@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/content@npm:0.10.1"
   peerDependencies:
-    "@open-mercato/shared": 0.9.0
-  checksum: 10c0/e88781c2b6c2ab302c71b486e6a7a332114c83915ce9db50f418ff5a3ff8fc4a6736434304a08470b12ae9887f15a76a6a8596f9572e3b30a5666dc32da4a431
+    "@open-mercato/shared": 0.10.1
+  checksum: 10c0/fb3f3135207f5d605ed687f3fb95c0062b6dbd84b562612b3f6a267735daf93d8d6eeea019bc7b2d49c3364b7714901c0f7b0056f42c2ec26c294131aee65d9e
   languageName: node
   linkType: hard
 
-"@open-mercato/core@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/core@npm:0.9.0"
+"@open-mercato/core@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/core@npm:0.10.1"
   dependencies:
     "@dagrejs/dagre": "npm:^3.0.0"
     "@mikro-orm/core": "npm:^7.1.14"
@@ -4271,6 +4311,7 @@ __metadata:
     "@mikro-orm/postgresql": "npm:^7.1.14"
     "@types/leaflet": "npm:^1.9.12"
     "@types/leaflet.markercluster": "npm:^1.5.5"
+    "@types/nodemailer": "npm:^8.0.1"
     "@types/sanitize-html": "npm:^2.13.0"
     "@types/semver": "npm:^7.8.0"
     "@xyflow/react": "npm:^12.11.5"
@@ -4282,28 +4323,29 @@ __metadata:
     leaflet: "npm:^1.9.4"
     leaflet.markercluster: "npm:^1.5.3"
     mammoth: "npm:^1.9.0"
+    nodemailer: "npm:^10.1.4"
     pdf-lib: "npm:^1.17.1"
     pdfjs-dist: "npm:^6.2.108"
     resend: "npm:^6.24.0"
-    sanitize-html: "npm:2.17.5"
+    sanitize-html: "npm:2.18.1"
     semver: "npm:^7.8.5"
     sharp: "npm:^0.35.3"
     svix: "npm:^1.99.1"
     ts-pattern: "npm:^5.0.0"
-    zod: "npm:^4.4.3"
+    zod: "npm:^4.6.6"
   peerDependencies:
-    "@open-mercato/ai-assistant": 0.9.0
-    "@open-mercato/shared": 0.9.0
-    "@open-mercato/ui": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
+    "@open-mercato/ui": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/470347bd15e6ee4c97b3763ae2736adee30e68fc8937660efa320ccfa82507ba696dc5ca9b1302537d474ae2e2b840ac883bfeb2d5dab45e31aba746340ea496
+  checksum: 10c0/b13fa7164bd908cfd0c63fcfab563ac0971c0ad35956d32d19bddc1304df3a08516fba0606751cbad3296666ba34d9a378a866d3ea47d2e4924ba3424effb66e
   languageName: node
   linkType: hard
 
-"@open-mercato/documents@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/documents@npm:0.9.0"
+"@open-mercato/documents@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/documents@npm:0.10.1"
   dependencies:
     "@floating-ui/dom": "npm:^1.7.5"
     "@hocuspocus/extension-redis": "npm:^4.3.0"
@@ -4311,117 +4353,119 @@ __metadata:
     "@hocuspocus/server": "npm:^4.4.0"
     "@hocuspocus/transformer": "npm:^4.3.0"
     "@mikro-orm/core": "npm:^7.1.14"
-    "@open-mercato/events": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
-    "@tiptap/core": "npm:^3"
-    "@tiptap/extension-bubble-menu": "npm:^3"
-    "@tiptap/extension-collaboration": "npm:^3.27.3"
-    "@tiptap/extension-collaboration-caret": "npm:^3.27.3"
-    "@tiptap/extension-highlight": "npm:^3"
-    "@tiptap/extension-image": "npm:^3"
-    "@tiptap/extension-link": "npm:^3"
-    "@tiptap/extension-list": "npm:^3.27.3"
-    "@tiptap/extension-placeholder": "npm:^3"
-    "@tiptap/extension-table": "npm:^3"
-    "@tiptap/extension-table-cell": "npm:^3"
-    "@tiptap/extension-table-header": "npm:^3"
-    "@tiptap/extension-table-row": "npm:^3"
-    "@tiptap/extension-task-item": "npm:^3"
-    "@tiptap/extension-task-list": "npm:^3"
-    "@tiptap/extension-text-align": "npm:^3"
-    "@tiptap/extension-text-style": "npm:^3"
-    "@tiptap/extensions": "npm:^3"
-    "@tiptap/html": "npm:^3.27.3"
-    "@tiptap/pm": "npm:^3"
-    "@tiptap/react": "npm:^3"
-    "@tiptap/starter-kit": "npm:^3"
-    "@tiptap/suggestion": "npm:^3"
-    "@tiptap/y-tiptap": "npm:^3.0.6"
-    happy-dom: "npm:^20.10.6"
+    "@open-mercato/events": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
+    "@tiptap/core": "npm:3.32.0"
+    "@tiptap/extension-bubble-menu": "npm:3.32.0"
+    "@tiptap/extension-collaboration": "npm:3.32.0"
+    "@tiptap/extension-collaboration-caret": "npm:3.32.0"
+    "@tiptap/extension-highlight": "npm:3.32.0"
+    "@tiptap/extension-image": "npm:3.32.0"
+    "@tiptap/extension-link": "npm:3.32.0"
+    "@tiptap/extension-list": "npm:3.32.0"
+    "@tiptap/extension-placeholder": "npm:3.32.0"
+    "@tiptap/extension-table": "npm:3.32.0"
+    "@tiptap/extension-table-cell": "npm:3.32.0"
+    "@tiptap/extension-table-header": "npm:3.32.0"
+    "@tiptap/extension-table-row": "npm:3.32.0"
+    "@tiptap/extension-task-item": "npm:3.32.0"
+    "@tiptap/extension-task-list": "npm:3.32.0"
+    "@tiptap/extension-text-align": "npm:3.32.0"
+    "@tiptap/extension-text-style": "npm:3.32.0"
+    "@tiptap/extensions": "npm:3.32.0"
+    "@tiptap/pm": "npm:3.32.0"
+    "@tiptap/react": "npm:3.32.0"
+    "@tiptap/starter-kit": "npm:3.32.0"
+    "@tiptap/suggestion": "npm:3.32.0"
+    "@tiptap/y-tiptap": "npm:3.0.7"
+    happy-dom: "npm:21.0.4"
     jszip: "npm:^3.10.1"
-    prosemirror-model: "npm:^1.25.9"
+    prosemirror-model: "npm:^1.25.12"
     prosemirror-state: "npm:^1.4.4"
-    prosemirror-view: "npm:^1.41.9"
+    prosemirror-view: "npm:^1.42.6"
     puppeteer-core: "npm:^25.3.0"
     y-prosemirror: "npm:^1.3.7"
     y-protocols: "npm:^1.0.7"
     yjs: "npm:^13.6.31"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/f60bdbd2729000251e174979c98f7877a84564301cf1eee1da6649a5f08844728c2ab77330f73b63b0123ab1d96f183a87492f38e39000f56c9a63d70e7923ef
+    react-is: ">=18.0.0"
+  checksum: 10c0/22773dc59fdf828982a34a8565328da89b3300b33caa3097a97335427b6756716b6aa789747afeb080374cf6cb83d78b1681764a78313efcedd4eeba85def68d
   languageName: node
   linkType: hard
 
-"@open-mercato/events@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/events@npm:0.9.0"
+"@open-mercato/events@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/events@npm:0.10.1"
   dependencies:
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/shared": "npm:0.9.0"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/shared": "npm:0.10.1"
     pg: "npm:8.23.0"
-  checksum: 10c0/097a320a0c6800b3507336cdcd6075b3dab5d7c9734da9bb9c5ae6ba78469fe90b18cb5b311567b9b1717e6b56ea17640db23e99a260b8fb77787126873100f9
+  checksum: 10c0/15e6ef562c3b99fec7ba503875385d764dac1da8cd1c25ab9df7392f2f2f5bb322934a040300605acfb76e0dfdaf8b64e7e18d4ae58466f27a9070bd3ee84f2c
   languageName: node
   linkType: hard
 
-"@open-mercato/gateway-stripe@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/gateway-stripe@npm:0.9.0"
+"@open-mercato/gateway-stripe@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/gateway-stripe@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     "@stripe/react-stripe-js": "npm:^6.8.2"
     "@stripe/stripe-js": "npm:^9.14.0"
     stripe: "npm:^22.3.1"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/4cc926a2f63aa4b06eab896bbaaf61638ac6358e150904a93ead2adc34b4123936f294417d54fca664935fe0e589fec25c1a68c8fd19a205f0877712cd1a043f
+    react-is: ">=18.0.0"
+  checksum: 10c0/62c30453166fa295a012dd643083565f264a90837ccdea3ee4cf9e7e929029e84984fb9e9b48a284b7c3c0affa51295c05167496c99491d1f9ef945b968aa024
   languageName: node
   linkType: hard
 
-"@open-mercato/onboarding@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/onboarding@npm:0.9.0"
+"@open-mercato/onboarding@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/onboarding@npm:0.10.1"
   peerDependencies:
-    "@open-mercato/shared": 0.9.0
-  checksum: 10c0/95e82096e2f1a2b9ac3ba2e09331068616b6af678f74b408cbbe2adff00cabfca8abfedfe45a3090f6551285c24011982e13ef227b6eb93d8996e76acd899734
+    "@open-mercato/shared": 0.10.1
+  checksum: 10c0/38c9ee5d048ab09391315db278aa77056bdbf0bdaf8cfa896a5b2ffeeebff2ea186051ad7aed6d9f9103447eab3d7dfdc6bad738f6853c95e0ef2f89144e93fb
   languageName: node
   linkType: hard
 
-"@open-mercato/queue@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/queue@npm:0.9.0"
+"@open-mercato/queue@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/queue@npm:0.10.1"
   dependencies:
-    "@open-mercato/shared": "npm:0.9.0"
-    "@open-mercato/telemetry": "npm:0.9.0"
+    "@open-mercato/shared": "npm:0.10.1"
+    "@open-mercato/telemetry": "npm:0.10.1"
   peerDependencies:
-    bullmq: ^5.0.0 || ^6.0.0
-    bullmq-otel: ^1.3.0
+    bullmq: ^5.72.0 || ^6.0.0
+    bullmq-otel: ^1.3.0 || ^2.0.0
   peerDependenciesMeta:
     bullmq:
       optional: true
     bullmq-otel:
       optional: true
-  checksum: 10c0/f0b5c9337328e33336f743ee6554cd57eb309ead998842b6dacf63723412d020282f3757e3372e74ee8bd812e2b92435525815e89dbd3513aa8eced24e9b352e
+  checksum: 10c0/96876502ca0a873c9f3e6adb5bbcedaa389580a14be54abc05e4d889bc40afdf3b8f60418e4742fd2c013dbf3afe1ce29fccb5d64066ef6b8cbd35097edbca7b
   languageName: node
   linkType: hard
 
-"@open-mercato/scheduler@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/scheduler@npm:0.9.0"
+"@open-mercato/scheduler@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/scheduler@npm:0.10.1"
   dependencies:
-    "@open-mercato/events": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
+    "@open-mercato/events": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
     cron-parser: "npm:^5.6.2"
   peerDependencies:
     "@mikro-orm/core": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/shared": 0.10.1
     bullmq: ^5.0.0 || ^6.0.0
     ioredis: ^5.0.0 || ^6.0.0
     zod: ">=3.23.0"
@@ -4430,13 +4474,13 @@ __metadata:
       optional: true
     ioredis:
       optional: true
-  checksum: 10c0/d1ea266f234185b1686347d7d956257a6b23862ad3e355c6bd43d9de4a618a8b8923eebba8a022ae1604b434f38f014dea0204192f9042492f0833fce45b1c29
+  checksum: 10c0/afaaf4d12fe046bec3ad7e2c29fc1d9e2d0579d6bd66ae2944fe6bc62d14941839a08b0dc900b9b541ecb64777b08580371b90323d5d308f1fbb538245f25746
   languageName: node
   linkType: hard
 
-"@open-mercato/search@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/search@npm:0.9.0"
+"@open-mercato/search@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/search@npm:0.10.1"
   dependencies:
     "@ai-sdk/amazon-bedrock": "npm:^5.0.2"
     "@ai-sdk/cohere": "npm:^4.0.14"
@@ -4447,60 +4491,64 @@ __metadata:
     ai-sdk-ollama: "npm:4.1.0"
     meilisearch: "npm:^0.60.0"
     pg: "npm:8.23.0"
-    zod: "npm:^4.4.3"
+    zod: "npm:^4.6.6"
   peerDependencies:
-    "@open-mercato/core": 0.9.0
-    "@open-mercato/queue": 0.9.0
-    "@open-mercato/shared": 0.9.0
-  checksum: 10c0/5dfbef7f06b2d33ef040df91c83397602f50d999ddc1e78bb1278710126268456e1cfbe2de998702559c281ceba218ed8ff1c3256ab6848a8900cdfb6eb411a9
+    "@open-mercato/core": 0.10.1
+    "@open-mercato/queue": 0.10.1
+    "@open-mercato/shared": 0.10.1
+  checksum: 10c0/e775f0c439ef574c776e2d9718404194bc6ed7c641ce1d9a2431aaf3a8b9ff18d0c09afc39e4eeb6d79b9b8257d89bbe4367ec3597cee7457647014cb0b47bff
   languageName: node
   linkType: hard
 
-"@open-mercato/shared@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/shared@npm:0.9.0"
+"@open-mercato/shared@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/shared@npm:0.10.1"
   dependencies:
     "@mikro-orm/core": "npm:^7.1.14"
     "@mikro-orm/decorators": "npm:^7.1.14"
     "@mikro-orm/postgresql": "npm:^7.1.14"
-    "@open-mercato/cache": "npm:0.9.0"
+    "@open-mercato/cache": "npm:0.10.1"
+    "@types/big.js": "npm:^7.0.0"
     "@types/html-to-text": "npm:^9.0.4"
     "@types/sanitize-html": "npm:^2.16.1"
+    big.js: "npm:^7.0.1"
     dotenv: "npm:^17.4.2"
     gpt-tokenizer: "npm:^3.4.0"
     html-to-text: "npm:^10.0.0"
     pino: "npm:^10.3.1"
     rate-limiter-flexible: "npm:^11.2.0"
-    re2js: "npm:2.8.6"
+    re2js: "npm:2.8.7"
     reflect-metadata: "npm:^0.2.2"
-    sanitize-html: "npm:2.17.5"
-    undici: "npm:^8.11.2"
-  checksum: 10c0/ca25ef98ee843c55af28f6ba9a7ada48e5ebae9f8eaa75fe66cef650f9c632ff2d19a486310fa680183190b8a70326db6b74455763e38e3f09e1abc92ea476b9
+    sanitize-html: "npm:2.18.1"
+    undici: "npm:^8.12.2"
+  checksum: 10c0/508aaa3ac19265aa071cab938151457f64d8e360bf403c475af80cfe16d7690b92ac4ff6ea3f717850f8458e6372f5d1565403243ad26c97f184e20daf49ce51
   languageName: node
   linkType: hard
 
-"@open-mercato/sync-akeneo@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/sync-akeneo@npm:0.9.0"
+"@open-mercato/sync-akeneo@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/sync-akeneo@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     node-html-markdown: "npm:^2.0.0"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/74b459d5139d82468a4501341cdabe52782d51400b28240ec093db208cfe3c0d8da360bdd1ee183dd0b24d428d3f615b973357072e4e1233ebca80172ff86c2a
+    react-is: ">=18.0.0"
+  checksum: 10c0/fd444971d65ececa6bcf071296ae11f4fc3988b4913f9ffccdce50a9890347f2e13dc15e72a071ab7ddb2a7939c7ff0e232b91de9edbaa875e6769747caad50e
   languageName: node
   linkType: hard
 
-"@open-mercato/telemetry@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/telemetry@npm:0.9.0"
+"@open-mercato/telemetry@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/telemetry@npm:0.10.1"
   dependencies:
-    "@open-mercato/shared": "npm:0.9.0"
-    "@opentelemetry/api": "npm:^1.9.1"
+    "@open-mercato/shared": "npm:0.10.1"
+    "@opentelemetry/api": "npm:~1.9.1"
     "@opentelemetry/api-logs": "npm:^0.220.0"
     "@opentelemetry/core": "npm:^2.9.0"
     "@opentelemetry/exporter-logs-otlp-http": "npm:^0.220.0"
@@ -4509,7 +4557,7 @@ __metadata:
     "@opentelemetry/instrumentation": "npm:^0.220.0"
     "@opentelemetry/instrumentation-document-load": "npm:^0.65.0"
     "@opentelemetry/instrumentation-fetch": "npm:^0.220.0"
-    "@opentelemetry/instrumentation-pg": "npm:^0.71.0"
+    "@opentelemetry/instrumentation-pg": "npm:^0.73.0"
     "@opentelemetry/instrumentation-undici": "npm:^0.29.0"
     "@opentelemetry/resources": "npm:^2.9.0"
     "@opentelemetry/sdk-logs": "npm:^0.220.0"
@@ -4563,32 +4611,33 @@ __metadata:
   peerDependenciesMeta:
     react:
       optional: true
-  checksum: 10c0/33118c034b3dc030c07b7abf3ed7419d3a9100254c3efc4f351e086eb9a4152a2b859bc4bb9838c5c2d730577bee6a8e5ee59e62f4b9305bbc5c1a72df5f359c
+  checksum: 10c0/99292a130e8d5969453e89c87dbb6dca5d8271914b539bdba7f972b8a6536f938126ead572ad779e6a77eea13b2aa9bf733f72f3d1b607dee964d03d2ec67322
   languageName: node
   linkType: hard
 
-"@open-mercato/tillio@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/tillio@npm:0.9.0"
+"@open-mercato/tillio@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/tillio@npm:0.10.1"
   dependencies:
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/ai-assistant": 0.9.0
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
     react-is: ">=18.0.0"
-  checksum: 10c0/a63cf1b075f746b07355b81a2773884f543e0fd7b949d659ead2efd2bf2d245bf6c3e55e684d510b315d98f0fd0c8c2caf0d3118cf3bb0e1e31e400fa1bb1d99
+  checksum: 10c0/1ca9be7c370db0f9ddd988e74ac1c8f002651e1ad8ef05df36e15967a2d25f70512d138224e8dd1f19a39cbc65bda8a4590b1068882d1f109d9057d2c53ecadf
   languageName: node
   linkType: hard
 
-"@open-mercato/ui@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/ui@npm:0.9.0"
+"@open-mercato/ui@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/ui@npm:0.10.1"
   dependencies:
+    "@codemirror/view": "npm:^6.23.0"
     "@dnd-kit/core": "npm:^6.3.1"
     "@dnd-kit/sortable": "npm:^10.0.0"
     "@dnd-kit/utilities": "npm:^3.2.2"
@@ -4610,29 +4659,31 @@ __metadata:
     recharts: "npm:^3.10.1"
     remark-gfm: "npm:^4.0.1"
   peerDependencies:
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/shared": 0.10.1
     react: ">=18.0.0"
     react-dom: ">=18.0.0"
     react-is: ">=18.0.0"
-  checksum: 10c0/a81dc51ab6fa2e0551d4e6148eece74c519c6aacf3a295eb6773de3bddd0893a381b25ea3f1d28fcfe3a592e12a584efeb4532398cda7b5cfc3f772a8479fb46
+  checksum: 10c0/b09f819df8333add1b16d03430600f4e0f2aecea8f5c0d150a1db624be4a98c5bd99160d9df9eae6591e52c59068e50a10ed2e32f1893a54e6a4a1a0224c706d
   languageName: node
   linkType: hard
 
-"@open-mercato/webhooks@npm:0.9.0":
-  version: 0.9.0
-  resolution: "@open-mercato/webhooks@npm:0.9.0"
+"@open-mercato/webhooks@npm:0.10.1":
+  version: 0.10.1
+  resolution: "@open-mercato/webhooks@npm:0.10.1"
   dependencies:
-    "@open-mercato/cache": "npm:0.9.0"
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/cache": "npm:0.10.1"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     svix: "npm:^1.99.1"
   peerDependencies:
     "@mikro-orm/postgresql": ^7.0.14
-    "@open-mercato/shared": 0.9.0
+    "@open-mercato/ai-assistant": 0.10.1
+    "@open-mercato/shared": 0.10.1
     react: ^19.0.0
     react-dom: ^19.0.0
-  checksum: 10c0/213bb605e6623dafaaff9d2f9f5299d9c37143ba0b5ca6f655a4a19a086cf1f2f0c8b16f16ec92d707dbb0791f79dfa266db547abdb0d0fefbb3bb5a8c3e9630
+    react-is: ">=18.0.0"
+  checksum: 10c0/0417ca8ebcbf271d31be9cf333a3801b2bb4cc7ea226d19f5679717977ccd1b5f8966714522c9f0faa4371d9f3dcfd4dd709c07b98dd8790c21cd9a875324cf7
   languageName: node
   linkType: hard
 
@@ -4672,10 +4723,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/api@npm:^1.3.0, @opentelemetry/api@npm:^1.9.0, @opentelemetry/api@npm:^1.9.1":
+"@opentelemetry/api@npm:^1.3.0, @opentelemetry/api@npm:^1.9.0, @opentelemetry/api@npm:~1.9.1":
   version: 1.9.1
   resolution: "@opentelemetry/api@npm:1.9.1"
   checksum: 10c0/c608485fc8b5a91e1f7e05e843b45b509307456b31cd2ad365933d90813e40ebfedf179f1451c762037e82d7c76aa8500e95d2da3609f640a1206cde5322cd14
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/api@npm:^1.9.1":
+  version: 1.10.0
+  resolution: "@opentelemetry/api@npm:1.10.0"
+  checksum: 10c0/c666f89d882e2e3ea3780b4e419de3ba7e00a80bf334269c3c8507a5e2b4e453e2bc8368f6230f894d789b206c14dde313ea6f51fa7bc629f0eff8480b5d356b
   languageName: node
   linkType: hard
 
@@ -4951,19 +5009,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@opentelemetry/instrumentation-pg@npm:^0.71.0":
-  version: 0.71.0
-  resolution: "@opentelemetry/instrumentation-pg@npm:0.71.0"
+"@opentelemetry/instrumentation-pg@npm:^0.73.0":
+  version: 0.73.0
+  resolution: "@opentelemetry/instrumentation-pg@npm:0.73.0"
   dependencies:
-    "@opentelemetry/core": "npm:^2.0.0"
-    "@opentelemetry/instrumentation": "npm:^0.219.0"
+    "@opentelemetry/core": "npm:^2.9.0"
+    "@opentelemetry/instrumentation": "npm:^0.221.0"
     "@opentelemetry/semantic-conventions": "npm:^1.34.0"
     "@opentelemetry/sql-common": "npm:^0.42.0"
     "@types/pg": "npm:8.15.6"
     "@types/pg-pool": "npm:2.0.7"
   peerDependencies:
     "@opentelemetry/api": ^1.3.0
-  checksum: 10c0/39599e5007d05362dd386582b1f176343db88e505b7ed71d0fb4142ed53dacdd6db7afbda30b8452bcebcec9ee1cb488dc1caadcb470550dd12dc2074ed58a3d
+  checksum: 10c0/80706f48d6e3f15f8e39de4c134457143ecaa6880df78a760f84f1d6910efa5b0fa47fe011bd10a0b24e0160358e572228f819945b0d0f4469a028d0957599bb
   languageName: node
   linkType: hard
 
@@ -5003,6 +5061,19 @@ __metadata:
   peerDependencies:
     "@opentelemetry/api": ^1.3.0
   checksum: 10c0/5d0bd6c3d87f4eb4057f84c8e87ba4e895f6154b411201ecec42c165b6de8a8f8ab591d87ef2c879b37ab4aecee7582cb5a909666dd9654f3e9f0d69126ff864
+  languageName: node
+  linkType: hard
+
+"@opentelemetry/instrumentation@npm:^0.221.0":
+  version: 0.221.0
+  resolution: "@opentelemetry/instrumentation@npm:0.221.0"
+  dependencies:
+    "@opentelemetry/api-logs": "npm:0.221.0"
+    import-in-the-middle: "npm:^3.0.0"
+    require-in-the-middle: "npm:^8.0.0"
+  peerDependencies:
+    "@opentelemetry/api": ^1.3.0
+  checksum: 10c0/0a5ecc7a96b4155223b77f21716d12231f15a5a505b1a7304e4d555c6cc256a4f351db0e76e2b741e23b713445ffc5adb08694d3695f78b3b7b1f00ce7da4f3d
   languageName: node
   linkType: hard
 
@@ -8168,7 +8239,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/core@npm:3.32.0, @tiptap/core@npm:^3":
+"@tiptap/core@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/core@npm:3.32.0"
   peerDependencies:
@@ -8196,7 +8267,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-bubble-menu@npm:3.32.0, @tiptap/extension-bubble-menu@npm:^3":
+"@tiptap/extension-bubble-menu@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-bubble-menu@npm:3.32.0"
   dependencies:
@@ -8236,7 +8307,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-collaboration-caret@npm:^3.27.3":
+"@tiptap/extension-collaboration-caret@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-collaboration-caret@npm:3.32.0"
   peerDependencies:
@@ -8247,7 +8318,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-collaboration@npm:^3.27.3":
+"@tiptap/extension-collaboration@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-collaboration@npm:3.32.0"
   peerDependencies:
@@ -8315,7 +8386,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-highlight@npm:^3":
+"@tiptap/extension-highlight@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-highlight@npm:3.32.0"
   peerDependencies:
@@ -8334,7 +8405,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-image@npm:^3":
+"@tiptap/extension-image@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-image@npm:3.32.0"
   peerDependencies:
@@ -8352,7 +8423,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-link@npm:3.32.0, @tiptap/extension-link@npm:^3":
+"@tiptap/extension-link@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-link@npm:3.32.0"
   dependencies:
@@ -8382,7 +8453,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-list@npm:3.32.0, @tiptap/extension-list@npm:^3.27.3":
+"@tiptap/extension-list@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-list@npm:3.32.0"
   peerDependencies:
@@ -8410,7 +8481,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-placeholder@npm:^3":
+"@tiptap/extension-placeholder@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-placeholder@npm:3.32.0"
   peerDependencies:
@@ -8428,7 +8499,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-table-cell@npm:^3":
+"@tiptap/extension-table-cell@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-table-cell@npm:3.32.0"
   peerDependencies:
@@ -8437,7 +8508,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-table-header@npm:^3":
+"@tiptap/extension-table-header@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-table-header@npm:3.32.0"
   peerDependencies:
@@ -8446,7 +8517,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-table-row@npm:^3":
+"@tiptap/extension-table-row@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-table-row@npm:3.32.0"
   peerDependencies:
@@ -8455,7 +8526,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-table@npm:^3":
+"@tiptap/extension-table@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-table@npm:3.32.0"
   peerDependencies:
@@ -8465,7 +8536,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-task-item@npm:^3":
+"@tiptap/extension-task-item@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-task-item@npm:3.32.0"
   peerDependencies:
@@ -8474,7 +8545,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-task-list@npm:^3":
+"@tiptap/extension-task-list@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-task-list@npm:3.32.0"
   peerDependencies:
@@ -8483,7 +8554,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-text-align@npm:^3":
+"@tiptap/extension-text-align@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-text-align@npm:3.32.0"
   peerDependencies:
@@ -8492,7 +8563,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extension-text-style@npm:^3":
+"@tiptap/extension-text-style@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extension-text-style@npm:3.32.0"
   peerDependencies:
@@ -8519,7 +8590,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/extensions@npm:3.32.0, @tiptap/extensions@npm:^3":
+"@tiptap/extensions@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/extensions@npm:3.32.0"
   peerDependencies:
@@ -8529,18 +8600,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/html@npm:^3.27.3":
-  version: 3.32.0
-  resolution: "@tiptap/html@npm:3.32.0"
-  peerDependencies:
-    "@tiptap/core": 3.32.0
-    "@tiptap/pm": 3.32.0
-    happy-dom: ^20.8.9
-  checksum: 10c0/9411c6ec12ad199f0ddfc6e69318b61e0fa7a20bcaa260d57286b78661035087a48acd59a7697eb2bf64eeeb5f31ea6d042c1a71bb4c5a7bdf1a73f9926196ac
-  languageName: node
-  linkType: hard
-
-"@tiptap/pm@npm:3.32.0, @tiptap/pm@npm:^3":
+"@tiptap/pm@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/pm@npm:3.32.0"
   dependencies:
@@ -8561,7 +8621,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/react@npm:^3":
+"@tiptap/react@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/react@npm:3.32.0"
   dependencies:
@@ -8586,7 +8646,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/starter-kit@npm:^3, @tiptap/starter-kit@npm:^3.19.0":
+"@tiptap/starter-kit@npm:3.32.0, @tiptap/starter-kit@npm:^3.19.0":
   version: 3.32.0
   resolution: "@tiptap/starter-kit@npm:3.32.0"
   dependencies:
@@ -8618,7 +8678,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/suggestion@npm:^3":
+"@tiptap/suggestion@npm:3.32.0":
   version: 3.32.0
   resolution: "@tiptap/suggestion@npm:3.32.0"
   peerDependencies:
@@ -8629,19 +8689,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tiptap/y-tiptap@npm:^3.0.6":
-  version: 3.0.10
-  resolution: "@tiptap/y-tiptap@npm:3.0.10"
+"@tiptap/y-tiptap@npm:3.0.7":
+  version: 3.0.7
+  resolution: "@tiptap/y-tiptap@npm:3.0.7"
   dependencies:
     lib0: "npm:^0.2.100"
-    prosemirror-transform: "npm:^1.6.0"
   peerDependencies:
     prosemirror-model: ^1.7.1
     prosemirror-state: ^1.2.3
     prosemirror-view: ^1.9.10
     y-protocols: ^1.0.1
     yjs: ^13.5.38
-  checksum: 10c0/5955658c89d19ec5dda866909b412657c372ff513f7707089177167a400d10283d0d62186b0e3f2098f684ec8c75082550a39128adb74173df7a19d94a98b58a
+  checksum: 10c0/2583dcaadaa9fc9885028eb3f68917b138446962f6b8af3cf6cbffc34f4e9756eafdd2ad789c91220c270aabd8026370e21a1388e0eee7cd6c233d1906a9d6cf
   languageName: node
   linkType: hard
 
@@ -8726,6 +8785,13 @@ __metadata:
   dependencies:
     "@types/node": "npm:*"
   checksum: 10c0/c4336e7b92343eb0e988ded007c53fa9887b98a38d61175226e86124a1a2c28b1a4e3892873c5041e350b7bfa2901f85c82db1542c4f0eed1d3a899682c92106
+  languageName: node
+  linkType: hard
+
+"@types/big.js@npm:^7.0.0":
+  version: 7.0.0
+  resolution: "@types/big.js@npm:7.0.0"
+  checksum: 10c0/d6cc629c7eefe86e2dcc8beb2c8ee41deaaab3bd761e5d2401b51a23f171caa36753e56002e1e5d9d7e671a922f303dcb52907725e15499faac7f7b533e556f2
   languageName: node
   linkType: hard
 
@@ -9841,33 +9907,33 @@ __metadata:
     "@mikro-orm/postgresql": "npm:7.2.5"
     "@modelcontextprotocol/sdk": "npm:^1.29.0"
     "@napi-rs/canvas": "npm:^1.0.8"
-    "@open-mercato/ai-assistant": "npm:0.9.0"
-    "@open-mercato/cache": "npm:0.9.0"
-    "@open-mercato/channel-apns": "npm:0.9.0"
-    "@open-mercato/channel-discord": "npm:0.9.0"
-    "@open-mercato/channel-expo": "npm:0.9.0"
-    "@open-mercato/channel-fcm": "npm:0.9.0"
-    "@open-mercato/channel-gmail": "npm:0.9.0"
-    "@open-mercato/channel-imap": "npm:0.9.0"
-    "@open-mercato/channel-resend": "npm:0.9.0"
-    "@open-mercato/channel-ses": "npm:0.9.0"
-    "@open-mercato/checkout": "npm:0.9.0"
-    "@open-mercato/cli": "npm:0.9.0"
-    "@open-mercato/content": "npm:0.9.0"
-    "@open-mercato/core": "npm:0.9.0"
-    "@open-mercato/documents": "npm:0.9.0"
-    "@open-mercato/events": "npm:0.9.0"
-    "@open-mercato/gateway-stripe": "npm:0.9.0"
-    "@open-mercato/onboarding": "npm:0.9.0"
-    "@open-mercato/queue": "npm:0.9.0"
-    "@open-mercato/scheduler": "npm:0.9.0"
-    "@open-mercato/search": "npm:0.9.0"
-    "@open-mercato/shared": "npm:0.9.0"
-    "@open-mercato/sync-akeneo": "npm:0.9.0"
-    "@open-mercato/telemetry": "npm:0.9.0"
-    "@open-mercato/tillio": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
-    "@open-mercato/webhooks": "npm:0.9.0"
+    "@open-mercato/ai-assistant": "npm:0.10.1"
+    "@open-mercato/cache": "npm:0.10.1"
+    "@open-mercato/channel-apns": "npm:0.10.1"
+    "@open-mercato/channel-discord": "npm:0.10.1"
+    "@open-mercato/channel-expo": "npm:0.10.1"
+    "@open-mercato/channel-fcm": "npm:0.10.1"
+    "@open-mercato/channel-gmail": "npm:0.10.1"
+    "@open-mercato/channel-imap": "npm:0.10.1"
+    "@open-mercato/channel-resend": "npm:0.10.1"
+    "@open-mercato/channel-ses": "npm:0.10.1"
+    "@open-mercato/checkout": "npm:0.10.1"
+    "@open-mercato/cli": "npm:0.10.1"
+    "@open-mercato/content": "npm:0.10.1"
+    "@open-mercato/core": "npm:0.10.1"
+    "@open-mercato/documents": "npm:0.10.1"
+    "@open-mercato/events": "npm:0.10.1"
+    "@open-mercato/gateway-stripe": "npm:0.10.1"
+    "@open-mercato/onboarding": "npm:0.10.1"
+    "@open-mercato/queue": "npm:0.10.1"
+    "@open-mercato/scheduler": "npm:0.10.1"
+    "@open-mercato/search": "npm:0.10.1"
+    "@open-mercato/shared": "npm:0.10.1"
+    "@open-mercato/sync-akeneo": "npm:0.10.1"
+    "@open-mercato/telemetry": "npm:0.10.1"
+    "@open-mercato/tillio": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
+    "@open-mercato/webhooks": "npm:0.10.1"
     "@playwright/test": "npm:^1.58.2"
     "@radix-ui/react-checkbox": "npm:^1.3.11"
     "@radix-ui/react-dialog": "npm:^1.1.23"
@@ -9910,7 +9976,7 @@ __metadata:
     bcryptjs: "npm:^3.0.3"
     better-sqlite3: "npm:^13.0.3"
     bullmq: "npm:^6.0.9"
-    bullmq-otel: "npm:^1.3.1"
+    bullmq-otel: "npm:^2.0.1"
     class-variance-authority: "npm:^0.7.1"
     clsx: "npm:^2.1.1"
     cross-env: "npm:^10.1.0"
@@ -9939,6 +10005,7 @@ __metadata:
     react-big-calendar: "npm:^1.20.0"
     react-dom: "npm:19.2.8"
     react-email: "npm:^6.9.3"
+    react-is: "npm:19.2.8"
     reflect-metadata: "npm:^0.2.2"
     remark-gfm: "npm:^4.0.1"
     resend: "npm:^6.24.0"
@@ -10000,8 +10067,8 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@vereino/ui@workspace:packages/ui"
   dependencies:
-    "@open-mercato/shared": "npm:0.9.0"
-    "@open-mercato/ui": "npm:0.9.0"
+    "@open-mercato/shared": "npm:0.10.1"
+    "@open-mercato/ui": "npm:0.10.1"
     "@storybook/addon-a11y": "npm:10.6.2"
     "@storybook/addon-docs": "npm:10.6.2"
     "@storybook/addon-themes": "npm:10.6.2"
@@ -10018,14 +10085,15 @@ __metadata:
     lucide-react: "npm:^1.34.0"
     react: "npm:19.2.8"
     react-dom: "npm:19.2.8"
+    react-is: "npm:19.2.8"
     storybook: "npm:10.6.2"
     tailwind-merge: "npm:^3.6.0"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.71.2"
     vite: "npm:8.3.4"
   peerDependencies:
-    "@open-mercato/shared": 0.9.0
-    "@open-mercato/ui": 0.9.0
+    "@open-mercato/shared": 0.10.1
+    "@open-mercato/ui": 0.10.1
     lucide-react: ^1.34.0
     react: 19.2.8
     react-dom: 19.2.8
@@ -10952,6 +11020,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"big.js@npm:^7.0.1":
+  version: 7.0.1
+  resolution: "big.js@npm:7.0.1"
+  checksum: 10c0/2ea2c2e263db37b2d5c6ad6246408eabf13ba07776cfd92bf464db201ef9aa9aa1712accbfe97f4aba5d358567ebefe768e8a50102cde11f35ef3497ddc2747c
+  languageName: node
+  linkType: hard
+
 "bignumber.js@npm:^9.0.0":
   version: 9.3.1
   resolution: "bignumber.js@npm:9.3.1"
@@ -11128,33 +11203,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"bullmq-otel@npm:^1.3.1":
-  version: 1.3.1
-  resolution: "bullmq-otel@npm:1.3.1"
+"bullmq-otel@npm:^2.0.1":
+  version: 2.0.1
+  resolution: "bullmq-otel@npm:2.0.1"
   dependencies:
-    "@opentelemetry/api": "npm:^1.9.0"
-    bullmq: "npm:^5.76.2"
+    "@opentelemetry/api": "npm:^1.9.1"
     tslib: "npm:^2.8.0"
-  checksum: 10c0/7e14555601f4248b1d70f8b48f5de02a9ccb6486302219c85df37a90960b23c5221b3a711f2e5ec4bc27c5ac6fbea73baebb71e23f0e49860d5c9b31d078b3c1
-  languageName: node
-  linkType: hard
-
-"bullmq@npm:^5.76.2":
-  version: 5.81.5
-  resolution: "bullmq@npm:5.81.5"
-  dependencies:
-    cron-parser: "npm:4.9.0"
-    ioredis: "npm:5.11.1"
-    msgpackr: "npm:2.0.5"
-    node-abort-controller: "npm:3.1.1"
-    semver: "npm:7.8.5"
-    tslib: "npm:2.8.1"
   peerDependencies:
-    redis: ">=5.0.0"
-  peerDependenciesMeta:
-    redis:
-      optional: true
-  checksum: 10c0/13b33748e8e0ef3c76156c1a235578eacec9a93a841680b1fba7372eb3e92830537fcc0be8d7b108676a6d09477986ed69624a03b5e6198b627a678aa4457288
+    bullmq: ">=6.0.0"
+  checksum: 10c0/d1fb665f538c12a8dc9008e58ae26ce856ff7ab3e8a61e62a13ae078da98e9d42be1c34ad6634d8cb2ad8f4f19e2afe90275039a0cba1bc6badc69723f2ec6c7
   languageName: node
   linkType: hard
 
@@ -11744,15 +11801,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"cron-parser@npm:4.9.0":
-  version: 4.9.0
-  resolution: "cron-parser@npm:4.9.0"
-  dependencies:
-    luxon: "npm:^3.2.1"
-  checksum: 10c0/348622bdcd1a15695b61fc33af8a60133e5913a85cf99f6344367579e7002896514ba3b0a9d6bb569b02667d6b06836722bf2295fcd101b3de378f71d37bed0b
-  languageName: node
-  linkType: hard
-
 "cron-parser@npm:5.10.2, cron-parser@npm:^5.6.2":
   version: 5.10.2
   resolution: "cron-parser@npm:5.10.2"
@@ -12203,7 +12251,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"deepmerge@npm:^4.2.2, deepmerge@npm:^4.3.1":
+"deepmerge@npm:^4.3.1":
   version: 4.3.1
   resolution: "deepmerge@npm:4.3.1"
   checksum: 10c0/e53481aaf1aa2c4082b5342be6b6d8ad9dfe387bc92ce197a66dea08bd4265904a087e75e464f14d1347cf2ac8afe1e4c16b266e0561cc5df29382d3c5f80044
@@ -15054,21 +15102,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"ioredis@npm:5.11.1":
-  version: 5.11.1
-  resolution: "ioredis@npm:5.11.1"
-  dependencies:
-    "@ioredis/commands": "npm:1.10.0"
-    cluster-key-slot: "npm:1.1.1"
-    debug: "npm:4.4.3"
-    denque: "npm:2.1.0"
-    redis-errors: "npm:1.2.0"
-    redis-parser: "npm:3.0.0"
-    standard-as-callback: "npm:2.1.0"
-  checksum: 10c0/a8b27043cf2c045dfc93f40a32ce24cf9f8b57799a37f4234c4b925c365ccf131629590f94a512f546fda2ba8ed034009c94c4933ecd44c50bc166636d929fd6
-  languageName: node
-  linkType: hard
-
 "ioredis@npm:^6.0.0":
   version: 6.0.0
   resolution: "ioredis@npm:6.0.0"
@@ -15383,7 +15416,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"is-plain-object@npm:^5.0.0, is-plain-object@npm:^5.1.0":
+"is-plain-object@npm:^5.1.0":
   version: 5.1.0
   resolution: "is-plain-object@npm:5.1.0"
   checksum: 10c0/21d6e5b182aaf56b18fdc3829bf39ed6c1ebdf9fd312549a56846942307e5699fb3c5841e60622c409951f670900980d7e402c22d4f7659a78e32e016442ba7a
@@ -16462,7 +16495,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"launder@npm:^1.7.1, launder@npm:^1.7.2":
+"launder@npm:^1.7.2":
   version: 1.7.2
   resolution: "launder@npm:1.7.2"
   dependencies:
@@ -17143,7 +17176,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"luxon@npm:^3.2.1, luxon@npm:^3.7.2":
+"luxon@npm:^3.7.2":
   version: 3.7.2
   resolution: "luxon@npm:3.7.2"
   checksum: 10c0/ed8f0f637826c08c343a29dd478b00628be93bba6f068417b1d8896b61cb61c6deacbe1df1e057dbd9298334044afa150f9aaabbeb3181418ac8520acfdc2ae2
@@ -18192,6 +18225,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"minisearch@npm:7.2.0":
+  version: 7.2.0
+  resolution: "minisearch@npm:7.2.0"
+  checksum: 10c0/64efaf30ead2acb19eb8be49c78352c527812dd2927a0981c9d666339d5d206d132b83038d2bfa756f5161cae5d98f15b07cc7e7b7be6b8278d35d2ecdc2628c
+  languageName: node
+  linkType: hard
+
 "minizlib@npm:^3.1.0":
   version: 3.1.0
   resolution: "minizlib@npm:3.1.0"
@@ -18312,18 +18352,6 @@ __metadata:
   bin:
     download-msgpackr-prebuilds: bin/download-prebuilds.js
   checksum: 10c0/582a9d17abbf3019e600e948736695056280ce401fd0235ee2474e95f9952208b9f6cce4d0e355b03b7d3c5630e6c3d11fe5fc27fdedb2311cce48de464338d8
-  languageName: node
-  linkType: hard
-
-"msgpackr@npm:2.0.5":
-  version: 2.0.5
-  resolution: "msgpackr@npm:2.0.5"
-  dependencies:
-    msgpackr-extract: "npm:^3.0.4"
-  dependenciesMeta:
-    msgpackr-extract:
-      optional: true
-  checksum: 10c0/7ac9820cecd44d24d2ef07994405a277509f004d4fb0a77d04e10e9071d0599e86ad53a9daf673e801518230774bdaca72b1fdcff2b516584ab58bd19362e6ad
   languageName: node
   linkType: hard
 
@@ -18670,10 +18698,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nodemailer@npm:10.1.1, nodemailer@npm:^10.0.10":
+"nodemailer@npm:10.1.1":
   version: 10.1.1
   resolution: "nodemailer@npm:10.1.1"
   checksum: 10c0/1906b51e3f40f97acc7b5990b721a54581541e543117d3ff22255a173c4b7cc4a77212195b56ae2f69ecc021885d30714c5f7a2f05396b66e2ae4a7b864a87ae
+  languageName: node
+  linkType: hard
+
+"nodemailer@npm:^10.1.4":
+  version: 10.6.1
+  resolution: "nodemailer@npm:10.6.1"
+  checksum: 10c0/a050116bf03e84cfd1d391ae010f8f5067c8caaab9e908bbf7e3b2de49e7d6471fa739c8a126c3ea57fa927c962c7533848d22df0641f3b7c64ec2c5f888ae92
   languageName: node
   linkType: hard
 
@@ -19585,7 +19620,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"postcss@npm:^8.3.11, postcss@npm:^8.5.16, postcss@npm:^8.5.27":
+"postcss@npm:^8.5.16, postcss@npm:^8.5.27":
   version: 8.5.30
   resolution: "postcss@npm:8.5.30"
   dependencies:
@@ -19954,7 +19989,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prosemirror-model@npm:^1.0.0, prosemirror-model@npm:^1.21.0, prosemirror-model@npm:^1.25.12, prosemirror-model@npm:^1.25.4, prosemirror-model@npm:^1.25.9":
+"prosemirror-model@npm:^1.0.0, prosemirror-model@npm:^1.21.0, prosemirror-model@npm:^1.25.12, prosemirror-model@npm:^1.25.4":
   version: 1.25.12
   resolution: "prosemirror-model@npm:1.25.12"
   dependencies:
@@ -19998,7 +20033,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prosemirror-transform@npm:^1.0.0, prosemirror-transform@npm:^1.1.0, prosemirror-transform@npm:^1.10.2, prosemirror-transform@npm:^1.10.5, prosemirror-transform@npm:^1.12.2, prosemirror-transform@npm:^1.6.0, prosemirror-transform@npm:^1.7.3":
+"prosemirror-transform@npm:^1.0.0, prosemirror-transform@npm:^1.1.0, prosemirror-transform@npm:^1.10.2, prosemirror-transform@npm:^1.10.5, prosemirror-transform@npm:^1.12.2, prosemirror-transform@npm:^1.7.3":
   version: 1.12.2
   resolution: "prosemirror-transform@npm:1.12.2"
   dependencies:
@@ -20007,7 +20042,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"prosemirror-view@npm:^1.0.0, prosemirror-view@npm:^1.1.0, prosemirror-view@npm:^1.27.0, prosemirror-view@npm:^1.31.0, prosemirror-view@npm:^1.41.4, prosemirror-view@npm:^1.41.9, prosemirror-view@npm:^1.42.6":
+"prosemirror-view@npm:^1.0.0, prosemirror-view@npm:^1.1.0, prosemirror-view@npm:^1.27.0, prosemirror-view@npm:^1.31.0, prosemirror-view@npm:^1.41.4, prosemirror-view@npm:^1.42.6":
   version: 1.42.6
   resolution: "prosemirror-view@npm:1.42.6"
   dependencies:
@@ -20189,10 +20224,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"re2js@npm:2.8.8":
-  version: 2.8.8
-  resolution: "re2js@npm:2.8.8"
-  checksum: 10c0/bf1192fb0f1ff065b1af4d69e77dc51d6f4ec439bf4fefb6c03bf2dbcb46f01fb91271b3fc401241d303522ba57f45150734b6531a71692df50893c63e8a41d5
+"re2js@npm:2.8.7":
+  version: 2.8.7
+  resolution: "re2js@npm:2.8.7"
+  checksum: 10c0/ff396923b547b46cd5ade9071e4ee16305e8d64ff46828ae2721d8f6a3c5dbcf564a94b86f5cd55e0ad97dbf37dce7bbb25bb4769bf0f19b76baff74f862647c
   languageName: node
   linkType: hard
 
@@ -20333,6 +20368,13 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/4278859ea6d1ed9288eade929255a21129a726e097121a9b6b290fc33e296d539e3cb290e3d07de37f3f5cc9b84722c1acf23d8657570729a6264230318b792a
+  languageName: node
+  linkType: hard
+
+"react-is@npm:19.2.8":
+  version: 19.2.8
+  resolution: "react-is@npm:19.2.8"
+  checksum: 10c0/ed5322c84efe035c8fc814b1614ff5ca7fb8c2872a7c045197daf99f9b1bd68f32a2c79ffcbcfcff2fc5d93924ff9f9447400898f5b1534e6302bb0736a257f0
   languageName: node
   linkType: hard
 
@@ -20613,7 +20655,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"redis-parser@npm:3.0.0, redis-parser@npm:^3.0.0":
+"redis-parser@npm:^3.0.0":
   version: 3.0.0
   resolution: "redis-parser@npm:3.0.0"
   dependencies:
@@ -21232,22 +21274,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sanitize-html@npm:2.17.5":
-  version: 2.17.5
-  resolution: "sanitize-html@npm:2.17.5"
-  dependencies:
-    deepmerge: "npm:^4.2.2"
-    escape-string-regexp: "npm:^4.0.0"
-    htmlparser2: "npm:^10.1.0"
-    is-plain-object: "npm:^5.0.0"
-    launder: "npm:^1.7.1"
-    parse-srcset: "npm:^1.0.2"
-    postcss: "npm:^8.3.11"
-  checksum: 10c0/b3e1c0f42a87dece0a02c1ee4aee663be69d33661b94f7dbc006f341a34577b3ddb9ace5ff415ddd62efbc4e944845265ef2fe2702ad0ede8d3575bf7a36b9df
-  languageName: node
-  linkType: hard
-
-"sanitize-html@npm:^2.17.5":
+"sanitize-html@npm:2.18.1, sanitize-html@npm:^2.17.5":
   version: 2.18.1
   resolution: "sanitize-html@npm:2.18.1"
   dependencies:
@@ -23061,6 +23088,13 @@ __metadata:
   version: 8.12.2
   resolution: "undici@npm:8.12.2"
   checksum: 10c0/25b0e0a69585b2b2e2678fdcd07942bbe15b14c6686d496712b0ee37ce15753af90ab7335ee42c8e65ec60b72bf3a21adc72bbabf86c1eaca74f27a3779532de
+  languageName: node
+  linkType: hard
+
+"undici@npm:^8.12.2":
+  version: 8.13.1
+  resolution: "undici@npm:8.13.1"
+  checksum: 10c0/ee202b4da4f4a663e723696c6d6f6f27f3424aaddd652ceccf1062beaddce171809445cbdbedc50dcd53f0119a1fe8ce20f7c5d320039e71915418dfc98b58a0
   languageName: node
   linkType: hard
 

@@ -1,5 +1,11 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
+import {
+  createContentSecurityPolicyRequestHeaders,
+  devServerLoopbackFrameAncestorOrigins,
+} from '@open-mercato/shared/lib/security/contentSecurityPolicy'
+import { stripeContentSecurityPolicy } from '@open-mercato/gateway-stripe/contentSecurityPolicy'
+import { resolveDocumentsCollaborationCspOrigins } from '@open-mercato/documents/contentSecurityPolicy'
 import { CROSS_SITE_REQUEST_ERROR_CODE, crossSiteApiVerdict } from '@vereino/core'
 
 // Do NOT import bootstrap here — proxy runs in the Edge runtime and
@@ -22,9 +28,18 @@ export function proxy(req: NextRequest) {
     }
     return NextResponse.next()
   }
-  const requestHeaders = new Headers(req.headers)
+  // Pages get the platform CSP with a per-request nonce (Open Mercato 0.10); the root layout reads it from `x-nonce`.
+  const { requestHeaders, contentSecurityPolicy } = createContentSecurityPolicyRequestHeaders(req.headers, {
+    env: process.env,
+    ...stripeContentSecurityPolicy,
+    connectOrigins: [...stripeContentSecurityPolicy.connectOrigins, ...resolveDocumentsCollaborationCspOrigins()],
+    frameAncestorOrigins:
+      process.env.OM_DEV_SERVER_LOOPBACK_FRAMING === '1' ? devServerLoopbackFrameAncestorOrigins : [],
+  })
   requestHeaders.set('x-next-url', req.nextUrl.pathname)
-  return NextResponse.next({ request: { headers: requestHeaders } })
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  response.headers.set('Content-Security-Policy', contentSecurityPolicy)
+  return response
 }
 
 // Match app routes while skipping Next internals and static assets, plus every `/api` route for the cross-site check.

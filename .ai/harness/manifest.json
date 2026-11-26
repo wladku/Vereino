@@ -1467,6 +1467,12 @@
       "userEditable": false
     },
     {
+      "path": ".ai/skills/om-auto-upgrade-0.9.0-to-0.10.0/SKILL.md",
+      "sha256": "3edef8766d146912eb1c799421519ea90d2717f8f6f0e65ba328779b7a87931c",
+      "source": "local-skill",
+      "userEditable": false
+    },
+    {
       "path": ".ai/skills/om-backend-ui-design/references/crud-surfaces.md",
       "sha256": "2744ce61649f6eb46774fdc23398b844f467effa5ec076d610f046258003e401",
       "source": "local-skill",

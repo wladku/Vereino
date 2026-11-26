@@ -432,8 +432,8 @@ test('TEST-M07 a club is exported, deleted after notice, restored, and round-tri
     expect(clubCli(['restore-club', '--in', archive]).output).toEqual({ status: 'refused', reason: 'tenant_exists' })
     const grants = await withClient(async (client) => {
       const result = await client.query<{ is_super_admin: boolean; features_json: string[] | null }>(
-        `select is_super_admin, features_json from role_acls where tenant_id = $1
-         union all select is_super_admin, features_json from user_acls where tenant_id = $1`,
+        `select is_super_admin, features_json from role_acls where tenant_id = $1 and deleted_at is null
+         union all select is_super_admin, features_json from user_acls where tenant_id = $1 and deleted_at is null`,
         [clubA.tenantId],
       )
       return result.rows

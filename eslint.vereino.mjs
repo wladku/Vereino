@@ -9,6 +9,12 @@ export const VEREINO_TYPESCRIPT_RULES = {
   '@typescript-eslint/consistent-type-imports': 'error',
   '@typescript-eslint/switch-exhaustiveness-check': 'error',
   '@typescript-eslint/no-unnecessary-condition': 'warn',
+  // `@open-mercato/core` 0.10.1 marks the whole `attachmentService.releaseScoped` method `@deprecated`, though only a
+  // call with `{ flush: false }` outside a transaction is deprecated (its own JSDoc). Every Vereino call either omits
+  // `flush` outside a transaction or passes `{ em, flush: false }` inside its write transaction and runs the returned
+  // cleanup after commit (#498). The allow entry names the method alone: the package-scoped form does not match its
+  // optional-chain references (`service?.releaseScoped`). Every other deprecated API still fails the lint.
+  '@typescript-eslint/no-deprecated': ['error', { allow: ['releaseScoped'] }],
 }
 
 // React rules the scaffold switches off for platform code; Vereino code keeps them on.

@@ -69,7 +69,14 @@ export async function syncAuthRoles(
   if (user.tenantId !== scope.tenantId || user.organizationId !== scope.organizationId) {
     throw new Error('[internal] the user does not belong to the tenant and organization of the person')
   }
-  const links = await findWithDecryption(em, UserRole, { user: userId }, { populate: ['role'] }, decryptionScope)
+  const links = await findWithDecryption(
+    em,
+    UserRole,
+    // Only live links and roles count (Open Mercato 0.10 grants access through live ACL rows only, #498).
+    { user: userId, deletedAt: null, role: { deletedAt: null } },
+    { populate: ['role'] },
+    decryptionScope,
+  )
   const current = links.map((link) => link.role.name)
   const roles = typeof desired === 'function' ? desired(current) : desired
   if (sameRoleSet(current, roles)) return 'unchanged'

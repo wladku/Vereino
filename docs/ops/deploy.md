@@ -268,8 +268,9 @@ The start and pre-deploy commands never initialise a database. On a new, empty d
 
 1. Deploy once; the pre-deploy command creates the schema through the migrations.
 2. Prepare the maintainers' accounts. `yarn initialize` is the platform's `mercato init`: without the variables below
-   it creates the super-administrator `superadmin` at the platform's demo domain `acme.com` with the password `secret`,
-   skipping the password policy for it, and it always creates two more accounts, `admin` and `employee` at the same
+   it creates the super-administrator `superadmin` at the platform's demo domain `acme.com`; since Open Mercato 0.10
+   (#498) a production `yarn initialize` refuses to run without a unique `OM_INIT_SUPERADMIN_PASSWORD` that meets the
+   password policy (it rejects placeholders such as `secret` and ignores the bypass flags), and it always creates two more accounts, `admin` and `employee` at the same
    demo domain (#747, ASVS V6.3.2;
    checked on a throwaway database 2026-11-25). On the app service set, as sealed variables:
    - `OM_INIT_SUPERADMIN_EMAIL`: the address of the maintainer who signs in as super-administrator (a mailbox the

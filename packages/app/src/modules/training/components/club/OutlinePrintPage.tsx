@@ -12,6 +12,7 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
+import { useContentSecurityPolicyNonce } from '@open-mercato/ui/theme/ContentSecurityPolicyProvider'
 import { MemberSkeleton } from '@vereino/ui'
 import { outlineImageUrl } from '../../lib/images'
 import { OUTLINE_PARTS, type OutlineLanguage } from '../../lib/outline'
@@ -141,6 +142,7 @@ function Sheet({ outline, clubName, labels }: { outline: Outline; clubName: stri
 
 export function OutlinePrintPage({ id, labels }: { id: string; labels: PrintLabels }) {
   const t = useT()
+  const nonce = useContentSecurityPolicyNonce()
   const query = useOutline(id)
   const outline = query.data?.status === 'ok' ? query.data.outline : null
   React.useEffect(() => {
@@ -180,7 +182,8 @@ export function OutlinePrintPage({ id, labels }: { id: string; labels: PrintLabe
 
   return (
     <main className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-4">
-      <style>{PRINT_CSS}</style>
+      {/* The production CSP admits an inline <style> element only with the page's nonce (Open Mercato 0.10, #498). */}
+      <style nonce={nonce}>{PRINT_CSS}</style>
       <div
         className="flex flex-wrap items-center justify-between gap-2 print:hidden"
         data-testid="training-print-toolbar"

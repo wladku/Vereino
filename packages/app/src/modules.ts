@@ -3,7 +3,13 @@
 // - from: '@open-mercato/core' | '@app' | custom alias/path in future
 import type { ModuleOverrides } from '@open-mercato/shared/modules/overrides'
 
-export type ModuleEntry = { id: string; from?: '@open-mercato/core' | '@app' | string; overrides?: ModuleOverrides }
+export type ModuleEntry = {
+  id: string
+  from?: '@open-mercato/core' | '@app' | string
+  locator?: string
+  packageName?: string
+  overrides?: ModuleOverrides
+}
 
 export const enabledModules: ModuleEntry[] = [
   { id: 'auth', from: '@open-mercato/core' },

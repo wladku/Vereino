@@ -124,6 +124,7 @@ export function buildAppEnv({
   stateDir,
   baseEnv = process.env,
   secret = randomBytes(32).toString('hex'),
+  superadminPassword = `qa-superadmin-${randomBytes(16).toString('hex')}`,
   oauthFakePort = null,
   library = {
     tenantId: randomUUID(),
@@ -147,6 +148,9 @@ export function buildAppEnv({
     CACHE_SQLITE_PATH: path.join(stateDir, 'cache.sqlite'),
     QUEUE_STRATEGY: 'local',
     OM_INIT_ADMIN_PASSWORD: SEEDED_ADMIN.password,
+    // Production `mercato init` (Open Mercato 0.10) refuses a missing or placeholder superadmin password (#498); the
+    // platform test helpers sign the superadmin in with this same variable.
+    OM_INIT_SUPERADMIN_PASSWORD: superadminPassword,
     OM_INIT_EMPLOYEE_PASSWORD: SEEDED_ADMIN.password,
     OM_INTEGRATION_TEST: 'true',
     OM_TEST_MODE: '1',

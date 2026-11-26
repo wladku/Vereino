@@ -92,6 +92,7 @@ test('buildAppEnv points the app at the database and pins test-only values', () 
 test('buildAppEnv defaults to the process environment and a random secret', () => {
   const env = buildAppEnv({ databaseUrl: 'postgres://db', port: 1, stateDir: '/tmp' })
   assert.equal(env.JWT_SECRET.length, 64)
+  assert.match(env.OM_INIT_SUPERADMIN_PASSWORD, /^qa-superadmin-[0-9a-f]{32}$/)
   assert.match(env.VEREINO_LIBRARY_TENANT_ID, /^[0-9a-f-]{36}$/)
   assert.equal(env.VEREINO_LIBRARY_RATER_SECRET.length, 64)
   assert.equal(env.PATH ?? env.Path, process.env.PATH ?? process.env.Path)
