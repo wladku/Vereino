@@ -13,6 +13,7 @@ club, as controller, adopts the records of processing, the DPIA and the data-sub
 | [`retention.md`](retention.md) | retention schedule (S9.5) | draft |
 | [`data-subject-requests.md`](data-subject-requests.md) | data-subject request procedure | draft |
 | [`asvs-checklist.md`](asvs-checklist.md) | OWASP ASVS 5.0 level 2 map (S8.1), per section; per requirement in [`asvs-requirements.md`](asvs-requirements.md) | refreshed 2026-11-25 (#742), awaiting the owner's approval |
+| [`key-inventory.md`](key-inventory.md) | key and secret inventory with rotation (ASVS V11.1, open item A-3; #740) | draft |
 | [`legal-verification.md`](legal-verification.md) | verified legal claims (S9.10) | awaiting the owner's acceptance |
 | privacy notices: the default notice at `/p/<club-slug>/privacy`, text in the `club_core.privacy.*` keys of `packages/app/src/modules/club_core/i18n/{pl,en}.json`, sections in `club_core/lib/privacy-notice.ts` | Polish, English, short version for children; shown while the club has set no privacy-policy address of its own (E19-S03, #469) | draft |
 
