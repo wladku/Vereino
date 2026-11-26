@@ -256,7 +256,15 @@ export type ClubCorePublicSite = {
    * The public slug of a place of a trusted club while the place has a public calendar (the way back to it from the
    * request confirmation of `facilities`, #289), else null. No slug lookup: the place is read inside that scope.
    */
-  publicPlaceSlug(scope: { tenantId: string; organizationId: string }, placeId: string): Promise<string | null>
+  /**
+   * The public slug of a place with a public calendar, or null; read with `em` when given (the caller's write
+   * transaction, #836), otherwise on a fork of the request's EntityManager.
+   */
+  publicPlaceSlug(
+    scope: { tenantId: string; organizationId: string },
+    placeId: string,
+    em?: EntityManager,
+  ): Promise<string | null>
   sectionLogo(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   material(clubSlug: string, sectionSlug: string, materialId: string): Promise<PublicSiteResult<PublicFileRef>>
   /**
@@ -863,9 +871,9 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return { status: 'ok', value: await frameOf(db, club) }
     },
 
-    async publicPlaceSlug(scope, placeId) {
+    async publicPlaceSlug(scope, placeId, txEm) {
       if (!UUID_PATTERN.test(placeId)) return null
-      const place = await em().findOne(
+      const place = await (txEm ? txEm.fork({ keepTransactionContext: true }) : em()).findOne(
         Place,
         {
           tenantId: scope.tenantId,

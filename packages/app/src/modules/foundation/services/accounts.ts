@@ -102,11 +102,19 @@ export async function accountEmail(
 
 type AccountScope = { tenantId: string; organizationId: string }
 
-/** The live platform user `userId` inside `scope`, or null (gone, or of another tenant or organization). */
-async function scopedUser(container: AwilixContainer, scope: AccountScope, userId: string): Promise<User | null> {
-  const em = container.resolve<EntityManager>('em').fork()
+/**
+ * The live platform user `userId` inside `scope`, or null (gone, or of another tenant or organization). Read with `em`
+ * when given — a command's write transaction, so no second pooled connection (#836) — on a fork with its own identity
+ * map; otherwise on a fork of the request's EntityManager.
+ */
+async function scopedUser(
+  container: AwilixContainer,
+  scope: AccountScope,
+  userId: string,
+  em?: EntityManager,
+): Promise<User | null> {
   return findOneWithDecryption(
-    em,
+    em ? em.fork({ keepTransactionContext: true }) : container.resolve<EntityManager>('em').fork(),
     User,
     { id: userId, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
     {},
@@ -140,9 +148,10 @@ export async function accountView(
   container: AwilixContainer,
   scope: AccountScope,
   userId: string | null | undefined,
+  em?: EntityManager,
 ): Promise<AccountView> {
   if (!userId) return NO_ACCOUNT
-  const user = await scopedUser(container, scope, userId)
+  const user = await scopedUser(container, scope, userId, em)
   if (!user) return NO_ACCOUNT
   const lastSignInAt = user.lastLoginAt ?? null
   return {
@@ -155,6 +164,37 @@ export async function accountView(
     invitedAt: isoOrNull(user.createdAt),
     lastSignInAt: isoOrNull(lastSignInAt),
   }
+}
+
+/**
+ * The users among `userIds` whose account is `active` (DD-L02, the same reading as `accountView`) and was created
+ * before `createdBefore` — the "Accounts" leading indicator of the pilot (E27-S03, #820). Users of another tenant or
+ * organization, deleted users and unknown ids are never returned. One query; no e-mail is read.
+ */
+export async function activeAccountUserIds(
+  container: AwilixContainer,
+  scope: AccountScope,
+  userIds: readonly string[],
+  createdBefore: Date,
+): Promise<Set<string>> {
+  const unique = [...new Set(userIds)]
+  if (unique.length === 0) return new Set()
+  const em = container.resolve<EntityManager>('em').fork()
+  const users = await em.find(
+    User,
+    { id: { $in: unique }, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
+    { fields: ['id', 'passwordHash', 'lastLoginAt', 'isConfirmed', 'createdAt'] },
+  )
+  const active = new Set<string>()
+  for (const user of users) {
+    const state = accountState({
+      hasPassword: Boolean(user.passwordHash),
+      lastSignInAt: user.lastLoginAt ?? null,
+      isConfirmed: user.isConfirmed,
+    })
+    if (state === 'active' && user.createdAt.getTime() < createdBefore.getTime()) active.add(user.id)
+  }
+  return active
 }
 
 export type ResendInvitationResult = {

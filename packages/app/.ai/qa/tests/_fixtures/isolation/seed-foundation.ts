@@ -3,7 +3,7 @@
 // its lock token feed the `/api/foundation/identity` probes; the provider subject is a marker of the club.
 import { expect, request as playwrightRequest } from '@playwright/test'
 import { uniqueSuffix } from '../club'
-import { startGoogleFake } from '../../foundation/identity/_fixtures/google-fake'
+import { startOAuthFake } from '../../foundation/identity/_fixtures/google-fake'
 import { cleanHttp, roundTrip, sessionJar } from '../../foundation/identity/_fixtures/identity'
 import type { ModuleSeed } from './seed'
 
@@ -12,7 +12,7 @@ type IdentityList = { items: Array<{ id: string; updatedAt: string }> }
 export const seedFoundation: ModuleSeed = async ({ seeded, api }) => {
   const { refs } = seeded
   const subject = `google-it628-${seeded.label.toLowerCase()}${uniqueSuffix()}`
-  const fake = await startGoogleFake()
+  const fake = await startOAuthFake()
   try {
     fake.next({ sub: subject, email: `${subject}@gmail.test` })
     const http = cleanHttp(playwrightRequest, String(process.env.BASE_URL))

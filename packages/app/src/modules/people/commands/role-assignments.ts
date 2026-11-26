@@ -79,7 +79,7 @@ async function assertRoleAge(
     { id: key.personId, ...scope, deletedAt: null },
     { fields: ['id', 'birthDate'] },
   )
-  const today = await clubToday(ctx.container, scope)
+  const today = await clubToday(ctx.container, scope, undefined, em)
   if (roleAgeProblem({ role: key.role, birthDate: person?.birthDate ?? null, validFrom, today })) {
     const error = await peopleErrors.create('role_requires_adult', { field: 'personId' })
     error.body = { ...error.body, fieldErrors: { personId: String(error.body.error ?? 'role_requires_adult') } }
@@ -321,7 +321,12 @@ const endRoleAssignmentCommand: CommandHandler<Record<string, unknown>, RoleAssi
       const before = roleAssignmentSnapshot(row)
       const validTo =
         authorized.parsed.validTo ??
-        (await clubToday(ctx.container, { tenantId: authorized.tenantId, organizationId: authorized.organizationId }))
+        (await clubToday(
+          ctx.container,
+          { tenantId: authorized.tenantId, organizationId: authorized.organizationId },
+          undefined,
+          em,
+        ))
       if (isInvertedPeriod(row.validFrom, validTo)) await foundationErrors.throw('validity_inverted')
       row.validTo = validTo
       row.updatedAt = new Date()

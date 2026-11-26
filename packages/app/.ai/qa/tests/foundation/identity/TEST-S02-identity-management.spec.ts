@@ -9,7 +9,7 @@ import {
   type Club,
 } from '../../_fixtures/club'
 import { setUserFeatures } from '../../_fixtures/members'
-import { startGoogleFake, type GoogleFake } from './_fixtures/google-fake'
+import { startOAuthFake, type OAuthFake } from './_fixtures/google-fake'
 import { cleanHttp, probeClearPassword, probeLink, roundTrip, sessionJar } from './_fixtures/identity'
 
 // TEST-S02 (social sign-in spec; REQ-S02, AC-S02; #566): the own list with `canUnlink`; an own unlink with the lock
@@ -24,9 +24,9 @@ type IdentityList = {
   canUnlink: boolean
 }
 
-let fake: GoogleFake
+let fake: OAuthFake
 test.beforeAll(async () => {
-  fake = await startGoogleFake()
+  fake = await startOAuthFake()
 })
 test.afterAll(async () => {
   await fake.stop()

@@ -1,6 +1,6 @@
 ---
 title: "A write transaction never waits for a second pooled connection"
-modules: ["foundation", "payments", "people"]
+modules: ["foundation", "payments", "people", "activities", "groups", "facilities", "communication", "training", "club_core"]
 areas: ["architecture", "debugging"]
 topics: ["db-pool", "transactions", "concurrency", "authorize-scoped", "scope-provider"]
 ---
@@ -37,6 +37,19 @@ its own identity map on the transaction's connection. A service that a command c
 the caller's `em` the same way instead of forking the root (`container.resolve('em').fork()`); a service that cannot
 (the payments gate, RBAC) is called before the transaction, as `payments.orders.*` now does with the session payer.
 ISSUE-728 (50 person creates and 50 updates against `DB_POOL_MAX=20`) hung past the 30 s request timeout before.
+
+**Since #836** every club clock and club settings reader (`clubClock` in `activities`, `payments`; `clubToday` in
+`people`, `groups`; `clubTimeZone`, `clubRequestSettings` in `facilities`; `clubFacts` in `communication`; `clubName`,
+`clubLibraryLevel` in `training`; `attendanceSettings`, `coachMayCancel`, `onlineFeeSettings`) takes an optional last
+`em` and a command passes its transaction's; the same holds for `accountView`, `paidTotals`,
+`storedPaymentsSettings`, `campaignNames`, `chargeService.statusOf`, `publicPlaceSlug`, the contact resolver
+(`ctx.em`) and a departure contributor's `afterCommit` (`DepartureCommitContext.em`, the replay transaction). RBAC
+inside a transaction uses `rbacService.userHasAllFeaturesWithEntityManager(em, …)`, which the platform documents as
+binding every query to the given transaction. `em.fork()` alone leaves the transaction (MikroORM starts the fork with no
+transaction context): fork with `{ keepTransactionContext: true }`; the unforked request `em` follows the active
+transaction. A provider that must not abort the caller's transaction reads in a savepoint (`em.transactional`) on the
+same connection. ISSUE-836 sends 50 concurrent activity creates, manual charges and medical dates against
+`DB_POOL_MAX=20`.
 
 **Applies to**: `packages/app/src/modules/*/commands/**`, `foundation/services/authorize-scoped.ts`
 (`prefetchSessionScope`), `foundation/services/scope-contract.ts`, `people/services/scope-service.ts`,

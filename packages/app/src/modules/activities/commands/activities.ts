@@ -312,7 +312,7 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
           ...(parsed.opponentExternalTeamId ? [parsed.opponentExternalTeamId] : []),
         ],
       })
-      const clock = await clubClock(ctx.container, scope)
+      const clock = await clubClock(ctx.container, scope, undefined, em)
       const { rule, text } = await storedRule(parsed.recurrenceRule, parsed.exdates, parsed.startsOn)
       await assertSeriesShape(
         {
@@ -370,7 +370,12 @@ const createActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
   async undo({ ctx, logEntry }) {
     const { row } = await authorizeActivityReplay(ctx, logEntry.resourceId)
     const em = ctx.transactionalEm as EntityManager
-    const clock = await clubClock(ctx.container, { tenantId: row.tenantId, organizationId: row.organizationId })
+    const clock = await clubClock(
+      ctx.container,
+      { tenantId: row.tenantId, organizationId: row.organizationId },
+      undefined,
+      em,
+    )
     const removedIds = await removeAllSessions(em, row, clock)
     row.deletedAt = new Date()
     row.updatedAt = new Date()
@@ -418,7 +423,7 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
           ...(patch.opponentExternalTeamId ? [patch.opponentExternalTeamId] : []),
         ],
       })
-      const clock = await clubClock(ctx.container, scope)
+      const clock = await clubClock(ctx.container, scope, undefined, em)
       const startsOn = patch.startsOn ?? row.startsOn
       const { rule, text } = await storedRule(ruleInput, patch.exdates, startsOn)
       const endsOn = patch.endsOn !== undefined ? patch.endsOn : (row.endsOn ?? null)
@@ -492,7 +497,12 @@ const updateActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
     if (!before?.id) throw new Error('[internal] missing activity snapshot for undo')
     const { row, scope, actingRole } = await authorizeActivityReplay(ctx, before.id)
     const em = ctx.transactionalEm as EntityManager
-    const clock = await clubClock(ctx.container, { tenantId: row.tenantId, organizationId: row.organizationId })
+    const clock = await clubClock(
+      ctx.container,
+      { tenantId: row.tenantId, organizationId: row.organizationId },
+      undefined,
+      em,
+    )
     const rules = { before: seriesRuleOf(activitySnapshot(row)), after: seriesRuleOf(before) }
     restoreActivity(row, before)
     row.updatedAt = new Date()
@@ -517,7 +527,12 @@ const deleteActivityCommand: CommandHandler<Record<string, unknown>, ActivityCom
       const authorized = await authorizeScoped(existingSpec(activityDeleteSchema, loadActivity(ctx)), rawInput, ctx, em)
       const row = authorized.entity as Activity
       await assertNotClubEventPart(row)
-      const clock = await clubClock(ctx.container, { tenantId: row.tenantId, organizationId: row.organizationId })
+      const clock = await clubClock(
+        ctx.container,
+        { tenantId: row.tenantId, organizationId: row.organizationId },
+        undefined,
+        em,
+      )
       const removedIds = await removeAllSessions(em, row, clock)
       const before = { ...activitySnapshot(row), removedSessionIds: removedIds }
       row.deletedAt = new Date()

@@ -145,7 +145,7 @@ const createInternalBookingCommand: CommandHandler<Record<string, unknown>, Inte
       const startsAt = new Date(parsed.startsAt)
       const endsAt = new Date(parsed.endsAt)
       if (bookingPeriodProblem(startsAt, endsAt)) await throwFieldError('booking_period_invalid', 'endsAt')
-      const timeZone = await clubTimeZone(ctx.container, scope)
+      const timeZone = await clubTimeZone(ctx.container, scope, em)
       const startProblem = bookingStartProblem(startsAt, now, timeZone, hasKind(authorized.scope, 'club_admin'))
       if (startProblem) await throwFieldError(startProblem, 'startsAt')
 

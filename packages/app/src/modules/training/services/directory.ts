@@ -91,12 +91,19 @@ export function findPersons(
   return container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY).findPersons(scope, ids, em)
 }
 
-/** The club's display name for the print header: the short name from the club settings, else the organization's. */
-export async function clubName(container: AwilixContainer, scope: TrainingScope): Promise<string | null> {
+/**
+ * The club's display name for the print header: the short name from the club settings, else the organization's. The
+ * club settings reads here take the caller's `em` inside a write transaction, so they read on its connection (#836).
+ */
+export async function clubName(
+  container: AwilixContainer,
+  scope: TrainingScope,
+  em?: EntityManager,
+): Promise<string | null> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
   const settings = container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS)
-  const { values } = await settings.get(scope)
-  return values.shortName ?? (await settings.organizationName(scope))
+  const { values } = await settings.get(scope, em)
+  return values.shortName ?? (await settings.organizationName(scope, em))
 }
 
 /**
@@ -129,8 +136,12 @@ export function findPublicNames(
 }
 
 /** The club's widest outline library level (`ClubSettings.outlineLibraryMaxVisibility`, B-O1, BR-O4). */
-export async function clubLibraryLevel(container: AwilixContainer, scope: TrainingScope): Promise<string> {
+export async function clubLibraryLevel(
+  container: AwilixContainer,
+  scope: TrainingScope,
+  em?: EntityManager,
+): Promise<string> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  const { values } = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  const { values } = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)
   return values.outlineLibraryMaxVisibility
 }
