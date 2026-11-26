@@ -25,6 +25,8 @@ import {
   presentTables,
   redactExportRow,
   safeAttachmentLocation,
+  sanitizeRestoreRow,
+  isTenantRestrictedFeature,
   slugReleaseAt,
   uncoveredTables,
   type ClubArchiveManifest,
@@ -426,6 +428,147 @@ describe('archiveScopeViolations', () => {
     expect(check([{ module: 'auth', table: 'user_consents', key: 'user' }], {})).toEqual([
       'user_consents: not a table of a club export',
     ])
+  })
+})
+
+describe('archiveScopeViolations — references of the privilege-bearing tables (#806)', () => {
+  const ROLE = '2a3b4c5d-6e7f-4801-9a2b-3c4d5e6f7a8b'
+  const FOREIGN = '3b4c5d6e-7f80-4912-8b3c-4d5e6f7a8b9c'
+  const tables = clubTables([])
+  const manifestOf = (names: string[]): ClubArchiveManifest => ({
+    format: CLUB_ARCHIVE_FORMAT,
+    version: CLUB_ARCHIVE_VERSION,
+    exportedAt: '2026-11-26T10:00:00.000Z',
+    club: { slug: 'orlik', tenantId: TENANT, organizationId: ORG },
+    tables: names.map((table) => {
+      const entry = PLATFORM_CLUB_TABLES.find((candidate) => candidate.table === table)
+      if (!entry) throw new Error(`unknown table ${table}`)
+      return { module: entry.module, table, key: entry.key, rows: 1, decrypted: [] }
+    }),
+    files: [],
+    checksums: {},
+  })
+  const own = {
+    organizations: [{ id: ORG, tenant_id: TENANT }],
+    roles: [{ id: ROLE, tenant_id: TENANT }],
+    users: [{ id: USER, tenant_id: TENANT, organization_id: ORG }],
+  }
+  const check = (rows: Record<string, Record<string, unknown>[]>) =>
+    archiveScopeViolations(manifestOf(Object.keys(rows)), (table) => rows[table.table] ?? [], tables)
+
+  it('accepts references to the archive own users, roles and organizations, and nulls', () => {
+    expect(
+      check({
+        ...own,
+        user_roles: [{ id: FILE, user_id: USER, role_id: ROLE }],
+        role_acls: [{ id: FILE, tenant_id: TENANT, role_id: ROLE }],
+        role_sidebar_preferences: [{ id: FILE, tenant_id: TENANT, role_id: ROLE }],
+        user_acls: [{ id: FILE, tenant_id: TENANT, user_id: USER }],
+        scheduled_jobs: [
+          { id: FILE, tenant_id: TENANT, organization_id: ORG, scope_type: 'organization', created_by_user_id: null },
+          { id: ROLE, tenant_id: TENANT, organization_id: null, scope_type: 'tenant', updated_by_user_id: USER },
+        ],
+        module_configs: [{ id: FILE, tenant_id: TENANT, organization_id: null }],
+        encryption_maps: [{ id: FILE, tenant_id: TENANT, organization_id: ORG }],
+        attachment_partitions: [{ id: FILE, tenant_id: TENANT }],
+      }),
+    ).toEqual([])
+  })
+
+  it('names a row whose user, role or organization is not the archive own, and a system schedule', () => {
+    expect(
+      check({
+        ...own,
+        users: [{ id: USER, tenant_id: TENANT, organization_id: FOREIGN }],
+        user_roles: [{ id: FILE, user_id: USER, role_id: FOREIGN }],
+        role_acls: [{ id: FILE, tenant_id: TENANT, role_id: FOREIGN }],
+        role_sidebar_preferences: [{ id: FILE, tenant_id: TENANT, role_id: FOREIGN }],
+        user_acls: [{ id: FILE, tenant_id: TENANT, user_id: FOREIGN }],
+        module_configs: [{ id: FILE, tenant_id: TENANT, organization_id: FOREIGN }],
+        encryption_maps: [{ id: FILE, tenant_id: TENANT, organization_id: FOREIGN }],
+        attachment_partitions: [{ id: FILE, tenant_id: TENANT, organization_id: FOREIGN }],
+      }),
+    ).toEqual([
+      'attachment_partitions: a reference outside the club',
+      'encryption_maps: a reference outside the club',
+      'module_configs: a reference outside the club',
+      'role_acls: a reference outside the club',
+      'role_sidebar_preferences: a reference outside the club',
+      'user_acls: a reference outside the club',
+      'user_roles: a reference outside the club',
+      'users: a reference outside the club',
+    ])
+    const schedule = { id: FILE, tenant_id: TENANT, organization_id: ORG, scope_type: 'organization' }
+    for (const forged of [
+      { ...schedule, scope_type: 'system' },
+      { ...schedule, scope_type: undefined },
+      { ...schedule, organization_id: FOREIGN },
+      { ...schedule, created_by_user_id: FOREIGN },
+      { ...schedule, updated_by_user_id: FOREIGN },
+    ]) {
+      expect(check({ ...own, scheduled_jobs: [forged] })).toEqual(['scheduled_jobs: a reference outside the club'])
+    }
+  })
+
+  it('checks the references against an empty set when the archive has no users, roles or organizations', () => {
+    expect(check({ user_acls: [{ id: FILE, tenant_id: TENANT, user_id: USER }] })).toEqual([
+      'user_acls: a reference outside the club',
+    ])
+  })
+})
+
+describe('isTenantRestrictedFeature', () => {
+  it('flags the global wildcard and tenant management only', () => {
+    expect(
+      ['*', 'directory.*', 'directory.tenants.*', 'directory.tenants.manage'].map(isTenantRestrictedFeature),
+    ).toEqual([true, true, true, true])
+    expect(['auth.*', 'directory.organizations.manage', 'people.persons.view'].map(isTenantRestrictedFeature)).toEqual([
+      false,
+      false,
+      false,
+    ])
+  })
+})
+
+describe('sanitizeRestoreRow (#806)', () => {
+  const OTHER_ORG = '4c5d6e7f-8091-4a23-9c4d-5e6f7a8b9c0d'
+  const orgs = new Set<unknown>([ORG])
+
+  it('drops the super-admin flag, tenant-restricted features and foreign organizations of an ACL row', () => {
+    for (const table of ['role_acls', 'user_acls']) {
+      const row = {
+        id: FILE,
+        tenant_id: TENANT,
+        is_super_admin: true,
+        features_json: ['*', 'directory.tenants.manage', 'auth.*', 7, 'people.persons.view'],
+        organizations_json: [ORG, OTHER_ORG, '__all__', null],
+      }
+      expect(sanitizeRestoreRow(table, row, orgs)).toEqual({
+        id: FILE,
+        tenant_id: TENANT,
+        is_super_admin: false,
+        features_json: ['auth.*', 'people.persons.view'],
+        organizations_json: [ORG, '__all__'],
+      })
+      // The archive row itself is not changed.
+      expect(row.is_super_admin).toBe(true)
+    }
+  })
+
+  it('turns a malformed feature or organization list into null and adds no column the row lacks', () => {
+    expect(
+      sanitizeRestoreRow('role_acls', { id: FILE, features_json: '["*"]', organizations_json: { a: ORG } }, orgs),
+    ).toEqual({ id: FILE, features_json: null, organizations_json: null })
+    expect(sanitizeRestoreRow('user_acls', { id: FILE }, orgs)).toEqual({ id: FILE })
+  })
+
+  it('keeps the redacted export columns null and leaves other tables as they are', () => {
+    expect(sanitizeRestoreRow('users', { id: USER, password_hash: '$2b$forged' }, orgs)).toEqual({
+      id: USER,
+      password_hash: null,
+    })
+    const person = { id: FILE, is_super_admin: true }
+    expect(sanitizeRestoreRow('people_persons', person, orgs)).toBe(person)
   })
 })
 
