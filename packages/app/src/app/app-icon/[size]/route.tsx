@@ -2,16 +2,26 @@
 // size for the request's address: the club's logo (PNG or JPEG) on white, the club's initial on its colour when the
 // logo cannot be drawn (WebP), or Vereino's mark when the address names no publishing club or the club has no logo
 // (`club_core/lib/web-app.ts`). Sessionless; it names no person. Drawn with Next.js's own `ImageResponse` (no image
-// library is added); a drawn icon is kept in memory per address, size and version, so repeated fetches do not redraw.
+// library is added). A drawn icon is kept in memory per club (never per `Host` spelling), size and version, so repeated
+// fetches neither redraw nor read the logo; a logo that cannot be read or drawn gives the initial on the club colour.
 import { ImageResponse } from 'next/og'
-import { headers } from 'next/headers'
+import { createLogger } from '@open-mercato/shared/lib/logger'
 import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { PRODUCT_NAME } from '@/lib/metadata'
-import { VEREINO_THEME_COLOR, WEB_APP_BACKGROUND, webAppIconSize, type WebAppIdentity } from '@/modules/club_core/lib/web-app'
-import { requestWebApp } from '@/modules/club_core/services/web-app'
+import {
+  VEREINO_THEME_COLOR,
+  WEB_APP_BACKGROUND,
+  isDrawableLogo,
+  webAppIconCacheControl,
+  webAppIconSize,
+  type WebAppIdentity,
+} from '@/modules/club_core/lib/web-app'
+import { requestWebApp, type WebAppLogo } from '@/modules/club_core/services/web-app'
 import { accentForeground } from '@vereino/core'
 
 export const dynamic = 'force-dynamic'
+
+const logger = createLogger('club_core.web-app-icon')
 
 const CACHE_LIMIT = 200
 const drawn = new Map<string, Uint8Array<ArrayBuffer>>()
@@ -34,8 +44,8 @@ function Mark({ size }: { size: number }) {
   )
 }
 
-function iconContent(identity: WebAppIdentity, size: number, logo: { bytes: Uint8Array; mimeType: string } | null) {
-  if (identity.icon === 'logo' && logo) {
+function iconContent(identity: WebAppIdentity, size: number, logo: WebAppLogo | null) {
+  if (identity.icon === 'logo' && logo && isDrawableLogo(logo.mimeType)) {
     const src = `data:${logo.mimeType};base64,${Buffer.from(logo.bytes).toString('base64')}`
     const inner = Math.round(size * 0.8)
     return (
@@ -44,7 +54,7 @@ function iconContent(identity: WebAppIdentity, size: number, logo: { bytes: Uint
       </div>
     )
   }
-  if (identity.icon === 'initial') {
+  if (identity.icon !== 'mark') {
     const background = identity.accentColor ?? VEREINO_THEME_COLOR
     return (
       <div
@@ -67,24 +77,34 @@ function iconContent(identity: WebAppIdentity, size: number, logo: { bytes: Uint
   return <Mark size={size} />
 }
 
-export async function GET(_request: Request, context: { params: Promise<{ size: string }> }): Promise<Response> {
+async function draw(identity: WebAppIdentity, size: number, logo: WebAppLogo | null): Promise<Uint8Array<ArrayBuffer>> {
+  const image = new ImageResponse(iconContent(identity, size, logo), { width: size, height: size })
+  return new Uint8Array(await image.arrayBuffer())
+}
+
+export async function GET(request: Request, context: { params: Promise<{ size: string }> }): Promise<Response> {
   const size = webAppIconSize((await context.params).size)
   if (size === null) return new Response('Not found', { status: 404 })
   const { t } = await resolveTranslations()
-  const { identity, logo } = await requestWebApp(t('app.metadata.title', PRODUCT_NAME), true)
-  const key = `${(await headers()).get('host') ?? ''}|${String(size)}|${identity.version}`
+  const { identity, cacheKey, readLogo } = await requestWebApp(t('app.metadata.title', PRODUCT_NAME))
+  const key = `${cacheKey}|${String(size)}|${identity.version}`
   let png = drawn.get(key)
   if (!png) {
-    const image = new ImageResponse(iconContent(identity, size, logo), { width: size, height: size })
-    png = new Uint8Array(await image.arrayBuffer())
+    const logo = identity.icon === 'logo' ? await readLogo() : null
+    try {
+      png = await draw(identity, size, logo)
+    } catch (error: unknown) {
+      // A logo the renderer cannot draw (a damaged file): the initial on the club colour instead, kept like any icon.
+      logger.warn('The club logo could not be drawn; the icon shows the initial', { err: error })
+      png = await draw(identity, size, null)
+    }
     remember(key, png)
   }
   return new Response(png, {
     headers: {
       'Content-Type': 'image/png',
       'Content-Length': String(png.length),
-      // The manifest's URLs carry the version, so a changed logo or colour is a new URL; the touch icon has none.
-      'Cache-Control': 'public, max-age=3600',
+      'Cache-Control': webAppIconCacheControl(new URL(request.url).searchParams.get('v'), identity.version),
       'X-Content-Type-Options': 'nosniff',
     },
   })

@@ -12,6 +12,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
   const { locale, t } = await resolveTranslations()
-  const { identity } = await requestWebApp(t('app.metadata.title', PRODUCT_NAME), false)
+  const { identity } = await requestWebApp(t('app.metadata.title', PRODUCT_NAME))
   return webAppManifest(identity, locale)
 }

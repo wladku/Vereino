@@ -22,8 +22,8 @@ export const WEB_APP_BACKGROUND = '#ffffff'
 /** The device-local flag of the iPhone hint: set when the hint first shows, so it shows once per device. */
 export const IOS_INSTALL_HINT_KEY = 'vereino.installHint.ios'
 
-/** What an icon shows: the club's logo, the club's initial on its colour, or Vereino's mark. */
-export type WebAppIconKind = 'logo' | 'initial' | 'mark'
+/** What an icon shows: the club's logo (the initial on the club colour when it cannot be drawn), or Vereino's mark. */
+export type WebAppIconKind = 'logo' | 'mark'
 
 /** The public identity of the address an app is installed from. */
 export type WebAppIdentity = {
@@ -40,38 +40,49 @@ export type WebAppIdentity = {
 /** The logo types an icon can draw (the icon renderer cannot decode WebP; such a logo falls back to the initial). */
 const DRAWABLE_LOGO_TYPES: readonly string[] = ['image/png', 'image/jpeg']
 
+/** Whether the icon renderer can draw a logo of this type. */
+export function isDrawableLogo(mimeType: string | null | undefined): boolean {
+  return DRAWABLE_LOGO_TYPES.includes((mimeType ?? '').toLowerCase())
+}
+
 /** Vereino's own identity: an address that names no publishing club. */
 export function vereinoIdentity(productName: string): WebAppIdentity {
   return { name: productName, accentColor: null, icon: 'mark', initial: nameInitial(productName), version: 'mark' }
 }
 
 /**
- * A club's identity from its public name, colour and logo. `logo` is null without a logo; otherwise its attachment id
- * and type: a PNG or JPEG is drawn, any other type shows the initial on the club colour. The version uses the first 8
- * characters of the logo id (as the public logo URL does) and the colour, never anything else.
+ * A club's identity from its public name, colour and logo id (null without a logo). The icon draws the logo; the icon
+ * route falls back to the initial on the club colour when the file cannot be read or drawn. The version uses the first
+ * 8 characters of the logo id (as the public logo URL does) and the colour, never anything else.
  */
 export function clubIdentity(input: {
   name: string
   accentColor: string | null
-  logo: { attachmentId: string; mimeType: string | null } | null
+  logoId: string | null
 }): WebAppIdentity {
   const colour = input.accentColor ? input.accentColor.replace('#', '') : 'none'
-  if (!input.logo)
-    return {
-      name: input.name,
-      accentColor: input.accentColor,
-      icon: 'mark',
-      initial: nameInitial(input.name),
-      version: `mark-${colour}`,
-    }
-  const drawable = DRAWABLE_LOGO_TYPES.includes((input.logo.mimeType ?? '').toLowerCase())
   return {
     name: input.name,
     accentColor: input.accentColor,
-    icon: drawable ? 'logo' : 'initial',
+    icon: input.logoId ? 'logo' : 'mark',
     initial: nameInitial(input.name),
-    version: `${input.logo.attachmentId.slice(0, 8)}-${colour}`,
+    version: input.logoId ? `${input.logoId.slice(0, 8)}-${colour}` : `mark-${colour}`,
   }
+}
+
+/**
+ * The logo version of a public logo URL (`…/logo?v=<first 8 characters of the attachment id>`), or null without one.
+ * The manifest needs only this version, so it never reads the logo file.
+ */
+export function publicLogoVersion(url: string | null): string | null {
+  if (!url) return null
+  const version = new URL(url, 'http://vereino.invalid').searchParams.get('v')
+  return version ? version : null
+}
+
+/** How long a browser or CDN may keep an icon: a day for a versioned URL of the current version, else 5 minutes. */
+export function webAppIconCacheControl(requestedVersion: string | null, version: string): string {
+  return requestedVersion === version ? 'public, max-age=86400' : 'public, max-age=300'
 }
 
 /** The icon size a route parameter names, or null for any other value. */

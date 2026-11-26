@@ -6,10 +6,13 @@ import {
   WEB_APP_START_URL,
   clubIdentity,
   escapeHtml,
+  isDrawableLogo,
   isMemberPath,
+  publicLogoVersion,
   offlinePageHtml,
   shouldShowIosInstallHint,
   vereinoIdentity,
+  webAppIconCacheControl,
   webAppIconPath,
   webAppIconSize,
   webAppManifest,
@@ -36,28 +39,32 @@ describe('identities', () => {
   })
 
   it('a club without a logo shows the mark; the version follows the colour', () => {
-    expect(clubIdentity({ name: 'KS Orzeł', accentColor: '#1b8f3a', logo: null })).toEqual({
+    expect(clubIdentity({ name: 'KS Orzeł', accentColor: '#1b8f3a', logoId: null })).toEqual({
       name: 'KS Orzeł',
       accentColor: '#1b8f3a',
       icon: 'mark',
       initial: 'K',
       version: 'mark-1b8f3a',
     })
-    expect(clubIdentity({ name: 'KS Orzeł', accentColor: null, logo: null }).version).toBe('mark-none')
+    expect(clubIdentity({ name: 'KS Orzeł', accentColor: null, logoId: null }).version).toBe('mark-none')
   })
 
-  it('a PNG or JPEG logo is drawn, any other type shows the initial', () => {
-    const logo = (mimeType: string | null) => ({ attachmentId: '0123456789abcdef', mimeType })
-    expect(clubIdentity({ name: 'Orzeł', accentColor: null, logo: logo('image/png') })).toMatchObject({
+  it('a club with a logo draws it; the version follows the logo and the colour', () => {
+    expect(clubIdentity({ name: 'Orzeł', accentColor: null, logoId: '0123456789abcdef' })).toMatchObject({
       icon: 'logo',
       version: '01234567-none',
     })
-    expect(clubIdentity({ name: 'Orzeł', accentColor: '#ffdd00', logo: logo('IMAGE/JPEG') })).toMatchObject({
-      icon: 'logo',
-      version: '01234567-ffdd00',
-    })
-    expect(clubIdentity({ name: 'Orzeł', accentColor: null, logo: logo('image/webp') }).icon).toBe('initial')
-    expect(clubIdentity({ name: 'Orzeł', accentColor: null, logo: logo(null) }).icon).toBe('initial')
+    expect(clubIdentity({ name: 'Orzeł', accentColor: '#ffdd00', logoId: '0123456789abcdef' }).version).toBe(
+      '01234567-ffdd00',
+    )
+  })
+
+  it('draws PNG and JPEG logos only', () => {
+    expect(isDrawableLogo('image/png')).toBe(true)
+    expect(isDrawableLogo('IMAGE/JPEG')).toBe(true)
+    expect(isDrawableLogo('image/webp')).toBe(false)
+    expect(isDrawableLogo(null)).toBe(false)
+    expect(isDrawableLogo(undefined)).toBe(false)
   })
 })
 
@@ -76,6 +83,12 @@ describe('icons', () => {
     expect(webAppIconPath(192, 'mark-1b8f3a')).toBe('/app-icon/192?v=mark-1b8f3a')
     expect(webAppIconPath(512, 'a b')).toBe('/app-icon/512?v=a%20b')
   })
+
+  it('a current versioned URL is kept a day, anything else 5 minutes', () => {
+    expect(webAppIconCacheControl('mark-1b8f3a', 'mark-1b8f3a')).toBe('public, max-age=86400')
+    expect(webAppIconCacheControl('mark', 'mark-1b8f3a')).toBe('public, max-age=300')
+    expect(webAppIconCacheControl(null, 'mark')).toBe('public, max-age=300')
+  })
 })
 
 describe('webAppManifest', () => {
@@ -83,7 +96,7 @@ describe('webAppManifest', () => {
     const identity = clubIdentity({
       name: 'KS Orzeł',
       accentColor: '#1b8f3a',
-      logo: { attachmentId: 'abcdef0123456789', mimeType: 'image/png' },
+      logoId: 'abcdef0123456789',
     })
     expect(webAppManifest(identity, 'pl')).toEqual({
       id: '/club',
@@ -104,6 +117,15 @@ describe('webAppManifest', () => {
 
   it("uses Vereino's colour without a club colour", () => {
     expect(webAppManifest(vereinoIdentity('Vereino'), 'en').theme_color).toBe(VEREINO_THEME_COLOR)
+  })
+})
+
+describe('publicLogoVersion', () => {
+  it('reads the v parameter of a public logo URL', () => {
+    expect(publicLogoVersion('/api/club_core/public/ks-orzel/logo?v=0123abcd')).toBe('0123abcd')
+    expect(publicLogoVersion('/api/club_core/public/ks-orzel/logo')).toBeNull()
+    expect(publicLogoVersion('/api/club_core/public/ks-orzel/logo?v=')).toBeNull()
+    expect(publicLogoVersion(null)).toBeNull()
   })
 })
 

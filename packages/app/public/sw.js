@@ -2,7 +2,8 @@
 // error. It keeps exactly one response, the offline page (`/offline`), which names no person and no club. Every
 // navigation goes to the network first and is never stored; API calls, assets and every other request are not handled
 // here at all, so the browser loads them as without a service worker. No push: there is no `push` handler (N02).
-const OFFLINE_CACHE = 'vereino-offline-v1'
+const OFFLINE_CACHE_PREFIX = 'vereino-offline-'
+const OFFLINE_CACHE = `${OFFLINE_CACHE_PREFIX}v1`
 const OFFLINE_URL = '/offline'
 
 self.addEventListener('install', (event) => {
@@ -18,7 +19,13 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== OFFLINE_CACHE).map((key) => caches.delete(key))))
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith(OFFLINE_CACHE_PREFIX) && key !== OFFLINE_CACHE)
+            .map((key) => caches.delete(key)),
+        ),
+      )
       .then(() => self.clients.claim()),
   )
 })

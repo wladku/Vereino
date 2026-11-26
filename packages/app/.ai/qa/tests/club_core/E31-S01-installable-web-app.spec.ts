@@ -171,11 +171,25 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
       counted.__permissionAsks += 1
       return ask(...args)
     }
-    const subscribe = PushManager.prototype.subscribe
+    const subscribe = Object.getOwnPropertyDescriptor(PushManager.prototype, 'subscribe')?.value as (
+      this: PushManager,
+      ...args: Parameters<PushManager['subscribe']>
+    ) => ReturnType<PushManager['subscribe']>
     PushManager.prototype.subscribe = function (this: PushManager, ...args: Parameters<PushManager['subscribe']>) {
       counted.__permissionAsks += 1
       return subscribe.apply(this, args)
     }
+    // A browser that offers installation fires the offer early, before the app hydrates (kept by the head script).
+    document.addEventListener('DOMContentLoaded', () => {
+      if (!location.pathname.startsWith('/club')) return
+      const offer = new Event('beforeinstallprompt', { cancelable: true }) as Event & Record<string, unknown>
+      offer.prompt = () => {
+        ;(window as unknown as { __prompted?: number }).__prompted = 1
+        return Promise.resolve()
+      }
+      offer.userChoice = Promise.resolve({ outcome: 'accepted' })
+      window.dispatchEvent(offer)
+    })
   })
   await signInAtClub(page)
   await page.evaluate(async () => {
@@ -190,15 +204,7 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
   const installability = (await cdp.send('Page.getInstallabilityErrors')) as { installabilityErrors: unknown[] }
   expect(installability.installabilityErrors).toEqual([])
 
-  // A browser that offers installation: "Install" appears in More and opens the browser's dialog.
-  await page.evaluate(() => {
-    const offer = new Event('beforeinstallprompt', { cancelable: true }) as Event & Record<string, unknown>
-    offer.prompt = async () => {
-      ;(window as unknown as { __prompted?: number }).__prompted = 1
-    }
-    offer.userChoice = Promise.resolve({ outcome: 'accepted' })
-    window.dispatchEvent(offer)
-  })
+  // The offer fired before hydration: "Install" appears in More and opens the browser's dialog.
   await page.getByTestId('club-more').locator('summary').click()
   const install = page.getByTestId('club-install')
   await expect(install).toHaveText(uiText('club_core.webApp.install'))
@@ -229,11 +235,22 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
   await expect(offline.locator('h1')).toHaveText(uiText('club_core.webApp.offline.title'))
   await page.context().setOffline(false)
 
-  // Signed out on the same device: the member page is not served from any cache, the sign-in page is.
+  // Signed out on the same device: no cache serves the member page. Offline it is the offline page, without any member
+  // content; online the server sends the visitor to the sign-in page.
   await page.goto('about:blank')
   await page.context().clearCookies()
+  await page.context().setOffline(true)
+  await page.goto(`${origin}/club`)
+  await expect(page.getByTestId('web-app-offline')).toBeVisible()
+  await expect(page.getByTestId('club-bottom-bar')).toHaveCount(0)
+  await page.context().setOffline(false)
   await page.goto(`${origin}/club`)
   await expect(page).toHaveURL(/\/login/)
+
+  // Browsers check the worker for a new version on every visit.
+  const worker = await fetch(`${origin}/sw.js`)
+  expect(worker.status).toBe(200)
+  expect(worker.headers.get('cache-control')).toBe('no-cache')
   await page.context().close()
 })
 
@@ -244,6 +261,10 @@ test('E31-S01 Safari on an iPhone shows the Add to Home Screen hint once per dev
     hasTouch: true,
     isMobile: true,
   })
+  // Not on the sign-in page: the hint belongs to the member pages.
+  await page.goto(`${origin}/login`)
+  await expect(page.locator('form[data-auth-ready="1"]')).toBeVisible()
+  await expect(page.getByTestId('web-app-ios-hint')).toHaveCount(0)
   await signInAtClub(page)
   const hint = page.getByTestId('web-app-ios-hint')
   await expect(hint).toBeVisible()
@@ -265,4 +286,8 @@ test('E31-S01 a club that stops publishing its page is installed as Vereino', as
   const manifest = await manifestAt(origin)
   expect(manifest.body).toMatchObject({ name: 'Vereino', theme_color: '#171717' })
   expect(manifest.body.icons[0].src).toBe('/app-icon/192?v=mark')
+  // Its icons no longer show its logo: the same mark as the instance's own address.
+  const mark = await iconAt(app.appUrl, '/app-icon/192?v=mark')
+  for (const src of ['/app-icon/192?v=mark', '/app-icon/192'])
+    expect((await iconAt(origin, src)).equals(mark)).toBe(true)
 })

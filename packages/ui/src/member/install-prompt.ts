@@ -3,6 +3,7 @@
 // once at the app's root) and the menu shows the entry while an offer is held. Browsers without the event (Safari,
 // Firefox) never show the entry. Framework-free: the event target is passed in, the label comes from a provider.
 import * as React from 'react'
+import { EARLY_INSTALL_OFFER_KEY } from '@vereino/core'
 
 /** The `beforeinstallprompt` event (not in the DOM typings). */
 export type InstallPromptEvent = Event & {
@@ -35,6 +36,8 @@ export function createInstallPromptStore(): InstallPromptStore {
   }
   return {
     capture(target) {
+      const early = (target as unknown as Record<string, unknown>)[EARLY_INSTALL_OFFER_KEY]
+      if (early instanceof Event && isInstallPromptEvent(early)) set(early)
       const onOffer = (event: Event): void => {
         if (!isInstallPromptEvent(event)) return
         // The browser's own mini-infobar stays away; the menu entry offers installation instead.
@@ -73,10 +76,15 @@ export const installPromptStore = createInstallPromptStore()
 
 /** Opens the browser's install dialog of the app's store (the menu entry's click). */
 export function promptInstall(): void {
-  void installPromptStore.prompt()
+  // A browser that rejects the dialog leaves the entry hidden; nothing else to do.
+  installPromptStore.prompt().catch(() => undefined)
 }
 
-/** Whether the browser currently offers installation (a server's store never captures an offer, so it answers false). */
+/**
+ * Whether the browser currently offers installation. The server's store never captures an offer, so the server snapshot
+ * reads the same store; the entry lives in the bottom bar, which renders only after the client-side profile load, never
+ * during hydration.
+ */
 export function useInstallAvailable(store: InstallPromptStore = installPromptStore): boolean {
   return React.useSyncExternalStore(store.subscribe, store.available, store.available)
 }

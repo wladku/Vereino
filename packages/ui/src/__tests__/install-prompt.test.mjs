@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
+import { EARLY_INSTALL_OFFER_KEY } from '@vereino/core'
 import {
   MemberInstallLabelContext,
   createInstallPromptStore,
@@ -49,6 +50,37 @@ test('keeps the offer, prevents the mini-infobar, notifies listeners and stops l
   target.dispatchEvent(offer().event)
   assert.equal(store.available(), false)
   assert.equal(notified, 2)
+})
+
+test('adopts an offer the early script kept before hydration, and ignores anything else there', () => {
+  const store = createInstallPromptStore()
+  const kept = new EventTarget()
+  const { event } = offer()
+  kept[EARLY_INSTALL_OFFER_KEY] = event
+  store.capture(kept)
+  assert.equal(store.available(), true)
+  const other = createInstallPromptStore()
+  const target = new EventTarget()
+  target[EARLY_INSTALL_OFFER_KEY] = { prompt: () => undefined }
+  other.capture(target)
+  assert.equal(other.available(), false)
+  const plain = new EventTarget()
+  plain[EARLY_INSTALL_OFFER_KEY] = new Event('beforeinstallprompt')
+  other.capture(plain)
+  assert.equal(other.available(), false)
+})
+
+test('a rejected dialog is swallowed', async () => {
+  const target = new EventTarget()
+  const stop = installPromptStore.capture(target)
+  const event = new Event('beforeinstallprompt', { cancelable: true })
+  event.prompt = () => Promise.reject(new Error('not allowed'))
+  event.userChoice = Promise.resolve({ outcome: 'dismissed' })
+  target.dispatchEvent(event)
+  promptInstall()
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(installPromptStore.available(), false)
+  stop()
 })
 
 test('prompts once and answers the choice; without an offer it is unavailable', async () => {
