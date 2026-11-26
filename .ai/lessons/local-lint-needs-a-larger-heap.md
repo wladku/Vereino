@@ -11,6 +11,8 @@ topics: ["yarn-verify", "eslint", "memory"]
 
 **Problem**: The app's typed ESLint run grows with the module count and now reaches Node's default heap limit; `build` and `typecheck` already pass `--max-old-space-size=8192`, `lint` does not. A crash reads like a lint failure and can send an agent hunting for a code cause.
 
-**Rule**: When `lint` ends in a heap-limit crash (no rule findings), rerun `NODE_OPTIONS=--max-old-space-size=8192 yarn lint`, then `yarn verify --from <next step>` with the same variable, and say so in the PR. Raising the heap in the `lint` script itself is a tooling change for the owner to approve.
+**Follow-up**: PR #837 then failed the CI `gate` job the same way (`lint`, 217 s, heap limit; main's gate passed lint in 191 s just before). A local run of `yarn workspace @vereino/app lint` peaked at 6.4 GB resident. The app's `lint` script now runs `cross-env NODE_OPTIONS=--max-old-space-size=8192 eslint .`, matching `typecheck` and `build`, so local and CI runs get the same heap.
 
-**Applies to**: local `yarn verify` / `yarn lint` runs in any worktree.
+**Rule**: The app's `lint` script carries the same 8 GB heap as `typecheck` and `build`; do not remove it. If `lint` still ends in a heap-limit crash (no rule findings), measure the peak (`/usr/bin/time -v yarn workspace @vereino/app lint`), and raise or split the run in a PR that says why — never treat the crash as a code finding.
+
+**Applies to**: `yarn verify` / `yarn lint` runs in any worktree and in CI.
