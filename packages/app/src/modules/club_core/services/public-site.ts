@@ -212,6 +212,12 @@ export type PublicEventsPage = {
   past: PublicEvent[]
 }
 
+/** A public section as the sign-up form reads it (#799): the id stays on the server, never in a public response. */
+export type PublicApplicationSection = {
+  frame: PublicClubFrame
+  section: { id: string; name: string; slug: string; acceptsApplications: boolean }
+}
+
 export type PublicPlacesPage = { frame: PublicClubFrame; places: PublicPlace[] }
 
 export type PublicPlacePage = { frame: PublicClubFrame; place: PublicPlaceDetail }
@@ -239,6 +245,12 @@ export type ClubCorePublicSite = {
    * III DD-M14). The same lookup and the same `not_found` / `disabled` answers as the club page.
    */
   clubFrame(clubSlug: string): Promise<PublicSiteResult<PublicClubFrame>>
+  /**
+   * The club and one public, active section behind the slugs, for the section sign-up form of `enrolment` (sign-up form
+   * spec DD-J06, P-J2; #799): the club's frame (its trusted tenant and organization) and the section's id, name and
+   * switch "accepts online applications". The same slug lookup and answers as the section page.
+   */
+  applicationSection(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicApplicationSection>>
   /**
    * The club a request's host names (many clubs spec phase 3, DD-M02; #631): its trusted tenant and organization and
    * whether its page is published, or null for a slug that names no club. The same slug lookup as every public read
@@ -830,6 +842,26 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       const found = await findClub(db, clubSlug)
       if (found.status !== 'ok') return found
       return { status: 'ok', value: await frameOf(db, found.value) }
+    },
+
+    async applicationSection(clubSlug, sectionSlug) {
+      const db = em()
+      const found = await findClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const section = await findSection(db, found.value, sectionSlug)
+      if (!section) return { status: 'not_found', frame: await frameOf(db, found.value) }
+      return {
+        status: 'ok',
+        value: {
+          frame: await frameOf(db, found.value),
+          section: {
+            id: section.id,
+            name: section.name,
+            slug: sectionSlug,
+            acceptsApplications: section.acceptsApplications,
+          },
+        },
+      }
     },
 
     async clubForHost(clubSlug) {
