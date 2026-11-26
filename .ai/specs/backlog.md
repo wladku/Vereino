@@ -2,7 +2,7 @@
 
 ## .ai/specs/product-brief.md
 Backlog source: .ai/specs/product-brief.md
-Last filed: 2026-10-24
+Last filed: 2026-11-26
 
 2026-10-23 — research variant: the brief did not meet the Definition of Ready in `SDLC.md` (A02, A03, A04, A05 and A08 rested only on assumptions; Q01–Q04, Q07 and Q17 were open; R05 and R08 were proposals; D15 held implementation planning). Only the Discovery epic E01 was filed.
 
@@ -38,6 +38,12 @@ Last filed: 2026-10-24
 | E04-S01 | [#35](https://github.com/wladku/Vereino/issues/35) | A coordinator or coach announces to a club, section, group or session; recipients get an in-app notification and an email, and the author gets a text to paste into the group chat | #23 | E03-S02 | no |
 | E04-S02 | [#36](https://github.com/wladku/Vereino/issues/36) | A coordinator marks a thread as a case, undeletable with full history | #23 | E04-S01 | no |
 | E05 | [#24](https://github.com/wladku/Vereino/issues/24) | E05 — Later (parked) | — | — | no |
+| E27 | [#816](https://github.com/wladku/Vereino/issues/816) | E27 — Measuring the pilot: the share of attendance declarations made in Vereino | — | — | no |
+| E27-S01 | [#818](https://github.com/wladku/Vereino/issues/818) | An administrator sees, per section, how many attendance declarations came through Vereino in a chosen period | #816 | — | no |
+| E27-S02 | [#819](https://github.com/wladku/Vereino/issues/819) | A section coordinator sees the same numbers for their own sections on the phone | #816 | E27-S01 | no |
+| E27-S03 | [#820](https://github.com/wladku/Vereino/issues/820) | An administrator sees the pilot's leading indicators next to the declaration share | #816 | E27-S01 | no |
+| E28 | [#817](https://github.com/wladku/Vereino/issues/817) | E28 — vereino.org e-mail: club e-mails sent from a verified sending subdomain | — | — | no |
+| E28-S01 | [#821](https://github.com/wladku/Vereino/issues/821) | Club e-mails reach guardians from a verified vereino.org sending subdomain that passes SPF, DKIM and DMARC | #817 | owner actions | no |
 
 ## docs/ux-concept/README.md
 Backlog source: docs/ux-concept/README.md
