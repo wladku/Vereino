@@ -34,6 +34,10 @@ Specs move between folders with `git mv`, keep their file name, and are never de
 
 Never append a row to a spec's `## Changelog` table: parallel PRs would all edit its last lines and conflict. Each change is its own file, `.ai/specs/changelog/<spec-file-name-without-.md>/<YYYY-MM-DD>-<slug>.md`, holding one `| date | change |` row. The rows up to 2026-11-05 stay frozen in the spec, and its Changelog section points to the folder. Format and reading order: [`changelog/README.md`](changelog/README.md). `yarn spec-changelogs:check` (a `yarn verify` step) enforces it.
 
+## Open Questions
+
+The *Blocking?* column of a spec's Open Questions table names the phases a question blocks: `no`, `phase N` or `phases N, M`. A story of a Draft spec starts only with the `phase-ready` label, which the owner-attended decision session sets once every question naming the story's phase is answered (`SDLC.md` → Definition of Ready). `yarn spec-questions:check` (a `yarn verify` step) enforces the values and that each named phase has a `### Phase N` heading, in specs dated from 2026-11-27; older specs keep their free text.
+
 ## Workflow
 
 1. Route every new application, multi-module feature, or non-trivial business slice through `om-spec-writing` and `.ai/guides/spec-delivery.md`.

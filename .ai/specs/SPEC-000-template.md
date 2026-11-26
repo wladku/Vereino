@@ -240,11 +240,11 @@ Verdict must be exactly `Ready for implementation` or `Blocked — {unresolved i
 
 ## Open Questions
 
-Blocking questions must be resolved before setting `Status: Ready for implementation`.
+Blocking questions must be resolved before setting `Status: Ready for implementation`. *Blocking?* names the phases a question blocks: `no`, `phase N` or `phases N, M` (a question that blocks the whole spec lists every phase). A story of a Draft spec may start once the decision session labels it `phase-ready`, after every question naming its phase is answered (`SDLC.md` → Definition of Ready). `yarn spec-questions:check` rejects other values in specs dated from 2026-11-27.
 
 | ID | Question | Owner | Blocking? | Resolution / decision date |
 |---|---|---|---|---|
-| Q-001 | {question} | {owner} | yes/no | {pending or decision} |
+| Q-001 | {question} | {owner} | no / phase N / phases N, M | {pending or decision} |
 
 ## Changelog
 

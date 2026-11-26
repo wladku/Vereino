@@ -36,7 +36,8 @@
       "qa-self-verified",
       "in-progress",
       "ci-monitoring",
-      "screenshots"
+      "screenshots",
+      "phase-ready"
     ],
     "priority": [
       "priority-low",
