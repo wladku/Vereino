@@ -58,9 +58,10 @@ export async function publicPlaceSlug(
   container: AwilixContainer,
   scope: FacilitiesScope,
   placeId: string,
+  em?: EntityManager,
 ): Promise<string | null> {
   if (!container.hasRegistration(CLUB_CORE_PUBLIC_SITE)) return null
-  return container.resolve<ClubCorePublicSite>(CLUB_CORE_PUBLIC_SITE).publicPlaceSlug(scope, placeId)
+  return container.resolve<ClubCorePublicSite>(CLUB_CORE_PUBLIC_SITE).publicPlaceSlug(scope, placeId, em)
 }
 
 /** The public header of the club the token named; null without `club_core` or while the club publishes no page. */

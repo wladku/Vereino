@@ -451,7 +451,7 @@ const STEPS: Record<BankAction, DecisionStep> = {
       { ...scope, id: { $in: [...new Set(payments.map((row) => row.chargeId))] }, deletedAt: null },
       { lockMode: LockMode.PESSIMISTIC_WRITE, orderBy: { id: 'asc' } },
     )
-    const { today } = await clubClock(ctx.container, scope)
+    const { today } = await clubClock(ctx.container, scope, undefined, em)
     const reversed: RecordedLine[] = []
     for (const original of payments) {
       const reversal = em.create(Payment, {

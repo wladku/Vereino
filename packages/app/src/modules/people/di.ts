@@ -23,6 +23,7 @@ import type { ClubScope } from './services/club-clock'
 import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-gate'
 import { PEOPLE_MEDICAL_STATUS, createMedicalStatusReader } from './services/medical'
 import { createPersonDirectory } from './services/person-directory'
+import { PEOPLE_DUPLICATE_CANDIDATES, createDuplicateCandidates } from './services/duplicate-candidates'
 import { syncPersonRoles, type PersonRoleSyncOutcome } from './services/role-sync'
 import { createPeopleScopeService } from './services/scope-service'
 import { PEOPLE_CLUB_JOBS } from './lib/club-jobs'
@@ -90,6 +91,8 @@ export function register(container: AppContainer) {
     // DD-O03 (#682): the medical certificate status of persons the caller holds in scope, for `groups` and `activities`.
     [PEOPLE_MEDICAL_STATUS]: asFunction(() => createMedicalStatusReader(container)).scoped(),
     [PEOPLE_PAYMENTS_GATE]: asFunction(() => createPaymentsGate(container)).scoped(),
+    // DD-J11, Q-J05 (section sign-up form spec): the possible duplicates of an applicant, for `enrolment`.
+    [PEOPLE_DUPLICATE_CANDIDATES]: asFunction(() => createDuplicateCandidates(container)).scoped(),
     [audienceProviderToken('club')]: asValue(clubAudienceProvider),
     [audienceProviderToken('persons')]: asValue(personsAudienceProvider),
     [CONTACT_RESOLVER_TOKEN]: asValue(createContactResolver()),

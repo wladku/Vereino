@@ -182,7 +182,7 @@ const recordPaymentCommand: CommandHandler<Record<string, unknown>, PaymentComma
       const authorized = await authorizeScoped(chargeSpec(paymentRecordSchema, ctx), rawInput, ctx, em)
       const charge = authorized.entity as Charge
       const { parsed, tenantId, organizationId } = authorized
-      const { today } = await clubClock(ctx.container, { tenantId, organizationId })
+      const { today } = await clubClock(ctx.container, { tenantId, organizationId }, undefined, em)
       const paid = paidTotal(await ledgerOf(em, charge))
       const amountDue = amountDueOf(charge)
       const remaining = remainingOf(amountDue, paid)
@@ -319,10 +319,15 @@ const reversePaymentCommand: CommandHandler<Record<string, unknown>, PaymentComm
         reversed: ledger.some((row) => row.reversesPaymentId === original.id),
       })
       if (refusal) await paymentsErrors.throw(refusal)
-      const { today } = await clubClock(ctx.container, {
-        tenantId: authorized.tenantId,
-        organizationId: authorized.organizationId,
-      })
+      const { today } = await clubClock(
+        ctx.container,
+        {
+          tenantId: authorized.tenantId,
+          organizationId: authorized.organizationId,
+        },
+        undefined,
+        em,
+      )
       const now = new Date()
       const reversal = em.create(Payment, {
         id: randomUUID(),
@@ -429,7 +434,7 @@ const createManualChargeCommand: CommandHandler<Record<string, unknown>, ManualC
       )
       const { parsed, tenantId, organizationId } = authorized
       const scope = { tenantId, organizationId }
-      const { today } = await clubClock(ctx.container, scope)
+      const { today } = await clubClock(ctx.container, scope, undefined, em)
       const facts = await payerFactsOf(ctx.container, scope, parsed.personId, today, em)
       if (!facts) return personNotFound()
       if (!manualDueDateInRange(parsed.dueDate, today)) {
@@ -498,7 +503,7 @@ function assignChosenPayer(rawInput: unknown, ctx: CommandRuntimeContext): Promi
     const refusal = assignPayerRefusal(charge)
     if (refusal) await paymentsErrors.throw(refusal)
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-    const { today } = await clubClock(ctx.container, scope)
+    const { today } = await clubClock(ctx.container, scope, undefined, em)
     const facts = charge.personId ? await payerFactsOf(ctx.container, scope, charge.personId, today, em) : null
     if (!facts || !payerEligible(authorized.parsed.payerPersonId, facts)) {
       await paymentsErrors.throw('charge_payer_not_eligible')
@@ -530,7 +535,7 @@ function assignWardPayer(rawInput: unknown, ctx: CommandRuntimeContext): Promise
     const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
     const wardId = authorized.parsed.wardPersonId
     // The payer is read again now, so a stale or replayed event assigns only the payer that is current.
-    const { today } = await clubClock(ctx.container, scope)
+    const { today } = await clubClock(ctx.container, scope, undefined, em)
     const payerPersonId = (await primaryPayers(ctx.container, scope, [wardId], today, em)).get(wardId) ?? null
     if (!payerPersonId) return { mode: 'ward', scope, chargeIds: [], payerPersonId: null }
     const charges = await em.find(

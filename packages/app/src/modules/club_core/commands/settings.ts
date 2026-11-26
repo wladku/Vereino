@@ -245,7 +245,9 @@ const updateClubSettingsCommand: CommandHandler<Record<string, unknown>, ClubSet
   isUndoable: true,
   atomicReplay: true,
   async execute(rawInput, ctx) {
-    const em = ctx.container.resolve<EntityManager>('em').fork()
+    // A redo runs in the replay transaction (`atomicReplay`): its own fork would open a second transaction on a second
+    // pooled connection, apart from the redo claim (#836).
+    const em = ctx.transactionalEm ?? ctx.container.resolve<EntityManager>('em').fork()
     let result: ClubSettingsUpdateResult | null = null
     try {
       await withAtomicFlush(

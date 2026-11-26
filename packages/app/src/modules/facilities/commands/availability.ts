@@ -92,7 +92,7 @@ async function sessionWarning(
   period: { validFrom: CalendarDate; validTo: CalendarDate | null },
 ): Promise<number> {
   if (windows.length === 0) return 0
-  const timeZone = await clubTimeZone(ctx.container, scope)
+  const timeZone = await clubTimeZone(ctx.container, scope, em)
   const today = calendarDateInZone(new Date(), timeZone)
   const from = period.validFrom > today ? period.validFrom : today
   const to = period.validTo ?? addDays(from, WARNING_HORIZON_DAYS)

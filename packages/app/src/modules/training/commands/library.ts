@@ -173,7 +173,7 @@ const publishCommand: CommandHandler<Record<string, unknown>, PublishResult> = {
       const row = authorized.entity as Outline
       const club = scopeOf(row)
       const { visibility, acceptTerms } = authorized.parsed
-      if (!visibilityAllowed(visibility, readLevel(await clubLibraryLevel(ctx.container, club)))) {
+      if (!visibilityAllowed(visibility, readLevel(await clubLibraryLevel(ctx.container, club, em)))) {
         return trainingErrors.throw('visibility_above_club_level')
       }
       const publisher = selfPersonId(authorized.scope)
@@ -225,7 +225,7 @@ const publishCommand: CommandHandler<Record<string, unknown>, PublishResult> = {
         if (!row) return foundationErrors.throw('scope_denied')
         const names = await findPublicNames(ctx.container, prepared.club, [row.authorPersonId], em)
         const credit = buildCredit({
-          clubName: (await clubName(ctx.container, prepared.club)) ?? '',
+          clubName: (await clubName(ctx.container, prepared.club, em)) ?? '',
           authorName: names.get(row.authorPersonId) ?? null,
           origin: readOrigin(row.originCredit),
         })
@@ -574,7 +574,7 @@ const applyLevelCommand: CommandHandler<Record<string, unknown>, { withdrawn: nu
     const result = await inWriteTransaction(ctx, 'training.library.apply_level', async (em) => {
       const authorized = await authorizeScoped(jobSpec(applyLevelSchema), rawInput, ctx, em)
       const club = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-      const level = readLevel(await clubLibraryLevel(ctx.container, club))
+      const level = readLevel(await clubLibraryLevel(ctx.container, club, em))
       const above = await library.entriesAboveLevel(em, club, level)
       box.images = await withdrawEntries(
         library,

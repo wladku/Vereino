@@ -155,10 +155,10 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
           )
       const person = authorized.entity as Person
       const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-      const today = await clubToday(ctx.container, scope)
+      const today = await clubToday(ctx.container, scope, undefined, em)
       // The sweep's retention rule, read again on the locked row: a person who no longer qualifies is refused.
       if (sweep) {
-        const { cutoff } = await retentionCutoff(ctx.container, scope, today)
+        const { cutoff } = await retentionCutoff(ctx.container, scope, today, em)
         const facts = await retentionFactsOf(em, ctx.container, scope, [person], cutoff)
         const kept = retentionKeepReasons(facts.get(person.id) as RetentionFacts, cutoff)
         if (kept.length > 0) {

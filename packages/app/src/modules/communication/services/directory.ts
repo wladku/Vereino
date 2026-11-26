@@ -3,6 +3,7 @@
 // (`people.personDirectory`), the club's settings (`clubCoreSettings`) and — optionally, read with `hasRegistration`
 // — activities and sessions (`activities.scheduleDirectory`) and the share text (`activities.shareText`). `people`,
 // `groups` and `club_core` are required modules, so a missing registration of theirs is a deployment error.
+import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { CalendarDate } from '@vereino/core'
 import type { ActivitiesScheduleDirectory } from '../../activities/services/schedule-directory'
@@ -54,13 +55,17 @@ export function shareTextService(container: AwilixContainer): ActivitiesShareTex
     : null
 }
 
-/** The club's time zone and default language (club spec DD-37). */
+/**
+ * The club's time zone and default language (club spec DD-37); read with `em` when given (the caller's transaction,
+ * #836), otherwise on a fork of the request's EntityManager.
+ */
 export async function clubFacts(
   container: AwilixContainer,
   scope: CommunicationScope,
+  em?: EntityManager,
 ): Promise<{ timeZone: string; defaultLocale: string }> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)
   return { timeZone: settings.values.timezone, defaultLocale: settings.values.defaultLocale }
 }
 

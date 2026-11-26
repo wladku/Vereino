@@ -225,12 +225,18 @@ export async function findConflicts(
   if (provider) {
     try {
       // A save holds the occupancy lock in `em`'s transaction: the provider reads on that connection (#221 M1). A
-      // preview keeps the provider on its own fork, so a provider error never aborts the caller's transaction.
-      external = await provider.blockingIntervals(
-        placeIds,
-        { start, end },
-        mode === 'save' ? { tenantId: scope.tenantId, organizationId: scope.organizationId, em } : scope,
-      )
+      // preview never lets a provider error abort the caller's transaction: inside one (the season rollover, #836)
+      // the provider reads in a savepoint on the same connection, since its own fork would wait for a second pooled
+      // connection; outside one it reads on its own fork.
+      const club = { tenantId: scope.tenantId, organizationId: scope.organizationId }
+      external =
+        mode === 'save'
+          ? await provider.blockingIntervals(placeIds, { start, end }, { ...club, em })
+          : em.isInTransaction()
+            ? await em.transactional((savepoint) =>
+                provider.blockingIntervals(placeIds, { start, end }, { ...club, em: savepoint }),
+              )
+            : await provider.blockingIntervals(placeIds, { start, end }, scope)
     } catch (error: unknown) {
       getTelemetryRuntime()?.reportError(error, { module: 'activities', code: 'activities.occupancy.provider_failed' })
       if (mode === 'save') {
