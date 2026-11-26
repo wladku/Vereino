@@ -7,6 +7,7 @@ import {
   CALENDAR_RANGES,
   WIDE_CALENDAR_QUERY,
   calendarRangeHref,
+  calendarRangeLabels,
   canShiftRange,
   clampToWindow,
   datesOf,
@@ -182,4 +183,27 @@ test('mediaQueryStore: subscribes to the query and reads it; without a window th
   const serverStore = mediaQueryStore(WIDE_CALENDAR_QUERY, undefined)
   assert.equal(serverStore.getSnapshot(), true)
   assert.equal(serverStore.subscribe(onChange)(), undefined)
+})
+
+test('calendarRangeLabels: every text from the module catalog under one prefix', () => {
+  const labels = calendarRangeLabels((key) => `<${key}>`, 'facilities.rangeSwitch')
+  assert.deepEqual(labels, {
+    group: '<facilities.rangeSwitch.group>',
+    day: '<facilities.rangeSwitch.day>',
+    week: '<facilities.rangeSwitch.week>',
+    month: '<facilities.rangeSwitch.month>',
+    earlier: '<facilities.rangeSwitch.earlier>',
+    later: '<facilities.rangeSwitch.later>',
+    today: '<facilities.rangeSwitch.today>',
+    previous: {
+      day: '<facilities.rangeSwitch.previous.day>',
+      week: '<facilities.rangeSwitch.previous.week>',
+      month: '<facilities.rangeSwitch.previous.month>',
+    },
+    next: {
+      day: '<facilities.rangeSwitch.next.day>',
+      week: '<facilities.rangeSwitch.next.week>',
+      month: '<facilities.rangeSwitch.next.month>',
+    },
+  })
 })

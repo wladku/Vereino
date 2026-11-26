@@ -69,7 +69,9 @@ test('TEST-028 public facility pages: P-01 link, P-03 cards, P-04 day list and m
     await expect(page).toHaveURL(new RegExp(`/p/${slug}/places/${setup.placeSlug}$`))
     await expect(page.getByTestId('public-place-title')).toHaveText('Boisko A')
     await page.goto(`/p/${slug}/places/${setup.placeSlug}?month=${setup.month}`)
-    await expect(page.getByTestId('public-schedule-month')).toHaveAttribute('data-month', setup.month)
+    // An old `?month=` permalink opens that month (#784, DD-W08).
+    await expect(page.getByTestId('public-schedule-switch')).toHaveAttribute('data-range', 'month')
+    await expect(page.getByTestId('public-schedule-switch')).toHaveAttribute('data-date', `${setup.month}-01`)
 
     // A phone: the day list, not the grid.
     await expect(page.getByTestId('public-schedule-list')).toBeVisible()
@@ -122,17 +124,17 @@ test('TEST-028 public facility pages: P-01 link, P-03 cards, P-04 day list and m
 
     // The keyboard: Tab reaches "Later", Enter moves to the next month and keeps it in the URL.
     await page.getByTestId('public-breadcrumb-places').focus()
-    const later = page.getByTestId('public-schedule-later')
+    const later = page.getByTestId('public-schedule-switch-next')
     let reached = false
-    for (let step = 0; step < 10 && !reached; step += 1) {
+    for (let step = 0; step < 15 && !reached; step += 1) {
       await page.keyboard.press('Tab')
       reached = await later.evaluate((element) => element === document.activeElement)
     }
     expect(reached, '"Later" is reachable with Tab').toBe(true)
     await page.keyboard.press('Enter')
     const next = monthAfter(setup.month)
-    await expect(page).toHaveURL(new RegExp(`month=${next}`))
-    await expect(page.getByTestId('public-schedule-month')).toHaveAttribute('data-month', next)
+    await expect(page).toHaveURL(new RegExp(`range=month&date=${next}-01`))
+    await expect(page.getByTestId('public-schedule-switch')).toHaveAttribute('data-date', `${next}-01`)
 
     // Polish: the state labels in Polish.
     await setGuestLocale(page, 'pl')

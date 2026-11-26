@@ -10,6 +10,7 @@ import type { OpeningHours } from '@vereino/core'
 import type { PublicSlot, PublicSlotState } from '../../lib/public-schedule'
 import type { PublicPlacesView, PublicScheduleDay, PublicScheduleView } from '../../services/public-schedule'
 import { publicFacilitiesLoadOf, type PublicFacilitiesLoad as PublicFacilitiesLoadOf } from '../../lib/public-load'
+import { publicScheduleQuery, type PublicScheduleRead } from '../../lib/public-range'
 
 export type { PublicPlacesView, PublicScheduleDay, PublicScheduleView, PublicSlot, PublicSlotState, OpeningHours }
 
@@ -83,17 +84,17 @@ export function usePublicPlaces(clubSlug: string, enabled = true) {
   })
 }
 
-export function usePublicSchedule(clubSlug: string, placeSlug: string, month: string | null) {
+/** P-04: a month by `?month=`, or a day's or a week's whole week by `?from=&to=` (calendar range switch REQ-W04). */
+export function usePublicSchedule(clubSlug: string, placeSlug: string, read: PublicScheduleRead) {
+  const search = publicScheduleQuery(read)
   return useQuery({
-    queryKey: ['facilities-public-schedule', clubSlug, placeSlug, month ?? ''],
+    queryKey: ['facilities-public-schedule', clubSlug, placeSlug, search],
     queryFn: () =>
       loadPublic<PublicScheduleView>(
-        `/api/facilities/public/${encodeURIComponent(clubSlug)}/places/${encodeURIComponent(placeSlug)}/schedule${
-          month ? `?month=${encodeURIComponent(month)}` : ''
-        }`,
+        `/api/facilities/public/${encodeURIComponent(clubSlug)}/places/${encodeURIComponent(placeSlug)}/schedule${search}`,
       ),
     retry: false,
-    // The shown month stays on screen while the next one loads.
+    // The shown range stays on screen while the next one loads.
     placeholderData: (previous) => previous,
   })
 }
@@ -104,23 +105,11 @@ export function clubOfLoad(load: PublicFacilitiesLoad<PublicPlacesView> | undefi
   return load.status === 'ok' ? load.page.club : load.club
 }
 
-/** A `YYYY-MM` of the URL, or null when absent or malformed (the API then shows the current month). */
-export function monthParam(value: string | null): string | null {
-  return value && /^\d{4}-(0[1-9]|1[0-2])$/.test(value) ? value : null
-}
-
 export function phoneHref(phone: string): string {
   return `tel:${phone.replace(/[^\d+]/g, '')}`
 }
 
 const utcDate = (date: string): Date => new Date(`${date}T00:00:00Z`)
-
-/** "November 2026" / "listopad 2026". */
-export function formatMonth(month: string, locale: string): string {
-  return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-    utcDate(`${month}-01`),
-  )
-}
 
 /** "Wednesday, 18 November" in the reader's locale. */
 export function formatDayHeading(date: string, locale: string): string {

@@ -120,6 +120,43 @@ export function readableRange(window: DateWindow, limits: CalendarRangeLimits = 
   }
 }
 
+/** The texts of the switch (the `CalendarRangeSwitch` labels), by meaning. */
+export type CalendarRangeTexts = {
+  group: string
+  day: string
+  week: string
+  month: string
+  earlier: string
+  later: string
+  today: string
+  previous: Record<CalendarRange, string>
+  next: Record<CalendarRange, string>
+}
+
+/**
+ * The switch's texts from a module catalog: `{prefix}.group`, `.day`, `.week`, `.month`, `.earlier`, `.later`,
+ * `.today`, `.previous.{day|week|month}` and `.next.{day|week|month}` — the same keys in every module, so every
+ * calendar says the same words (AC-W01).
+ */
+export function calendarRangeLabels(t: (key: string) => string, prefix: string): CalendarRangeTexts {
+  const per = (kind: 'previous' | 'next') =>
+    Object.fromEntries(CALENDAR_RANGES.map((range) => [range, t(`${prefix}.${kind}.${range}`)])) as Record<
+      CalendarRange,
+      string
+    >
+  return {
+    group: t(`${prefix}.group`),
+    day: t(`${prefix}.day`),
+    week: t(`${prefix}.week`),
+    month: t(`${prefix}.month`),
+    earlier: t(`${prefix}.earlier`),
+    later: t(`${prefix}.later`),
+    today: t(`${prefix}.today`),
+    previous: per('previous'),
+    next: per('next'),
+  }
+}
+
 const noon = (date: CalendarDate): Date => new Date(`${date}T12:00:00Z`)
 
 /**

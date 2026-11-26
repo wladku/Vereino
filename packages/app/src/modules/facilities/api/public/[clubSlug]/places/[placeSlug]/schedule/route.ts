@@ -1,8 +1,11 @@
-// `GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule?month=YYYY-MM` — the public month of a place
+// `GET /api/facilities/public/{clubSlug}/places/{placeSlug}/schedule?month=YYYY-MM` (or `?from=&to=`, calendar range
+// switch spec REQ-W03, DD-W07) — the public month of a place
 // (facilities spec P-04, REQ-014, TEST-024; #124): per day the opening windows and stretches of time with a state —
 // open to public, club training hours, bookable, closed, taken by the club, booked, requested — plus the place's
 // opening hours, rates, rules and the club phone. It names no renter, person, group or activity and carries no record
 // id. Without `month` the club's current month; a month before the previous one or beyond twelve ahead answers 400.
+// `from`/`to` (club-zone dates, both ends included) read up to 31 days inside the same window instead — a week across
+// two months in one read; `month` wins when both are sent; a bad range answers 400 `public_schedule_range_invalid`.
 // 404 `public_place_not_found` for an unknown club or place or a place without a public calendar, 404
 // `public_places_disabled` without the club's `places_calendar` block. Rate-limited per client IP; shared caches
 // only, 60 s (DD-45).
@@ -31,13 +34,18 @@ export const metadata = {
 
 export async function GET(request: Request, context: PublicRouteContext): Promise<Response> {
   return publicRoute('facilities.public.schedule', async () => {
-    const month = new URL(request.url).searchParams.get('month') ?? undefined
+    const params = new URL(request.url).searchParams
+    const query = {
+      month: params.get('month') ?? undefined,
+      from: params.get('from') ?? undefined,
+      to: params.get('to') ?? undefined,
+    }
     const container = await createRequestContainer()
     const result = await publicScheduleView(
       container,
       await routeParam(context, 'clubSlug'),
       await routeParam(context, 'placeSlug'),
-      month,
+      query,
       new Date(),
     )
     return result.status === 'ok' ? jsonResponse(result.value) : notOkResponse(result)
@@ -53,7 +61,7 @@ const scheduleSchema = z.object({
     regulationsText: z.string().nullable(),
     regulationsUrl: z.string().nullable().describe('The regulations PDF, or null'),
   }),
-  month: z.string().describe('YYYY-MM'),
+  month: z.string().describe('YYYY-MM; for a `from`/`to` read, the month of `from`'),
   previousMonth: z.string().nullable(),
   nextMonth: z.string().nullable(),
   timeZone: z.string(),
@@ -103,13 +111,21 @@ export const openApi: OpenApiRouteDoc = {
   summary: 'Public facility calendar',
   methods: {
     GET: {
-      summary: 'Read a month of the public calendar of a facility',
+      summary: 'Read a month (or up to 31 days) of the public calendar of a facility',
       description:
-        'Sessionless (REQ-014). States only — no renter, person, group or activity names and no record ids. Query `month=YYYY-MM` (default: the current club month; from one month back to twelve ahead). Rate-limited per client IP; `Cache-Control: public, s-maxage=60`.',
-      query: z.object({ month: z.string().optional() }),
+        'Sessionless (REQ-014). States only — no renter, person, group or activity names and no record ids. Query `month=YYYY-MM` (default: the current club month; from one month back to twelve ahead), or `from=YYYY-MM-DD&to=YYYY-MM-DD` (club-zone dates, both included, both or neither, at most 31 days, inside the same window; `days[]` covers exactly those dates; `month` wins when both are sent). Rate-limited per client IP; `Cache-Control: public, s-maxage=60`.',
+      query: z.object({
+        month: z.string().optional(),
+        from: z.string().optional().describe('YYYY-MM-DD, with `to`'),
+        to: z.string().optional().describe('YYYY-MM-DD, with `from`; at most 31 days'),
+      }),
       responses: [{ status: 200, description: 'The month', schema: scheduleSchema }],
       errors: [
-        { status: 400, description: '`public_schedule_month_invalid`', schema: publicNotOkSchema },
+        {
+          status: 400,
+          description: '`public_schedule_month_invalid`, `public_schedule_range_invalid`',
+          schema: publicNotOkSchema,
+        },
         {
           status: 404,
           description: '`public_place_not_found`, `public_places_disabled`',

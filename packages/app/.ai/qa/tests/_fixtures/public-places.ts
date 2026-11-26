@@ -127,3 +127,8 @@ export function publicSchedule(request: APIRequestContext, clubSlug: string, pla
   const query = month ? `?month=${month}` : ''
   return publicGet(request, `/api/facilities/public/${clubSlug}/places/${placeSlug}/schedule${query}`)
 }
+
+/** `GET …/schedule?{query}` without a session: a raw query such as `from=…&to=…` (calendar range switch, REQ-W03). */
+export function publicScheduleQuery(request: APIRequestContext, clubSlug: string, placeSlug: string, query: string) {
+  return publicGet(request, `/api/facilities/public/${clubSlug}/places/${placeSlug}/schedule?${query}`)
+}

@@ -8,7 +8,9 @@ import {
   localMoment,
   publicDaySlots,
   publicRates,
+  PUBLIC_RANGE_MAX_DAYS,
   scheduleMonth,
+  scheduleRange,
   zoneState,
 } from '../public-schedule'
 import type { RentalRateShape } from '../rates'
@@ -71,6 +73,49 @@ describe('scheduleMonth', () => {
     expect(scheduleMonth('november', today)).toBeNull()
     expect(scheduleMonth('2026-09', today)).toBeNull()
     expect(scheduleMonth('2027-12', today)).toBeNull()
+  })
+})
+
+describe('scheduleRange (calendar range switch spec REQ-W03, DD-W07)', () => {
+  const today = '2026-11-08'
+  const november = scheduleMonth('2026-11', today)
+
+  it('reads a month without from/to, and month wins over from/to', () => {
+    expect(scheduleRange({}, today)).toEqual({ status: 'ok', range: november })
+    expect(scheduleRange({ month: '2026-11', from: '2026-12-01', to: '2026-12-02' }, today)).toEqual({
+      status: 'ok',
+      range: november,
+    })
+    expect(scheduleRange({ month: '2026-09' }, today)).toEqual({ status: 'month_invalid' })
+  })
+
+  it('reads a week across two months with the month of from and its neighbours', () => {
+    expect(scheduleRange({ from: '2026-11-30', to: '2026-12-06' }, today)).toEqual({
+      status: 'ok',
+      range: { month: '2026-11', first: '2026-11-30', last: '2026-12-06', previous: '2026-10', next: '2026-12' },
+    })
+  })
+
+  it('reads 31 days and one day; refuses 32 days, an inverted range and one end alone', () => {
+    expect(PUBLIC_RANGE_MAX_DAYS).toBe(31)
+    expect(scheduleRange({ from: '2026-12-01', to: '2026-12-31' }, today)).toMatchObject({ status: 'ok' })
+    expect(scheduleRange({ from: '2026-12-01', to: '2026-12-01' }, today)).toMatchObject({ status: 'ok' })
+    expect(scheduleRange({ from: '2026-12-01', to: '2027-01-01' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ from: '2026-12-02', to: '2026-12-01' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ from: '2026-12-01' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ to: '2026-12-01' }, today)).toEqual({ status: 'range_invalid' })
+  })
+
+  it('refuses a date that does not exist and a range outside the readable window', () => {
+    expect(scheduleRange({ from: '2026-11-31', to: '2026-12-02' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ from: 'monday', to: '2026-12-02' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ from: '2026-09-28', to: '2026-10-04' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ from: '2026-10-01', to: '2026-10-04' }, today)).toMatchObject({ status: 'ok' })
+    expect(scheduleRange({ from: '2027-11-29', to: '2027-12-05' }, today)).toEqual({ status: 'range_invalid' })
+    expect(scheduleRange({ from: '2027-11-24', to: '2027-11-30' }, today)).toMatchObject({
+      status: 'ok',
+      range: { month: '2027-11', next: null },
+    })
   })
 })
 

@@ -1,7 +1,8 @@
 // The load result of a public facility page (facilities spec REQ-014; #124, #289, #487), shared by the browser fetch
 // and the server render so both tell the same states apart: a page (200), an unknown club or place (404
 // `public_place_not_found`), a club that does not share its facility calendars (404 `public_places_disabled`), a month
-// outside the readable range (400 `public_schedule_month_invalid`), and a failed request (null). A state with nothing
+// outside the readable range (400 `public_schedule_month_invalid`, or `public_schedule_range_invalid` for a `from`/`to`
+// read: the same "cannot be shown" state), and a failed request (null). A state with nothing
 // to show keeps the club header the API sends while the club publishes its page (null otherwise). Pure.
 
 export type PublicFacilitiesLoad<T, C> =
@@ -25,6 +26,8 @@ export function publicFacilitiesLoadOf<T, C>(answer: PublicFacilitiesAnswer): Pu
   if (answer.status === 404) {
     return code === 'public_places_disabled' ? { status: 'disabled', club } : { status: 'not_found', club }
   }
-  if (answer.status === 400 && code === 'public_schedule_month_invalid') return { status: 'month_invalid', club }
+  if (answer.status === 400 && (code === 'public_schedule_month_invalid' || code === 'public_schedule_range_invalid')) {
+    return { status: 'month_invalid', club }
+  }
   return null
 }

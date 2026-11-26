@@ -74,9 +74,11 @@ export async function notOkResponse(result: Exclude<PublicFacilitiesResult<unkno
   const code =
     result.status === 'month_invalid'
       ? 'public_schedule_month_invalid'
-      : result.status === 'disabled'
-        ? 'public_places_disabled'
-        : 'public_place_not_found'
+      : result.status === 'range_invalid'
+        ? 'public_schedule_range_invalid'
+        : result.status === 'disabled'
+          ? 'public_places_disabled'
+          : 'public_place_not_found'
   const error = await facilitiesErrors.create(code, result.club ? { club: result.club } : undefined)
   return Response.json(error.body, { status: error.status, headers: { 'Cache-Control': PUBLIC_CACHE_CONTROL } })
 }

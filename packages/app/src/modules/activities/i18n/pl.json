@@ -1172,5 +1172,18 @@
   "activities.club.medical.filter": "Orzeczenie: nieważne",
   "activities.club.medical.filterEmpty": "Wszyscy tutaj mają ważne orzeczenie lekarskie.",
   "activities.club.medical.squad.title": "Skład meczowy",
-  "activities.club.medical.squad.warning": "Zawodnicy bez ważnego orzeczenia lekarskiego ({count}): {names}"
+  "activities.club.medical.squad.warning": "Zawodnicy bez ważnego orzeczenia lekarskiego ({count}): {names}",
+  "activities.rangeSwitch.group": "Zakres",
+  "activities.rangeSwitch.day": "Dzień",
+  "activities.rangeSwitch.week": "Tydzień",
+  "activities.rangeSwitch.month": "Miesiąc",
+  "activities.rangeSwitch.earlier": "‹ Wcześniej",
+  "activities.rangeSwitch.later": "Później ›",
+  "activities.rangeSwitch.today": "Dziś",
+  "activities.rangeSwitch.previous.day": "poprzedni dzień",
+  "activities.rangeSwitch.previous.week": "poprzedni tydzień",
+  "activities.rangeSwitch.previous.month": "poprzedni miesiąc",
+  "activities.rangeSwitch.next.day": "następny dzień",
+  "activities.rangeSwitch.next.week": "następny tydzień",
+  "activities.rangeSwitch.next.month": "następny miesiąc"
 }

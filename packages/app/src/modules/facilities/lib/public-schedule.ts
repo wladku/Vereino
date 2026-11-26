@@ -7,7 +7,7 @@
 // `reservable_paid` zone is "bookable", and offers "Request a booking" when the place and the club take online
 // requests, it starts in the future and it is at least one 90-minute unit long. Nothing here reads the database or
 // the clock (S3.5): the caller passes the dates, the time zone and the current instant.
-import { addDays, calendarMonth, minutesOfDay, seasonCovers, type CalendarDate } from '@vereino/core'
+import { addDays, calendarMonth, isCalendarDate, minutesOfDay, seasonCovers, type CalendarDate } from '@vereino/core'
 import type { RentalRateShape, RenterCategory } from './rates'
 import { PUBLIC_RENTER_CATEGORIES } from './rates'
 import { MIN_AVAILABILITY_MINUTES, type Zone } from './zones'
@@ -91,6 +91,37 @@ export function scheduleMonth(month: string | undefined, today: CalendarDate): S
     previous: previous >= earliest ? previous : null,
     next: next <= latest ? next : null,
   }
+}
+
+/** The longest range a `from`/`to` read serves (calendar range switch spec DD-W07, A-W05): a full month. */
+export const PUBLIC_RANGE_MAX_DAYS = 31
+
+/** What the schedule read was asked for: `?month=`, or `?from=&to=` (calendar range switch spec REQ-W03). */
+export type ScheduleQuery = { month?: string; from?: string; to?: string }
+
+export type ScheduleRangeResult =
+  { status: 'ok'; range: ScheduleMonth } | { status: 'month_invalid' } | { status: 'range_invalid' }
+
+/**
+ * The dates of a schedule read (calendar range switch spec REQ-W03, DD-W07): `month` wins when it is sent; otherwise
+ * `from`/`to` — both or neither, real dates, `to` not before `from`, at most 31 days, inside the readable window (the
+ * month before the current one to twelve months ahead) — or the current month. A `from`/`to` range reports the month
+ * of `from` and its readable neighbours, so the month links of the page stay as they are.
+ */
+export function scheduleRange(query: ScheduleQuery, today: CalendarDate): ScheduleRangeResult {
+  if (query.month !== undefined || (query.from === undefined && query.to === undefined)) {
+    const month = scheduleMonth(query.month, today)
+    return month ? { status: 'ok', range: month } : { status: 'month_invalid' }
+  }
+  const { from, to } = query
+  if (!isCalendarDate(from) || !isCalendarDate(to) || to < from) return { status: 'range_invalid' }
+  if (addDays(from, PUBLIC_RANGE_MAX_DAYS - 1) < to) return { status: 'range_invalid' }
+  if (from < calendarMonth(today, -PUBLIC_MONTHS_BACK).from || to > calendarMonth(today, PUBLIC_MONTHS_AHEAD).to) {
+    return { status: 'range_invalid' }
+  }
+  // Inside the readable window, so the month of `from` is a readable month.
+  const month = scheduleMonth(monthOf(from), today) as ScheduleMonth
+  return { status: 'ok', range: { ...month, first: from, last: to } }
 }
 
 /** Every date from `first` to `last`. */

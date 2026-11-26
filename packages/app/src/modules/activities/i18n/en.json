@@ -1172,5 +1172,18 @@
   "activities.club.medical.filter": "Medical: not valid",
   "activities.club.medical.filterEmpty": "Everyone here has a valid medical certificate.",
   "activities.club.medical.squad.title": "Squad",
-  "activities.club.medical.squad.warning": "{count} players without a valid medical certificate: {names}"
+  "activities.club.medical.squad.warning": "{count} players without a valid medical certificate: {names}",
+  "activities.rangeSwitch.group": "Range",
+  "activities.rangeSwitch.day": "Day",
+  "activities.rangeSwitch.week": "Week",
+  "activities.rangeSwitch.month": "Month",
+  "activities.rangeSwitch.earlier": "‹ Earlier",
+  "activities.rangeSwitch.later": "Later ›",
+  "activities.rangeSwitch.today": "Today",
+  "activities.rangeSwitch.previous.day": "previous day",
+  "activities.rangeSwitch.previous.week": "previous week",
+  "activities.rangeSwitch.previous.month": "previous month",
+  "activities.rangeSwitch.next.day": "next day",
+  "activities.rangeSwitch.next.week": "next week",
+  "activities.rangeSwitch.next.month": "next month"
 }

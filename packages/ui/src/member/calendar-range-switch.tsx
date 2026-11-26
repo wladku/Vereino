@@ -21,22 +21,11 @@ import {
   windowHolds,
   type CalendarRange,
   type CalendarRangeLimits,
+  type CalendarRangeTexts,
   type MediaQueryWindow,
 } from '#src/member/calendar-range'
 
-export type CalendarRangeLabels = {
-  /** The accessible name of the views' group ("Range"). */
-  group: string
-  day: string
-  week: string
-  month: string
-  earlier: string
-  later: string
-  today: string
-  /** The full names of the arrows per view, for screen readers ("previous week"). */
-  previous: Record<CalendarRange, string>
-  next: Record<CalendarRange, string>
-}
+export type CalendarRangeLabels = CalendarRangeTexts
 
 export type CalendarRangeLinkProps = {
   href: string
