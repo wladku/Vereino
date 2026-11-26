@@ -34,7 +34,6 @@ import { SegmentedControl, SegmentedControlItem } from '@open-mercato/ui/primiti
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@open-mercato/ui/primitives/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primitives/tabs'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   CALENDAR_RANGE_MAX_DAYS,
   calendarDateInZone,
@@ -44,7 +43,12 @@ import {
 } from '@vereino/core'
 import {
   CalendarList,
+  CalendarRangeSwitch,
+  calendarRangeLabels,
   memberCalendarScopes,
+  shiftRange,
+  useWideCalendar,
+  type CalendarRangeLinkProps,
   type MemberLinkProps,
   MemberSkeleton,
   memberStaffScopes,
@@ -52,13 +56,11 @@ import {
   useMemberContext,
 } from '@vereino/ui'
 import {
-  CALENDAR_VIEWS,
-  calendarViewWindow,
-  isCalendarView,
+  UPCOMING_VIEW,
+  memberCalendarHref,
+  memberCalendarState,
+  memberCalendarWindow,
   mergeCalendarEntries,
-  requestedCalendarRange,
-  shiftCalendarAnchor,
-  windowContains,
   type CalendarView,
 } from '../../lib/member-calendar'
 import { formatDeadline } from '../../lib/confirm-by'
@@ -90,33 +92,13 @@ import {
   type SectionOption,
 } from './club-client'
 
-/** The toolbar and empty-state labels of each view. */
-const VIEW_LABELS = {
-  upcoming: {
-    view: 'activities.club.calendar.viewUpcoming',
-    range: 'activities.club.calendar.rangeUpcoming',
-    previous: 'activities.club.calendar.previousUpcoming',
-    current: 'activities.club.calendar.thisUpcoming',
-    next: 'activities.club.calendar.nextUpcoming',
-    empty: 'activities.club.calendar.emptyUpcoming',
-  },
-  week: {
-    view: 'activities.club.calendar.viewWeek',
-    range: 'activities.club.calendar.range',
-    previous: 'activities.club.calendar.previous',
-    current: 'activities.club.calendar.thisWeek',
-    next: 'activities.club.calendar.next',
-    empty: 'activities.club.calendar.emptyWeek',
-  },
-  month: {
-    view: 'activities.club.calendar.viewMonth',
-    range: 'activities.club.calendar.rangeMonth',
-    previous: 'activities.club.calendar.previousMonth',
-    current: 'activities.club.calendar.thisMonth',
-    next: 'activities.club.calendar.nextMonth',
-    empty: 'activities.club.calendar.emptyMonth',
-  },
-} as const satisfies Record<CalendarView, Record<string, string>>
+/** The empty-state text of each view. */
+const EMPTY_LABELS = {
+  upcoming: 'activities.club.calendar.emptyUpcoming',
+  day: 'activities.club.calendar.emptyDay',
+  week: 'activities.club.calendar.emptyWeek',
+  month: 'activities.club.calendar.emptyMonth',
+} as const satisfies Record<CalendarView, string>
 
 function MemberLink({ href, className, children }: MemberLinkProps) {
   return (
@@ -126,13 +108,15 @@ function MemberLink({ href, className, children }: MemberLinkProps) {
   )
 }
 
-/** The heading of the shown range: the week's days, the month and its year, or a linked range's dates. */
-function rangeLabel(locale: string, kind: CalendarView | 'link', window: DateWindow): string {
+function RangeLink({ replace, ...props }: CalendarRangeLinkProps) {
+  return <Link {...props} replace={replace} scroll={false} />
+}
+
+/** The heading of the upcoming list or a linked range: its dates (with the year for a link). */
+function rangeLabel(locale: string, kind: 'upcoming' | 'link', window: DateWindow): string {
   const at = (date: CalendarDate) => new Date(`${date}T12:00:00Z`)
-  if (kind === 'month')
-    return new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(at(window.from))
   const options: Intl.DateTimeFormatOptions =
-    kind !== 'link'
+    kind === 'upcoming'
       ? { day: 'numeric', month: 'long', timeZone: 'UTC' }
       : { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' }
   return new Intl.DateTimeFormat(locale, options).formatRange(at(window.from), at(window.to))
@@ -373,19 +357,15 @@ function Calendar({
   const scopes = inSection ? [] : memberCalendarScopes(profile, selection)
   const memberScope = scopes.find((scope) => scope.as !== 'coach') ?? null
   const coaching = scopes.some((scope) => scope.as === 'coach')
-  const [view, setView] = React.useState<CalendarView>(CALENDAR_VIEWS[0])
-  // A date in the shown week or month; null follows today.
-  const [anchor, setAnchor] = React.useState<CalendarDate | null>(null)
-  // The range a link opened (`?from=&to=`), until the member moves or switches the view.
-  const [linkRange, setLinkRange] = React.useState<DateWindow | null>(() =>
-    requestedCalendarRange(searchParams.get('from'), searchParams.get('to')),
-  )
+  const wide = useWideCalendar()
   const [busyItemId, setBusyItemId] = React.useState<string | null>(null)
   const [announcement, setAnnouncement] = React.useState('')
   const timeZone = profile.club.timezone
   const today = calendarDateInZone(new Date(), timeZone)
-  const shown = linkRange ?? calendarViewWindow(view, anchor ?? today)
-  const isCurrent = linkRange === null && windowContains(shown, today)
+  // The view and its day live in the address (REQ-W06); a link's `?from=&to=` holds until the member picks a view.
+  const { view, anchor, link: linkRange } = memberCalendarState(searchParams, wide, today)
+  const shown = linkRange ?? memberCalendarWindow(view, anchor, today)
+  const hrefFor = (next: string, date: CalendarDate) => memberCalendarHref(CLUB_CALENDAR_PATH, searchParams, next, date)
   const memberQuery = useMemberCalendar(
     memberScope ? { as: memberScope.as, from: shown.from, to: shown.to, personId: memberScope.personId } : null,
   )
@@ -440,28 +420,15 @@ function Calendar({
     }
   }
 
-  const move = (step: number) => {
-    setAnchor(shiftCalendarAnchor(view, linkRange?.from ?? anchor ?? today, step))
-    setLinkRange(null)
-  }
-  const showCurrent = () => {
-    setAnchor(null)
-    setLinkRange(null)
-  }
-  const switchView = (value: string) => {
-    if (!isCalendarView(value)) return
-    if (linkRange) setAnchor(linkRange.from)
-    setLinkRange(null)
-    setView(value)
-  }
-
   // The range the API served: after a refused range, the trimmed one (both reads trim alike).
   const servedBy = answered[0]?.data
   const served = servedBy?.trimmed ? { from: servedBy.from, to: servedBy.to } : shown
-  const label = rangeLabel(locale, linkRange ? 'link' : view, served)
-  const viewLabels = VIEW_LABELS[view]
-  // The upcoming list always starts today; a linked range keeps the arrows to move on from it.
-  const navigable = linkRange !== null || view !== 'upcoming'
+  // Day, Week and Month carry their heading in the switch; the upcoming list and a linked range here.
+  const label = linkRange
+    ? rangeLabel(locale, 'link', served)
+    : view === UPCOMING_VIEW
+      ? rangeLabel(locale, 'upcoming', served)
+      : null
 
   let content: React.ReactNode
   if (loading) content = <MemberSkeleton shape="rows" label={t('activities.club.calendar.loading')} />
@@ -482,10 +449,24 @@ function Calendar({
         days={days}
         locale={locale}
         timeZone={timeZone}
-        labels={{ ...labels, empty: linkRange ? t('activities.club.calendar.empty') : t(viewLabels.empty) }}
+        labels={{ ...labels, empty: linkRange ? t('activities.club.calendar.empty') : t(EMPTY_LABELS[view]) }}
         Link={MemberLink}
         onAction={(itemId, actionId) => void onAction(itemId, actionId)}
         busyItemId={busyItemId}
+        emptyAction={
+          view === 'day' && !linkRange ? (
+            <Button asChild variant="outline" className="min-h-11">
+              <Link
+                href={hrefFor('day', shiftRange('day', anchor, 1))}
+                replace
+                scroll={false}
+                data-testid="club-calendar-next-day"
+              >
+                {t('activities.club.calendar.nextDay')}
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
     )
 
@@ -504,73 +485,24 @@ function Calendar({
       </div>
       {header}
       <ViewPanel view={inSection ? 'all' : null}>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end" data-testid="club-calendar-toolbar">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium" id="club-calendar-view-label">
-              {t('activities.club.calendar.view')}
-            </span>
-            <SegmentedControl
-              value={linkRange ? '' : view}
-              onValueChange={switchView}
-              aria-labelledby="club-calendar-view-label"
-              className="h-auto"
-              data-testid="club-calendar-view"
-            >
-              {CALENDAR_VIEWS.map((entry) => (
-                <SegmentedControlItem
-                  key={entry}
-                  value={entry}
-                  className="h-11 px-4"
-                  data-testid={`club-calendar-view-${entry}`}
-                >
-                  {t(VIEW_LABELS[entry].view)}
-                </SegmentedControlItem>
-              ))}
-            </SegmentedControl>
-          </div>
-          {navigable ? (
-            <nav aria-label={t(viewLabels.range)} className="flex flex-nowrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11 min-w-11 px-0"
-                onClick={() => {
-                  move(-1)
-                }}
-                aria-label={t(viewLabels.previous)}
-                title={t(viewLabels.previous)}
-                data-testid="club-calendar-previous"
-              >
-                <ChevronLeft aria-hidden="true" />
-              </Button>
-              <Button
-                type="button"
-                variant={isCurrent ? 'default' : 'outline'}
-                className="min-h-11"
-                onClick={showCurrent}
-                data-testid="club-calendar-current"
-              >
-                {t(viewLabels.current)}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="min-h-11 min-w-11 px-0"
-                onClick={() => {
-                  move(1)
-                }}
-                aria-label={t(viewLabels.next)}
-                title={t(viewLabels.next)}
-                data-testid="club-calendar-next"
-              >
-                <ChevronRight aria-hidden="true" />
-              </Button>
-            </nav>
-          ) : null}
+        <div data-testid="club-calendar-toolbar">
+          <CalendarRangeSwitch
+            range={linkRange ? 'link' : view}
+            anchor={anchor}
+            today={today}
+            locale={locale}
+            labels={calendarRangeLabels(t, 'activities.rangeSwitch')}
+            hrefFor={hrefFor}
+            Link={RangeLink}
+            before={[{ id: UPCOMING_VIEW, label: t('activities.club.calendar.viewUpcoming') }]}
+            testId="club-calendar"
+          />
         </div>
-        <p className="text-muted-foreground text-sm" aria-live="polite" data-testid="club-calendar-range">
-          {label}
-        </p>
+        {label ? (
+          <p className="text-muted-foreground text-sm" aria-live="polite" data-testid="club-calendar-range">
+            {label}
+          </p>
+        ) : null}
         {answered.length > 0 && failed.length > 0 ? (
           <Alert style="light" status="warning" data-testid="club-calendar-partial">
             <div className="flex flex-wrap items-center gap-2">

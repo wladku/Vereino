@@ -1,48 +1,66 @@
 // The views of the member calendar `/club/calendar` (club spec UI row "week/month calendar", REQ-006; README M-03;
-// E06-S18, #100): the upcoming list (the default since E20-S14, #493, R01.7: today and the next 13 days), the week
-// and the month list over an anchor date, the moves by whole weeks or months, a
-// range opened from a link (`?from=&to=`), and the trimmed range the page asks for when the API refuses a range over
+// E06-S18, #100; calendar range switch spec REQ-W06, #784): the upcoming list (E20-S14, #493, R01.7: today and the
+// next 13 days) as its own tab before the shared Day / Week / Month, the view and its anchor date in the address
+// (`?range=&date=`; without `range` a phone opens on Day and a wider screen on Week), a range opened from a link
+// (`?from=&to=`, which a `range` overrides), and the trimmed range the page asks for when the API refuses a range over
 // 62 days (400 `calendar_range_invalid`) instead of failing. Pure: the page passes the club-zone "today".
+import { addCalendarDays, isCalendarDate, trimCalendarRange, type CalendarDate, type DateWindow } from '@vereino/core'
 import {
-  addCalendarDays,
-  calendarMonth,
-  calendarWeek,
-  isCalendarDate,
-  trimCalendarRange,
-  type CalendarDate,
-  type DateWindow,
-} from '@vereino/core'
+  calendarRangeHref,
+  defaultCalendarRange,
+  parseCalendarRange,
+  rangeOf,
+  type CalendarRange,
+  type CalendarRangeParams,
+} from '@vereino/ui'
 
-export type CalendarView = 'upcoming' | 'week' | 'month'
+/** The member calendar's own tab before Day / Week / Month. */
+export const UPCOMING_VIEW = 'upcoming'
 
-/** The views in the order of the page's tabs; the first is the default on a phone (R01.7). */
-export const CALENDAR_VIEWS: readonly CalendarView[] = ['upcoming', 'week', 'month']
+export type CalendarView = typeof UPCOMING_VIEW | CalendarRange
 
 /** How many days the upcoming list covers, today included. */
 export const UPCOMING_DAYS = 14
 
-export function isCalendarView(value: unknown): value is CalendarView {
-  return CALENDAR_VIEWS.includes(value as CalendarView)
+/** The parameters a view change replaces: a link's `from`/`to` (#493). */
+const REPLACED = ['from', 'to'] as const
+
+export type MemberCalendarState = {
+  view: CalendarView
+  anchor: CalendarDate
+  /** The range a link opened (`?from=&to=` without `range`); null otherwise. */
+  link: DateWindow | null
 }
 
-/** The upcoming list from `anchor`, or the Monday–Sunday week or the calendar month that holds `anchor`. */
-export function calendarViewWindow(view: CalendarView, anchor: CalendarDate): DateWindow {
-  if (view === 'upcoming') return { from: anchor, to: addCalendarDays(anchor, UPCOMING_DAYS - 1) }
-  return view === 'week' ? calendarWeek(anchor) : calendarMonth(anchor)
+/** The view, anchor and link range of the address; without a view, Day on a phone and Week from `md` (Q-W02). */
+export function memberCalendarState(
+  params: CalendarRangeParams,
+  wide: boolean,
+  today: CalendarDate,
+): MemberCalendarState {
+  const parsed = parseCalendarRange(params, {
+    today,
+    fallback: defaultCalendarRange(wide),
+    extra: [UPCOMING_VIEW] as const,
+  })
+  const link = parsed.explicit ? null : requestedCalendarRange(params.get('from'), params.get('to'))
+  return { view: parsed.range, anchor: parsed.anchor, link }
 }
 
-/**
- * The first day of the list, week or month `step` lists, weeks or months away from the one holding `anchor` (the
- * upcoming list moves by its own length).
- */
-export function shiftCalendarAnchor(view: CalendarView, anchor: CalendarDate, step: number): CalendarDate {
-  if (view === 'upcoming') return addCalendarDays(anchor, step * UPCOMING_DAYS)
-  return (view === 'week' ? calendarWeek(anchor, step) : calendarMonth(anchor, step)).from
+/** The dates a view reads: the upcoming list from today, or the day, week or month of the anchor. */
+export function memberCalendarWindow(view: CalendarView, anchor: CalendarDate, today: CalendarDate): DateWindow {
+  if (view === UPCOMING_VIEW) return { from: today, to: addCalendarDays(today, UPCOMING_DAYS - 1) }
+  return rangeOf(view, anchor)
 }
 
-/** True when `date` falls in the window (both ends included). */
-export function windowContains(window: DateWindow, date: CalendarDate): boolean {
-  return window.from <= date && date <= window.to
+/** The address of a view on `path`: the page's other parameters kept, a link's `from`/`to` dropped. */
+export function memberCalendarHref(
+  path: string,
+  current: string | { toString(): string },
+  view: string,
+  anchor: CalendarDate,
+): string {
+  return calendarRangeHref(path, current, view, anchor, REPLACED)
 }
 
 /** The range a link asks for (`?from=YYYY-MM-DD&to=YYYY-MM-DD`), or null when either end is missing or not a date. */
