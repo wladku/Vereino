@@ -23,5 +23,11 @@ TEST-R10 and TEST-R16).
 `<html lang>` after every navigation: `uiText()` patterns match both catalogs, so a pass that silently rendered the
 other language still passes (TEST-C12 set only the cookie in its loops until #641).
 
+**Timing (#818)**: the platform's `detectLocale` reads the `locale` cookie first on every request, so the club or
+person language takes effect when the user signs in, not on the next page load. E27-S01 changed the club's
+`defaultLocale` to `pl` after `signInBrowser` and the panel stayed `lang="en"`; setting the `locale` cookie after the
+sign-in switched it. To change the language mid-test, sign in again after the setting change or set the cookie after
+the sign-in, and assert `<html lang>` either way.
+
 **Applies to**: integration tests and evidence scripts under `packages/app/.ai/qa/`, agent-browser checks of `/backend`
 and `/club` pages in both locales.

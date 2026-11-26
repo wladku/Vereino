@@ -192,6 +192,13 @@ E10-S08 (groups and activities parity spec phase 8, REQ-A10, TEST-A16, AC-A12; J
 - `/backend/activities/reports/coach-units` (B-16) and `/club/coach/units` (More → My units for a coach context, no amounts).
 - `activities_activities.is_away` (activity form "Away trip") also feeds the `away_trip` declaration policy, which until now always resolved as not away.
 
+## Declarations in Vereino (E27-S01, #818)
+
+- `GET /api/activities/reports/declaration-share[?from=YYYY-MM-DD&to=YYYY-MM-DD]` (`services/declaration-share.ts`, rules in `lib/declaration-share.ts`): per section, the share of attendance declarations made in Vereino — the brief's primary metric (D21). Only `done` sessions whose club-zone date is in the period count; the default period is the last 28 days, a range is at most 366 days (else 400 `report_period_invalid`).
+- `confirm` kinds: participants (the group's roster on the date plus anyone with a row) who answered themselves — `source` `app` or `link`, `declaration_status` `final`, `declared` `yes`/`no`, `declared_at` before `start_at` — over all participants. `absence_only` kinds: actual absences reported as `no` the same way over all actual absences. The headline adds numerators and denominators; staff entries never count. A section without a `done` session has `sessions: 0` ("No completed sessions").
+- Reach: `activities.reports.view` — the administrator every live section, a coordinator their sections; anyone else 403. Counts only, no names. The same read serves the coordinator's phone view (E27-S02).
+- `/backend/activities/reports/declaration-share` ("Declarations in Vereino", Classes group).
+
 ## PZPN exports (E24-S04, #684)
 
 - `GET /api/activities/reports/pzpn-schedule` and `pzpn-attendance` `?groupId&from&to[&format=csv]` (`services/pzpn-export.ts`, columns and values in `lib/pzpn-export.ts`; training outlines spec REQ-O10, DD-O06, DD-O09): a team's sessions whose start falls in `from`…`to` (club zone, ≤ 366 days) as PZPN's "Harmonogram" and "Lista obecności". UTF-8 CSV with a BOM, headers in the user's language, the locale's separator; event types and statuses always Polish. The attendance lists every session that was not cancelled × the group's participants on its day and anyone with an attendance row.

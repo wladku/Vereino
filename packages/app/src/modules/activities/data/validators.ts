@@ -376,6 +376,17 @@ export const pzpnExportQuerySchema = z.object({
   format: z.enum(['csv']).optional().describe('The only format: a UTF-8 CSV file with a BOM'),
 })
 
+/** `GET /api/activities/reports/declaration-share` (E27-S01, #818): both days or neither (the last 28 days). */
+export const declarationShareQuerySchema = z.object({
+  from: z.string().trim().max(10).optional().describe('First day, `YYYY-MM-DD`, in the club’s time zone'),
+  to: z
+    .string()
+    .trim()
+    .max(10)
+    .optional()
+    .describe('Last day, `YYYY-MM-DD`; at most 366 days after `from`, both included'),
+})
+
 /**
  * `GET /api/activities/calendar/{id}`: a participant, a guardian (optionally one ward), the coach (E06-S15 #97) or the
  * section coordinator (E10-S08 #273).
