@@ -3,7 +3,7 @@
 - **Date:** 2026-11-24
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` with the repo-local override, Cezar run 35c00bde
 - **Trigger:** `cezar` label on issue #698 (E16-S04, epic #443), filed at the owner's request
-- **Spec / issue / branch:** `.ai/specs/2026-11-18-batch-merge-train.md` phase 3 (REQ-BT05, BT-AC-01 … BT-AC-03); #698; `docs/issue-698-prepare-batch-merge-train`
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-18-batch-merge-train.md` phase 3 (REQ-BT05, BT-AC-01 … BT-AC-03); #698; `docs/issue-698-prepare-batch-merge-train`
 - **Status:** completed (the switch-on itself stays with the owner)
 
 ## Goal
@@ -56,7 +56,7 @@ batch plan (size 4, nothing is built in this run): none
 - `scripts/merge-train-guard.mjs`, `scripts/merge-train.mjs`, `packages/app/scripts/__tests__/merge-train-guard.test.mjs`
 - `.github/workflows/merge-train.yml` (comment only)
 - `SDLC.md`, `AGENTS.md`, `BACKWARD_COMPATIBILITY.md`, `docs/ops/github-settings.md`, `docs/ops/batch-train-switch-on.md` (new)
-- `.ai/specs/2026-11-18-batch-merge-train.md`, `.ai/specs/changelog/2026-11-18-batch-merge-train/2026-11-24-issue-698-phase-3-prep.md`
+- `.ai/specs/implemented/2026-11-18-batch-merge-train.md`, `.ai/specs/changelog/2026-11-18-batch-merge-train/2026-11-24-issue-698-phase-3-prep.md`
 - `.ai/lessons/rehearse-github-automation-in-a-scratch-repository.md`
 - this run log
 

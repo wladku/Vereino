@@ -13,7 +13,7 @@ name: CI
 on:
   pull_request:
   push:
-    # `merge-train/**`: the batch the merge train built with the Merges API (`.ai/specs/2026-11-18-batch-merge-train.md`);
+    # `merge-train/**`: the batch the merge train built with the Merges API (`.ai/specs/implemented/2026-11-18-batch-merge-train.md`);
     # the train judges only the checks of the batch head, and a newer batch cancels the older run (concurrency below).
     branches: [main, 'merge-train/**']
 

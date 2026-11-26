@@ -1,0 +1,1 @@
+| 2026-11-26 | Close-out V (#842): Status set to In progress (phases 1–4 merged: PRs #705, #706, #696, #729); AC-O01…O05 and AC-O07…O13 ticked with their tests; AC-O06 and the coverage criterion linked to gap #846; the deferred back-office outline pages and part filter of M-O5 filed as owner question #847. |

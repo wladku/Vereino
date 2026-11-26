@@ -279,12 +279,12 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 
 ## Acceptance Criteria
 
-- [ ] **AC-S01** — A person with a linked Google identity signs in from `/login` with one click and reaches `/club` with the platform's session; `last_signed_in_at` is updated and the event carries ids only.
-- [ ] **AC-S02** — A signed-in person connects and disconnects providers in `/club/profile`; the last sign-in method cannot be removed (409); the administrator unlinks any person's identity; deleting the `auth` user removes its links.
-- [ ] **AC-S03** — Facebook sign-in and linking work with and without an e-mail; the deletion callback removes the link and returns a confirmation code; a bad signature is refused.
-- [ ] **AC-S04** — A sign-in without a link, a replayed or tampered state, an unreachable state store and a provider failure each end without a session and without an account, showing the same generic sentence; no response reveals whether an identity or an e-mail exists.
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] **AC-S01** — A person with a linked Google identity signs in from `/login` with one click and reaches `/club` with the platform's session; `last_signed_in_at` is updated and the event carries ids only. — PR #610, `foundation/identity/TEST-S01-google-sign-in.spec.ts`, ids-only payload in `foundation/lib/__tests__/identity.test.ts`; club address in TEST-S05 (PR #783) (close-out V #842)
+- [x] **AC-S02** — A signed-in person connects and disconnects providers in `/club/profile`; the last sign-in method cannot be removed (409); the administrator unlinks any person's identity; deleting the `auth` user removes its links. — PR #610, `foundation/identity/TEST-S02-identity-management.spec.ts`, `TEST-S04-identity-ui.spec.ts` (close-out V #842)
+- [x] **AC-S03** — Facebook sign-in and linking work with and without an e-mail; the deletion callback removes the link and returns a confirmation code; a bad signature is refused. — PR #829, `foundation/identity/TEST-S03-facebook-sign-in.spec.ts` against the provider fake; the real-provider exit gates are #849 (close-out V #842)
+- [ ] **AC-S04** — A sign-in without a link, a replayed or tampered state, an unreachable state store and a provider failure each end without a session and without an account, showing the same generic sentence; no response reveals whether an identity or an e-mail exists. — gap: #848 (the unreachable state store is not tested; the other cases are in TEST-S01/S02)
+- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — gap: #848 (no browser test of the person-record `person-identities` section)
+- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — gap: #848
 
 ## Final Compliance Report
 

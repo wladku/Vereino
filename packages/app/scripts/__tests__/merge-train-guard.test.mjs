@@ -1,4 +1,4 @@
-// BT-TEST-03 (merge guard) of `.ai/specs/2026-11-18-batch-merge-train.md`, phase 2.
+// BT-TEST-03 (merge guard) of `.ai/specs/implemented/2026-11-18-batch-merge-train.md`, phase 2.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {

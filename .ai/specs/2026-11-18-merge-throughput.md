@@ -1,9 +1,9 @@
 # Merge throughput: PRs reach main without stalling
 
 **Date**: 2026-11-18
-**Status**: In progress — approved by the owner on 2026-11-18; phases 1–3 built (PR #399, PR #402, #449 PR #458); left: REQ-MT05 (the picker spreads modules) and the fix-run half of REQ-MT06 (a Cezar automation on the mirrored train labels) live in the Cezar picker and configuration, outside the repository, with a run log as their evidence (*Operations*); MT-AC-01 (10-run p50) and MT-AC-04 (a label-started fix run within 10 min) have no recorded evidence yet (close-out IV #719)
+**Status**: In progress — approved by the owner on 2026-11-18; phases 1–3 built (PR #399, PR #402, #449 PR #458); left: REQ-MT05 (the picker spreads modules) and the fix-run half of REQ-MT06 (a Cezar automation on the mirrored train labels) live in the Cezar picker and configuration, outside the repository, with a run log as their evidence (*Operations*); MT-AC-01 (10-run p50) and MT-AC-04 (a label-started fix run within 10 min) have no recorded evidence yet (close-out IV #719); MT-AC-03 ticked, MT-AC-01, MT-AC-04 and MT-AC-05 tracked in #858 (close-out V #842)
 
-> Related: engineering standards `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (S13, S14, ADR-015; this spec amends S14.1); the batch train in `.ai/specs/2026-11-18-batch-merge-train.md` (split out of this spec on review); `SDLC.md` → "Validation gate" and "The automation contract"; `.github/workflows/ci.yml`, `.github/workflows/merge-train.yml`, `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs` (unit tests in `packages/app/scripts/__tests__/merge-train-plan.test.mjs`); `packages/app/.ai/qa/tests/playwright.config.ts`. Identifiers: goals `MT-01…`, decisions `MT-D01…`, requirements `REQ-MT01…`, tests `MT-TEST-01…`, acceptance `MT-AC-01…`, questions `MT-Q1…`.
+> Related: engineering standards `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (S13, S14, ADR-015; this spec amends S14.1); the batch train in `.ai/specs/implemented/2026-11-18-batch-merge-train.md` (split out of this spec on review); `SDLC.md` → "Validation gate" and "The automation contract"; `.github/workflows/ci.yml`, `.github/workflows/merge-train.yml`, `scripts/merge-train.mjs`, `scripts/merge-train-plan.mjs` (unit tests in `packages/app/scripts/__tests__/merge-train-plan.test.mjs`); `packages/app/.ai/qa/tests/playwright.config.ts`. Identifiers: goals `MT-01…`, decisions `MT-D01…`, requirements `REQ-MT01…`, tests `MT-TEST-01…`, acceptance `MT-AC-01…`, questions `MT-Q1…`.
 
 ## TLDR
 
@@ -17,7 +17,7 @@ Evidence from 2026-11-18:
 - **Failures outside the PR.** TEST-L03 failed on #391 and #392 because it declared on that Wednesday's 17:00 session after the session had started (fixed on `main` by #390; the PRs were older). #387 conflicted with `main`. Of the failures examined, only TEST-C01 on #391 was a defect of the PR. `SDLC.md` requires quarantining a test that fails on `main`, but nothing detects it.
 - **Fixes wait.** A PR labelled `merge-train-failed` or `merge-train-conflict` waits for the hourly picker, which queues at most two fix runs per pass.
 - **Unclear rules.** `needs-qa` does not stop the train, so manual QA happens after the merge or not at all; `SDLC.md` says Cezar runs two builds at a time while its configuration allows six.
-- The train itself merges one PR per CI run; that cap is addressed in `.ai/specs/2026-11-18-batch-merge-train.md`.
+- The train itself merges one PR per CI run; that cap is addressed in `.ai/specs/implemented/2026-11-18-batch-merge-train.md`.
 
 ## Overview and Success Measures
 
@@ -169,10 +169,10 @@ Every phase is additive and reverts with its PR. The ledger can be disabled by d
 
 ## Acceptance Criteria
 
-- **MT-AC-01** — CI p50 over 10 PR runs ≤ 22 min.
-- **MT-AC-03** — A test failing in two disjoint runs within 48 h, or on `main`, gets a quarantine issue automatically; no test picks today's or tomorrow's date.
-- **MT-AC-04** — A train label starts a fix run within 10 min.
-- **MT-AC-05** — A `risk-high` PR with `needs-qa` stays in the queue until `qa`; `SDLC.md` and Cezar both say three builds.
+- [ ] **MT-AC-01** — CI p50 over 10 PR runs ≤ 22 min. — gap: #858 (median of the last 10 successful PR CI runs about 56 min on 2026-11-26; #834 targets 30 min)
+- [x] **MT-AC-03** — A test failing in two disjoint runs within 48 h, or on `main`, gets a quarantine issue automatically; no test picks today's or tomorrow's date. — PRs #402, #776: `packages/app/scripts/__tests__/ci-failure-ledger-plan.test.mjs` (MT-TEST-03), `vereino-test-dates.test.mjs` (MT-TEST-04); quarantine issues opened automatically (#653, #754); date audit in `.ai/runs/2026-11-18-merge-throughput-phase-2.md` (close-out V #842)
+- [ ] **MT-AC-04** — A train label starts a fix run within 10 min. — gap: #858 (no run log; the picker runs every 30 min)
+- [ ] **MT-AC-05** — A `risk-high` PR with `needs-qa` stays in the queue until `qa`; `SDLC.md` and Cezar both say three builds. — gap: #858 (MT-TEST-05 passes, PR #458, and `SDLC.md` says three builds; the build server's Cezar runs five)
 
 ## Final Compliance Report
 

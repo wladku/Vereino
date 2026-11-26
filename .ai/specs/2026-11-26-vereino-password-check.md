@@ -123,9 +123,9 @@ One phase: the check, its enforcement points, the bridge and the docs ship toget
 
 ## Acceptance
 
-- **PW-AC-01** — TEST-PW01 passes: every API path refuses a common, too long, whitespace-bounded and context-word password with its code, and accepts a good passphrase; a trimmed current password is refused.
-- **PW-AC-02** — TEST-PW02 passes in a production build: the forms state the server's policy and accept a lower-case passphrase.
-- **PW-AC-03** — the six ASVS rows name the check and its tests.
+- [ ] **PW-AC-01** — TEST-PW01 passes: every API path refuses a common, too long, whitespace-bounded and context-word password with its code, and accepts a good passphrase; a trimmed current password is refused. — gap: #845 (PR #812's TEST-PW01 covers `PUT /api/auth/users` and the reset link fully; `POST /api/auth/users` is not called and `PUT /api/auth/profile` checks only `password_context_word`)
+- [x] **PW-AC-02** — TEST-PW02 passes in a production build: the forms state the server's policy and accept a lower-case passphrase. — PR #812, `foundation/TEST-PW02-password-forms.spec.ts` (close-out V #842)
+- [ ] **PW-AC-03** — the six ASVS rows name the check and its tests. — gap: #845 (all six rows name the check; V6.1.2 names no test, V6.2.12 neither file nor test)
 
 ## Rollback
 
