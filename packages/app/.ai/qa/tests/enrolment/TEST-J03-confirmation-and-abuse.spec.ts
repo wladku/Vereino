@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { calendarDate, createClub, createPerson, uniqueSuffix } from '../_fixtures/club'
 import { create as createStructure } from '../_fixtures/club-structure'
-import { awaitEmails, emailsTo } from '../_fixtures/communication'
+import { awaitEmails } from '../_fixtures/communication'
 import { publicCall } from '../_fixtures/declaration-links'
 import {
   CONFIRM_SUBJECT,
