@@ -8,6 +8,7 @@
 // REQ-C12 (#300): the URL holds the group and the filter (`?group=&due=1`, the Today tile's link), the chips scroll and
 // mark a group that is not the caller's own with "(section)", the group card states the club's coach mode, a handed
 // over kit shows when, and a group outside the caller's groups shows the 403 state without charges.
+// D-042 (#791): "Hand over cash" under "Cash with you" sends a pending handover the treasurer confirms.
 import * as React from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
@@ -23,6 +24,7 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorMessage, formatMoney, fromGrosz, personName, toGrosz, type Translate } from '../../client-helpers'
 import { coachPaymentsHref, readCoachPaymentsUrl, type CoachPaymentsUrlState } from '../../../lib/group-charges'
 import { PaymentsClubFrame } from '../PaymentsClubFrame'
+import { CashHandoverSection } from './CashHandoverSection'
 import {
   COACH_PAYMENTS_QUERY_KEY,
   GroupChargesLoadError,
@@ -617,6 +619,7 @@ function CoachPayments() {
   return (
     <div className="flex flex-col gap-4">
       <CashWithYou cash={view.cash} t={t} locale={locale} />
+      <CashHandoverSection />
       {view.groups.length === 0 || !selected ? (
         <p className="text-muted-foreground" data-testid="coach-no-groups">
           {t('payments.coach.noGroups')}

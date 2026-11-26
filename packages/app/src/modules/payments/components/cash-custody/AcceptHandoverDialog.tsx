@@ -1,6 +1,7 @@
 'use client'
 // "Accept handover" of B-33 (payments spec REQ-033; issue #118): the collector's held cash payments, all selected at
-// first, the selected total and "I confirm receipt of the cash". A coded refusal (409 `cash_already_settled`) stays in
+// first, the selected total and "I confirm receipt of the cash". Since D-042 (#791) it is the fallback for a collector
+// who sent no handover: a payment of a pending handover is shown, not selectable, and named as such. A coded refusal (409 `cash_already_settled`) stays in
 // the dialog and refreshes the list; success closes it with the toast naming the `RG` number.
 import * as React from 'react'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -34,7 +35,11 @@ export function AcceptHandoverDialog({
   const [problem, setProblem] = React.useState<string | null>(null)
 
   const payments = collector?.payments ?? []
-  const selected = payments.map((payment) => payment.paymentId).filter((id) => !deselected.includes(id))
+  // A payment of a pending handover is confirmed with that handover, never accepted one-sided (D-042): not selectable.
+  const selected = payments
+    .filter((payment) => payment.pendingHandoverId === null)
+    .map((payment) => payment.paymentId)
+    .filter((id) => !deselected.includes(id))
   const total = payments
     .filter((payment) => selected.includes(payment.paymentId))
     .reduce((sum, payment) => sum + payment.amount, 0)
@@ -83,7 +88,7 @@ export function AcceptHandoverDialog({
                     id={id}
                     className="mt-0.5"
                     checked={selected.includes(payment.paymentId)}
-                    disabled={pending}
+                    disabled={pending || payment.pendingHandoverId !== null}
                     onCheckedChange={() => {
                       setDeselected((current) =>
                         current.includes(payment.paymentId)
@@ -100,6 +105,11 @@ export function AcceptHandoverDialog({
                       {payment.payer ? ` · ${personName(payment.payer)}` : ''}
                       {payment.description ? (
                         <span className="text-muted-foreground block">{payment.description}</span>
+                      ) : null}
+                      {payment.pendingHandoverId ? (
+                        <span className="text-muted-foreground block" data-testid="handover-payment-pending">
+                          {t('payments.cashCustody.inPendingHandover')}
+                        </span>
                       ) : null}
                     </span>
                     <span className="tabular-nums">{formatMoney(payment.amount, locale)}</span>
