@@ -472,18 +472,6 @@ function ensureDevFileWatchLimits() {
     return true
   }
 
-  const decision = resolveDevBundlerDecision({ requestedBundler, inotifyResult: result })
-  if (decision.fallback) {
-    process.env.OM_DEV_BUNDLER = 'webpack'
-    console.warn('⚠️ Linux inotify limits could not be raised; continuing with Next.js Webpack')
-    console.warn(`   Current values: ${JSON.stringify(result.current)}`)
-    console.warn('   To restore Turbopack, run `yarn dev:fix-wsl-watchers` or apply:')
-    for (const command of result.manualCommands ?? []) {
-      console.warn(`     ${command}`)
-    }
-    return true
-  }
-
   updateSplashState({
     phase: 'File-watch limits too low',
     detail: 'Raise Linux inotify limits before starting Turbopack',
