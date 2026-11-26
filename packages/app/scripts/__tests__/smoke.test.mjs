@@ -325,7 +325,12 @@ test('checkNoStore passes for an account with a second factor and fails without 
     readCapture,
   })
   assert.equal(passed.status, 'pass')
-  const failed = await checkNoStore({ baseUrl: BASE, fetchImpl: fakeFetch(routes).fetchImpl, email: SMOKE, password: 'pw' })
+  const failed = await checkNoStore({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch(routes).fetchImpl,
+    email: SMOKE,
+    password: 'pw',
+  })
   assert.equal(failed.status, 'fail')
   assert.match(failed.detail, /second factor/)
 })

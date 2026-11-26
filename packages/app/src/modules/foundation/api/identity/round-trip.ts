@@ -57,7 +57,11 @@ export async function signIn(
   const found = await findLinkForSignIn(container, provider, identity.subject)
   const link = found && (!marker.club || found.tenantId === marker.club.tenantId) ? found : null
   // Staff second factor (DD-2F06; #736): a user holding the requirement signs in only with Google.
-  if (link && !providerCountsAsSecondFactor(provider) && (await holdsSecondFactorRequirement(container, link.userId, link))) {
+  if (
+    link &&
+    !providerCountsAsSecondFactor(provider) &&
+    (await holdsSecondFactorRequirement(container, link.userId, link))
+  ) {
     reportSecondFactor('foundation.second_factor.provider_refused', { provider, userId: link.userId })
     return finish(request, SECOND_FACTOR_USE_GOOGLE_PATH, marker.club)
   }
