@@ -273,8 +273,8 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 
 | Req | L | Topic | Vereino control and evidence | State | Owner |
 |---|---|---|---|---|---|
-| V11.1.1 | 2 | Key management policy and lifecycle | Pieces only: S8.10 rotation rule, `age` backup key lifecycle in `docs/ops/backups.md`, rotation on incident in `docs/ops/incident.md`; no policy covering all keys | partial | #740 |
-| V11.1.2 | 2 | Cryptographic inventory kept current | No written inventory of keys, algorithms and certificates (open item A-3) | gap | #740 |
+| V11.1.1 | 2 | Key management policy and lifecycle | `docs/compliance/key-inventory.md` gives every key a rotation period and method; `docs/ops/key-store.md` the key store's lifecycle (setup, unseal, rotation); per-tenant stored keys and key deletion follow in phases 2 and 3 of #740 | partial | #740 |
+| V11.1.2 | 2 | Cryptographic inventory kept current | `docs/compliance/key-inventory.md` (#740 phase 1): every key and secret, algorithm where it applies, location, owner, rotation; a new key gets its row in the PR that adds it; awaiting the owner's approval (open item A-3) | partial | #740 |
 | V11.2.1 | 2 | Validated crypto implementations | Vereino code uses `node:crypto` only (no hand-written crypto, AGENTS.md); platform uses `node:crypto` and `bcryptjs`; no gate enforces it | to verify | #743 |
 | V11.2.2 | 2 | Crypto agility | Platform lookup hash is versioned (`v2` prefix, `@open-mercato/shared/src/lib/encryption/aes.ts`); ciphertext format and re-encryption path not checked | to verify | #740 |
 | V11.2.3 | 2 | At least 128-bit security | Seen in source: AES-256-GCM, SHA-256, HMAC-SHA256, 32-byte tokens; JWT signing algorithm and key length not checked | to verify | #743 |

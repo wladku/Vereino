@@ -444,12 +444,6 @@ export function redactExportRow(table: string, row: Record<string, unknown>): Re
   return redacted
 }
 
-/**
- * Why an archive's tables or rows reach beyond its own club, sorted, or an empty list. The checksums sit inside the
- * archive and only catch corruption, so a restore trusts nothing else in it: every manifest table must be one of the
- * club's exported (`data`) tables with the same module and key, every tenant-keyed row must carry the manifest's
- * tenant, the tenant row must be that tenant, and every user-keyed row must belong to one of the archive's users.
- */
 /** An archive written before a table became `tenant_or_user` lists it as `tenant` (#681); its rows still fit. */
 function sameKey(expected: ClubTableKey, archived: ClubTableKey): boolean {
   return expected === archived || (expected === 'tenant_or_user' && archived === 'tenant')
@@ -488,6 +482,50 @@ export function encryptedRowKeys(fields: readonly string[], row: Record<string, 
   return [...keys].sort()
 }
 
+/** The archive's own rows a reference may name: its users, roles and organizations. */
+type ArchiveIds = { users: ReadonlySet<unknown>; roles: ReadonlySet<unknown>; organizations: ReadonlySet<unknown> }
+
+/**
+ * Columns of the platform's privilege-bearing tables that name a user, a role or an organization (#806). A row of the
+ * club's own tenant may still point at a record of another tenant — a user role naming the instance's own super
+ * administrator role, a schedule run as another tenant's user — so each value must be one of the archive's own records
+ * (or null, where the column allows it). The other tables are checked by their tenant only.
+ */
+const ARCHIVE_REFERENCES: Readonly<Record<string, readonly { column: string; target: keyof ArchiveIds }[]>> = {
+  users: [{ column: 'organization_id', target: 'organizations' }],
+  user_roles: [{ column: 'role_id', target: 'roles' }],
+  role_acls: [{ column: 'role_id', target: 'roles' }],
+  role_sidebar_preferences: [{ column: 'role_id', target: 'roles' }],
+  user_acls: [{ column: 'user_id', target: 'users' }],
+  scheduled_jobs: [
+    { column: 'organization_id', target: 'organizations' },
+    { column: 'created_by_user_id', target: 'users' },
+    { column: 'updated_by_user_id', target: 'users' },
+  ],
+  module_configs: [{ column: 'organization_id', target: 'organizations' }],
+  encryption_maps: [{ column: 'organization_id', target: 'organizations' }],
+  attachment_partitions: [{ column: 'organization_id', target: 'organizations' }],
+}
+
+/** Schedule scopes a club's schedule may have: a `system` schedule is the instance's, never a club's. */
+const CLUB_SCHEDULE_SCOPES = new Set(['tenant', 'organization'])
+
+function referencesOutside(table: string, row: Record<string, unknown>, ids: ArchiveIds): boolean {
+  if (table === 'scheduled_jobs' && !CLUB_SCHEDULE_SCOPES.has(row.scope_type as string)) return true
+  return (ARCHIVE_REFERENCES[table] ?? []).some(({ column, target }) => {
+    const value = row[column]
+    return value !== null && value !== undefined && !ids[target].has(value)
+  })
+}
+
+/**
+ * Why an archive's tables or rows reach beyond its own club, sorted, or an empty list. The checksums sit inside the
+ * archive and only catch corruption, so a restore trusts nothing else in it: every manifest table must be one of the
+ * club's exported (`data`) tables with the same module and key, every tenant-keyed row must carry the manifest's
+ * tenant, the tenant row must be that tenant, every user-keyed row must belong to one of the archive's users, and the
+ * user, role and organization references of the privilege-bearing platform tables must name the archive's own records
+ * (`ARCHIVE_REFERENCES`, #806).
+ */
 export function archiveScopeViolations(
   manifest: ClubArchiveManifest,
   rowsOf: (table: ManifestTable) => readonly Record<string, unknown>[],
@@ -495,8 +533,11 @@ export function archiveScopeViolations(
 ): string[] {
   const exported = new Map(clubTablesList.filter((entry) => entry.kind === 'data').map((entry) => [entry.table, entry]))
   const { tenantId } = manifest.club
-  const users = manifest.tables.find((table) => table.table === 'users')
-  const userIds = new Set((users ? rowsOf(users) : []).map((row) => row.id))
+  const idsOf = (name: string): Set<unknown> => {
+    const table = manifest.tables.find((entry) => entry.table === name)
+    return new Set((table ? rowsOf(table) : []).map((row) => row.id))
+  }
+  const ids: ArchiveIds = { users: idsOf('users'), roles: idsOf('roles'), organizations: idsOf('organizations') }
   const violations = new Set<string>()
   for (const table of manifest.tables) {
     const entry = exported.get(table.table)
@@ -505,10 +546,55 @@ export function archiveScopeViolations(
       continue
     }
     for (const row of rowsOf(table)) {
-      if (!rowInScope(entry.key, row, tenantId, userIds)) violations.add(`${table.table}: a row of another tenant`)
+      if (!rowInScope(entry.key, row, tenantId, ids.users)) violations.add(`${table.table}: a row of another tenant`)
+      else if (referencesOutside(table.table, row, ids)) violations.add(`${table.table}: a reference outside the club`)
     }
   }
   return [...violations].sort()
+}
+
+/**
+ * Whether a feature grant reaches beyond one tenant: the global wildcard and tenant management, which only the
+ * instance's super administrator holds. The platform's own ACL editor drops the same grants for a tenant's users
+ * (`auth` `users/acl` route), and a club's seeded roles never carry them (`includeSuperadminRole: false`, #630).
+ */
+export function isTenantRestrictedFeature(feature: string): boolean {
+  return feature === '*' || feature === 'directory.*' || feature.startsWith('directory.tenants')
+}
+
+/** The ACL tables whose rows grant features, a super-admin flag and visible organizations. */
+const ACL_TABLES = new Set(['role_acls', 'user_acls'])
+
+/**
+ * The row as a restore writes it (#806). The archive is untrusted — its checksums sit inside it, and the club's
+ * administrator downloads the same format — so nothing in it may grant more than a club holds: an ACL row never
+ * restores a super-admin flag (a super administrator is instance-wide in the platform), never a tenant-restricted
+ * feature, and only organizations of the archive (or `__all__`) stay visible; a malformed feature or organization list
+ * is dropped. The columns the export redacts stay null, so an edited archive cannot set a password either. A club that
+ * legitimately held such a grant gets it back from the operator by hand.
+ */
+export function sanitizeRestoreRow(
+  table: string,
+  row: Record<string, unknown>,
+  organizationIds: ReadonlySet<unknown>,
+): Record<string, unknown> {
+  const redacted = redactExportRow(table, row)
+  if (!ACL_TABLES.has(table)) return redacted
+  const clean = { ...redacted }
+  if ('is_super_admin' in clean) clean.is_super_admin = false
+  if ('features_json' in clean) {
+    const features = clean.features_json
+    clean.features_json = Array.isArray(features)
+      ? features.filter((feature) => typeof feature === 'string' && !isTenantRestrictedFeature(feature))
+      : null
+  }
+  if ('organizations_json' in clean) {
+    const organizations = clean.organizations_json
+    clean.organizations_json = Array.isArray(organizations)
+      ? organizations.filter((id) => id === '__all__' || organizationIds.has(id))
+      : null
+  }
+  return clean
 }
 
 const PARTITION_CODE_PATTERN = /^[a-z0-9][a-z0-9_-]*$/i

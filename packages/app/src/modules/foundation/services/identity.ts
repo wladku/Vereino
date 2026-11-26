@@ -6,7 +6,7 @@
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
-import type { NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { runWithCacheTenant, type CacheStrategy } from '@open-mercato/cache'
 import { User } from '@open-mercato/core/modules/auth/data/entities'
 import { emitAuthEvent } from '@open-mercato/core/modules/auth/events'
@@ -21,11 +21,15 @@ import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { identityEventPayload } from './identity-links'
 import {
+  HANDOFF_TTL_MS,
   STATE_COOKIE,
   STATE_COOKIE_PATH,
   STATE_TTL_MS,
+  handoffMarkerKey,
+  parseHandoffMarker,
   parseStateMarker,
   stateMarkerKey,
+  type HandoffMarker,
   type IdentityProvider,
   type StateMarker,
 } from '../lib/identity'
@@ -85,19 +89,56 @@ export async function storeStateMarker(
  * (`identity=failed`). Null for a missing, used or unreadable marker and when the store is unreachable.
  */
 export async function consumeStateMarker(container: AwilixContainer, state: string): Promise<StateMarker | null> {
+  return consumeOnce(container, stateMarkerKey(state), parseStateMarker)
+}
+
+/** Read, then delete, then parse a single-use marker; null when it is missing, already used or the store is down. */
+async function consumeOnce<T>(
+  container: AwilixContainer,
+  key: string,
+  parse: (value: unknown) => T | null,
+): Promise<T | null> {
   try {
     return await runWithCacheTenant(null, async () => {
       const cache = cacheOf(container)
-      const key = stateMarkerKey(state)
       const value = await cache.get(key)
       if (value == null) return null
       if (!(await cache.delete(key))) return null
-      return parseStateMarker(value)
+      return parse(value)
     })
   } catch (error: unknown) {
     reportIdentityFailure('foundation.identity.state_store_unavailable', { err: error })
     return null
   }
+}
+
+/**
+ * Stores the hand-off of a round trip started on a club's address (DD-S07) under a new random token for one minute and
+ * returns the token; null when the store is unreachable (the callback then fails closed). The marker holds the
+ * provider subject and the e-mail for that minute only; it is consumed once by the hand-off route.
+ */
+export async function storeHandoffMarker(
+  container: AwilixContainer,
+  marker: Omit<HandoffMarker, 'expiresAt'>,
+): Promise<string | null> {
+  const token = newState()
+  const expiresAt = Date.now() + HANDOFF_TTL_MS
+  try {
+    await runWithCacheTenant(null, () =>
+      cacheOf(container).set(handoffMarkerKey(token), JSON.stringify({ ...marker, expiresAt }), {
+        ttl: HANDOFF_TTL_MS,
+      }),
+    )
+    return token
+  } catch (error: unknown) {
+    reportIdentityFailure('foundation.identity.state_store_unavailable', { err: error })
+    return null
+  }
+}
+
+/** Consumes the hand-off marker of `token` once (same read-then-delete as the state marker). */
+export async function consumeHandoffMarker(container: AwilixContainer, token: string): Promise<HandoffMarker | null> {
+  return consumeOnce(container, handoffMarkerKey(token), parseHandoffMarker)
 }
 
 /** True when the state in the query is the one the cookie of this browser carries (constant-time). */
@@ -205,6 +246,8 @@ export async function issueSession(
   request: Request,
   link: SignInLink,
   redirect: string,
+  /** The club's address of a hand-off (DD-S07): the landing path is opened there, not on `APP_URL`. */
+  clubOrigin?: string,
 ): Promise<NextResponse | null> {
   const em = container.resolve<EntityManager>('em').fork()
   const user = await signInUser(em, link)
@@ -237,7 +280,9 @@ export async function issueSession(
   }).catch(() => undefined)
   void emitFoundationEvent('foundation.identity.signed_in', identityEventPayload(link)).catch(() => undefined)
 
-  const response = buildSafeRedirectResponse(request, redirect, 303)
+  const response = clubOrigin
+    ? new NextResponse(null, { status: 303, headers: { Location: `${clubOrigin}${redirect}` } })
+    : buildSafeRedirectResponse(request, redirect, 303)
   const cookie = {
     httpOnly: true,
     path: '/',

@@ -1,0 +1,1 @@
+| 2026-11-25 | Phase 3 deliverable "one central host for social sign-in callbacks" built (#700): social sign-in started on `<slug>.<VEREINO_CLUB_DOMAIN>` returns to the club's address through the central callback on `APP_URL` and a single-use hand-off (social sign-in spec DD-S07, TEST-S05) |

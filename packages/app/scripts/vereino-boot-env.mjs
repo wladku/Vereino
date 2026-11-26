@@ -9,7 +9,8 @@
 //     exits 0 when the environment is complete, 1 naming the variables otherwise.
 //
 // A new required variable is one row in REQUIRED_VARIABLES, listed in `packages/app/.env.example` with a placeholder
-// and by name in `docs/ops/deploy.md`. Vereino's own variables use the `VEREINO_` prefix; none is required at boot yet.
+// and by name in `docs/ops/deploy.md`. Vereino's own variables use the `VEREINO_` prefix; none is required at boot yet
+// (`VEREINO_KEY_STORE` is optional and defaults to `derived`, see KEY_STORE_RULES).
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
@@ -93,19 +94,101 @@ export const RATE_LIMIT_RULES = [
 ]
 
 /**
+ * @param {Record<string, string | undefined>} env
+ * @param {string} name
+ */
+const isSet = (env, name) => (env[name] ?? '').trim() !== ''
+/** @param {Record<string, string | undefined>} env */
+const keyStoreMode = (env) => (env.VEREINO_KEY_STORE ?? '').trim() || 'derived'
+/** @param {Record<string, string | undefined>} env */
+const inVaultMode = (env) => keyStoreMode(env) === 'vault'
+
+/** The only KV v2 path the `vereino-app` Vault policy grants (`docker/vault/policies/vereino-app.hcl`). */
+export const VAULT_KV_PATH_EXPECTED = 'secret/data'
+/** Minimum Vault request timeout in key-store mode (DD-K12): the platform default of 1000 ms opens the breaker too easily. */
+export const VAULT_REQUEST_TIMEOUT_MIN_MS = 3000
+
+/**
+ * Key-store settings a process must not run with (#740, DD-K03 of the key-store spec). `VEREINO_KEY_STORE` states the
+ * intended mode: `derived` (default; the platform derives each tenant key from TENANT_DATA_ENCRYPTION_FALLBACK_KEY) or
+ * `vault` (tenant keys held in Vault). In `vault` mode a fallback secret would answer a missing or unreachable Vault key
+ * with a derived one (rows under two keys, a deleted club's key back), and the lookup-hash pepper must be pinned
+ * because it silently came from the fallback key. In `derived` mode Vault variables would start exactly that mixed
+ * state, so they are refused too.
+ * @type {ReadonlyArray<{ problem: string, when: (env: Record<string, string | undefined>) => boolean }>}
+ */
+export const KEY_STORE_RULES = [
+  {
+    problem: 'VEREINO_KEY_STORE is invalid (expected derived or vault)',
+    when: (env) => !['derived', 'vault'].includes(keyStoreMode(env)),
+  },
+  {
+    problem: 'VAULT_ADDR is missing (the private http(s) URL of Vault, because VEREINO_KEY_STORE=vault)',
+    when: (env) => inVaultMode(env) && !isSet(env, 'VAULT_ADDR'),
+  },
+  {
+    problem: 'VAULT_ADDR is invalid (expected the private http(s) URL of Vault)',
+    when: (env) => inVaultMode(env) && isSet(env, 'VAULT_ADDR') && !httpUrl.safeParse(env.VAULT_ADDR).success,
+  },
+  {
+    problem: 'VAULT_TOKEN is missing (the vereino-app token, because VEREINO_KEY_STORE=vault)',
+    when: (env) => inVaultMode(env) && !isSet(env, 'VAULT_TOKEN'),
+  },
+  {
+    problem: `VAULT_KV_PATH must be ${VAULT_KV_PATH_EXPECTED} (the only path the vereino-app policy grants)`,
+    when: (env) =>
+      inVaultMode(env) &&
+      isSet(env, 'VAULT_KV_PATH') &&
+      String(env.VAULT_KV_PATH).trim().replace(/\/+$/, '') !== VAULT_KV_PATH_EXPECTED,
+  },
+  {
+    problem: 'LOOKUP_HASH_PEPPER is missing (pin it to the old fallback key before VEREINO_KEY_STORE=vault, DD-K04)',
+    when: (env) => inVaultMode(env) && !isSet(env, 'LOOKUP_HASH_PEPPER'),
+  },
+  {
+    problem: 'TENANT_DATA_ENCRYPTION_FALLBACK_KEY must not be set when VEREINO_KEY_STORE=vault (derived-key fallback)',
+    when: (env) => inVaultMode(env) && isSet(env, 'TENANT_DATA_ENCRYPTION_FALLBACK_KEY'),
+  },
+  {
+    problem: 'TENANT_DATA_ENCRYPTION_KEY must not be set when VEREINO_KEY_STORE=vault (derived-key fallback)',
+    when: (env) => inVaultMode(env) && isSet(env, 'TENANT_DATA_ENCRYPTION_KEY'),
+  },
+  {
+    problem: 'ALLOW_DERIVED_KMS_FALLBACK must not be set when VEREINO_KEY_STORE=vault (derived-key fallback)',
+    when: (env) => inVaultMode(env) && isSet(env, 'ALLOW_DERIVED_KMS_FALLBACK'),
+  },
+  {
+    problem: 'TENANT_DATA_ENCRYPTION must not be off when VEREINO_KEY_STORE=vault',
+    when: (env) => inVaultMode(env) && isFalse(env.TENANT_DATA_ENCRYPTION),
+  },
+  {
+    problem:
+      'VAULT_ADDR and VAULT_TOKEN must not be set while VEREINO_KEY_STORE is derived (set VEREINO_KEY_STORE=vault and remove the fallback key in the same deploy, docs/ops/key-store.md)',
+    when: (env) => keyStoreMode(env) === 'derived' && (isSet(env, 'VAULT_ADDR') || isSet(env, 'VAULT_TOKEN')),
+  },
+]
+
+/**
  * Settings that let the app start but weaken it, printed as warnings. The proxy depth is not a stop: it must be
  * measured on the running environment (`docs/ops/deploy.md` → *Rate limits*), which needs the app up.
  * @param {Record<string, string | undefined>} env
  * @returns {string[]}
  */
 export function findBootEnvWarnings(env) {
+  const warnings = []
   const depth = (env.RATE_LIMIT_TRUST_PROXY_DEPTH ?? '').trim()
   if (onRailway(env) && (depth === '' || depth === '0')) {
-    return [
+    warnings.push(
       'RATE_LIMIT_TRUST_PROXY_DEPTH is unset or 0 behind the Railway proxy: every client shares one rate-limit counter (docs/ops/deploy.md, Rate limits)',
-    ]
+    )
   }
-  return []
+  const timeout = Number.parseInt((env.VAULT_REQUEST_TIMEOUT_MS ?? '').trim(), 10)
+  if (inVaultMode(env) && !(timeout >= VAULT_REQUEST_TIMEOUT_MIN_MS)) {
+    warnings.push(
+      `VAULT_REQUEST_TIMEOUT_MS is unset or below ${VAULT_REQUEST_TIMEOUT_MIN_MS}: one slow Vault answer switches encryption off for 30 s (docs/ops/key-store.md)`,
+    )
+  }
+  return warnings
 }
 
 /**
@@ -126,6 +209,7 @@ export function findBootEnvProblems(env) {
     if (!schema.safeParse(env[setName]).success) problems.push(`${setName} is invalid (expected ${reason})`)
   }
   for (const rule of RATE_LIMIT_RULES) if (rule.when(env)) problems.push(rule.problem)
+  for (const rule of KEY_STORE_RULES) if (rule.when(env)) problems.push(rule.problem)
   return problems
 }
 
