@@ -607,6 +607,9 @@
         { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section", "format": "csv" } }
       ]
     },
+    "/api/activities/reports/declaration-share": {
+      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "from": "$A:lastWeek", "to": "$A:nextWeek" } }]
+    },
     "/api/activities/reports/pzpn-schedule": {
       "GET": [
         { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
