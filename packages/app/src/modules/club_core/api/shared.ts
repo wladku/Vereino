@@ -59,6 +59,7 @@ export function sectionListItem(row: Row) {
     publicContactEmail: text(row.public_contact_email),
     publicContactPhone: text(row.public_contact_phone),
     shortDescription: text(row.short_description),
+    acceptsApplications: bool(row.accepts_applications),
     createdAt: iso(row.created_at),
     updatedAt: iso(row.updated_at),
   }
@@ -167,6 +168,9 @@ export const sectionListItemSchema = z.object({
   publicContactEmail: z.string().nullable(),
   publicContactPhone: z.string().nullable(),
   shortDescription: z.string().nullable().describe('Shown on the section tile of the public club page (≤ 160)'),
+  acceptsApplications: z
+    .boolean()
+    .describe('Whether the section takes online applications through its sign-up form (sign-up form spec REQ-J01)'),
   createdAt: z.string().nullable(),
   updatedAt: z.string().nullable(),
   _people: z

@@ -419,6 +419,23 @@
       "name": "groups_groups",
       "schema": "public",
       "columns": {
+        "accepts_applications": {
+          "name": "accepts_applications",
+          "type": "boolean",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "true",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "boolean"
+        },
         "age_category_entry_id": {
           "name": "age_category_entry_id",
           "type": "uuid",
@@ -657,6 +674,23 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
+        "places_limit": {
+          "name": "places_limit",
+          "type": "smallint",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "smallint"
+        },
         "public_conditions": {
           "name": "public_conditions",
           "type": "text",
@@ -794,7 +828,13 @@
           "unique": false
         }
       ],
-      "checks": [],
+      "checks": [
+        {
+          "name": "groups_groups_places_limit_check",
+          "expression": "places_limit between 1 and 500",
+          "definition": "check (places_limit between 1 and 500)"
+        }
+      ],
       "triggers": [],
       "foreignKeys": {},
       "comment": null

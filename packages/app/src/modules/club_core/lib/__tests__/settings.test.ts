@@ -7,8 +7,13 @@ import {
   clubSettingsPatchSchema,
   clubSettingsSchema,
   hasAtMostTwoDecimals,
+  APPLICATION_ANSWER_DAYS_RANGE,
+  APPLICATION_INFORMATION_MAX_LENGTH,
   isAvailableSalesDocument,
+  isMonthDay,
   isTimeZone,
+  monthDayOf,
+  parseMonthDay,
   mergeDeclarationKinds,
   resolveClubSettings,
   storedNumber,
@@ -40,6 +45,9 @@ describe('club settings', () => {
       orderSalesDocument: 'none',
       formerParticipantRetentionMonths: 12,
       outlineLibraryMaxVisibility: 'clubs',
+      applicationAgeReferenceDay: '09-01',
+      applicationAnswerDays: 7,
+      applicationInformation: null,
     })
     expect(clubSettingsSchema.parse(CLUB_SETTINGS_DEFAULTS)).toEqual(CLUB_SETTINGS_DEFAULTS)
   })
@@ -217,5 +225,55 @@ describe('club settings', () => {
     ])
     expect(timeZoneOptions(['Europe/Warsaw'], 'UTC')).toEqual(['Europe/Warsaw', 'UTC'])
     expect(timeZoneOptions(['Europe/Warsaw'], null)).toEqual(['Europe/Warsaw'])
+  })
+})
+
+describe('application settings (sign-up form spec REQ-J02)', () => {
+  it('builds and reads a day of the year every year has', () => {
+    expect(monthDayOf(9, 1)).toBe('09-01')
+    expect(monthDayOf(12, 31)).toBe('12-31')
+    expect(monthDayOf(2, 28)).toBe('02-28')
+    expect(monthDayOf(2, 29)).toBeNull()
+    expect(monthDayOf(4, 31)).toBeNull()
+    expect(monthDayOf(13, 1)).toBeNull()
+    expect(monthDayOf(0, 1)).toBeNull()
+    expect(monthDayOf(1, 0)).toBeNull()
+    expect(monthDayOf(1.5, 1)).toBeNull()
+    expect(monthDayOf(1, 1.5)).toBeNull()
+    expect(parseMonthDay('09-01')).toEqual({ month: 9, day: 1 })
+    expect(parseMonthDay('02-29')).toBeNull()
+    expect(parseMonthDay('9-1')).toBeNull()
+    expect(isMonthDay('01-31')).toBe(true)
+    expect(isMonthDay('06-31')).toBe(false)
+  })
+
+  it('validates the reference day, the answer time and the information text', () => {
+    expect(APPLICATION_ANSWER_DAYS_RANGE).toEqual({ min: 1, max: 60 })
+    expect(clubSettingsPatchSchema.safeParse({ applicationAgeReferenceDay: '08-15' }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ applicationAgeReferenceDay: '02-30' }).success).toBe(false)
+    expect(clubSettingsPatchSchema.safeParse({ applicationAnswerDays: 1 }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ applicationAnswerDays: 60 }).success).toBe(true)
+    expect(clubSettingsPatchSchema.safeParse({ applicationAnswerDays: 0 }).success).toBe(false)
+    expect(clubSettingsPatchSchema.safeParse({ applicationAnswerDays: 61 }).success).toBe(false)
+    expect(clubSettingsPatchSchema.parse({ applicationInformation: '  Hello  ' })).toEqual({
+      applicationInformation: 'Hello',
+    })
+    expect(clubSettingsPatchSchema.parse({ applicationInformation: '   ' })).toEqual({ applicationInformation: null })
+    expect(clubSettingsPatchSchema.parse({ applicationInformation: null })).toEqual({ applicationInformation: null })
+    const tooLong = 'x'.repeat(APPLICATION_INFORMATION_MAX_LENGTH + 1)
+    expect(clubSettingsPatchSchema.safeParse({ applicationInformation: tooLong }).success).toBe(false)
+  })
+
+  it('falls back to the defaults for invalid stored values', () => {
+    expect(
+      resolveClubSettings({
+        applicationAgeReferenceDay: '13-01',
+        applicationAnswerDays: 99,
+        applicationInformation: 'Text',
+      }),
+    ).toMatchObject({
+      values: { applicationAgeReferenceDay: '09-01', applicationAnswerDays: 7, applicationInformation: 'Text' },
+      invalidKeys: ['applicationAgeReferenceDay', 'applicationAnswerDays'],
+    })
   })
 })

@@ -58,6 +58,9 @@ export type GroupSnapshot = {
   ageFrom?: number | null
   ageTo?: number | null
   levelLabel?: string | null
+  /** The sign-up fields (REQ-J01); absent in older snapshots, so an undo then keeps the stored values. */
+  placesLimit?: number | null
+  acceptsApplications?: boolean
 }
 
 export type GroupCommandResult = GroupsCommandResult<Group, GroupSnapshot>
@@ -81,6 +84,8 @@ export function groupSnapshot(row: Group): GroupSnapshot {
     ageFrom: row.ageFrom ?? null,
     ageTo: row.ageTo ?? null,
     levelLabel: row.levelLabel ?? null,
+    placesLimit: row.placesLimit ?? null,
+    acceptsApplications: row.acceptsApplications,
   }
 }
 
@@ -100,6 +105,8 @@ function restoreGroup(row: Group, before: GroupSnapshot): void {
   if (before.ageFrom !== undefined) row.ageFrom = before.ageFrom
   if (before.ageTo !== undefined) row.ageTo = before.ageTo
   if (before.levelLabel !== undefined) row.levelLabel = before.levelLabel
+  if (before.placesLimit !== undefined) row.placesLimit = before.placesLimit
+  if (before.acceptsApplications !== undefined) row.acceptsApplications = before.acceptsApplications
 }
 
 /** 422 `group_age_range_inverted` with a field error on `ageTo`, so the form shows it next to the field. */
@@ -286,6 +293,8 @@ const createGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
         ageFrom: parsed.ageFrom ?? null,
         ageTo: parsed.ageTo ?? null,
         levelLabel: parsed.levelLabel ?? null,
+        placesLimit: parsed.placesLimit ?? null,
+        acceptsApplications: parsed.acceptsApplications ?? true,
       })
       em.persist(row)
       return { entity: row, actingRole: authorized.actingRole, before: null }
@@ -356,6 +365,8 @@ const updateGroupCommand: CommandHandler<Record<string, unknown>, GroupCommandRe
       if (patch.publicDescription !== undefined) row.publicDescription = patch.publicDescription
       if (patch.publicConditions !== undefined) row.publicConditions = patch.publicConditions
       if (patch.levelLabel !== undefined) row.levelLabel = patch.levelLabel
+      if (patch.placesLimit !== undefined) row.placesLimit = patch.placesLimit
+      if (patch.acceptsApplications !== undefined) row.acceptsApplications = patch.acceptsApplications
       row.sectionId = shape.sectionId
       row.kind = shape.kind
       row.ageCategoryEntryId = shape.ageCategoryEntryId
