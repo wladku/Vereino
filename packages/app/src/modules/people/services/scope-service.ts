@@ -6,7 +6,7 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { Scope } from '@vereino/core'
-import type { PersonScopeSubject, ScopeProvider, ScopeSubject } from '@/modules/foundation'
+import type { PersonScopeSubject, ScopeProvider, ScopeReadOptions, ScopeSubject } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { personScope } from '../lib/people-rules'
 import { clubToday } from './club-clock'
@@ -76,10 +76,19 @@ export async function loadPersonScope(
   )
 }
 
+/**
+ * The EntityManager the grants are read with: a fork of the caller's that keeps its transaction (#728), so a command
+ * reads its grants on the connection its write transaction already holds; without one, a fork of the root.
+ */
+function readerEm(container: AwilixContainer, options: ScopeReadOptions | undefined): EntityManager {
+  if (options?.em) return options.em.fork({ keepTransactionContext: true })
+  return container.resolve<EntityManager>('em').fork()
+}
+
 export function createPeopleScopeService(container: AwilixContainer): ScopeProvider {
   return {
-    async grantsForUser(subject: ScopeSubject): Promise<Scope> {
-      const em = container.resolve<EntityManager>('em').fork()
+    async grantsForUser(subject: ScopeSubject, options?: ScopeReadOptions): Promise<Scope> {
+      const em = readerEm(container, options)
       const person = await em.findOne(
         Person,
         {
@@ -92,7 +101,7 @@ export function createPeopleScopeService(container: AwilixContainer): ScopeProvi
       )
       if (!person) return []
       const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
-      const today = await clubToday(container, scope)
+      const today = await clubToday(container, scope, new Date(), em)
       return loadPersonScope(
         em,
         { ...scope, personId: person.id },
@@ -103,12 +112,12 @@ export function createPeopleScopeService(container: AwilixContainer): ScopeProvi
       )
     },
     // A token link's subject (foundation P-10): the person's current grants, read anew at every redemption.
-    async grantsForPerson(subject: PersonScopeSubject): Promise<Scope> {
-      const em = container.resolve<EntityManager>('em').fork()
+    async grantsForPerson(subject: PersonScopeSubject, options?: ScopeReadOptions): Promise<Scope> {
+      const em = readerEm(container, options)
       const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
       const person = await em.findOne(Person, { id: subject.personId, ...scope, deletedAt: null }, { fields: ['id'] })
       if (!person) return []
-      const today = await clubToday(container, scope)
+      const today = await clubToday(container, scope, new Date(), em)
       return loadPersonScope(
         em,
         { ...scope, personId: person.id },
