@@ -80,3 +80,18 @@
 - `yarn typecheck` — pass (after `yarn install` and `yarn generate` in the fresh worktree).
 - `yarn test:integration:vereino --filter ISSUE-483` — `1 passed`; `--filter TEST-J05` (asserts the tile) — `1 passed`.
 
+
+## Follow-up run 2: CI fix on PR #830 (2026-11-26, om-auto-fix-pr)
+
+- Trigger: required checks `integration (shard 2/6)` and `integration (shard 4/6)` failed after the train's run; the PR
+  carried `merge-train-failed`. `origin/main` was already merged into the head (594a138f), nothing new to merge.
+- Causes (all older tests that still asserted the state before #799, AGENTS.md "changed UI contract" rule):
+  - `TEST-N01`: the People menu group now holds `/backend/enrolment/applications` after Persons.
+  - `TEST-N04`: the administrator's dashboard now has `enrolment.dashboard.overdueApplications`.
+  - `ISSUE-629` (TEST-M06): two new declared club job types (`enrolment:expire-unconfirmed`, `enrolment:daily`) mean
+    23 sweep schedules, not 21.
+  - `TEST-M11` failed once on `read ECONNRESET` at sign-in and passed on retry: flake, no change.
+- Fix: the three tests updated to the new lists; no product code changed.
+- `yarn test:integration:vereino --filter TEST-N01` — `2 passed`; `--filter TEST-N04 --no-build` — `2 passed`;
+  `--filter ISSUE-629 --no-build` — `2 passed`.
+- `yarn guard` — no blocking findings; `yarn qa-texts:check` — 0 problems.

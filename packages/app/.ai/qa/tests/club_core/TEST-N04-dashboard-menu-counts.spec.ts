@@ -54,6 +54,7 @@ function sessionsQuery(): string {
 const ADMIN_WIDGETS = [
   'activities.dashboard.sessionsNeedingCoach',
   'activities.dashboard.unsettledSessions',
+  'enrolment.dashboard.overdueApplications',
   'facilities.dashboard.requestsAwaitingApproval',
   'facilities.dashboard.todayAtFacility',
   'payments.dashboard.bank',
@@ -232,7 +233,8 @@ test('TEST-N04 API: the count reads of the four menu items and the dashboard lay
     // --- The dashboard of each role: exactly its widgets and no platform widget (API) ---
     const adminWidgets = await layoutWidgets(request, admin)
     // The administrator: widgets 1, 2, 4, 5, 7, 8 and 9 of the role table built so far, bank and campaigns (3, 6), and
-    // the departure requests of `people` (#121) and its "People needing attention" (row 11, #310); no platform widget.
+    // the departure requests of `people` (#121) and its "People needing attention" (row 11, #310), the applications past
+    // the answer time of `enrolment` (#799); no platform widget.
     expect(adminWidgets).toEqual(ADMIN_WIDGETS)
     for (const coordinator of [krystyna, marek]) {
       expect(await layoutWidgets(request, coordinator.token)).toEqual([
