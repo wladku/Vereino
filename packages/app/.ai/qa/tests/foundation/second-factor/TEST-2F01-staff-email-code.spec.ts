@@ -1,6 +1,14 @@
 import { expect, test } from '@playwright/test'
 import { DEFAULT_CREDENTIALS } from '@open-mercato/core/helpers/integration/auth'
-import { completeSecondFactor, postLogin, postVerify } from '../../_fixtures/auth'
+import {
+  capturedCount,
+  completeSecondFactor,
+  isChallenge,
+  postLogin,
+  postVerify,
+  textOf,
+  waitForCode,
+} from '../../_fixtures/auth'
 import { call, createClub } from '../../_fixtures/club'
 import { create } from '../../_fixtures/club-structure'
 import { challenged, cleanApi, grantRole, staffAccount, wrongCode } from './_fixtures/second-factor'
@@ -84,6 +92,27 @@ test('TEST-2F01 administrators, treasurers and the super-admin finish a password
     // The treasurer's right code works the first time.
     const ewaVerified = await postVerify(api, ewa.token, ewa.code)
     expect(ewaVerified.status).toBe(200)
+
+    // The session the code issues is a staff session (S8.5, #737): "remember me" gives it no long-lived
+    // `session_token` cookie, and it reports as a staff session with the idle timeout.
+    const rememberedSince = capturedCount(treasurer.email)
+    const rememberedLogin = await postLogin(api, treasurer.email, treasurer.password, { remember: 'on' })
+    expect(isChallenge(rememberedLogin)).toBe(true)
+    const rememberedCode = await waitForCode(treasurer.email, rememberedSince)
+    const fullAnswer = await api.post('/api/foundation/second-factor/verify', {
+      headers: { Authorization: `Bearer ${textOf(rememberedLogin.body, 'token')}`, 'Content-Type': 'application/json' },
+      data: { code: rememberedCode },
+    })
+    expect(fullAnswer.status()).toBe(200)
+    const refreshCookie = fullAnswer
+      .headersArray()
+      .find((header) => header.name.toLowerCase() === 'set-cookie' && header.value.startsWith('session_token='))
+    const refreshExpires = Date.parse(/expires=([^;]+)/i.exec(refreshCookie?.value ?? '')?.[1] ?? '')
+    expect(refreshExpires).toBeLessThanOrEqual(Date.now() + 8 * 60 * 60 * 1000 + 60_000)
+    const fullToken = String(((await fullAnswer.json()) as Record<string, unknown>).token)
+    const activity = await call<{ staff?: boolean }>(api, 'POST', '/api/foundation/session/activity', fullToken)
+    expect(activity.status).toBe(200)
+    expect(activity.body?.staff).toBe(true)
 
     // (5) A fresh challenge with five wrong codes ends; the right code no longer helps.
     const locked = await challenged(api, treasurer.email, treasurer.password)

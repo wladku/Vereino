@@ -178,6 +178,8 @@ type ConsentChangeContext = {
   /** The caller's scope: its `self` grant names who changed the consents. */
   actorScope: Scope
   clubScope: ClubScope
+  /** The command's write transaction: the club clock reads on its connection (#836). */
+  em: EntityManager
   /** The guardianship's period after the command. */
   period: Period
 }
@@ -198,7 +200,7 @@ async function changeConsents(
   if (context.actingRole !== 'guardian' && subjectOnlyChanges(result.changed).length > 0) {
     await peopleErrors.throw('medical_consent_subject_only')
   }
-  const today = await clubToday(context.ctx.container, context.clubScope)
+  const today = await clubToday(context.ctx.container, context.clubScope, undefined, context.em)
   if (endsBefore(context.period, today)) await peopleErrors.throw('guardianship_ended')
   return result.consents
 }
@@ -336,6 +338,7 @@ const createGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
           actingRole: authorized.actingRole,
           actorScope: authorized.scope,
           clubScope: scope,
+          em,
           period,
         })
         const guardianship = em.create(Guardianship, {
@@ -402,6 +405,7 @@ const updateGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
           actingRole: authorized.actingRole,
           actorScope: authorized.scope,
           clubScope: scope,
+          em,
           period,
         })
         if (patch.relation !== undefined) row.relation = patch.relation
@@ -437,7 +441,7 @@ const endGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardiansh
       const row = authorized.entity as Guardianship
       const before = guardianshipSnapshot(row)
       const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
-      const validTo = authorized.parsed.validTo ?? (await clubToday(ctx.container, scope))
+      const validTo = authorized.parsed.validTo ?? (await clubToday(ctx.container, scope, undefined, em))
       if (isInvertedPeriod(row.validFrom, validTo)) await foundationErrors.throw('validity_inverted')
       row.validTo = validTo
       row.updatedAt = new Date()
@@ -476,6 +480,7 @@ const setConsentsCommand: CommandHandler<Record<string, unknown>, GuardianshipCo
         actingRole: authorized.actingRole,
         actorScope: authorized.scope,
         clubScope: scope,
+        em,
         period: { validFrom: row.validFrom, validTo: row.validTo ?? null },
       })
       row.updatedAt = new Date()

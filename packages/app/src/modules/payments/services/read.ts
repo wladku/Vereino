@@ -25,10 +25,11 @@ export async function discountRuleNames(
   return new Map(rows.map((row) => [row.id, row.name]))
 }
 
-/** The club's stored payment settings, or null before the first change. */
+/** The club's stored payment settings, or null before the first change; read with `em` when given (#836). */
 export function storedPaymentsSettings(
   container: AwilixContainer,
   scope: PaymentsScope,
+  em?: EntityManager,
 ): Promise<PaymentsSettings | null> {
-  return freshEm(container).findOne(PaymentsSettings, { ...scope, deletedAt: null })
+  return (em ?? freshEm(container)).findOne(PaymentsSettings, { ...scope, deletedAt: null })
 }

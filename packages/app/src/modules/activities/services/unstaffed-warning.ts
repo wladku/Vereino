@@ -55,9 +55,9 @@ export async function warnUnstaffedSession(
     // Re-read under the lock: someone may have taken the session over since the run listed it.
     const occurrence = await tx.findOne(Occurrence, { id: occurrenceId, ...scope, deletedAt: null })
     if (!occurrence || !unstaffedWarningDue(occurrence, now)) return []
-    const { timeZone, today } = await clubClock(container, scope, now)
+    const { timeZone, today } = await clubClock(container, scope, now, tx)
     const [coordinatorIds, roster] = await Promise.all([
-      coachNeededHandlerIds(container, scope, occurrence.sectionId, today),
+      coachNeededHandlerIds(container, scope, occurrence.sectionId, today, tx),
       rosterOn(container, scope, occurrence.groupId, occurrence.occurrenceDate, tx),
     ])
     const leaderIds = new Set(unstaffedWarningRecipients([], roster))

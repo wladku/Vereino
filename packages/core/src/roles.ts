@@ -40,6 +40,11 @@ export type RoleDefinition = {
   readonly implies?: readonly VereinoRole[]
   /** The record a role assignment must name: a section for a coordinator, a place for a facility attendant. */
   readonly requiresScope?: 'section' | 'place' | null
+  /**
+   * A role that alone keeps the member session lifetime (ENG-Q-12, `staff-session.ts`): an account holding only such
+   * roles is no staff account. Every other role, a platform role included, makes the account a staff one.
+   */
+  readonly memberSession?: true
 }
 
 export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
@@ -56,6 +61,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'facilities.*',
       // Training outlines (training outlines spec, #683): every outline of the club.
       'training.*',
+      // Section sign-ups (sign-up form spec, #799): every application of the club.
+      'enrolment.*',
       'dictionaries.*',
       // Social sign-in (#566): the administrator lists and unlinks any person's sign-in identities.
       'foundation.identity.manage',
@@ -102,6 +109,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       // The shared outline library: browse, copy, rate, report, publish up to the club level (#685).
       'training.library.use',
       'training.library.publish',
+      // Applications to the coordinator's sections: see and decide (sign-up form spec BR-J5, #799).
+      'enrolment.applications.view',
+      'enrolment.applications.decide',
       // The panel dashboard with the widgets of the coordinator's other features: "Sessions needing a coach" and
       // "Unsettled sessions" for the own sections (navigation spec REQ-N04, Q-N03 approved 2026-11-15; #260).
       'dashboards.view',
@@ -132,6 +142,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       // The shared outline library: browse, copy, rate, report, publish own outlines (#685).
       'training.library.use',
       'training.library.publish',
+      // Trial participants of the coach's sessions (sign-up form spec phase 4, #799).
+      'enrolment.trials.mark',
     ],
     implies: ['member'],
     requiresScope: null,
@@ -177,11 +189,13 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
     // `foundation.identity.self` (#566): own social sign-in identities follow `people.self`.
     features: ['people.self', 'foundation.identity.self', 'activities.attendance.declare', 'communication.view'],
     requiresScope: null,
+    memberSession: true,
   },
   payer: {
     authRole: 'vereino_payer',
     features: ['payments.view_own', 'payments.pay_online', 'payments.orders.place'],
     requiresScope: null,
+    memberSession: true,
   },
   maintenance_planner: {
     authRole: 'vereino_maintenance_planner',

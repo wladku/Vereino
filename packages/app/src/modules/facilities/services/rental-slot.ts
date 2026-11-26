@@ -125,7 +125,7 @@ export async function assessRentalSlot(
   if (!unitsOk) issues.push({ code: 'rental_units_invalid' })
   const units = unitsOk ? input.units : 1
   const endsAt = rentalEnd(input.startsAt, units)
-  const timeZone = await clubTimeZone(container, scope)
+  const timeZone = await clubTimeZone(container, scope, em)
   const slot = localSlotOf(input.startsAt, endsAt, timeZone)
 
   const rates = await em.find(RentalRate, { ...scope, deletedAt: null, placeId: input.placeId })

@@ -212,6 +212,12 @@ export type PublicEventsPage = {
   past: PublicEvent[]
 }
 
+/** A public section as the sign-up form reads it (#799): the id stays on the server, never in a public response. */
+export type PublicApplicationSection = {
+  frame: PublicClubFrame
+  section: { id: string; name: string; slug: string; acceptsApplications: boolean }
+}
+
 export type PublicPlacesPage = { frame: PublicClubFrame; places: PublicPlace[] }
 
 export type PublicPlacePage = { frame: PublicClubFrame; place: PublicPlaceDetail }
@@ -240,6 +246,12 @@ export type ClubCorePublicSite = {
    */
   clubFrame(clubSlug: string): Promise<PublicSiteResult<PublicClubFrame>>
   /**
+   * The club and one public, active section behind the slugs, for the section sign-up form of `enrolment` (sign-up form
+   * spec DD-J06, P-J2; #799): the club's frame (its trusted tenant and organization) and the section's id, name and
+   * switch "accepts online applications". The same slug lookup and answers as the section page.
+   */
+  applicationSection(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicApplicationSection>>
+  /**
    * The club a request's host names (many clubs spec phase 3, DD-M02; #631): its trusted tenant and organization and
    * whether its page is published, or null for a slug that names no club. The same slug lookup as every public read
    * (D-024/D-026; the spec's *System scope* list) — answered for an unpublished club too, because its sign-in page and
@@ -256,7 +268,15 @@ export type ClubCorePublicSite = {
    * The public slug of a place of a trusted club while the place has a public calendar (the way back to it from the
    * request confirmation of `facilities`, #289), else null. No slug lookup: the place is read inside that scope.
    */
-  publicPlaceSlug(scope: { tenantId: string; organizationId: string }, placeId: string): Promise<string | null>
+  /**
+   * The public slug of a place with a public calendar, or null; read with `em` when given (the caller's write
+   * transaction, #836), otherwise on a fork of the request's EntityManager.
+   */
+  publicPlaceSlug(
+    scope: { tenantId: string; organizationId: string },
+    placeId: string,
+    em?: EntityManager,
+  ): Promise<string | null>
   sectionLogo(clubSlug: string, sectionSlug: string): Promise<PublicSiteResult<PublicFileRef>>
   material(clubSlug: string, sectionSlug: string, materialId: string): Promise<PublicSiteResult<PublicFileRef>>
   /**
@@ -824,6 +844,26 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return { status: 'ok', value: await frameOf(db, found.value) }
     },
 
+    async applicationSection(clubSlug, sectionSlug) {
+      const db = em()
+      const found = await findClub(db, clubSlug)
+      if (found.status !== 'ok') return found
+      const section = await findSection(db, found.value, sectionSlug)
+      if (!section) return { status: 'not_found', frame: await frameOf(db, found.value) }
+      return {
+        status: 'ok',
+        value: {
+          frame: await frameOf(db, found.value),
+          section: {
+            id: section.id,
+            name: section.name,
+            slug: sectionSlug,
+            acceptsApplications: section.acceptsApplications,
+          },
+        },
+      }
+    },
+
     async clubForHost(clubSlug) {
       const db = em()
       if (!isPublicSlug(clubSlug)) return null
@@ -863,9 +903,9 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       return { status: 'ok', value: await frameOf(db, club) }
     },
 
-    async publicPlaceSlug(scope, placeId) {
+    async publicPlaceSlug(scope, placeId, txEm) {
       if (!UUID_PATTERN.test(placeId)) return null
-      const place = await em().findOne(
+      const place = await (txEm ? txEm.fork({ keepTransactionContext: true }) : em()).findOne(
         Place,
         {
           tenantId: scope.tenantId,

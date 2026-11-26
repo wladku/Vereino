@@ -8,6 +8,7 @@ import { buildSafeRedirectResponse } from '@open-mercato/core/modules/auth/lib/r
 import { NextResponse } from 'next/server'
 import type { IdentityCommandResult } from '../../commands/identity'
 import {
+  IdentityProviderError,
   IdentityTimeoutError,
   loginOutcomePath,
   outcomeLocation,
@@ -36,6 +37,7 @@ export function finish(request: Request, path: string, club?: StateClub): NextRe
 
 export function failureReason(error: unknown): string {
   if (error instanceof IdentityTimeoutError) return 'timeout'
+  if (error instanceof IdentityProviderError) return error.message
   if (error instanceof Error) return error.name
   return 'unknown'
 }

@@ -2,13 +2,16 @@
 // sign-in's `issueSession` (V-S01): a session through the installed `AuthService.createSession`, the JWT through
 // `signJwt`, `last_login_at` and the platform's `auth.login.success` event, and the `auth_token` and `session_token`
 // cookies exactly as the platform's `login.ts` sets them. Google sign-in and the second-factor `verify` route issue
-// sessions through it.
+// sessions through it. A staff account's session is narrowed to the staff idle timeout and gets no "remember me"
+// refresh lifetime (S8.5, ENG-Q-12; #737), as the `foundation.staff-session` interceptor does after a password sign-in.
+import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import type { NextResponse } from 'next/server'
 import type { User } from '@open-mercato/core/modules/auth/data/entities'
 import { emitAuthEvent } from '@open-mercato/core/modules/auth/events'
 import type { AuthService } from '@open-mercato/core/modules/auth/services/authService'
 import { signJwt } from '@open-mercato/shared/lib/auth/jwt'
+import { limitStaffSessionAtSignIn } from './staff-session'
 
 /** The platform's access-token lifetime (`login.ts`): eight hours. */
 export const ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 8
@@ -49,12 +52,15 @@ export async function issueUserSession(
     email: user.email,
     roles,
   })
+  const em = container.resolve<EntityManager>('em').fork()
+  const staff = await limitStaffSessionAtSignIn(em, { sessionId: session.id, userId: user.id, roles })
   void emitAuthEvent('auth.login.success', {
     id: user.id,
     email: user.email,
     tenantId: scope.tenantId,
     organizationId: scope.organizationId,
   }).catch(() => undefined)
+  if (staff) return { token, refreshToken, remember: false, rememberUntil: null }
   return { token, refreshToken, remember: options.remember, rememberUntil }
 }
 

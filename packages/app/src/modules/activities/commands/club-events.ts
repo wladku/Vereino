@@ -309,7 +309,7 @@ async function moveSessionsToPlace(
   await lockSchedule(em, event.organizationId)
   if (!isExternal) {
     const hours = (await placeOpeningHours(ctx.container, scope, [placeId], em)).get(placeId) ?? null
-    const { timeZone } = await clubClock(ctx.container, scope)
+    const { timeZone } = await clubClock(ctx.container, scope, undefined, em)
     for (const session of moved) {
       const opening = eventOutsideOpeningHours(hours, session.startAt, session.endAt, timeZone)
       if (opening) {

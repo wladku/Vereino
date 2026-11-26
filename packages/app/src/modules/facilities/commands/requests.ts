@@ -162,8 +162,9 @@ async function bannedNames(
  * so its encrypted columns are never rewritten. Compared for the entry-ban hint only, never stored elsewhere.
  */
 async function requesterNames(em: EntityManager, scope: FacilitiesScope, id: string): Promise<string[]> {
+  // A fork keeps its own identity map; `keepTransactionContext` keeps it on the transaction's connection (#836).
   const row = await findOneWithDecryption(
-    em.fork(),
+    em.fork({ keepTransactionContext: true }),
     Rental,
     { id, ...scope, deletedAt: null },
     { fields: ['id', 'renterDisplayName', 'contactName'] },
@@ -314,10 +315,10 @@ const verifyRequestCommand: CommandHandler<Record<string, unknown>, VerifyReques
       // The way back to the place's calendar (P-05 "Back to the calendar", #289); null while it has no public calendar.
       if (taken) {
         await facilitiesErrors.throw('slot_unavailable', {
-          placeSlug: await publicPlaceSlug(ctx.container, scope, row.placeId),
+          placeSlug: await publicPlaceSlug(ctx.container, scope, row.placeId, em),
         })
       }
-      const settings = await clubRequestSettings(ctx.container, scope)
+      const settings = await clubRequestSettings(ctx.container, scope, em)
       const banned = await bannedNames(ctx, em, scope, row.placeId, calendarDateInZone(row.startsAt, settings.timeZone))
       row.status = 'pending_approval'
       row.holdExpiresAt = holdExpiry(now)

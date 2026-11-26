@@ -70,6 +70,7 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_PASSWORD_MIN_LENGTH=12`, `OM_PASSWORD_REQUIRE_DIGIT=false`, `OM_PASSWORD_REQUIRE_UPPERCASE=false`, `OM_PASSWORD_REQUIRE_SPECIAL=false` | the password policy (#747, see *Password policy* below); app and worker. Unset, the platform default applies: 6 characters with a digit, an upper-case letter and a special character |
 | `OM_INIT_SUPERADMIN_EMAIL`, `OM_INIT_SUPERADMIN_PASSWORD`, `OM_INIT_ADMIN_EMAIL`, `OM_INIT_EMPLOYEE_EMAIL` | only for the one-time initialisation below; remove them afterwards. Unset, `yarn initialize` creates a `superadmin` account at the platform's demo domain `acme.com` with the password `secret` |
+| `VEREINO_STAFF_IDLE_MINUTES=30`, `REMEMBER_ME_DAYS=7` | the session limits of ENG-Q-12 (#737, see *Session lifetime* below); app only. Unset, the staff idle timeout is 30 minutes and "remember me" keeps a member signed in for the platform's 30 days |
 | `VEREINO_CLUB_DOMAIN` | optional; the club domain of an instance with many clubs (see *Club addresses* below). Unset: one club per instance |
 | `RATE_LIMIT_STRATEGY=redis` | the app's request limits (per route, per club) count in Redis, so every app replica shares them; with the default `memory` each process counts alone (many-clubs spec DD-M10, #633) |
 | `VEREINO_CLUB_RATE_LIMIT_POINTS`, `VEREINO_CLUB_RATE_LIMIT_DURATION` | optional; each club's budget of authenticated API requests, default 600 per 60 s; `0` points switch it off. Tune from the capacity report ([`capacity.md`](capacity.md)) |
@@ -359,6 +360,18 @@ yarn mercato foundation second-factor reset --tenant <tenantId> --org <organizat
 
 It removes the person's sign-in identities and ends all their sessions; the note goes to the command log. Record the
 reset, without the person's e-mail, in the run log of the support case.
+
+### Session lifetime
+
+ENG-Q-12 (answered 2026-11-26, #737; engineering standards S8.5). A **staff account** — any role besides member and
+payer, the platform's `superadmin`, `admin` and `employee` included — is signed out after `VEREINO_STAFF_IDLE_MINUTES`
+(30 in staging and production) without input, and never later than 8 hours after sign-in; "remember me" changes nothing
+for it. The server enforces it on the session row: the sign-in sets its expiry to the idle timeout and the app shell's
+activity report (`POST /api/foundation/session/activity`, at most once a minute while the user types or clicks) moves
+it forward. A script or API client that signs in as staff therefore needs a fresh sign-in after the idle timeout. A
+**member** keeps the platform lifetime: 8 hours, or `REMEMBER_ME_DAYS` (7 in staging and production) with "remember
+me". An own login e-mail change needs the current password (the backend profile page asks for it). Staff sessions
+opened before the deploy keep their old expiry until their first activity report narrows it.
 
 ## After every deploy
 

@@ -167,6 +167,8 @@ test('E27-S01 the administrator sees, per section, the share of declarations mad
       confirm: { declared: 14, total: 20, percent: 70 },
       absence: { declared: 4, total: 6, percent: 67 },
       headline: { declared: 18, total: 26, percent: 69 },
+      // The leading indicators of E27-S03 (#820) ride along; their own test checks them.
+      indicators: expect.any(Object),
     })
     expect(rowOf(full.body, family.pool)).toMatchObject({
       sessions: 0,

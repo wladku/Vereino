@@ -21,5 +21,14 @@ the last line starting with `{`. In a command, validate the options before `crea
 error answers before anything boots or logs. Document the result line as "one JSON object with a `status`; platform
 log lines may follow it" (as `BACKWARD_COMPATIBILITY.md` does for `sync-role-acls-if-changed`).
 
+**Update (PR #829, 2026-11-26)**: the cause is the logger's stream, not only the boot order. Pino's default
+destination is an asynchronous sonic-boom on fd 1, while `process.stdout.write` to a pipe is synchronous, so a record
+logged *before* the result line can still be written *after* it. TEST-M06 (`foundation club-jobs sweep`) failed twice
+in a row on CI with `sweeps.sweeps` undefined: the parser read a log record (most likely the command's last
+`{"level":30,…,"msg":"Club job sweep finished"}`), not `{"sweeps":…}`. The
+shared `mercato()` / `mercatoAsync()` helpers in `_fixtures/club.ts` now run the CLI with `OM_LOG_DESTINATION=stderr`
+(the platform logger's own switch), so stdout carries only the command's output. A new helper that spawns
+`yarn mercato` and parses stdout sets the same variable.
+
 **Applies to**: `packages/app/src/modules/*/cli.ts`, `club_core/services/offboarding-cli.ts`, the `mercato()` /
 `clubCli()` helpers of `packages/app/.ai/qa/tests`.

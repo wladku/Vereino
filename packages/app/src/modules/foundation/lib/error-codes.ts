@@ -67,6 +67,14 @@ export const errorCodes = [
   },
   { code: 'second_factor_resend_limited', status: 429, messageKey: 'foundation.errors.second_factor_resend_limited' },
   { code: 'second_factor_reset_self', status: 403, messageKey: 'foundation.errors.second_factor_reset_self' },
+  // ENG-Q-12 (#737): an own login e-mail change outside `PUT /api/foundation/profile/email` (the command interceptor
+  // `foundation.email-change-confirmation`), and a wrong current password on that route.
+  {
+    code: 'email_change_confirmation_required',
+    status: 403,
+    messageKey: 'foundation.errors.email_change_confirmation_required',
+  },
+  { code: 'current_password_invalid', status: 400, messageKey: 'foundation.errors.current_password_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

@@ -192,22 +192,22 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 
 | Req | L | Topic | Vereino control and evidence | State | Owner |
 |---|---|---|---|---|---|
-| V7.1.1 | 2 | Timeouts documented and justified | Platform values recorded (8 h, 30 days with "remember me", no idle timeout) in spike E3 item 5 and ENG-Q-12; no decided, justified limits | partial | #737 |
+| V7.1.1 | 2 | Timeouts documented and justified | ENG-Q-12 (answered 2026-11-26) and S8.5 in the engineering standards: staff 30 min idle inside 8 h absolute, members 8 h or `REMEMBER_ME_DAYS` (7 in production); `docs/ops/deploy.md` lists `VEREINO_STAFF_IDLE_MINUTES` and `REMEMBER_ME_DAYS` | met | — |
 | V7.1.2 | 2 | Concurrent session policy documented | Not documented and unlimited: every sign-in adds a `sessions` row | gap | #737 |
 | V7.1.3 | 2 | Federated session coordination documented | Social spec *Security* says Google sign-in issues the platform's own session; coordination with the Google session (lifetime, termination) not documented | partial | #737 |
 | V7.2.1 | 1 | Tokens verified on the backend | `verifyJwt` then a session lookup by `sid` on each request (`OM/core/src/modules/auth/lib/sessionIntegrity.ts`); `TEST-L02` (`packages/app/.ai/qa/tests/people/TEST-L01-account-state-and-actions.spec.ts`) gets 401 once sessions end | met | — |
 | V7.2.2 | 1 | Dynamic session tokens | Spike E3 item 4: per-login signed `auth_token` JWT plus opaque `session_token`; no static secret used as a session | met | — |
 | V7.2.3 | 1 | Reference token entropy | Code read: `session_token` is 32 `randomBytes`, stored as an HMAC (`OM/core/src/modules/auth/lib/tokenHash.ts`) | to verify | #743 |
 | V7.2.4 | 1 | New token on every sign-in | Each sign-in creates a new session and JWT (`login.ts`, `foundation/services/identity.ts`); the browser's previous session row is not revoked | partial | #737 |
-| V7.3.1 | 2 | Inactivity timeout | None (spike E3 item 5); S8.5 target ≤ 30 min for staff; ENG-Q-12 open | gap | #737 |
-| V7.3.2 | 2 | Absolute session lifetime | 8 h, but 30 days with "remember me" (`REMEMBER_ME_DAYS`); the limit is not decided (ENG-Q-12) | partial | #737 |
+| V7.3.1 | 2 | Inactivity timeout | Staff: the session row expires 30 min after the last activity report (`foundation/services/staff-session.ts`; the app shell reports user input at most once a minute and signs out when idle, `src/components/StaffSessionActivity.tsx`); `TEST-737-staff-session-and-email-confirmation`. Members: none, by decision (ENG-Q-12) | met | — |
+| V7.3.2 | 2 | Absolute session lifetime | 8 h for staff whatever "remember me" says (activity never extends past sign-in + 8 h; no refresh token, `TEST-737-staff-session-and-email-confirmation`); members 8 h, or `REMEMBER_ME_DAYS` (7 in production) with "remember me" | met | — |
 | V7.4.1 | 1 | Terminated sessions unusable | Sign-out deletes the session row; JWTs bound to it are refused (`sessionIntegrity.ts`); `E06-S19-member-shell` (back button stays on `/login`), `TEST-L02` (401 after sessions end) | met | — |
 | V7.4.2 | 1 | Disabled accounts lose sessions | Blocking or closing an account ends its sessions: `TEST-L02` gets 401 on the old token; user deletion removes sessions (`OM/core/src/modules/auth/commands/users.ts`) | met | — |
 | V7.4.3 | 2 | End sessions after factor change | Code read: password change and reset delete all the user's sessions (`commands/users.ts`, `authService.ts`); unlinking a Google identity ends none | partial | #737 |
 | V7.4.4 | 2 | Visible sign-out everywhere | Member shell "Sign out" (`packages/ui/src/member/member-shell.tsx`, `E06-S19-member-shell`); back office header `OM/ui/src/backend/ProfileDropdown.tsx` | met | — |
 | V7.4.5 | 2 | Admin ends user sessions | An administrator ends one user's sessions only by blocking (`TEST-L02`); no action ends all users' sessions | partial | #737 |
-| V7.5.1 | 2 | Re-auth before sensitive account changes | E-mail change via `PUT /api/auth/profile` needs no re-authentication (spike E3 item 5) | gap | #737 |
-| V7.5.2 | 2 | Users view and end own sessions | No page lists or ends a user's own sessions | gap | #737 |
+| V7.5.1 | 2 | Re-auth before sensitive account changes | Own login e-mail: only `PUT /api/foundation/profile/email` with the current password; the platform profile route and the users admin form refuse an own change (403 `email_change_confirmation_required`, `TEST-737-staff-session-and-email-confirmation`); password change needs the current password (platform) | met | — |
+| V7.5.2 | 2 | Users view and end own sessions | No page lists or ends a user's own sessions | gap | #742 |
 | V7.6.1 | 2 | RP/IdP session lifetimes as documented | Google sign-in yields an independent 8 h platform session; no `max_age`/`auth_time` limit on the Google authentication; not documented | partial | #737 |
 | V7.6.2 | 2 | Sessions only by explicit user action | Sign-in buttons need a click, but Google `start` is a `GET` any page can trigger (`foundation/api/identity/[provider]/start/route.ts`) and `/api/auth/login` accepts cross-site form posts | partial | #744 |
 

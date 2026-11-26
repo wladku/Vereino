@@ -99,6 +99,8 @@ export type ClientBootstrapProfile =
   | 'message'
   // Vereino (#32): the member pages under `/club` mount module injection spots (the "Today" tiles).
   | 'member'
+  // Vereino (#799): the public section page `/p/<club>/sections/<section>` mounts the spot of the "Apply" button.
+  | 'public-section'
 
 export type ClientRegistryGroup =
   | 'translations'
@@ -124,6 +126,7 @@ export function resolveClientBootstrapProfile(pathname: string | null): ClientBo
   if (path.startsWith(`${BACKEND_PREFIX}/`)) return 'backend'
   if (/^\/[^/]+\/portal(?:\/|$)/.test(path)) return 'portal'
   if (path === '/club' || path.startsWith('/club/')) return 'member'
+  if (/^\/p\/[^/]+\/sections\/[^/]+$/.test(path)) return 'public-section'
   if (path === '/pay' || path.startsWith('/pay/')) return 'checkout'
   if (path === '/messages/view' || path.startsWith('/messages/view/')) return 'message'
   return 'public'
@@ -165,6 +168,9 @@ export function groupsForProfile(profile: ClientBootstrapProfile): ClientRegistr
     case 'login':
       // Vereino (#566): the platform's `auth.login:form` spot carries the social sign-in buttons of `foundation`;
       // without the injection registry the spot renders nothing on `/login`.
+      return ['translations', 'injection']
+    case 'public-section':
+      // Vereino (#799): `enrolment` puts its "Apply" button on the spot `vereino:public:section:actions`.
       return ['translations', 'injection']
     case 'message':
       return ['messages']

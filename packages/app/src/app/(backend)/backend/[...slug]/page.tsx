@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { findRouteManifestMatch, getBackendRouteManifests, registerBackendRouteManifests } from '@open-mercato/shared/modules/registry'
 import { backendRouteFacades } from '@/.mercato/generated/backend-route-shards.generated'
 import { bootstrap } from '@/bootstrap'
+import { applyBackendPageOverrides } from '@/backend-page-overrides'
 import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
 import type { AuthContext } from '@open-mercato/shared/lib/auth/server'
 import { ApplyBreadcrumb } from '@open-mercato/ui/backend/AppShell'
@@ -19,6 +20,7 @@ import { resolvePageMiddlewareRedirect } from '@open-mercato/shared/lib/middlewa
 import { backendMiddlewareEntries } from '@/.mercato/generated/backend-middleware.generated'
 
 bootstrap()
+applyBackendPageOverrides()
 registerBackendRouteManifests(backendRouteFacades)
 
 type Awaitable<T> = T | Promise<T>

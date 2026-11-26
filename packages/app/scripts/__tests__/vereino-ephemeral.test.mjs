@@ -98,13 +98,18 @@ test('buildAppEnv defaults to the process environment and a random secret', () =
   assert.equal(env.VEREINO_OAUTH_GOOGLE_CLIENT_ID, process.env.VEREINO_OAUTH_GOOGLE_CLIENT_ID)
 })
 
-test('oauthFakeEnv configures a test-only Google client on the fake port', () => {
+test('oauthFakeEnv configures test-only Google and Facebook clients on the fake port', () => {
   assert.deepEqual(oauthFakeEnv(40123), {
     VEREINO_QA_OAUTH_FAKE_PORT: '40123',
     VEREINO_OAUTH_GOOGLE_CLIENT_ID: 'vereino-qa-google-client',
     VEREINO_OAUTH_GOOGLE_CLIENT_SECRET: 'fake-qa-google-secret',
     VEREINO_OAUTH_GOOGLE_AUTHORIZATION_URL: 'http://127.0.0.1:40123/authorize',
     VEREINO_OAUTH_GOOGLE_TOKEN_URL: 'http://127.0.0.1:40123/token',
+    VEREINO_OAUTH_FACEBOOK_CLIENT_ID: 'vereino-qa-facebook-client',
+    VEREINO_OAUTH_FACEBOOK_CLIENT_SECRET: 'fake-qa-facebook-secret',
+    VEREINO_OAUTH_FACEBOOK_AUTHORIZATION_URL: 'http://127.0.0.1:40123/facebook/dialog/oauth',
+    VEREINO_OAUTH_FACEBOOK_TOKEN_URL: 'http://127.0.0.1:40123/facebook/oauth/access_token',
+    VEREINO_OAUTH_FACEBOOK_USERINFO_URL: 'http://127.0.0.1:40123/facebook/me',
   })
 })
 

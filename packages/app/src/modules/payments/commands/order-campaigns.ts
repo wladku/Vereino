@@ -176,7 +176,7 @@ async function assertForm(
   form: CampaignForm,
   checkPast: boolean,
 ): Promise<void> {
-  const { today } = await clubClock(ctx.container, scope)
+  const { today } = await clubClock(ctx.container, scope, undefined, em)
   const dates = campaignDateErrors(form, today, checkPast)
   if (dates.closesOn) await throwFieldError('order_closes_on_past', 'closesOn')
   if (dates.paymentDueOn) await throwFieldError('order_payment_due_before_close', 'paymentDueOn')
@@ -496,7 +496,7 @@ const remindCampaignCommand: CommandHandler<Record<string, unknown>, OrderCampai
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
       if (row.status !== 'open') await paymentsErrors.throw('order_campaign_not_collecting')
       const missing = await campaignMissing(ctx.container, scope, row, authorized.parsed.groupId, em)
-      const { today } = await clubClock(ctx.container, scope)
+      const { today } = await clubClock(ctx.container, scope, undefined, em)
       const wardIds = missing.map((child) => child.personId)
       const guardians = await activeGuardians(ctx.container, scope, wardIds, today, em)
       // An adult participant without a guardian is reminded in person.
