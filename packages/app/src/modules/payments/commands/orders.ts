@@ -202,7 +202,7 @@ async function checkOrder(
   input: Omit<OrderInput, 'id'>,
 ): Promise<CheckedOrder> {
   const scope = { tenantId: campaign.tenantId, organizationId: campaign.organizationId }
-  const { today } = await clubClock(ctx.container, scope)
+  const { today } = await clubClock(ctx.container, scope, undefined, em)
   if (!ordersOpen({ status: campaign.status, closesOn: calendarDate(campaign.closesOn) }, today)) {
     await paymentsErrors.throw('campaign_closed')
   }
@@ -626,7 +626,7 @@ const cancelOrderCommand: CommandHandler<Record<string, unknown>, OrderCommandRe
       )
       const order = authorized.entity as Order
       const campaign = await lockedCampaign(em, actor, order.campaignId)
-      const { today } = await clubClock(ctx.container, actor.scope)
+      const { today } = await clubClock(ctx.container, actor.scope, undefined, em)
       if (!ordersOpen({ status: campaign.status, closesOn: calendarDate(campaign.closesOn) }, today)) {
         await paymentsErrors.throw('campaign_closed')
       }

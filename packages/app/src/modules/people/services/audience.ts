@@ -143,7 +143,8 @@ export function createContactResolver(): ContactResolver {
       const unique = [...new Set(personIds)]
       if (unique.length === 0) return []
       const scope = scopeOf(ctx)
-      const settings = await clubSettings(ctx.container, scope)
+      // `ctx.em` is the caller's transaction when there is one (#836): the settings read on its connection.
+      const settings = await clubSettings(ctx.container, scope, ctx.em)
       const rows = await findWithDecryption(
         emOf(ctx),
         Person,
@@ -167,12 +168,12 @@ export function createContactResolver(): ContactResolver {
     },
     async club(ctx): Promise<ClubFacts> {
       const scope = scopeOf(ctx)
-      const settings = await clubSettings(ctx.container, scope)
+      const settings = await clubSettings(ctx.container, scope, ctx.em)
       return {
         name: await clubName(emOf(ctx), scope, settings.shortName),
         defaultLocale: settings.defaultLocale,
-        today: await clubToday(ctx.container, scope),
-        publicSlug: await clubPublicSlug(ctx.container, scope),
+        today: await clubToday(ctx.container, scope, new Date(), ctx.em),
+        publicSlug: await clubPublicSlug(ctx.container, scope, ctx.em),
       }
     },
   }

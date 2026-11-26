@@ -101,9 +101,17 @@ export function openingHours(
   return container.resolve<ClubCorePlacesService>(CLUB_CORE_PLACES).openingHours(scope, placeIds, em)
 }
 
-export async function clubTimeZone(container: AwilixContainer, scope: FacilitiesScope): Promise<string> {
+/**
+ * The club's time zone. The club settings reads here take the caller's `em` inside a write transaction, so they read
+ * on its connection instead of waiting for a second pooled one (#549, #836).
+ */
+export async function clubTimeZone(
+  container: AwilixContainer,
+  scope: FacilitiesScope,
+  em?: EntityManager,
+): Promise<string> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)).values.timezone
+  return (await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)).values.timezone
 }
 
 export function plannedSessions(
@@ -264,6 +272,7 @@ export function facilityAgreement(
 export async function clubRequestSettings(
   container: AwilixContainer,
   scope: FacilitiesScope,
+  em?: EntityManager,
 ): Promise<{
   timeZone: string
   currency: string
@@ -274,7 +283,7 @@ export async function clubRequestSettings(
   contactPhone: string | null
 }> {
   assertRegistered(container, CLUB_CORE_SETTINGS)
-  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)
   return {
     timeZone: settings.values.timezone,
     currency: settings.values.currency,

@@ -24,6 +24,7 @@ export {
 export {
   accountEmail,
   accountView,
+  activeAccountUserIds,
   closeAccount,
   createAccount,
   resendInvitation,

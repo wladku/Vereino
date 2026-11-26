@@ -91,7 +91,7 @@ export async function resolveAudienceTarget(
       if (!directory) return foundationErrors.throw('audience_kind_unavailable')
       const occurrence = id ? (await directory.findOccurrences(scope, [id], em)).get(id) : undefined
       if (!occurrence) return denied()
-      const { timeZone } = await clubFacts(container, scope)
+      const { timeZone } = await clubFacts(container, scope, em)
       return {
         ...base,
         scopeId: occurrence.id,
