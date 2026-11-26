@@ -3,7 +3,7 @@
 // its lock token feed the `/api/foundation/identity` probes; the provider subject is a marker of the club.
 import { expect, request as playwrightRequest } from '@playwright/test'
 import { uniqueSuffix } from '../club'
-import { startOAuthFake } from '../../foundation/identity/_fixtures/oauth-fake'
+import { startOAuthFake } from '../../foundation/identity/_fixtures/google-fake'
 import { cleanHttp, roundTrip, sessionJar } from '../../foundation/identity/_fixtures/identity'
 import type { ModuleSeed } from './seed'
 

@@ -3,7 +3,7 @@ import { scanInColorSchemes } from '../../_fixtures/axe'
 import { createClub, createStaff, uniqueSuffix } from '../../_fixtures/club'
 import { signInBrowser, signOutBrowser } from '../../_fixtures/club-structure'
 import { uiText } from '../../_fixtures/ui-text'
-import { startOAuthFake, type OAuthFake } from './_fixtures/oauth-fake'
+import { startOAuthFake, type OAuthFake } from './_fixtures/google-fake'
 import { probeClearPassword } from './_fixtures/identity'
 
 // TEST-S04 (social sign-in spec; REQ-S01, REQ-S02; J-S01, J-S02; #566, #567), at 375 px: `/login` shows one button per

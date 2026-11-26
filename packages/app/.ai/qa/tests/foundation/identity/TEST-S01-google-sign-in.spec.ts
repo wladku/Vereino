@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { call, createClub, createStaff, signInAs, uniqueSuffix, type Club } from '../../_fixtures/club'
 import { setUserFeatures } from '../../_fixtures/members'
-import { startOAuthFake, type OAuthFake } from './_fixtures/oauth-fake'
+import { startOAuthFake, type OAuthFake } from './_fixtures/google-fake'
 import {
   CookieJar,
   STATE_COOKIE,

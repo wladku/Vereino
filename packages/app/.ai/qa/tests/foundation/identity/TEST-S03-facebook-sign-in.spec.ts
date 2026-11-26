@@ -1,7 +1,7 @@
 import { expect, test, type APIRequest } from '@playwright/test'
 import { call, createClub, createStaff, signInAs, uniqueSuffix } from '../../_fixtures/club'
 import { uiText } from '../../_fixtures/ui-text'
-import { facebookSignedRequest, startOAuthFake, type OAuthFake } from './_fixtures/oauth-fake'
+import { facebookSignedRequest, startOAuthFake, type OAuthFake } from './_fixtures/google-fake'
 import {
   CookieJar,
   STATE_COOKIE,
