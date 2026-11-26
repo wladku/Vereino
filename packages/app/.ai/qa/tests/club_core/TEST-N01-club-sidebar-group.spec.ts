@@ -115,6 +115,7 @@ const GROUPS: { key: string; items: [string, string][] }[] = [
       ['/backend/activities/activities', 'activities.activities.title'],
       ['/backend/activities/club-events', 'activities.clubEvents.title'],
       ['/backend/activities/occurrences', 'activities.occurrences.title'],
+      ['/backend/training/outlines', 'training.list.title'],
       ['/backend/activities/reports/coach-units', 'activities.reports.coachUnits.title'],
       ['/backend/activities/reports/declaration-share', 'activities.reports.declarationShare.title'],
       ['/backend/activities/policies', 'activities.policies.title'],

@@ -246,5 +246,19 @@
   "training.public.kicker": "A training outline shared on Vereino",
   "training.public.loading": "Loading the outline…",
   "training.public.notFound": "This outline is not available.",
-  "training.public.error": "The outline could not be loaded."
+  "training.public.error": "The outline could not be loaded.",
+  "training.backend.description": "Every training outline of the club: own outlines, session outlines and series outlines. Open one to change its header; exercises and images are edited in the member editor.",
+  "training.backend.kind.own": "Own",
+  "training.backend.columns.kind": "Kind",
+  "training.backend.columns.duration": "Duration",
+  "training.backend.columns.group": "Group",
+  "training.backend.columns.author": "Author",
+  "training.backend.columns.session": "Session",
+  "training.backend.columns.updatedAt": "Last change",
+  "training.backend.filters.view": "Kind",
+  "training.backend.actions.edit": "Open",
+  "training.backend.actions.exercises": "Edit exercises",
+  "training.backend.groups.header": "Header",
+  "training.backend.groups.parts": "Parts and exercises",
+  "training.backend.problems.players": "Enter from {min} to {max} players or leave it empty."
 }

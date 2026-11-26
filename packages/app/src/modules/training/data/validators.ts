@@ -114,6 +114,7 @@ export const outlineListQuerySchema = z.object({
   view: z.enum(['all', 'mine', 'sessions', 'series']).optional(),
   search: z.string().trim().max(200).optional(),
   ageCategory: z.string().trim().max(OUTLINE_LIMITS.ageCategory).optional(),
+  part: z.enum(OUTLINE_PARTS).optional().describe('Only outlines with at least one exercise in this part (#847)'),
   occurrenceId: z.uuid().optional(),
   activityId: z.uuid().optional(),
 })
