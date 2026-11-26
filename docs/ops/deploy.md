@@ -62,7 +62,7 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `AUTH_SECRET` | session and cookie signing secret, unique per environment |
 | `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` | tenant data encryption fallback key; never change it on a running environment |
 | `NEXT_PUBLIC_APP_URL`, `PLATFORM_PORTAL_BASE_URL` | same value as `APP_URL` |
-| `SYSTEM_EMAIL_PROVIDER`, `RESEND_API_KEY`, `NOTIFICATIONS_EMAIL_FROM` | outbound e-mail (S12.6) |
+| `SYSTEM_EMAIL_PROVIDER`, `RESEND_API_KEY`, `NOTIFICATIONS_EMAIL_FROM`, `EMAIL_FROM` | outbound e-mail (S12.6) from the sending subdomain `mail.vereino.org`; DNS records, values and the check `yarn ops:mail-dns`: [`email.md`](email.md) |
 | `OM_ENABLE_ENTERPRISE_MODULES=false` | no effect since the enterprise package was removed (ADR-023, #466); keep it false so a reinstalled package stays off |
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_PASSWORD_MIN_LENGTH=12`, `OM_PASSWORD_REQUIRE_DIGIT=false`, `OM_PASSWORD_REQUIRE_UPPERCASE=false`, `OM_PASSWORD_REQUIRE_SPECIAL=false` | the password policy (#747, see *Password policy* below); app and worker. Unset, the platform default applies: 6 characters with a digit, an upper-case letter and a special character |
@@ -311,13 +311,17 @@ the deploy or the lock-down pass.
 
 The platform checks a new password against four variables (`OM_PASSWORD_*`, table above) on the server: the user
 create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
-the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment. Two
-limits remain (`docs/compliance/asvs-requirements.md`, V6.2.x):
+the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment.
 
-- The platform's browser forms (change password, password reset, user create and edit) read the policy in the browser,
-  where these server variables are not set, so they keep showing and checking the platform default (a digit, an
-  upper-case letter and a special character) until the app-owned check of #779 replaces them.
-- No check against common or breached passwords or against club words exists yet (#779).
+On top of them the Vereino password check (#779, `.ai/specs/2026-11-26-vereino-password-check.md`) refuses, on every
+API path that sets a password (user create and edit, profile, the reset and invitation link):
+
+- more than 64 characters or 72 bytes (bcrypt reads no further), and a space at the start or the end;
+- the about 100 000 most common passwords, from breach data (a list built into the app; nothing is sent out);
+- passwords made of context words — `vereino`, `mercato`, the club's name and slug, the user's address and name.
+
+The root layout hands the same variables to the platform's browser forms, so they state and check what the server
+does. No extra variable; the check needs no configuration. `mercato auth set-password` (shell) is not checked.
 
 ### Staff second factor
 

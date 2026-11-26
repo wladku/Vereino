@@ -1,6 +1,7 @@
 // Self-contained tenant fixture for Vereino integration tests (engineering standards S13.3, S13.9):
 // every test creates its own tenant, organization, role and user through the API and removes them
 // in `finally`, so no test relies on seed or demo data.
+import { randomUUID } from 'node:crypto'
 import type { APIRequestContext } from '@playwright/test'
 import { apiRequest } from '@open-mercato/core/helpers/integration/api'
 import { getAuthToken } from './auth'
@@ -48,7 +49,9 @@ async function deleteTenantIfExists(request: APIRequestContext, token: string, t
 export async function createIsolatedTenant(request: APIRequestContext, label: string): Promise<IsolatedTenant> {
   const superadminToken = await getAuthToken(request, 'superadmin')
   const suffix = uniqueSuffix()
-  const password = `Vereino-${suffix}-Aa1!`
+  // Not built from `suffix`: the e-mail carries it, and the password check refuses a password made of the user's own
+  // address (#779, `password_context_word`).
+  const password = `Vereino-${randomUUID()}-Aa1!`
   const email = `${label}-${suffix}@example.org`
   let tenantId: string | null = null
   let organizationId: string | null = null
