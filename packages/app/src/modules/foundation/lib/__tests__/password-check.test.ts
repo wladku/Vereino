@@ -129,6 +129,9 @@ describe('the common-password list', () => {
     expect(COMMON_PASSWORD_COUNT).toBeGreaterThan(97_000)
     expect(new Set(entries).size).toBe(entries.length)
     expect(entries.slice(0, 2)).toEqual(['123456', '123456789'])
+    // Kept byte for byte: a `$$` entry survives (a string `replace` once turned it into `$`), no address is left.
+    expect(entries).toContain('money$$')
+    expect(entries.some((entry) => /@[a-z0-9-]+\.[a-z]/.test(entry))).toBe(false)
     expect(entries.every((entry) => entry.length > 0 && entry === entry.toLowerCase())).toBe(true)
   })
 })

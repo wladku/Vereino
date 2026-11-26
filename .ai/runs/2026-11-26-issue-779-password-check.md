@@ -42,7 +42,12 @@
   the address satisfied the wait); fixed to poll for the reset link; rerun passed (`1 passed (46.2s)`).
 - `--filter TEST-PW01` — first run failed: `Expected: 400 Received: 422` for `password_policy` (the interceptor runs
   before the platform's validation); test updated; rerun passed (`1 passed (45.5s)`).
-- Regression runs of tests that set passwords through the fixtures: see the PR body.
+- Regression runs with the new rules: TEST-M01 (2 passed), TEST-047 (2 passed), TEST-R02 (1 passed), TEST-M07 (2 passed).
+- `yarn verify`: `secrets:check` failed — 55 list entries were e-mail addresses and two lines read as password
+  literals; the entries were dropped and the lines reworded. `format:check` failed on the new files; `yarn format`.
+  `test` then failed: `Expected: 97736 Received: 97735` — the script that dropped the addresses used a string
+  `String.replace`, which turned `money$$` into `money$`; the list was regenerated with a plain write and the unit test
+  now pins `money$$` and the absence of addresses.
 
 ## Open problems / next
 
