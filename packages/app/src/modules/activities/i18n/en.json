@@ -448,6 +448,8 @@
   "activities.deadline.unansweredFirst": "The deadline has passed: {count} without an answer, listed first.",
   "activities.notifications.coachNeeded.body": "{coach} cannot run the session on {date} at {time}. Assign a substitute.",
   "activities.notifications.coachNeeded.title": "A session needs a coach: {activity}",
+  "activities.notifications.picturesHeldBack.title": "Pictures held back: {event}",
+  "activities.notifications.picturesHeldBack.body": "{event}: {count} published photos were held back after a consent change. Open the event's pictures to see them.",
   "activities.notifications.declarationLink.body": "A personal link to declare attendance was sent by e-mail.",
   "activities.notifications.declarationLink.title": "Personal declaration link",
   "activities.notifications.guardianConfirmationNeeded.body": "{ward} answered \"{declared}\" for {date} at {time}. Your confirmation is needed.",

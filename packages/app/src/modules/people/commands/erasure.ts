@@ -189,9 +189,10 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       const keepNameUntil = nameKeptUntil(await retentionHold(em, ctx.container, scope, person.id), today)
       const photoIds = await photoFileIds(ctx.container, scope, person.id, person.photoAttachmentId ?? null)
       const counts = await erasePersonData(em, scope, person, keepNameUntil, now)
+      const contributorParts = await eraseContributorData(em, ctx.container, scope, person.id)
       const audit = erasureAudit([
         peopleErasurePart(counts, keepNameUntil, !sweep || sweepRequests.length > 0),
-        ...(await eraseContributorData(em, ctx.container, scope, person.id)),
+        ...contributorParts,
       ])
       // `anonymizeBlockers` refused a missing request above (`request_missing`) unless the sweep anonymises.
       if (!sweep && !request) throw new Error('[internal] anonymisation without a recorded request')
@@ -208,6 +209,7 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
         counts,
         audit,
         photoIds,
+        afterCommit: contributorParts.flatMap((part) => (part.afterCommit ? [part.afterCommit] : [])),
         actingRole: authorized.actingRole,
       }
     })
@@ -224,6 +226,15 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
       indexer: personIndexer,
     })
     await emitPeopleEvent('people.person.anonymized', { id: person.id, ...scope }, { persistent: true, ...scope })
+    // The contributors' work after the commit (event photos spec REQ-I10: a marked picture's bytes); never a rollback.
+    for (const step of result.afterCommit) {
+      try {
+        await step()
+      } catch (error: unknown) {
+        logger.warn('A contributor step after an erasure failed', { ...scope, err: error })
+        getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.erasure.after_commit_failed' })
+      }
+    }
     let photoFiles = { released: 0, kept: 0 }
     try {
       photoFiles = await releasePhotoFiles(ctx.container, scope, person.id, result.photoIds)
@@ -264,6 +275,8 @@ const anonymizeCommand: CommandHandler<Record<string, unknown>, AnonymizeCommand
         photoFilesKept: result.photoFiles.kept,
         tablesTouched: result.audit.tablesTouched,
         keptData: result.audit.keptData,
+        // The tombstone list of BR-I07 (event photos spec): ids of the records deleted for good, by kind.
+        ...(result.audit.erasedRecords ? { erasedRecords: result.audit.erasedRecords } : {}),
       },
     }
   },

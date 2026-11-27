@@ -105,6 +105,13 @@ describe('activitiesExportPart', () => {
       { table: 'activities_declaration_tokens', activity: 'A3', portable: false, rows: [], reviewFields: undefined },
       { table: 'activities_contact_access_log', activity: 'A10', portable: false, rows: [], reviewFields: undefined },
       { table: 'activities_substitution_entries', activity: 'A3', portable: false, rows: [], reviewFields: ['reason'] },
+      {
+        table: 'activities_club_event_file_people',
+        activity: 'A18',
+        portable: false,
+        rows: [],
+        reviewFields: undefined,
+      },
     ])
     expect(part.sections.every((entry) => entry.module === 'activities')).toBe(true)
     expect(part.actorCounts).toEqual([
@@ -366,6 +373,36 @@ describe('attendedCoachIds', () => {
         sessions,
       ),
     ).toEqual([COACH])
+  })
+})
+
+describe('activitiesExportPart — pictures (event photos spec REQ-I11)', () => {
+  it('lists the pictures the subject is marked on with their event and publication', () => {
+    const part = activitiesExportPart({
+      ...input(),
+      pictureMarks: [
+        {
+          fileId: 'p1',
+          clubEventId: 'e1',
+          eventName: 'CUP 2026',
+          kind: 'photo',
+          description: 'Final',
+          markedAt: new Date('2026-11-27T10:00:00.000Z'),
+          publishedAt: null,
+        },
+      ],
+    })
+    expect(part.sections.find((entry) => entry.table === 'activities_club_event_file_people')?.rows).toEqual([
+      {
+        pictureId: 'p1',
+        clubEventId: 'e1',
+        clubEvent: 'CUP 2026',
+        kind: 'photo',
+        description: 'Final',
+        markedAt: '2026-11-27T10:00:00.000Z',
+        publishedAt: null,
+      },
+    ])
   })
 })
 

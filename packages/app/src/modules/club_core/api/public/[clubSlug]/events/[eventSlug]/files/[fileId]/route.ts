@@ -3,6 +3,7 @@
 // page and the `events` block and the event is public with a live part. Read through the platform's
 // `attachmentService` with the exact owner and assignment the `activities.publicEvents` contribution returns, inside
 // the club found by its slug; anything else answers the public 404. Served with `nosniff`; rate-limited per client IP.
+// A picture (event photos spec REQ-I05, BR-I01, DD-I11; #872) streams only while BR-I01 holds, `private, no-store`.
 import { z } from 'zod'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
@@ -36,9 +37,9 @@ export const openApi: OpenApiRouteDoc = {
   summary: 'Public club event file',
   methods: {
     GET: {
-      summary: 'Download the poster or a funder logo of a public club event',
+      summary: 'Download the poster, a funder logo or a public picture of a public club event',
       description:
-        'Sessionless. A file of a club event the club made public, while the club publishes its page and the `events` block and the event has a live part. Rate-limited per client IP.',
+        'Sessionless. A file of a club event the club made public, while the club publishes its page and the `events` block and the event has a live part. A picture only while it is published and every person marked on it has the image consent in force (BR-I01), served `private, no-store`. Rate-limited per client IP.',
       responses: [{ status: 200, description: 'The image', schema: z.unknown() }],
       errors: [
         { status: 404, description: '`public_page_not_found`', schema: publicErrorSchema },

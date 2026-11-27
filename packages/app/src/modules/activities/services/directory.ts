@@ -271,6 +271,16 @@ export async function coachNeededHandlerIds(
   return coordinators.length > 0 ? coordinators : directory.roleHolderIdsOn(scope, 'club_admin', date, em)
 }
 
+/** The club administrators on `date` (event photos spec REQ-I09: the managers of every club event). */
+export function clubAdminIds(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<string[]> {
+  return personDirectory(container).roleHolderIdsOn(scope, 'club_admin', date, em)
+}
+
 /** The persons among `ids` who consented to showing their wards' presence to other guardians (REQ-006, #32). */
 export function presenceConsents(
   container: AwilixContainer,

@@ -448,6 +448,8 @@
   "activities.deadline.unansweredFirst": "Termin minął: {count} bez odpowiedzi, na początku listy.",
   "activities.notifications.coachNeeded.body": "{coach} nie poprowadzi terminu {date} o {time}. Wskaż zastępcę.",
   "activities.notifications.coachNeeded.title": "Termin do obsadzenia: {activity}",
+  "activities.notifications.picturesHeldBack.title": "Zdjęcia wstrzymane: {event}",
+  "activities.notifications.picturesHeldBack.body": "{event}: po zmianie zgody wstrzymano opublikowane zdjęcia ({count}). Otwórz obrazy imprezy, aby je zobaczyć.",
   "activities.notifications.declarationLink.body": "Osobisty link do deklaracji obecności został wysłany e-mailem.",
   "activities.notifications.declarationLink.title": "Osobisty link do deklaracji obecności",
   "activities.notifications.guardianConfirmationNeeded.body": "{ward} odpowiedział(a) „{declared}” na {date} o {time}. Potrzebne jest Twoje potwierdzenie.",

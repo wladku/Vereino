@@ -105,6 +105,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     category: 'activities',
     actions: [],
   },
+  // Event photos spec REQ-I09 (#872): a consent withdrawal held back published pictures of a club event — its
+  // managers get the event and the count, never the person or why (DD-I10).
+  {
+    type: 'activities.club_event.pictures_held_back',
+    module: 'activities',
+    channels: ['in_app'],
+    titleKey: 'activities.notifications.picturesHeldBack.title',
+    bodyKey: 'activities.notifications.picturesHeldBack.body',
+    icon: 'image-off',
+    severity: 'info',
+    category: 'activities',
+    actions: [],
+  },
 ]
 
 export default notificationTypes

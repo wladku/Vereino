@@ -141,11 +141,26 @@ export type ErasureTouched = { table: string; rows: number }
  */
 export type ErasureKept = { category: string; basis: string; retention: string; tables: string[] }
 
-/** What one module's part of an erasure touched and kept. */
-export type ErasurePart = { touched: ErasureTouched[]; kept: ErasureKept[] }
+/**
+ * Records an erasure deleted for good, by kind (event photos spec BR-I07, #872): the tombstone list on the audit entry
+ * that tells an undo or a redo why its record is gone. Ids only.
+ */
+export type ErasedRecords = { kind: string; ids: string[] }
+
+/**
+ * What one module's part of an erasure touched and kept. `erased` lists the records it deleted for good; `afterCommit`
+ * runs once the erasure committed (bytes released from storage, event photos spec REQ-I10) — a failure there is
+ * reported, never rolls the erasure back.
+ */
+export type ErasurePart = {
+  touched: ErasureTouched[]
+  kept: ErasureKept[]
+  erased?: ErasedRecords[]
+  afterCommit?: () => Promise<void>
+}
 
 /** What the anonymisation's audit entry records under S9.6: every table touched and every kept category's basis. */
-export type ErasureAudit = { tablesTouched: ErasureTouched[]; keptData: ErasureKept[] }
+export type ErasureAudit = { tablesTouched: ErasureTouched[]; keptData: ErasureKept[]; erasedRecords?: ErasedRecords[] }
 
 /** What `people`'s own part of the erasure changed (counts only). */
 export type PeopleErasureCounts = {
@@ -202,7 +217,11 @@ export function peopleErasurePart(
 export function erasureAudit(parts: readonly ErasurePart[]): ErasureAudit {
   const touched = new Map<string, number>()
   const kept = new Map<string, ErasureKept>()
+  const erased = new Map<string, string[]>()
   for (const part of parts) {
+    for (const entry of part.erased ?? []) {
+      if (entry.ids.length > 0) erased.set(entry.kind, [...new Set([...(erased.get(entry.kind) ?? []), ...entry.ids])])
+    }
     for (const entry of part.touched) {
       if (entry.rows > 0) touched.set(entry.table, (touched.get(entry.table) ?? 0) + entry.rows)
     }
@@ -215,5 +234,6 @@ export function erasureAudit(parts: readonly ErasurePart[]): ErasureAudit {
   return {
     tablesTouched: [...touched].map(([table, rows]) => ({ table, rows })),
     keptData: [...kept.values()],
+    ...(erased.size > 0 ? { erasedRecords: [...erased].map(([kind, ids]) => ({ kind, ids })) } : {}),
   }
 }
