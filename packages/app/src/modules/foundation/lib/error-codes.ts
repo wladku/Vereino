@@ -50,6 +50,23 @@ export const errorCodes = [
   { code: 'password_policy', status: 422, messageKey: 'foundation.errors.password_policy' },
   { code: 'password_too_common', status: 422, messageKey: 'foundation.errors.password_too_common' },
   { code: 'password_context_word', status: 422, messageKey: 'foundation.errors.password_context_word' },
+  // Staff second factor (#736, spec *API, Command, and Error Contracts*): the sign-in gate, the completion routes and
+  // the reset. The login page shows `error`, so each carries a whole sentence.
+  { code: 'second_factor_use_google', status: 403, messageKey: 'foundation.errors.second_factor_use_google' },
+  { code: 'second_factor_unavailable', status: 503, messageKey: 'foundation.errors.second_factor_unavailable' },
+  {
+    code: 'second_factor_challenges_limited',
+    status: 429,
+    messageKey: 'foundation.errors.second_factor_challenges_limited',
+  },
+  { code: 'second_factor_code_invalid', status: 400, messageKey: 'foundation.errors.second_factor_code_invalid' },
+  {
+    code: 'second_factor_challenge_expired',
+    status: 401,
+    messageKey: 'foundation.errors.second_factor_challenge_expired',
+  },
+  { code: 'second_factor_resend_limited', status: 429, messageKey: 'foundation.errors.second_factor_resend_limited' },
+  { code: 'second_factor_reset_self', status: 403, messageKey: 'foundation.errors.second_factor_reset_self' },
   // ENG-Q-12 (#737): an own login e-mail change outside `PUT /api/foundation/profile/email` (the command interceptor
   // `foundation.email-change-confirmation`), and a wrong current password on that route.
   {

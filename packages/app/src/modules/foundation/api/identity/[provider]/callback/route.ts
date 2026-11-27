@@ -5,7 +5,9 @@
 // provider error, a timeout or a failed claim → `identity=failed`. Then:
 // - `sign_in`: the one system-scope lookup of (`provider`, `subject`) (DD-S03, D-027); found → the platform session
 //   cookies and a redirect to the marker's landing path; not found (or the user is gone or blocked) →
-//   `/login?identity=unlinked`. The three `/login` outcomes render one sentence (no enumeration).
+//   `/login?identity=unlinked`. The three `/login` outcomes render one sentence (no enumeration). A user holding
+//   `foundation.second_factor.required` with a provider other than Google → `/login?second_factor=use_google`, no
+//   session (staff second factor DD-2F06, #736).
 // - `link`: the session must still be the user who started the round trip (else `/login?identity=invalid`); the
 //   command `foundation.identity.link` inserts the link → `/club/profile?identity=linked`; any failure, including a
 //   subject bound to another user, → `/club/profile?identity=failed` with a fingerprint and nothing revealed.

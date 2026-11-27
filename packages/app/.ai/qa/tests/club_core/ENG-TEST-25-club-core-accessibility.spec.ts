@@ -3,6 +3,7 @@ import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolatio
 import { createClub } from '../_fixtures/club'
 import { create } from '../_fixtures/club-structure'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // ENG-TEST-25 (engineering standards S7.4): every club_core admin page, signed in as the club
 // administrator with one record of each kind, has no critical or serious axe violation outside the
@@ -27,10 +28,7 @@ test('ENG-TEST-25 club_core admin pages have no new critical or serious accessib
       ownerInstitutionId: institution,
     })
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await prepareForAccessibilityScan(page)
 
     // Each list page is scanned with its record loaded, so the scan covers the table, not the skeleton.

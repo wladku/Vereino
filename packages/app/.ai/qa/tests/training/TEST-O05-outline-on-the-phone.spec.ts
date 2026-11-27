@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { addDays, createActivity } from '../_fixtures/activities'
 import { familyFor, sessionsOf } from '../_fixtures/attendance'
 import { call, calendarDate, createClub } from '../_fixtures/club'

@@ -6,7 +6,8 @@ import { spawn, spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 import { expect, type APIRequestContext, type APIResponse } from '@playwright/test'
-import { apiRequest, getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { apiRequest } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from './auth'
 import {
   createOrganizationFixture,
   createUserFixture,

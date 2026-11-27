@@ -3,6 +3,7 @@ import { addDays, nextWeekday, weekdayOf, zoneDate, zoneInstant } from '../_fixt
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { listRentals, phoneRental, postRental, rentalPitch } from '../_fixtures/facilities'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #122 (E08-S02; README B-23, B-24, flow F-10): the club administrator's rental pages. B-24 lists rentals in the
 // Active tab and has no critical or serious axe violation outside the platform baseline and reflows at 320 px; from
@@ -49,10 +50,7 @@ test('E08-S02 rental pages: B-24 list, new rental from a B-23 slot with the live
     const soon = await postRental(request, admin, phoneRental(setup.pitch, setup.neighbours, soonAt))
     expect(soon.status, JSON.stringify(soon.body)).toBe(201)
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())

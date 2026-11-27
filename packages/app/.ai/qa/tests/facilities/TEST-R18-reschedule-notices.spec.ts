@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { addDays, createEvent, nextWeekday, readNotifications, zoneInstant } from '../_fixtures/activities'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { calendarDate, createClub } from '../_fixtures/club'

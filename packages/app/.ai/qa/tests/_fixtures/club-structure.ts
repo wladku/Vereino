@@ -1,6 +1,7 @@
 // Helpers of the `club_core` integration tests (club spec TEST-001, TEST-032; issue #25): club structure records
 // created through the API, the list reads, a password sign-in for the browser and the leaf-rule CLI.
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { signInBrowserContext } from './auth'
 import { OPTIMISTIC_LOCK_HEADER, call, mercato, uniqueSuffix, type Club } from './club'
 
 export type SectionItem = {
@@ -129,8 +130,8 @@ export async function signInBrowser(
   const password = `Vereino-${uniqueSuffix()}-Aa1!`
   const reset = await call(request, 'PUT', '/api/auth/users', club.superToken, { data: { id: userId, password } })
   expect(reset.status, `PUT /api/auth/users ${JSON.stringify(reset.body)}`).toBe(200)
-  const login = await page.request.post('/api/auth/login', { form: { email, password } })
-  expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+  // A club administrator or treasurer also completes the e-mailed code (staff second factor, #736).
+  await signInBrowserContext(page.request, email, password)
   return password
 }
 

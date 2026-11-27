@@ -16,6 +16,7 @@ import { create as createStructure, switchBrowserUser } from '../_fixtures/club-
 import { ORLIK_HOURS, setOpeningHours } from '../_fixtures/facilities'
 import { addMembership, signedInStaff } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #288 (E11-S14), facilities parity spec phase 14, TEST-R19 (REQ-R19, DD-R15, AC-R15): a one-off group event on a
 // club place lies inside the place's opening windows of its day. On a pitch open 08:00–22:00 on weekdays an event at
@@ -112,10 +113,7 @@ test('TEST-R19 a one-off event outside the pitch opening hours is refused with t
       role: 'coach',
       validFrom: addDays(today, -30),
     })
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await switchBrowserUser(page, request, club, coach.userId, coach.email)
     const consoleErrors: string[] = []
     page.on('console', (message) => {

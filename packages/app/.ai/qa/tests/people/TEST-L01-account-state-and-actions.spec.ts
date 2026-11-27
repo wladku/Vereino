@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import {
   OPTIMISTIC_LOCK_HEADER,
   birthDateTurning,

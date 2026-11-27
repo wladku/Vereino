@@ -3,7 +3,8 @@
 // in `finally`, so no test relies on seed or demo data.
 import { randomUUID } from 'node:crypto'
 import type { APIRequestContext } from '@playwright/test'
-import { apiRequest, getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { apiRequest } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from './auth'
 import {
   createOrganizationFixture,
   createRoleFixture,
