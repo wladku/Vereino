@@ -309,11 +309,26 @@ export class ClubEventPart extends ScopedEntityBase {
  * `club_core`: the bytes live in the platform `attachments` module (owner `activities:club_event`, assignment
  * `activities:club_event_file`), this row keeps the attachment id, a snapshot of the name, type and size, and the
  * logos' upload order.
+ *
+ * Event photos spec (DD-I02, *Data Models*; #872): the kinds `photo` and `graphic` are the event's **pictures**, with a
+ * required description (the alternative text), the people confirmation and the publication of a manager. A picture's
+ * bytes have the owner `activities:club_event_picture` (record = this row's id) as their only assignment (DD-I12), so
+ * deleting a picture releases them; its marks live in `activities_club_event_file_people`. Whether a picture is public
+ * is decided on every read (BR-I01), never stored.
  */
 @Entity({ tableName: 'activities_club_event_files' })
 @Check({
   name: 'activities_club_event_files_funder_name',
   expression: `(kind = 'funder_logo') = (funder_name IS NOT NULL)`,
+})
+@Check({
+  name: 'activities_club_event_files_picture_description',
+  expression: `(kind IN ('photo', 'graphic')) = (description IS NOT NULL)`,
+})
+@Index({
+  name: 'activities_club_event_files_published_pictures_idx',
+  expression:
+    'create index "activities_club_event_files_published_pictures_idx" on "activities_club_event_files" ("organization_id", "club_event_id") where kind in (\'photo\', \'graphic\') and published_at is not null and deleted_at is null',
 })
 @Index({
   name: 'activities_club_event_files_poster_unique',
@@ -327,7 +342,15 @@ export class ClubEventPart extends ScopedEntityBase {
 })
 @Index({ name: 'activities_club_event_files_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
 export class ClubEventFile extends ScopedEntityBase {
-  [OptionalProps]?: ScopedEntityOptionalProps | 'funderName' | 'position'
+  [OptionalProps]?:
+    | ScopedEntityOptionalProps
+    | 'funderName'
+    | 'position'
+    | 'description'
+    | 'peopleConfirmedAt'
+    | 'peopleConfirmedByPersonId'
+    | 'publishedAt'
+    | 'publishedByPersonId'
 
   @Property({ name: 'club_event_id', type: 'uuid' })
   clubEventId!: string
@@ -352,9 +375,62 @@ export class ClubEventFile extends ScopedEntityBase {
   @Property({ name: 'file_size', type: 'int' })
   fileSize!: number
 
-  /** The logos' upload order, 0-based; 0 for the poster. */
+  /** The logos' and the pictures' upload order, 0-based; 0 for the poster. */
   @Property({ name: 'position', type: 'int', default: 0 })
   position: number = 0
+
+  /** A picture's description (2–200), its alternative text; null for the poster and the logos. */
+  @Property({ name: 'description', type: 'text', nullable: true })
+  description?: string | null
+
+  /** When a manager confirmed the marks of a photo, or that a graphic shows nobody (REQ-I03); a mark change clears it. */
+  @Property({ name: 'people_confirmed_at', type: Date, nullable: true })
+  peopleConfirmedAt?: Date | null
+
+  @Property({ name: 'people_confirmed_by_person_id', type: 'uuid', nullable: true })
+  peopleConfirmedByPersonId?: string | null
+
+  /** When a manager published the picture (staff's intention; public only under BR-I01). */
+  @Property({ name: 'published_at', type: Date, nullable: true })
+  publishedAt?: Date | null
+
+  @Property({ name: 'published_by_person_id', type: 'uuid', nullable: true })
+  publishedByPersonId?: string | null
+}
+
+/**
+ * A person marked on a photo of a club event (event photos spec DD-I03, *Data Models* →
+ * `activities_club_event_file_people`; #872): a club person by id (no relation to `people`), never shown publicly.
+ * The marks of a photo are replaced as a set by `activities.club_event_files.set_people` (the command log keeps the
+ * set before), and are deleted with their picture.
+ */
+@Entity({ tableName: 'activities_club_event_file_people' })
+@Unique({ name: 'activities_club_event_file_people_unique', properties: ['fileId', 'personId'] })
+@Index({ name: 'activities_club_event_file_people_org_person_idx', properties: ['organizationId', 'personId'] })
+@Index({ name: 'activities_club_event_file_people_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class ClubEventFilePerson {
+  [OptionalProps]?: 'createdAt' | 'createdByPersonId'
+
+  @PrimaryKey({ type: 'uuid', defaultRaw: 'gen_random_uuid()' })
+  id!: string
+
+  @Property({ name: 'tenant_id', type: 'uuid' })
+  tenantId!: string
+
+  @Property({ name: 'organization_id', type: 'uuid' })
+  organizationId!: string
+
+  @Property({ name: 'file_id', type: 'uuid' })
+  fileId!: string
+
+  @Property({ name: 'person_id', type: 'uuid' })
+  personId!: string
+
+  @Property({ name: 'created_at', type: Date, onCreate: () => new Date() })
+  createdAt: Date = new Date()
+
+  @Property({ name: 'created_by_person_id', type: 'uuid', nullable: true })
+  createdByPersonId?: string | null
 }
 
 /**

@@ -127,6 +127,11 @@ export type PublicClubEvent = {
   /** In upload order; `name` is the logo's alternative text. */
   funders: { name: string; fileId: string }[]
   days: { date: string; parts: PublicClubEventPart[] }[]
+  /**
+   * The pictures a guest may see now (event photos spec BR-I01, REQ-I05; #872), in their order; `description` is the
+   * alternative text. Never a marked person. Absent from a contribution that has no pictures.
+   */
+  pictures?: { fileId: string; description: string; kind: 'photo' | 'graphic' }[]
 }
 
 /** A published file of a club event: the exact attachment owner and assignment `club_core`'s `fileResponse` matches. */
@@ -135,6 +140,8 @@ export type PublicClubEventFile = {
   owner: { entityId: string; recordId: string }
   assignment: { type: string; id: string }
   mimeType: string
+  /** A picture (event photos spec DD-I11): its bytes are served `private, no-store`, never kept by a shared cache. */
+  noStore?: boolean
 }
 
 export type PublicEventsProvider = {
@@ -148,6 +155,6 @@ export type PublicEventsProvider = {
    * `ctx.sections` are all the club's public sections.
    */
   clubEvent?(ctx: PublicClubBlockContext, eventSlug: string): Promise<PublicClubEvent | null>
-  /** A poster or funder logo of the public club event behind `eventSlug`; null otherwise. */
+  /** A poster, funder logo or public picture (BR-I01) of the public club event behind `eventSlug`; null otherwise. */
   clubEventFile?(ctx: PublicClubBlockContext, eventSlug: string, fileId: string): Promise<PublicClubEventFile | null>
 }

@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@open-mercato/ui/primi
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import { ClubEventFilesPanel } from './ClubEventFilesPanel'
+import { ClubEventPicturesPanel } from './ClubEventPicturesPanel'
 import { ClubEventDetailsForm } from './ClubEventForm'
 import { ClubEventPartsTable } from './ClubEventPartsTable'
 import { ClubEventReasonDialog } from './ClubEventReasonDialog'
@@ -207,6 +208,11 @@ export function ClubEventRecord({ id }: { id: string }) {
         </TabsContent>
         <TabsContent value="files" className="pt-4">
           <ClubEventFilesPanel event={event} editable={editable} onChanged={refetch} />
+          {event.pictures ? (
+            <div className="mt-8 border-t pt-6">
+              <ClubEventPicturesPanel event={event} onChanged={refetch} />
+            </div>
+          ) : null}
         </TabsContent>
       </Tabs>
       {editable ? (

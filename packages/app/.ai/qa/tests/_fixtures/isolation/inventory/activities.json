@@ -262,12 +262,25 @@
         "body": { "reason": "Probe reason" }
       }
     },
+    "/api/activities/club-events/[id]/people-options": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:activitiesClubEvent" }, "query": { "q": "Probe" } }
+    },
     "/api/activities/club-events/[id]/files": {
-      "POST": {
-        "probe": "foreign-id",
-        "params": { "id": "$B:activitiesClubEvent" },
-        "body": { "$multipart": { "file": { "$file": "png" }, "kind": "poster" } }
-      }
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent" },
+          "body": { "$multipart": { "file": { "$file": "png" }, "kind": "poster" } }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent" },
+          "body": { "$multipart": { "file": { "$file": "png" }, "kind": "photo", "description": "Probe picture" } }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/publish-all": {
+      "POST": { "probe": "foreign-id", "params": { "id": "$B:activitiesClubEvent" }, "body": {} }
     },
     "/api/activities/club-events/[id]/files/[fileId]": {
       "DELETE": [
@@ -279,6 +292,82 @@
         {
           "probe": "foreign-id",
           "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventFile" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "description": "Probe description" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "description": "Probe description" }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/content": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/people": {
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "personIds": [], "confirmed": false }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+          "body": { "personIds": [], "confirmed": false }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$A:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventPictureUpdatedAt" },
+          "body": { "personIds": ["$B:memberPerson"], "confirmed": true }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/publish": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/unpublish": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
+          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        },
+        {
+          "probe": "foreign-id",
+          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventPicture" },
           "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
         }
       ]

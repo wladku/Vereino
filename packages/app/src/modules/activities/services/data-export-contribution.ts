@@ -13,6 +13,9 @@ import type { PersonDataExportContributor, PersonDataExportSubject } from '../..
 import {
   Activity,
   Attendance,
+  ClubEvent,
+  ClubEventFile,
+  ClubEventFilePerson,
   ContactAccessLog,
   DeclarationToken,
   Occurrence,
@@ -89,8 +92,34 @@ async function exportActivities(container: AwilixContainer, em: EntityManager, s
     ? await em.count(ContactAccessLog, { ...scope, actorUserId: subject.userId })
     : 0
 
+  const marks = await em.find(ClubEventFilePerson, { ...scope, personId }, byCreation)
+  const pictures =
+    marks.length > 0
+      ? await em.find(ClubEventFile, { ...live, id: { $in: marks.map((row) => row.fileId) } }, byCreation)
+      : []
+  const pictureEvents =
+    pictures.length > 0
+      ? await em.find(
+          ClubEvent,
+          { ...scope, id: { $in: [...new Set(pictures.map((row) => row.clubEventId))] } },
+          { fields: ['id', 'name'] },
+        )
+      : []
+  const eventNames = new Map(pictureEvents.map((row) => [row.id, row.name]))
+  const markedAt = new Map(marks.map((row) => [row.fileId, row.createdAt]))
+  const pictureMarks = pictures.map((row) => ({
+    fileId: row.id,
+    clubEventId: row.clubEventId,
+    eventName: eventNames.get(row.clubEventId) ?? null,
+    kind: row.kind,
+    description: row.description ?? null,
+    markedAt: markedAt.get(row.id) as Date,
+    publishedAt: row.publishedAt ?? null,
+  }))
+
   return activitiesExportPart({
     personId,
+    pictureMarks,
     attendances,
     tokens,
     contactReads,

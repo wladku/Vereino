@@ -46,6 +46,7 @@ import {
 } from '../club-events-client'
 import { ActivitiesClubFrame } from './ActivitiesClubFrame'
 import { ClubEventFilesBlock } from './ClubEventFilesBlock'
+import { ClubEventPicturesBlock } from './ClubEventPicturesBlock'
 import { CancelSessionDialog, type CancellableSession } from './CoachSessionBlock'
 import { CALENDAR_QUERY_KEY, sessionEditHref, type Translate } from './club-client'
 
@@ -334,6 +335,7 @@ function EventView({ event, timeZone, t }: { event: ClubEventDetail; timeZone: s
         ))
       )}
       <ClubEventFilesBlock event={event} editable={editable} onChanged={refresh} />
+      {event.pictures ? <ClubEventPicturesBlock event={event} onChanged={refresh} /> : null}
       {editable ? (
         <div
           className="bg-background sticky bottom-24 z-30 -mx-4 flex flex-col gap-2 border-t px-4 py-3 sm:static sm:mx-0 sm:border-0 sm:p-0"

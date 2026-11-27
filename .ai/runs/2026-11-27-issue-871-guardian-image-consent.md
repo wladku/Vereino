@@ -3,7 +3,7 @@
 - **Trigger:** cezar task b96b0bb1 (`om-auto-fix-issue 871`), unattended.
 - **Issue / branch:** #871 / `feat/issue-871-guardian-image-consent` (claimed: assignee, `in-progress`, 🤖 comment
   naming the worktree, branch and start time).
-- **Spec:** `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md`, phase 1 (Ready for implementation,
+- **Spec:** `.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`, phase 1 (Ready for implementation,
   owner decisions and the `people` migration and the narrowing approved on #870, comment 7203995918). The shared
   `ConsentToggle` assigned to this story by the owner decision on #857.
 

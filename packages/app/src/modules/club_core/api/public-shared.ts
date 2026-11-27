@@ -94,7 +94,8 @@ export async function fileResponse(
         'Content-Type': ref.mimeType ?? file.contentType,
         'Content-Disposition': file.contentDisposition,
         'Content-Length': String(file.buffer.length),
-        'Cache-Control': PUBLIC_CACHE_CONTROL,
+        // A club event picture is public only while its consents hold (BR-I01): no shared cache keeps its bytes.
+        'Cache-Control': ref.noStore ? 'private, no-store' : PUBLIC_CACHE_CONTROL,
         'X-Content-Type-Options': 'nosniff',
       },
     })

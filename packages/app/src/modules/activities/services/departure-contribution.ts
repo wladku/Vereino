@@ -24,9 +24,10 @@ import type {
 } from '../../people/services/departure'
 import { activitiesErrors } from '../api/errors'
 import { emitAfterCommit } from '../commands/shared'
-import { Activity, Attendance, Occurrence, SubstitutionEntry } from '../data/entities'
+import { Activity, Attendance, ClubEventFilePerson, Occurrence, SubstitutionEntry } from '../data/entities'
 import { handOverEntryKind, handOverNeeds, handOverTarget, restorable } from '../lib/departure-handover'
 import type { GroupDirectoryEntry } from '../../groups/services/group-directory'
+import { deletePictureRows, picturesMarking, releasePictureFiles } from './club-event-pictures'
 import { clubClock, coachCandidateIds, findGroups } from './directory'
 import { substitutionStepsOf } from './substitutions'
 
@@ -280,6 +281,33 @@ export function createDepartureContribution(container: AwilixContainer): Departu
       for (const change of changes) {
         if (change.kind !== 'activity') continue
         await emitAfterCommit('activities.activity.updated', scope, { id: change.recordId })
+      }
+    },
+
+    /**
+     * Event photos spec (REQ-I10, BR-I07; #872): every picture that marks the person — live or soft-deleted — is deleted
+     * with its marks in the erasure's transaction, its id listed as a tombstone on the audit entry; the bytes are
+     * released after the commit.
+     */
+    async erase(em, subject) {
+      const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
+      const fileIds = await picturesMarking(em, scope, subject.personId)
+      const marks = fileIds.length > 0 ? await em.count(ClubEventFilePerson, { ...scope, fileId: { $in: fileIds } }) : 0
+      const deleted = await deletePictureRows(em, scope, fileIds)
+      return {
+        touched: [
+          { table: 'activities_club_event_files', rows: deleted.length },
+          { table: 'activities_club_event_file_people', rows: marks },
+        ],
+        kept: [],
+        erased: [{ kind: 'activities.club_event_file', ids: deleted.map((row) => row.id) }],
+        ...(deleted.length > 0
+          ? {
+              afterCommit: async () => {
+                await releasePictureFiles({ container }, scope, deleted)
+              },
+            }
+          : {}),
       }
     },
 
