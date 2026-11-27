@@ -384,17 +384,17 @@ Phase 3. Vault data loss: restore the newest snapshot (J-K03).
 
 ## Acceptance Criteria
 
-- [ ] **AC-K01** — Two clubs have different DEKs in Vault and neither can read the other's ciphertext (TEST-K01).
+- [ ] **AC-K01** — Two clubs have different DEKs in Vault and neither can read the other's ciphertext (TEST-K01). — gap: #740 (phase 2: per-club DEKs in Vault, TEST-K01)
 - [ ] **AC-K02** — Production and staging run in `vault` mode with no fallback secret; the first club's data stayed
-  readable through the cutover with no downtime (TEST-K04, cutover log).
+  readable through the cutover with no downtime (TEST-K04, cutover log). — gap: #740 (phase 2: `encryption-keys import-derived`/`verify`, TEST-K04, staging and production cutover log)
 - [ ] **AC-K03** — `delete-club` removes the club's key; its ciphertext no longer decrypts; snapshots keep a key ≤ 30
-  days (TEST-K02).
-- [ ] **AC-K04** — A dump restores with its Vault snapshot; the drill after a rotation is recorded.
-- [ ] **AC-K05** — Barrier and app-token rotation run without failed requests (TEST-K03) and are in the runbook.
+  days (TEST-K02). — gap: #740 (phase 3: `delete-club` key destruction, TEST-K02)
+- [ ] **AC-K04** — A dump restores with its Vault snapshot; the drill after a rotation is recorded. — gap: #740 (phase 2: Vault snapshot in `backup-dump.mjs`/`backup-restore.mjs`, drill in `docs/ops/restore-drills.md`)
+- [ ] **AC-K05** — Barrier and app-token rotation run without failed requests (TEST-K03) and are in the runbook. — gap: #740 (phase 3: TEST-K03, recorded rotation; the runbook text is in `docs/ops/key-store.md`, PR #826)
 - [ ] **AC-K06** — `docs/compliance/key-inventory.md` lists every key above with owner, location and rotation period;
-  ASVS A-3 is closed.
-- [ ] **AC-K07** — The boot check refuses `vault` mode with a fallback secret or without Vault variables or pepper.
-- [ ] Every affected command has integration coverage and `yarn verify` passes.
+  ASVS A-3 is closed. — gap: #740 (`docs/compliance/key-inventory.md` with owner, location and rotation period landed in PR #826; ASVS A-3 stays open until phases 2–3)
+- [x] **AC-K07** — The boot check refuses `vault` mode with a fallback secret or without Vault variables or pepper. — PR #826, `packages/app/scripts/__tests__/vereino-boot-env.test.mjs` (close-out V #842)
+- [ ] Every affected command has integration coverage and `yarn verify` passes. — gap: #740 (no integration test of the key commands yet; the harness has no Vault container)
 
 ## Final Compliance Report
 

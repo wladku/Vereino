@@ -520,17 +520,17 @@ phases.
 ## Acceptance Criteria
 
 - [ ] **AC-M01** — Two clubs created on one instance are two tenants with their own roles (same keys) and keys; a user of
-  one cannot read the other through any route (TEST-M01, TEST-M02).
-- [ ] **AC-M02** — `a.<domain>` and `b.<domain>` open each club's public page and sign-in; the bare domain opens the
-  neutral landing page; `VEREINO_HOME_CLUB_SLUG` still works when `VEREINO_CLUB_DOMAIN` is unset.
-- [ ] **AC-M03** — Every e-mailed link of a club uses its address; the sender display name is the club's name.
-- [ ] **AC-M04** — `scheduled_jobs` holds one row per job type, none per club; every job type runs for every club at
-  its local time with a stable offset, once per local day across DST.
-- [ ] **AC-M05** — `create-club` creates a working club in one run and is a no-op on re-run.
+  one cannot read the other through any route (TEST-M01, TEST-M02). — gap: #740 (separate keys per club; tenants and roles: PR #662 `club_core/TEST-M01-create-club.spec.ts`, isolation: PR #652 `foundation/ISSUE-628-cross-club-isolation.spec.ts`, TEST-M02 in `club_core/TEST-M03-club-address.spec.ts`)
+- [x] **AC-M02** — `a.<domain>` and `b.<domain>` open each club's public page and sign-in; the bare domain opens the
+  neutral landing page; `VEREINO_HOME_CLUB_SLUG` still works when `VEREINO_CLUB_DOMAIN` is unset. — PR #679, `club_core/TEST-M03-club-address.spec.ts` (TEST-M02, TEST-M03), `club_core/ISSUE-485-home-route-and-titles.spec.ts` (close-out V #842)
+- [x] **AC-M03** — Every e-mailed link of a club uses its address; the sender display name is the club's name. — PR #679, `club_core/TEST-M04-club-email-links.spec.ts` (Vereino-sent links, sender name); the platform's reset and invitation mail stay on `APP_URL` by the owner's option (c) on #631 (*Risks*) (close-out V #842)
+- [x] **AC-M04** — `scheduled_jobs` holds one row per job type, none per club; every job type runs for every club at
+  its local time with a stable offset, once per local day across DST. — PR #663, `foundation/ISSUE-629-club-job-sweep.spec.ts` (TEST-M05), `foundation/ISSUE-629-retire-club-schedules.spec.ts` (TEST-M06), DST in `foundation/lib/__tests__/club-job-due.test.ts` (close-out V #842)
+- [x] **AC-M05** — `create-club` creates a working club in one run and is a no-op on re-run. — PR #662, `club_core/TEST-M01-create-club.spec.ts` (close-out V #842)
 - [x] **AC-M06** — A club is exported and, after the notice period, deleted from every target of *Deletion targets*
-  (and its key destroyed when a key store exists, Q-M07, which stays with #740); another club is untouched.
-- [ ] **AC-M07** — A club sending 5,000 e-mails or running an import does not delay another club's e-mail beyond one
-  bucket round.
+  (and its key destroyed when a key store exists, Q-M07, which stays with #740); another club is untouched. — PRs #677, #686, #827, #881 (#850: queued one-off jobs end on their own, cache entries cleared), `club_core/TEST-M07-club-export-delete-restore.spec.ts`, `TEST-M11-administrator-club-export.spec.ts`; key destruction: gap #740
+- [x] **AC-M07** — A club sending 5,000 e-mails or running an import does not delay another club's e-mail beyond one
+  bucket round. — PR #726, `club_core/TEST-M08-club-limits.spec.ts` (200 e-mails under low per-club limits, as the TEST-M08 row defines) (close-out V #842)
 - [x] **AC-M08** — The capacity report shows the *Overview* targets met per cell at the measured size, and 1,000 clubs
   are served by cells (amended to the cell model by the owner on #851, 2026-11-26). — `docs/ops/capacity.md` (TEST-M09,
   PR #726): one cell measured at 124 clubs — member pages p95 < 0.5 s at 100 req/s, the 06:00 burst of 2,356 club
@@ -540,7 +540,7 @@ phases.
   with the 1,000-club figure kept as an extrapolation (amended to the cell model by the owner on #851, 2026-11-26). —
   skip: PR #675, `foundation/TEST-M10-role-acl-sync-wrapper.spec.ts`; per cell: pre-deploy 3.9 s, forced ACL sync over
   124 tenants 23.5 s (`docs/ops/capacity.md` *Deploy*); ≈ 3 min of ACL sync at 1,000 tenants, extrapolated
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — TEST-M01..M11 (`club_core/TEST-M*.spec.ts`, `foundation/TEST-M10-role-acl-sync-wrapper.spec.ts`, `foundation/ISSUE-629-*.spec.ts`, `foundation/ISSUE-628-cross-club-isolation.spec.ts`; TEST-M09 in `docs/ops/capacity.md`); the last gap, #850, closed by PR #881; leftovers outside the criteria (release N+1 removal, payments heartbeat, staging exit gates) are #852
 
 ## Final Compliance Report
 

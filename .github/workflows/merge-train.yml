@@ -4,7 +4,7 @@
 # own GITHUB_TOKEN would not start the CI it waits for. Issues write mirrors the train's labels onto the issue named in
 # the PR's branch (`issue-N`); without it that step logs a warning. Without the secret the job only logs a notice.
 # It runs `main`'s copy of the scripts and never checks out PR code. With MERGE_TRAIN_BATCH_SIZE 2 or more it is the batch
-# train (`.ai/specs/2026-11-18-batch-merge-train.md`): it builds `merge-train/batch` server-side, which then also needs
+# train (`.ai/specs/implemented/2026-11-18-batch-merge-train.md`): it builds `merge-train/batch` server-side, which then also needs
 # Commit statuses write (`merge-train/verified`, `merge-train/verdict`) and Issues write (the pause issue). Once the `main`
 # ruleset requires `merge-train/verified`, the one-PR train sets it too before each merge, so Commit statuses write is
 # needed in both modes (switch-on order: `docs/ops/batch-train-switch-on.md`).

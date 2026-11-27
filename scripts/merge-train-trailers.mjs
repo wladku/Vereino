@@ -1,4 +1,4 @@
-// The batch train's state on the batch head (BT-D04, `.ai/specs/2026-11-18-batch-merge-train.md`): the final commit
+// The batch train's state on the batch head (BT-D04, `.ai/specs/implemented/2026-11-18-batch-merge-train.md`): the final commit
 // message on `merge-train/batch` carries
 //   Merge-Train-Batch: #391@<sha>,#392@<sha>   the PRs in merge order, each with the head SHA that was tested
 //   Merge-Train-Base: <sha>                     the `main` commit the batch was built on

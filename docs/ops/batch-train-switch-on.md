@@ -1,6 +1,6 @@
 # Włączenie batch merge train (E16-S04, #698)
 
-> Instrukcja dla właściciela repozytorium, po polsku na jego prośbę (issue #698). Spec: `.ai/specs/2026-11-18-batch-merge-train.md`, faza 3 (REQ-BT05, BT-AC-01 … BT-AC-03). Ustawienia docelowe: `docs/ops/github-settings.md` sekcje 2, 6 i 6a; proces: `SDLC.md` → "Validation gate".
+> Instrukcja dla właściciela repozytorium, po polsku na jego prośbę (issue #698). Spec: `.ai/specs/implemented/2026-11-18-batch-merge-train.md`, faza 3 (REQ-BT05, BT-AC-01 … BT-AC-03). Ustawienia docelowe: `docs/ops/github-settings.md` sekcje 2, 6 i 6a; proces: `SDLC.md` → "Validation gate".
 >
 > Agenci nie zmieniają żadnego z tych ustawień: token, sekret, zmienną i ruleset zmienia tylko właściciel.
 
