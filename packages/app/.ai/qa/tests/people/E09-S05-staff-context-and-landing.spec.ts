@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { addDays, showCalendarWeekOf, weekdayOf } from '../_fixtures/activities'
+import { signInBrowserAnswer } from '../_fixtures/auth'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { familyFor, oneOff } from '../_fixtures/attendance'
 import { OPTIMISTIC_LOCK_HEADER, assignRole, calendarDate, call, createClub, userRoles } from '../_fixtures/club'
@@ -37,12 +38,8 @@ async function signIn(
   password: string,
   redirect?: string,
 ): Promise<{ redirect: string; token: string }> {
-  const form: Record<string, string> = { email, password }
-  if (redirect) form.redirect = redirect
-  const response = await page.request.post('/api/auth/login', { form })
-  expect(response.ok(), `POST /api/auth/login ${String(response.status())}`).toBe(true)
-  const body = (await response.json()) as { redirect?: string; token?: string }
-  return { redirect: String(body.redirect), token: String(body.token) }
+  // A club administrator completes the e-mailed code first (staff second factor, #736); the landing is unchanged.
+  return signInBrowserAnswer(page.request, email, password, redirect ? { redirect } : {})
 }
 
 /** Sets the signed-in member's interface language through the profile route, then opens `path`. */

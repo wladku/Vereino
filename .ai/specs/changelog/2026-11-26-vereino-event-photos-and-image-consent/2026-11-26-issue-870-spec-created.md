@@ -1,0 +1,1 @@
+| 2026-11-26 | E30-S01 (#870): spec created as Draft from D-044 and Q19 — no new module; two phases (E30-S02 #871 consent with history, E30-S03 #872 event pictures public only with consent); Open Questions Q-I01…Q-I07 with recommended defaults; Ask First items (two migrations, narrowing of `set_consents`) and the lawyer action OA-I1 listed |

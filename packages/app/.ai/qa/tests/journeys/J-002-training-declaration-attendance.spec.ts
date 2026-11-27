@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import {
   addDays,
   getActivity,

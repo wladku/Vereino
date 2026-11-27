@@ -1,0 +1,1 @@
+| 2026-11-26 | E30-S01 (#870): fresh-context review applied — own-row rule and undo-keeps-withdrawal (BR-I05, BR-I06), erasure tombstone (BR-I07), manager-only picture streaming and owner-only attachments (DD-I12, DD-I13), public file filter as the first phase 2 commit, corrected route bodies and consent writers |

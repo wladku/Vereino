@@ -4,6 +4,7 @@ import { call, createClub } from '../_fixtures/club'
 import { awaitEmails } from '../_fixtures/communication'
 import { listRentals } from '../_fixtures/facilities'
 import { publicPitch } from '../_fixtures/public-places'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #125 (E08-S05), facilities spec P-04, P-05, B-25, J-007, TEST-039: a guest on a phone (375 px) opens the
 // public month of the pitch, presses "Request a booking" on the bookable 13:00–16:00 stretch and sees "Valid only after
@@ -120,10 +121,7 @@ test('TEST-039 request UI: P-04 dialog at 375 px, e-mail link to P-05, B-25 queu
     const queued = queue.body?.items?.find((item) => item.renterDisplayName === requester)
     expect(queued, 'the request is in the queue').toBeTruthy()
     const id = String(queued?.id)
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto('/backend/facilities/requests')
     const card = page.getByTestId(`facilities-request-card-${id}`)

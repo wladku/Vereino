@@ -3,7 +3,8 @@
 // spot `auth.login:form`. One outline button per enabled provider, after the password form (`order-last` in the form's
 // grid); each is a link to the provider's `start` route, which carries the page's `redirect`. Any `?identity=` outcome
 // shows one sentence in the form's own error area (`aria-live="polite"`), so `unlinked`, `invalid` and `failed` read
-// the same (no enumeration).
+// the same (no enumeration). A `?second_factor=expired|use_google` sentence of the staff second factor (#736) shows in
+// the same area.
 import * as React from 'react'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -15,6 +16,11 @@ import { PROVIDER_NAMES, startUrl } from '../../../components/identity-client'
 import { ProviderMark } from '../../../components/ProviderMark'
 
 const OUTCOMES = new Set(['unlinked', 'invalid', 'failed'])
+/** Staff second factor (#736): `?second_factor=` sentences of an ended challenge and of a refused provider. */
+const SECOND_FACTOR_SENTENCES: Record<string, string> = {
+  expired: 'foundation.secondFactor.login.expired',
+  use_google: 'foundation.errors.second_factor_use_google',
+}
 
 export default function LoginIdentityWidget({
   context,
@@ -45,9 +51,11 @@ export default function LoginIdentityWidget({
     }
   }, [])
 
+  const secondFactor = context.searchParams.get('second_factor')
   React.useEffect(() => {
     if (outcome && OUTCOMES.has(outcome)) setError(t('foundation.identity.login.generic'))
-  }, [outcome, setError, t])
+    else if (secondFactor && SECOND_FACTOR_SENTENCES[secondFactor]) setError(t(SECOND_FACTOR_SENTENCES[secondFactor]))
+  }, [outcome, secondFactor, setError, t])
 
   if (providers.length === 0) return null
   return (
