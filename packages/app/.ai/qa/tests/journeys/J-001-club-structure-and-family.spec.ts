@@ -557,8 +557,8 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await wards.filter({ hasText: 'Jaś Nowak' }).click()
       await expect(page).toHaveURL(new RegExp(`/club/wards/${family.jas.id}$`))
       await expect(page.getByText(uiText('people.club.ward.primaryPayer'))).toBeVisible()
-      await expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).toBeChecked()
-      await expect(page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })).not.toBeChecked()
+      await expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).not.toBeChecked()
+      await expect(page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })).toBeChecked()
     })
 
     await test.step('exit gate: /club in light and dark mode at 375 px', async () => {
