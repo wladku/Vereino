@@ -6,6 +6,7 @@ export const ACTIVITIES_CLUB_TABLES: readonly string[] = [
   'activities_club_events',
   'activities_club_event_parts',
   'activities_club_event_files',
+  'activities_club_event_file_people',
   'activities_occurrences',
   'activities_attendances',
   'activities_attendance_policies',
