@@ -26,6 +26,7 @@ export const STEPS = [
   { name: 'spec-changelogs:check', args: ['spec-changelogs:check'] },
   { name: 'spec-questions:check', args: ['spec-questions:check'] },
   { name: 'dockerfiles:check', args: ['dockerfiles:check'] },
+  { name: 'ci-runners:check', args: ['ci-runners:check'] },
   { name: 'test', args: ['test'] },
   { name: 'test:scripts', args: ['test:scripts'] },
   { name: 'build', args: ['build'] },

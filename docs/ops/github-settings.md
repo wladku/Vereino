@@ -71,6 +71,10 @@ DCO is not a required check (ENG-AC-02, owner decision on #576), and the app is 
 - `MERGE_TRAIN_SKIP_LABELS` — optional, comma-separated; replaces the default skip labels.
 - `MERGE_TRAIN_REQUIRED_CHECKS` — leave unset on this repository (the train then reads the ruleset). Only a repository without rulesets, such as the rehearsal repository, sets it.
 
+## 6b. Self-hosted CI runners
+
+- `CI_SELF_HOSTED` — unset by default: every CI job runs on `ubuntu-latest`. `true` sends the heavy jobs of trusted events to the factory server's `vereino-ci` runners; set it only while the runners are online, and delete it to fall back. Setup, token, switch-on and rollback: `docs/ops/ci-runners.md` (#834).
+
 ## 7. Release workflow
 
 *Settings → Actions → General → Workflow permissions* (`.github/workflows/release.yml`, ADR-021, ENG-12)
