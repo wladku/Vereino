@@ -25,7 +25,7 @@
   "enrolment.club.accept.fee": "Opłata",
   "enrolment.club.accept.feePeriod.monthly": "{amount} miesięcznie",
   "enrolment.club.accept.feePeriod.one_off": "{amount} jednorazowo",
-  "enrolment.club.accept.feePeriod.per_occurrence": "{amount} za zajęcia",
+  "enrolment.club.accept.feePeriod.per_occurrence": "{amount} za termin",
   "enrolment.club.accept.feeRule": "Naliczana według obecnego cennika od dnia rozpoczęcia: pełna opłata za każdy okres, w którym uczestnik jest w składzie w dniu naliczenia; niepełny miesiąc nie jest pomniejszany.",
   "enrolment.club.accept.feeUnknown": "Obowiązuje cennik grupy.",
   "enrolment.club.accept.fullWarning": "Ta grupa jest pełna. Przyjęcie doda miejsce ponad limit.",
