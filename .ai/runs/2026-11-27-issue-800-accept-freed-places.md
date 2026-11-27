@@ -70,7 +70,12 @@
   a function` — a shadowed import; `SyntaxError: Expected property name or '}' in JSON at position 5` — the CLI
   pretty-printed), then 2 passed; TEST-J01 passed; ISSUE-628-cross-club-isolation passed; E02-S05 (3) and TEST-U07
   passed (the section panel now shows the switch).
-- `yarn verify` — see the PR.
+- `yarn verify` — first run failed at `contracts:check` ("enrolment: error code membership_overlap is already declared by
+  groups"; renamed to `participant_already_in_group`, TEST-J07 re-run: passed), second at `glossary:check` (retired
+  Polish term "zajęcia" in the fee line; now "termin"); third run: all 24 steps passed.
+- `yarn guard` — no blocking findings.
+- Review fix: the names of candidate persons in the detail go to club administrators only (the only deciders who
+  accept).
 
 ## Open problems / next steps
 
