@@ -27,6 +27,7 @@ export {
   activeAccountUserIds,
   closeAccount,
   createAccount,
+  passwordSetupLink,
   resendInvitation,
   sendAccountInvitation,
   updateAccount,
@@ -34,6 +35,7 @@ export {
   type AccountView,
   type CreateAccountInput,
   type CreateAccountResult,
+  type PasswordSetupLink,
   type ResendInvitationResult,
   type UpdateAccountInput,
 } from './services/accounts'

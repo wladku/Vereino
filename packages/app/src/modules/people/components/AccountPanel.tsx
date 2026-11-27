@@ -5,8 +5,9 @@
 // `people.accounts.manage` (`canManage`) gets the actions: "Create account" through
 // `POST /api/people/persons/{id}/account` while there is none (below the club's `own_account_min_age` the button is
 // disabled; a person without a date of birth cannot get an account either), "Send the invitation again" while invited
-// (`POST …/account/invitation`; 409 reloads the tab, 429 names the wait), "Change login e-mail" and "Block" /
-// "Unblock" (`PUT …/account` with the person's version; 422 `last_club_admin`).
+// (`POST …/account/invitation`; 409 reloads the tab, 429 names the wait), "Invitation link" while invited — a personal
+// link to copy or show as a QR code (`InvitationShareDialog`, #868) — "Change login e-mail" and "Block" / "Unblock"
+// (`PUT …/account` with the person's version; 422 `last_club_admin`).
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { SectionHeader } from '@open-mercato/ui/backend/SectionHeader'
@@ -27,7 +28,8 @@ import type { StatusBadgeVariant } from '@open-mercato/ui/primitives/status-badg
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { accountAgePolicy, errorCodeOf } from '@vereino/core'
 import { retryAfterMinutes } from '../lib/account-limits'
-import { errorMessage, textOrNull, type PersonAccount, type PersonDetail } from './client-helpers'
+import { errorMessage, personName, textOrNull, type PersonAccount, type PersonDetail } from './client-helpers'
+import { InvitationShareDialog } from './InvitationShareDialog'
 import { StatusTag, useClubToday } from '@vereino/ui'
 
 const STATE_VARIANT: Record<PersonAccount['state'], StatusBadgeVariant> = {
@@ -102,6 +104,7 @@ function ExistingAccount({
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
   const [busy, setBusy] = React.useState(false)
   const [sentAgain, setSentAgain] = React.useState(false)
+  const [sharing, setSharing] = React.useState(false)
   const [editing, setEditing] = React.useState(false)
   const [email, setEmail] = React.useState(account.email ?? '')
   const invitedOn = formatDay(account.invitedAt, locale)
@@ -243,6 +246,19 @@ function ExistingAccount({
                 {t('people.account.actions.resend')}
               </Button>
             ) : null}
+            {account.state === 'invited' ? (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => {
+                  setSharing(true)
+                }}
+                data-testid="people-account-invitation-link"
+              >
+                {t('people.account.actions.invitationLink')}
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant="outline"
@@ -266,6 +282,16 @@ function ExistingAccount({
         )
       ) : null}
       {ConfirmDialogElement}
+      {/* Mounted only while open: each opening issues a new link (the dialog keeps no cached one). */}
+      {canManage && account.state === 'invited' && sharing ? (
+        <InvitationShareDialog
+          personId={person.id}
+          personName={personName(person)}
+          open
+          onOpenChange={setSharing}
+          onNotPending={() => void onChanged()}
+        />
+      ) : null}
     </div>
   )
 }

@@ -275,6 +275,7 @@
   "communication.tile.unread": "{count} unread",
   "communication.club.nav.clubEvents": "Club events",
   "communication.club.nav.outlines": "Training outlines",
+  "communication.club.nav.invitations": "Invitations",
   "communication.club.nav.declarationShare": "Declarations in Vereino",
   "communication.direct.errors.summary": "Check the message",
   "communication.direct.errors.subjectRequired": "Enter a subject.",
