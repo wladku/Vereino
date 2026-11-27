@@ -317,7 +317,7 @@ The platform checks a new password against four variables (`OM_PASSWORD_*`, tabl
 create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
 the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment.
 
-On top of them the Vereino password check (#779, `.ai/specs/2026-11-26-vereino-password-check.md`) refuses, on every
+On top of them the Vereino password check (#779, `.ai/specs/implemented/2026-11-26-vereino-password-check.md`) refuses, on every
 API path that sets a password (user create and edit, profile, the reset and invitation link):
 
 - more than 64 characters or 72 bytes (bcrypt reads no further), and a space at the start or the end;
