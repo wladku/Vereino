@@ -28,10 +28,10 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 |---|---|---|---|---|---|---|
 | V1 Encoding and Sanitization | 9 | 3 | 0 | 4 | 11 | 27 |
 | V2 Validation and Business Logic | 5 | 5 | 0 | 1 | 0 | 11 |
-| V3 Web Frontend Security | 6 | 8 | 1 | 2 | 2 | 19 |
+| V3 Web Frontend Security | 8 | 6 | 1 | 2 | 2 | 19 |
 | V4 API and Web Service | 0 | 0 | 0 | 4 | 6 | 10 |
 | V5 File Handling | 5 | 2 | 1 | 1 | 0 | 9 |
-| V6 Authentication | 11 | 5 | 1 | 5 | 13 | 35 |
+| V6 Authentication | 20 | 5 | 0 | 5 | 5 | 35 |
 | V7 Session Management | 5 | 8 | 4 | 1 | 0 | 18 |
 | V8 Authorization | 3 | 4 | 0 | 0 | 0 | 7 |
 | V9 Self-contained Tokens | 1 | 1 | 0 | 5 | 0 | 7 |
@@ -43,7 +43,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V15 Secure Coding and Architecture | 1 | 7 | 0 | 5 | 0 | 13 |
 | V16 Security Logging and Error Handling | 0 | 7 | 2 | 7 | 0 | 16 |
 | V17 WebRTC | 0 | 0 | 0 | 0 | 7 | 7 |
-| **All** | **54** | **64** | **13** | **59** | **63** | **253** |
+| **All** | **65** | **62** | **12** | **59** | **55** | **253** |
 
 ## Requirements
 
@@ -169,45 +169,45 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V6.2.12 | 2 | Reject breached passwords | Owner decision on #779 (2026-11-26): an offline list, no outbound call — the NCSC top 100k is drawn from Have I Been Pwned breach data (V6.2.4) | met | — |
 | V6.3.1 | 1 | Brute-force controls in place | Platform limits 5/min per IP+e-mail and 20/min per IP, fail-open (`OM/core/src/modules/auth/lib/rateLimitCheck.ts`), plus Vereino's 10 / 15 min per account (#738); counters in Redis on Railway (boot check); `ISSUE-738-sessionless-rate-limits`. Gap: the per-client counters share one key until the proxy depth is set (A-8) | partial | #739 |
 | V6.3.2 | 1 | No default accounts | `docs/ops/deploy.md` → *First deploy* sets `OM_INIT_SUPERADMIN_EMAIL`, a generated `OM_INIT_SUPERADMIN_PASSWORD` and own addresses for the two extra accounts `yarn initialize` always creates (`admin` / `employee` at the platform's demo domain `acme.com` otherwise), deletes those two, and runs the *Default account check* (`mercato auth list-users` filtered for `@acme.com` and derived accounts); both checked on a throwaway database (#747). Staging and production not yet checked by the owner (#747) | partial | #747 |
-| V6.3.3 | 2 | Multi-factor for access | No second factor yet; ENG-Q-09 re-decided 2026-11-26 (#736): administrators and treasurers use Google sign-in or a password plus an e-mail code, on the core `auth` `mfa_pending` gate through Vereino's login wrapper (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, phase 1) | gap | #736 |
+| V6.3.3 | 2 | Multi-factor for access | Administrators, treasurers and the platform super-admin hold `foundation.second_factor.required` and sign in with Google or a password plus an e-mail code; the login wrapper answers a provisional `mfa_pending` token the platform refuses on every page, API route and refresh except the two completion routes (`foundation/second-factor/gate.ts`, `.ai/specs/2026-11-26-vereino-staff-second-factor.md` phase 1); `TEST-2F01-staff-email-code`, `TEST-2F03-google-and-reset` | met | — |
 | V6.3.4 | 2 | No undocumented sign-in paths | Paths as V6.1.3; `OM_AUTOLOGIN_*` forbidden in production (`docs/ops/deploy.md`); API-key path and equal strength not reviewed | to verify | #743 |
 | V6.4.1 | 1 | Initial secrets random, expiring, single-use | No initial passwords: invitations are 32-byte CSPRNG links stored hashed, 48 h / 60 min (`foundation/services/accounts.ts`, `TEST-F04-create-account`); single use rests on platform reset confirm (code read) | to verify | #743 |
 | V6.4.2 | 1 | No hints or secret questions | Feature absent: no hint or security-question field in `auth` entities or Vereino modules | n/a | — |
 | V6.4.3 | 2 | Safe forgotten-password reset | Code read: hashed 60-min single-use token, rate-limited, all sessions deleted (`authService.ts`, `OM/core/src/modules/auth/api/reset.ts`); no MFA to bypass; no Vereino test | to verify | #743 |
-| V6.4.4 | 2 | Lost-factor recovery proofing | Planned: a club administrator resets another person's factor after verifying them, with a required note in the command log; the operator for the last administrator (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F07, phase 1) | n/a | #736 |
-| V6.5.1 | 2 | One-time codes single-use | Planned: the e-mail code's challenge marker is deleted on success and after 5 wrong codes (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
-| V6.5.2 | 2 | Low-entropy lookup secrets hashed | No lookup secrets; the planned e-mail code is stored as HMAC-SHA256 keyed with a 32-byte challenge id (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | — |
-| V6.5.3 | 2 | Codes and seeds from CSPRNG | Planned: `crypto.randomInt` for the code, 32 random bytes for the challenge id (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
-| V6.5.4 | 2 | Minimum code entropy | Planned: 6 digits (about 20 bits), with 5 attempts per challenge and 5 challenges per user per hour (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
-| V6.5.5 | 2 | Code and TOTP lifetimes | Planned: the e-mail code lives 10 minutes (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05) | n/a | #736 |
+| V6.4.4 | 2 | Lost-factor recovery proofing | A club administrator resets another person's factor after verifying them, with a required note in the command log (`foundation.second_factor.reset`); the operator's shell command for the last administrator (DD-2F07); `TEST-2F03-google-and-reset`, `TEST-2F04-reset-dialog` | met | — |
+| V6.5.1 | 2 | One-time codes single-use | The challenge marker is deleted on success and after 5 wrong codes, with the challenged session (`foundation/second-factor/complete.ts`); `TEST-2F01-staff-email-code` items 4 and 5 | met | — |
+| V6.5.2 | 2 | Low-entropy lookup secrets hashed | The e-mail code is stored only as HMAC-SHA256 keyed with the 32-byte challenge id, which lives only in the provisional token (`foundation/lib/second-factor.ts` `hashCode`, `foundation/lib/__tests__/second-factor.test.ts`) | met | — |
+| V6.5.3 | 2 | Codes and seeds from CSPRNG | `crypto.randomInt` for the code, 32 random bytes for the challenge id (`foundation/lib/second-factor.ts`, `foundation/lib/__tests__/second-factor.test.ts`) | met | — |
+| V6.5.4 | 2 | Minimum code entropy | 6 digits (about 20 bits), 5 attempts per challenge and 5 challenges per user per hour (`foundation/lib/second-factor.ts`); `TEST-2F01-staff-email-code` items 3, 5 and 7 | met | — |
+| V6.5.5 | 2 | Code and TOTP lifetimes | The challenge marker and the provisional token live 10 minutes; a resend keeps the expiry (`foundation/lib/second-factor.ts` `resendDecision`, `markerMatches`; `foundation/lib/__tests__/second-factor.test.ts`) | met | — |
 | V6.6.1 | 2 | Phone/SMS factor restrictions | Feature absent: no phone or SMS authentication | n/a | — |
-| V6.6.2 | 2 | Out-of-band request binding | Planned: the e-mail code is bound to the sign-in that requested it through the challenge id in the provisional token (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`) | n/a | #736 |
-| V6.6.3 | 2 | Out-of-band code brute force | Planned: 5 attempts per challenge, 3 resends 60 s apart, 5 challenges per user per hour counted under a lock, per-IP limits on `verify` and `resend` (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F05, DD-2F08) | n/a | #736 |
+| V6.6.2 | 2 | Out-of-band request binding | The code is bound to the sign-in that requested it: the marker must match the provisional token's user, session, tenant, organization and challenge id (`markerMatches`); `TEST-2F01-staff-email-code` | met | — |
+| V6.6.3 | 2 | Out-of-band code brute force | 5 attempts per challenge and 3 resends 60 s apart under the challenge's advisory lock, 5 challenges per user per hour through the rate limiter (fail closed), per-IP limits on `verify` and `resend`; `TEST-2F01-staff-email-code` items 5, 6 and 7 | met | — |
 | V6.8.1 | 2 | No identity spoofing across IdPs | Links found only by (`provider`, `subject`), never by e-mail, no account creation (DD-S02/DD-S03, `foundation/services/identity.ts`); `TEST-S01-google-sign-in` refuses a tenant-B reuse of a subject | met | — |
 | V6.8.2 | 2 | Assertion signatures validated | `arctic` decodes the Google id token without a signature check by decision V-S04 (TLS back channel); iss/aud/azp/exp/sub checked in `foundation/lib/identity.ts`, `lib/__tests__/identity.test.ts` | partial | #743 |
 | V6.8.3 | 2 | SAML assertion replay | Feature absent: no SAML (enterprise `sso` not installed) | n/a | — |
-| V6.8.4 | 2 | IdP authentication strength checked | #736 picked Google as the staff second factor; Google's ID token carries no reliable `amr`, so 2-Step Verification on the Google account cannot be checked — accepted with the owner's option 1, open as Q-2F04 of `.ai/specs/2026-11-26-vereino-staff-second-factor.md` | n/a | #736 |
+| V6.8.4 | 2 | IdP authentication strength checked | Google is the staff second factor; Google's ID token carries no reliable `amr`, so 2-Step Verification on the Google account cannot be checked — accepted by the owner (Q-2F04 of `.ai/specs/2026-11-26-vereino-staff-second-factor.md`, decided 2026-11-26); staff are asked to turn it on | n/a | #736 |
 
 ### V7 Session Management
 
 | Req | L | Topic | Vereino control and evidence | State | Owner |
 |---|---|---|---|---|---|
-| V7.1.1 | 2 | Timeouts documented and justified | Platform values recorded (8 h, 30 days with "remember me", no idle timeout) in spike E3 item 5 and ENG-Q-12; no decided, justified limits | partial | #737 |
+| V7.1.1 | 2 | Timeouts documented and justified | ENG-Q-12 (answered 2026-11-26) and S8.5 in the engineering standards: staff 30 min idle inside 8 h absolute, members 8 h or `REMEMBER_ME_DAYS` (7 in production); `docs/ops/deploy.md` lists `VEREINO_STAFF_IDLE_MINUTES` and `REMEMBER_ME_DAYS` | met | — |
 | V7.1.2 | 2 | Concurrent session policy documented | Not documented and unlimited: every sign-in adds a `sessions` row | gap | #737 |
 | V7.1.3 | 2 | Federated session coordination documented | Social spec *Security* says Google sign-in issues the platform's own session; coordination with the Google session (lifetime, termination) not documented | partial | #737 |
 | V7.2.1 | 1 | Tokens verified on the backend | `verifyJwt` then a session lookup by `sid` on each request (`OM/core/src/modules/auth/lib/sessionIntegrity.ts`); `TEST-L02` (`packages/app/.ai/qa/tests/people/TEST-L01-account-state-and-actions.spec.ts`) gets 401 once sessions end | met | — |
 | V7.2.2 | 1 | Dynamic session tokens | Spike E3 item 4: per-login signed `auth_token` JWT plus opaque `session_token`; no static secret used as a session | met | — |
 | V7.2.3 | 1 | Reference token entropy | Code read: `session_token` is 32 `randomBytes`, stored as an HMAC (`OM/core/src/modules/auth/lib/tokenHash.ts`) | to verify | #743 |
 | V7.2.4 | 1 | New token on every sign-in | Each sign-in creates a new session and JWT (`login.ts`, `foundation/services/identity.ts`); the browser's previous session row is not revoked | partial | #737 |
-| V7.3.1 | 2 | Inactivity timeout | None (spike E3 item 5); S8.5 target ≤ 30 min for staff; ENG-Q-12 open | gap | #737 |
-| V7.3.2 | 2 | Absolute session lifetime | 8 h, but 30 days with "remember me" (`REMEMBER_ME_DAYS`); the limit is not decided (ENG-Q-12) | partial | #737 |
+| V7.3.1 | 2 | Inactivity timeout | Staff: the session row expires 30 min after the last activity report (`foundation/services/staff-session.ts`; the app shell reports user input at most once a minute and signs out when idle, `src/components/StaffSessionActivity.tsx`); `TEST-737-staff-session-and-email-confirmation`. Members: none, by decision (ENG-Q-12) | met | — |
+| V7.3.2 | 2 | Absolute session lifetime | 8 h for staff whatever "remember me" says (activity never extends past sign-in + 8 h; no refresh token, `TEST-737-staff-session-and-email-confirmation`); members 8 h, or `REMEMBER_ME_DAYS` (7 in production) with "remember me" | met | — |
 | V7.4.1 | 1 | Terminated sessions unusable | Sign-out deletes the session row; JWTs bound to it are refused (`sessionIntegrity.ts`); `E06-S19-member-shell` (back button stays on `/login`), `TEST-L02` (401 after sessions end) | met | — |
 | V7.4.2 | 1 | Disabled accounts lose sessions | Blocking or closing an account ends its sessions: `TEST-L02` gets 401 on the old token; user deletion removes sessions (`OM/core/src/modules/auth/commands/users.ts`) | met | — |
 | V7.4.3 | 2 | End sessions after factor change | Code read: password change and reset delete all the user's sessions (`commands/users.ts`, `authService.ts`); unlinking a Google identity ends none | partial | #737 |
 | V7.4.4 | 2 | Visible sign-out everywhere | Member shell "Sign out" (`packages/ui/src/member/member-shell.tsx`, `E06-S19-member-shell`); back office header `OM/ui/src/backend/ProfileDropdown.tsx` | met | — |
 | V7.4.5 | 2 | Admin ends user sessions | An administrator ends one user's sessions only by blocking (`TEST-L02`); no action ends all users' sessions | partial | #737 |
-| V7.5.1 | 2 | Re-auth before sensitive account changes | E-mail change via `PUT /api/auth/profile` needs no re-authentication (spike E3 item 5) | gap | #737 |
-| V7.5.2 | 2 | Users view and end own sessions | No page lists or ends a user's own sessions | gap | #737 |
+| V7.5.1 | 2 | Re-auth before sensitive account changes | Own login e-mail: only `PUT /api/foundation/profile/email` with the current password; the platform profile route and the users admin form refuse an own change (403 `email_change_confirmation_required`, `TEST-737-staff-session-and-email-confirmation`); password change needs the current password (platform) | met | — |
+| V7.5.2 | 2 | Users view and end own sessions | No page lists or ends a user's own sessions | gap | #742 |
 | V7.6.1 | 2 | RP/IdP session lifetimes as documented | Google sign-in yields an independent 8 h platform session; no `max_age`/`auth_time` limit on the Google authentication; not documented | partial | #737 |
 | V7.6.2 | 2 | Sessions only by explicit user action | Sign-in buttons need a click, but Google `start` is a `GET` any page can trigger (`foundation/api/identity/[provider]/start/route.ts`) and `/api/auth/login` accepts cross-site form posts | partial | #744 |
 

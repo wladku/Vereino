@@ -103,6 +103,19 @@ stored, history is in the audit log; the club removes any published name or imag
 `medical` consent (the adult, or any guardian of a ward) clears the medical certificate date at once
 ([`retention.md`](retention.md) R20, #682).
 
+### Applicants who are not members (A17)
+
+An application to a section (`enrolment_applications`, #799) belongs to no person record, so the person data export
+and anonymisation above do not find it until the application is accepted.
+
+- **Finding and erasing.** The operator finds a requester's applications by the keyed hash of their e-mail
+  (`email_key`) with `yarn mercato enrolment applicant-data --tenant <id> --org <id> --email <address> [--erase]`:
+  without `--erase` it prints the applications for an access answer, with `--erase` it anonymises them (as
+  [`retention.md`](retention.md) R23) and erases their deliveries by address. **Lands in phase 3** (E26-S04, #800).
+- **Until then.** The applicant withdraws through the status link from the e-mail (a new link can be requested with
+  the same e-mail address), and the application is anonymised 30 days after closing (R23); an unconfirmed one is
+  deleted after 24 hours (R22). Once accepted, the child and the guardian are persons and the rights above apply.
+
 ## 3. Open items
 
 | Id | What | Owner |

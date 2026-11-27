@@ -85,6 +85,9 @@ enabledModules.push({ id: 'facilities', from: '@app' })
 // (training outlines spec phase 2, DD-O05, #683; the module and its migrations approved by the product owner on
 // 2026-11-24, Q-O09 on #671).
 enabledModules.push({ id: 'training', from: '@app' })
+// `enrolment` requires `club_core`, `people` and `groups` (section sign-up form spec phase 2, DD-J01, #799; the module
+// and its migration approved by the product owner on 2026-11-26, Q-J01 on #788).
+enabledModules.push({ id: 'enrolment', from: '@app' })
 
 // Vereino: the commercially licensed `@open-mercato/enterprise` package is not installed (ADR-023, ENG-Q-10, #466),
 // so its modules (`record_locks`, `system_status_overlays`, `sso`, `security`, `agent_orchestrator`) and the scaffold

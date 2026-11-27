@@ -107,7 +107,13 @@ const GROUPS: { key: string; items: [string, string][] }[] = [
       ['/backend/club/publication', 'club_core.nav.publication'],
     ],
   },
-  { key: 'people.nav.group', items: [['/backend/people/persons', 'people.persons.title']] },
+  {
+    key: 'people.nav.group',
+    items: [
+      ['/backend/people/persons', 'people.persons.title'],
+      ['/backend/enrolment/applications', 'enrolment.backend.title'],
+    ],
+  },
   {
     key: 'groups.nav.group',
     items: [

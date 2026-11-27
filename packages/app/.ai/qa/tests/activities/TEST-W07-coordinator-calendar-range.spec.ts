@@ -4,6 +4,7 @@ import { prepareForAccessibilityScan, scanBlockingViolations } from '../_fixture
 import { familyFor, sessionsOf } from '../_fixtures/attendance'
 import { calendarDate, createClub } from '../_fixtures/club'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // TEST-W07 (calendar range switch spec REQ-W07, DD-W02, A-W02, A-W03, AC-W01, AC-W06; #784): the coordinator calendar
 // B-15 has the shared switch "Day · Week · Month · Agenda" above the installed grid, which no longer shows its own
@@ -35,10 +36,7 @@ test('TEST-W07 B-15 view, day and section in the address; Agenda; no installed t
     })
     expect((await sessionsOf(request, club, id)).map((session) => session.occurrenceDate)).toEqual([tuesday])
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok()).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     page.setDefaultTimeout(30_000)
     await prepareForAccessibilityScan(page)
     await page.setViewportSize({ width: 1280, height: 900 })

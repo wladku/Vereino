@@ -11,6 +11,7 @@ import {
   setOpeningHours,
 } from '../_fixtures/facilities'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #121 (E08-S01; README B-23, B-26): the facility pages of the club administrator. Every page has no critical
 // or serious axe violation outside the platform baseline and reflows at 320 px; in the facility calendar the
@@ -53,10 +54,7 @@ test('E08-S01 facility pages: accessibility, reflow, booking availability dialog
     })
     expect(rate.status, JSON.stringify(rate.body)).toBe(201)
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())

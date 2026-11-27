@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { OPTIMISTIC_LOCK_HEADER, call, createClub } from '../_fixtures/club'
 import { create, signInBrowser } from '../_fixtures/club-structure'

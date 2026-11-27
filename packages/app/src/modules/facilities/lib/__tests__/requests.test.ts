@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { describe, expect, it } from '@jest/globals'
 import {
   REQUEST_EMAIL_RATE_LIMIT,
@@ -62,7 +63,8 @@ describe('requestEmailLimit', () => {
   it('keys the limit by the normalized address alone and fails closed', () => {
     const limit = requestEmailLimit('  Guest@Example.org ')
     expect(limit.key).toBe(requestEmailLimit('guest@example.org').key)
-    expect(limit.key).toMatch(/^[0-9a-f]{64}$/)
+    // The key of the foundation's `emailSubjectLimit` (DD-J08): SHA-256 hex of the trimmed lower-case address.
+    expect(limit.key).toBe(createHash('sha256').update('guest@example.org').digest('hex'))
     expect(limit.key).not.toContain('guest')
     expect(limit.config).toBe(REQUEST_EMAIL_RATE_LIMIT)
     expect(REQUEST_EMAIL_RATE_LIMIT).toEqual({ points: 5, duration: 3600, keyPrefix: 'facilities_request_email' })
