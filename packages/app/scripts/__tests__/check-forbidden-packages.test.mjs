@@ -1,12 +1,22 @@
-// Unit tests for the forbidden-package guard (ADR-023, ENG-Q-10, #466).
-// Fixture sources build the package name from a constant so this file itself never matches the guard.
+// Unit tests for the forbidden-package guard (ADR-023, ENG-Q-10, #466) and its Enterprise rule (DD-E10,
+// ENT-TEST-04 of the enterprise package spec).
+// Fixture sources build the package names from constants so this file itself never matches the guard.
 import assert from 'node:assert/strict'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
 import {
+  ENTERPRISE_PACKAGE,
+  ENTERPRISE_REASON,
+  ENTERPRISE_SKIPPED_PATHS,
+  ENTERPRISE_SWITCH_END,
+  ENTERPRISE_SWITCH_FILES,
+  ENTERPRISE_SWITCH_START,
   FORBIDDEN_PACKAGES,
+  checkEnterpriseLockfile,
+  checkEnterpriseManifest,
+  checkEnterpriseSource,
   checkForbiddenPackages,
   checkLockfile,
   checkManifest,
@@ -14,12 +24,17 @@ import {
   listManifests,
   listSourceFiles,
   main,
-  parseRoot,
+  parseArgs,
   referencePattern,
 } from '../../../../scripts/check-forbidden-packages.mjs'
 
 const NAME = Object.keys(FORBIDDEN_PACKAGES)[0]
 const REASON = FORBIDDEN_PACKAGES[NAME]
+const ENT = ENTERPRISE_PACKAGE
+const ENT_REASON = ENTERPRISE_REASON
+const START = ENTERPRISE_SWITCH_START
+const END = ENTERPRISE_SWITCH_END
+const MODULES = 'packages/app/src/modules.ts'
 
 // A throwaway repository root holding the given files (relative path -> content).
 function makeRepo(files) {
@@ -141,10 +156,15 @@ test('checkForbiddenPackages passes a clean repository and fails a reintroduced 
   ])
 })
 
-test('parseRoot accepts no arguments or --root <dir>', () => {
-  assert.equal(parseRoot([]), process.cwd())
-  assert.equal(parseRoot(['--root', 'x']), path.resolve('x'))
-  assert.throws(() => parseRoot(['--root']), /Usage/)
+test('parseArgs accepts --root <dir> and --overlay in any order', () => {
+  assert.deepEqual(parseArgs([]), { rootDir: process.cwd(), overlay: false })
+  assert.deepEqual(parseArgs(['--root', 'x']), { rootDir: path.resolve('x'), overlay: false })
+  assert.deepEqual(parseArgs(['--overlay']), { rootDir: process.cwd(), overlay: true })
+  assert.deepEqual(parseArgs(['--overlay', '--root', 'x']), { rootDir: path.resolve('x'), overlay: true })
+  assert.deepEqual(parseArgs(['--root', 'x', '--overlay']), { rootDir: path.resolve('x'), overlay: true })
+  assert.throws(() => parseArgs(['--root']), /Usage/)
+  assert.throws(() => parseArgs(['--overlay', '--root']), /Usage/)
+  assert.throws(() => parseArgs(['--other']), /Usage/)
 })
 
 test('main exits 1 naming the importing file, 0 when nothing references the package', () => {
@@ -156,6 +176,168 @@ test('main exits 1 naming the importing file, 0 when nothing references the pack
   assert.deepEqual(errors, [`- packages/app/src/a.ts:1: imports ${NAME} (${REASON})`])
   assert.equal(main({ args: ['--root', makeRepo({ 'package.json': '{}' })], ...io }), 0)
   assert.match(logs[0], /No forbidden package/)
+  assert.equal(logs[1], `No public file references ${ENT} outside an enterprise switch`)
+})
+
+// DD-E10: the second rule keeps the private Enterprise package out of every public file.
+test('the Enterprise rule names the package, its switch files, markers and skipped folders', () => {
+  assert.equal(ENT, '@vereino/enterprise')
+  assert.match(ENT_REASON, /DD-E10/)
+  assert.deepEqual(ENTERPRISE_SWITCH_FILES, [MODULES, 'packages/app/next.config.ts'])
+  assert.equal(START, '// enterprise-switch:start')
+  assert.equal(END, '// enterprise-switch:end')
+  assert.deepEqual(ENTERPRISE_SKIPPED_PATHS, [
+    'packages/enterprise/',
+    'packages/app/.ai/qa/fixtures/enterprise-overlay/',
+  ])
+  assert.ok(referencePattern(ENT).test(`import x from '${ENT}/modules/demo'`))
+  assert.ok(!referencePattern(ENT).test(`import x from '${ENT}-tools'`))
+})
+
+test('checkEnterpriseSource fails a public file importing the package, naming the file and line', () => {
+  assert.deepEqual(checkEnterpriseSource('packages/app/src/a.ts', `import x from '@vereino/core'\n`), [])
+  assert.deepEqual(
+    checkEnterpriseSource(
+      'packages/app/src/a.ts',
+      `// ${START}\nimport x from '${ENT}'\n// ${END}\nrequire('${ENT}/y')\n`,
+    ),
+    [
+      `packages/app/src/a.ts:2: imports ${ENT} (${ENT_REASON})`,
+      `packages/app/src/a.ts:4: imports ${ENT} (${ENT_REASON})`,
+    ],
+  )
+})
+
+test('checkEnterpriseSource accepts a modules.ts or next.config.ts line inside the markers and fails one outside', () => {
+  const inside = [
+    `import { x } from '@open-mercato/core'`,
+    `  ${START}`,
+    `  enabledModules.push({ id: 'enterprise_demo', from: '${ENT}' })`,
+    `  const extra = await import('${ENT}/modules')`,
+    `  ${END}`,
+    '',
+  ].join('\n')
+  assert.deepEqual(checkEnterpriseSource(MODULES, inside), [])
+  assert.deepEqual(checkEnterpriseSource('packages/app/next.config.ts', inside), [])
+  const outside = `${START}\n${END}\nenabledModules.push({ id: 'enterprise_demo', from: '${ENT}' })\n`
+  assert.deepEqual(checkEnterpriseSource(MODULES, outside), [
+    `${MODULES}:3: imports ${ENT} outside an enterprise switch (${ENT_REASON})`,
+  ])
+  // The marker lines themselves are outside the switch.
+  assert.deepEqual(checkEnterpriseSource(MODULES, `import '${ENT}' ${START}\n${END} import '${ENT}'\n`), [
+    `${MODULES}:1: imports ${ENT} outside an enterprise switch (${ENT_REASON})`,
+    `${MODULES}:2: imports ${ENT} outside an enterprise switch (${ENT_REASON})`,
+  ])
+})
+
+test('checkEnterpriseSource fails an unclosed, nested or stray marker in a switch file', () => {
+  assert.deepEqual(checkEnterpriseSource(MODULES, `// x\n${START}\nimport '${ENT}'\n`), [
+    `${MODULES}:2: ${START} is never closed`,
+  ])
+  assert.deepEqual(checkEnterpriseSource(MODULES, `${END}\n`), [`${MODULES}:1: ${END} without a matching start`])
+  assert.deepEqual(checkEnterpriseSource(MODULES, `${START}\n${START}\n${END}\n`), [
+    `${MODULES}:2: ${START} inside the switch opened on line 1`,
+  ])
+  // Markers mean nothing outside the switch files.
+  assert.deepEqual(checkEnterpriseSource('packages/app/src/a.ts', `${START}\n${END}\n${END}\n`), [])
+})
+
+test('checkEnterpriseSource skips the overlaid package and its public fixture', () => {
+  const source = `import x from '${ENT}'\n`
+  assert.deepEqual(checkEnterpriseSource('packages/enterprise/src/modules/demo/index.ts', source), [])
+  assert.deepEqual(
+    checkEnterpriseSource('packages/app/.ai/qa/fixtures/enterprise-overlay/src/modules/demo/index.ts', source),
+    [],
+  )
+  assert.equal(checkEnterpriseSource('packages/enterprise-tools/a.ts', source).length, 1)
+})
+
+test('checkEnterpriseManifest accepts the app dependency only with --overlay and skips the package manifest', () => {
+  const app = { dependencies: { [ENT]: 'workspace:*', '@vereino/core': 'workspace:*' } }
+  assert.deepEqual(checkEnterpriseManifest('packages/app/package.json', app), [
+    `packages/app/package.json: dependencies lists ${ENT} (${ENT_REASON})`,
+  ])
+  assert.deepEqual(checkEnterpriseManifest('packages/app/package.json', app, { overlay: true }), [])
+  assert.deepEqual(
+    checkEnterpriseManifest(
+      'packages/app/package.json',
+      { devDependencies: { [ENT]: 'workspace:*' } },
+      { overlay: true },
+    ),
+    [`packages/app/package.json: devDependencies lists ${ENT} (${ENT_REASON})`],
+  )
+  assert.deepEqual(checkEnterpriseManifest('packages/ui/package.json', app, { overlay: true }), [
+    `packages/ui/package.json: dependencies lists ${ENT} (${ENT_REASON})`,
+  ])
+  assert.deepEqual(checkEnterpriseManifest('package.json', {}), [])
+  assert.deepEqual(
+    checkEnterpriseManifest('packages/enterprise/package.json', { name: ENT, dependencies: { [ENT]: '*' } }),
+    [],
+  )
+})
+
+test('checkEnterpriseLockfile accepts the workspace stanza and app line only with --overlay', () => {
+  const overlayLock = [
+    '# header',
+    '',
+    '"@vereino/app@workspace:packages/app":',
+    '  version: 0.0.0-use.local',
+    '  dependencies:',
+    `    "${ENT}": "workspace:*"`,
+    '',
+    `"${ENT}@workspace:*, ${ENT}@workspace:packages/enterprise":`,
+    '  version: 0.0.0-use.local',
+    `  resolution: "${ENT}@workspace:packages/enterprise"`,
+    '',
+  ].join('\n')
+  assert.deepEqual(checkEnterpriseLockfile('yarn.lock', overlayLock, { overlay: true }), [])
+  assert.deepEqual(checkEnterpriseLockfile('yarn.lock', overlayLock), [
+    `yarn.lock:6: depends on ${ENT} (${ENT_REASON})`,
+    `yarn.lock:8: resolves ${ENT} (${ENT_REASON})`,
+  ])
+  const strayLock = [
+    '"@vereino/ui@workspace:packages/ui":',
+    '  dependencies:',
+    `    ${ENT}: "workspace:*"`,
+    `"${ENT}@npm:1.0.0":`,
+    `"${ENT}@workspace:*, ${ENT}@npm:1.0.0":`,
+    '"@vereino/core@workspace:packages/core":',
+  ].join('\n')
+  assert.deepEqual(checkEnterpriseLockfile('yarn.lock', strayLock, { overlay: true }), [
+    `yarn.lock:3: depends on ${ENT} (${ENT_REASON})`,
+    `yarn.lock:4: resolves ${ENT} (${ENT_REASON})`,
+    `yarn.lock:5: resolves ${ENT} (${ENT_REASON})`,
+  ])
+  assert.deepEqual(checkEnterpriseLockfile('yarn.lock', '"@vereino/core@workspace:packages/core":\n'), [])
+})
+
+// ENT-TEST-04: a fixture overlay tree passes with --overlay and fails without it; a public import fails always.
+test('checkForbiddenPackages and main check an overlay tree with and without --overlay', () => {
+  const overlay = makeRepo({
+    'package.json': '{"workspaces":["packages/*"]}',
+    'packages/app/package.json': `{"dependencies":{"${ENT}":"workspace:*"}}`,
+    'packages/enterprise/package.json': `{"name":"${ENT}","dependencies":{"@vereino/core":"workspace:*"}}`,
+    'packages/enterprise/src/index.ts': `export * from '${ENT}/modules'\n`,
+    'packages/app/.ai/qa/fixtures/enterprise-overlay/src/index.ts': `export * from '${ENT}/modules'\n`,
+    [MODULES]: `${START}\nenabledModules.push({ id: 'enterprise_demo', from: '${ENT}' })\n${END}\n`,
+    'packages/app/next.config.ts': `${START}\nconst pkgs = [require.resolve('${ENT}')]\n${END}\n`,
+    'yarn.lock': `"@vereino/app@workspace:packages/app":\n  dependencies:\n    "${ENT}": "workspace:*"\n"${ENT}@workspace:packages/enterprise":\n`,
+  })
+  assert.deepEqual(checkForbiddenPackages(overlay, FORBIDDEN_PACKAGES, { overlay: true }), [])
+  assert.deepEqual(checkForbiddenPackages(overlay), [
+    `packages/app/package.json: dependencies lists ${ENT} (${ENT_REASON})`,
+    `yarn.lock:3: depends on ${ENT} (${ENT_REASON})`,
+    `yarn.lock:4: resolves ${ENT} (${ENT_REASON})`,
+  ])
+
+  const logs = []
+  const errors = []
+  const io = { log: (line) => logs.push(line), logError: (line) => errors.push(line) }
+  assert.equal(main({ args: ['--overlay', '--root', overlay], ...io }), 0)
+  assert.match(logs[1], /overlay build/)
+  fs.writeFileSync(path.join(overlay, 'packages/app/src/page.tsx'), `import x from '${ENT}'\n`)
+  assert.equal(main({ args: ['--root', overlay, '--overlay'], ...io }), 1)
+  assert.deepEqual(errors, [`- packages/app/src/page.tsx:1: imports ${ENT} (${ENT_REASON})`])
 })
 
 test('the repository itself neither installs nor imports a forbidden package', () => {

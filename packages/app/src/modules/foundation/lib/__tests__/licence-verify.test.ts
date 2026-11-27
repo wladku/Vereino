@@ -7,12 +7,14 @@ import { LICENCE_KEY_PREFIX, encodeBase64Url } from '@vereino/core'
 import TEST_PAIR from '../../../../../.ai/qa/fixtures/licence-test-key-pair.json'
 import { LICENCE_PUBLIC_KEYS, TEST_LICENCE_KID_PREFIX } from '../licence-public-keys'
 import {
+  CI_TRUST_FILE,
   LICENCE_ENV,
   NO_LICENCE_KEYS_MESSAGE,
   buildLicenceRegistry,
   isTestKid,
   licenceBootLine,
   licenceStatusReport,
+  readCiTrust,
   readLicenceKeys,
   signatureVerifier,
   trustedLicenceKeys,
@@ -112,6 +114,32 @@ describe('readLicenceKeys', () => {
       warnings: ['cannot read VEREINO_LICENCE_KEYS_FILE; its licence keys are not installed'],
     })
     expect(readLicenceKeys({}, noFile)).toEqual({ keys: [], warnings: [] })
+  })
+})
+
+describe('readCiTrust', () => {
+  const absent = () => false
+  const present = () => true
+  const reads = (text: string) => () => text
+
+  it('trusts nothing without the file', () => {
+    expect(readCiTrust(CI_TRUST_FILE, absent, reads('{}'))).toEqual({ extra: {}, warnings: [] })
+  })
+
+  it('returns the kid → public key object the overlay script writes', () => {
+    const text = JSON.stringify(TEST_KEYS)
+    expect(readCiTrust(CI_TRUST_FILE, present, reads(text))).toEqual({ extra: TEST_KEYS, warnings: [] })
+  })
+
+  it('ignores a malformed, non-object or non-string file with a warning', () => {
+    const unreadable = () => {
+      throw new Error('EACCES')
+    }
+    for (const read of [reads('not json'), reads('[]'), reads('null'), reads('{"test-x": 1}'), unreadable]) {
+      const result = readCiTrust(CI_TRUST_FILE, present, read)
+      expect(result.extra).toEqual({})
+      expect(result.warnings).toEqual([`ignored ${CI_TRUST_FILE}: it is not a JSON object of kid to public key`])
+    }
   })
 })
 

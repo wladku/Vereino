@@ -235,3 +235,41 @@ test('runCli uses the console by default', () => {
   }
   assert.deepEqual(lines, ['route-isolation:check: 0 route(s), 0 probe(s), 0 problem(s)'])
 })
+
+test('runCli with --modules-root checks that package against its own inventory', () => {
+  const packageRoot = fs.mkdtempSync(path.join(fixtureRoot, 'enterprise-'))
+  fs.mkdirSync(path.join(packageRoot, 'src', 'modules', 'ent_demo', 'api', 'status'), { recursive: true })
+  fs.writeFileSync(
+    path.join(packageRoot, 'src', 'modules', 'ent_demo', 'api', 'status', 'route.ts'),
+    'export async function GET() {}\n',
+  )
+  fs.mkdirSync(path.join(packageRoot, INVENTORY_DIR), { recursive: true })
+  fs.writeFileSync(
+    path.join(packageRoot, INVENTORY_DIR, 'ent_demo.json'),
+    JSON.stringify({ routes: { '/api/ent_demo/status': { GET: { probe: 'read' } } } }),
+  )
+  const lines = []
+  const code = runCli({
+    argv: ['--json', '--modules-root', path.join(packageRoot, 'src', 'modules')],
+    appRoot: fixtureRoot,
+    moduleIds: ['alpha'],
+    log: (line) => lines.push(line),
+  })
+  assert.equal(code, 0)
+  assert.deepEqual(JSON.parse(lines[0]), { routesChecked: 1, probes: 1, errors: [] })
+})
+
+test('runCli reports a bad --modules-root and returns 1', () => {
+  const lines = []
+  const problems = []
+  const code = runCli({
+    argv: ['--modules-root', path.join(fixtureRoot, 'src')],
+    log: (line) => lines.push(line),
+    error: (line) => problems.push(line),
+  })
+  assert.equal(code, 1)
+  assert.deepEqual(problems, [
+    `route-isolation:check: --modules-root ${path.join(fixtureRoot, 'src')}: must name the src/modules directory of a package`,
+  ])
+  assert.deepEqual(lines, [])
+})
