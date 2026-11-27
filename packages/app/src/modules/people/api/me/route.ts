@@ -122,6 +122,10 @@ const memberProfileSchema = z.object({
         consents: memberConsentsSchema,
         updatedAt: z.string().nullable().describe('Lock token of POST /api/people/guardianships/{id}/consents'),
       }),
+      imagePublishable: z
+        .boolean()
+        .optional()
+        .describe('The ward\'s image may be published now: a guardian gave the image consent, none withdrew it (#871)'),
       notices: z
         .array(
           z.discriminatedUnion('kind', [
@@ -172,6 +176,10 @@ const memberProfileSchema = z.object({
     .describe(
       "An adult's own consents (aged 18 or more, a known birth date); null for a minor. Changed through PUT /api/people/me/consents",
     ),
+  ownImagePublishable: z
+    .boolean()
+    .nullable()
+    .describe("The adult's own image may be published now (their own or carried-over grant, #871); null for a minor"),
   consentTexts: z
     .record(z.string(), z.object({ text: z.string(), changedAt: z.string() }))
     .describe("The club's own consent texts by key; a key without an entry uses the built-in text (DD-L11)"),

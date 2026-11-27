@@ -6,7 +6,9 @@
 // data leaves only through `sharedContacts`, for guardians who gave `share_contact_with_coaches_at` and have an
 // account (REQ-037, DD-39, #34), after the consumer has authorized the read and logged it (`auditedRead`). The people
 // life-cycle spec (REQ-L10, #309) adds `consentFlags`: two booleans per participant (`image`, `trips`) from the active
-// guardianships or an adult's own consents, for the coach of a session — never the consents themselves.
+// guardianships or an adult's own consents, for the coach of a session — never the consents themselves. The event photos
+// spec (#871) adds `imagePublishable`: whether a person's image may be published now (BR-I02, BR-I03), one boolean per
+// person; `consentFlags.image` reads the same rule, so "no image consent" means the same thing everywhere.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { findEntityIdsBySearchTokens, type SearchTokenDatabase } from '@open-mercato/shared/lib/search/tokenLookup'
@@ -15,6 +17,7 @@ import { Guardianship, Person, RoleAssignment } from '../data/entities'
 import { PERSON_ENTITY_ID } from '../encryption'
 import { contactSharingFilter } from '../lib/contact-sharing'
 import { publicPersonName } from '../lib/member-rules'
+import { imagePublishable as imagePublishableRule, type ImageConsentGuardianship } from '../lib/image-consent'
 import {
   effectiveConsents,
   holdsOwnConsents,
@@ -131,6 +134,18 @@ export type PersonDirectory = {
     today: CalendarDate,
     em?: EntityManager,
   ): Promise<Map<string, ConsentFlags>>
+  /**
+   * Whether the image of each live person among `ids` may be published on `today` (event photos spec BR-I02, BR-I03;
+   * #871): a minor's guardian-given consent with no guardian's withdrawal, or an adult's own (or carried-over) grant.
+   * One boolean per person, by id; an unknown or deleted id is absent (fail closed). The caller passes a trusted scope —
+   * a public read the club found by its slug — and never shows the reason.
+   */
+  imagePublishable(
+    scope: ClubScope,
+    ids: readonly string[],
+    today: CalendarDate,
+    em?: EntityManager,
+  ): Promise<Map<string, boolean>>
 }
 
 /** The two consents a coach sees as flags beside a participant (REQ-L10). */
@@ -410,22 +425,7 @@ export async function effectiveConsentsOf(
   ids: readonly string[],
   today: CalendarDate,
 ): Promise<Map<string, EffectiveConsents>> {
-  const unique = [...new Set(ids)]
-  if (unique.length === 0) return new Map()
-  const [persons, links] = await Promise.all([
-    em.find(Person, { id: { $in: unique }, ...scope, deletedAt: null }, { fields: ['id', 'birthDate', 'consents'] }),
-    em.find(
-      Guardianship,
-      {
-        ...scope,
-        wardPersonId: { $in: unique },
-        deletedAt: null,
-        validFrom: { $lte: today },
-        $or: [{ validTo: null }, { validTo: { $gte: today } }],
-      },
-      { fields: ['id', 'wardPersonId', 'consents'] },
-    ),
-  ])
+  const { persons, links } = await consentRows(em, scope, ids, today)
   const guardianConsents = new Map<string, StoredConsents[]>()
   for (const link of links) {
     const list = guardianConsents.get(link.wardPersonId) ?? []
@@ -440,14 +440,65 @@ export async function effectiveConsentsOf(
   )
 }
 
+/** The live persons among `ids` and the guardianships of them active on `today`, with their stored consents. */
+async function consentRows(em: EntityManager, scope: ClubScope, ids: readonly string[], today: CalendarDate) {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return { persons: [], links: [] }
+  const [persons, links] = await Promise.all([
+    em.find(Person, { id: { $in: unique }, ...scope, deletedAt: null }, { fields: ['id', 'birthDate', 'consents'] }),
+    em.find(
+      Guardianship,
+      {
+        ...scope,
+        wardPersonId: { $in: unique },
+        deletedAt: null,
+        validFrom: { $lte: today },
+        $or: [{ validTo: null }, { validTo: { $gte: today } }],
+      },
+      { fields: ['id', 'wardPersonId', 'guardianPersonId', 'consents'] },
+    ),
+  ])
+  return { persons, links }
+}
+
+/** BR-I02 / BR-I03 for each live person among `ids` on `today` (#871). */
+export async function imagePublishable(
+  em: EntityManager,
+  scope: ClubScope,
+  ids: readonly string[],
+  today: CalendarDate,
+): Promise<Map<string, boolean>> {
+  const { persons, links } = await consentRows(em, scope, ids, today)
+  const byWard = new Map<string, ImageConsentGuardianship[]>()
+  for (const link of links) {
+    const list = byWard.get(link.wardPersonId) ?? []
+    list.push({ guardianPersonId: link.guardianPersonId, consents: parseStoredConsents(link.consents) })
+    byWard.set(link.wardPersonId, list)
+  }
+  return new Map(
+    persons.map((person) => [
+      person.id,
+      imagePublishableRule({
+        personId: person.id,
+        adult: holdsOwnConsents(person.birthDate, today),
+        own: parseStoredConsents(person.consents),
+        guardianships: byWard.get(person.id) ?? [],
+      }),
+    ]),
+  )
+}
+
 export async function consentFlags(
   em: EntityManager,
   scope: ClubScope,
   ids: readonly string[],
   today: CalendarDate,
 ): Promise<Map<string, ConsentFlags>> {
-  const consents = await effectiveConsentsOf(em, scope, ids, today)
-  return new Map([...consents].map(([id, given]) => [id, { image: given.image, trips: given.trips }]))
+  const [consents, image] = await Promise.all([
+    effectiveConsentsOf(em, scope, ids, today),
+    imagePublishable(em, scope, ids, today),
+  ])
+  return new Map([...consents].map(([id, given]) => [id, { image: image.get(id) === true, trips: given.trips }]))
 }
 
 export function createPersonDirectory(getEm: () => EntityManager): PersonDirectory {
@@ -466,5 +517,6 @@ export function createPersonDirectory(getEm: () => EntityManager): PersonDirecto
     sectionCoordinatorIdsOnDays: (scope, pairs, em) => sectionCoordinatorIdsOnDays(em ?? getEm().fork(), scope, pairs),
     searchPersonIds: (scope, term, em) => searchPersonIds(em ?? getEm().fork(), scope, term),
     consentFlags: (scope, ids, today, em) => consentFlags(em ?? getEm().fork(), scope, ids, today),
+    imagePublishable: (scope, ids, today, em) => imagePublishable(em ?? getEm().fork(), scope, ids, today),
   }
 }

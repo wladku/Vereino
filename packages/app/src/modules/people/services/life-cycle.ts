@@ -51,6 +51,7 @@ import { parseStoredConsents } from '../lib/people-rules'
 import { yearsBefore } from '../lib/person-list-filters'
 import { guardianshipEvents, personEvents, personIndexer } from '../commands/shared'
 import { clubSettings, type ClubScope } from './club-clock'
+import { recordConsentEvents } from './consent-events'
 import { closeDepartedAccounts } from './departure-accounts'
 import { clearHeldName } from './erasure'
 import { roleHolderIdsOn } from './person-directory'
@@ -333,10 +334,22 @@ async function comeOfAge(
     }
     const carried = carriedOverConsents(
       parseStoredConsents(person.consents),
-      ending.map((entry) => entry.consents),
+      ending.map((entry) => ({ guardianPersonId: entry.guardianPersonId, consents: entry.consents })),
     )
     if (carried.copied.length > 0) person.consents = carried.consents
     person.updatedAt = now
+    // DD-I07 (#871): each carried-over decision is a consent event by the system, naming the guardian it came from.
+    for (const kind of carried.copied) {
+      const entry = carried.consents[kind]
+      await recordConsentEvents(tx, ctx.container, {
+        scope,
+        subjectPersonId: person.id,
+        guardianshipId: null,
+        decisions: [{ kind, granted: entry?.granted === true }],
+        byPersonId: entry?.by_person_id ?? null,
+        byRole: 'system',
+      })
+    }
     await tx.flush()
     const birthday = eighteenthBirthday(birthDate)
     const dispatchIds = await enqueueFamilyAndAdmins(tx, ctx.container, scope, {

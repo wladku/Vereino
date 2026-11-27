@@ -390,6 +390,8 @@ describe('people error codes', () => {
       ['medical_consent_missing', 409],
       ['medical_consent_subject_only', 403],
       ['medical_status_too_many', 400],
+      ['image_consent_subject_only', 422],
+      ['consent_note_required', 422],
     ])
     expect(errorCodes.every((entry) => entry.messageKey === `people.errors.${entry.code}`)).toBe(true)
   })

@@ -148,7 +148,13 @@ export type ErasurePart = { touched: ErasureTouched[]; kept: ErasureKept[] }
 export type ErasureAudit = { tablesTouched: ErasureTouched[]; keptData: ErasureKept[] }
 
 /** What `people`'s own part of the erasure changed (counts only). */
-export type PeopleErasureCounts = { guardianships: number; departureRequests: number; importRows: number }
+export type PeopleErasureCounts = {
+  guardianships: number
+  departureRequests: number
+  importRows: number
+  /** The subject's consent decisions deleted (event photos spec *Erasure*, #871). */
+  consentEvents: number
+}
 
 /**
  * `people`'s own part: the person row, the ward's guardianships, the departure requests and staged import rows the
@@ -166,6 +172,7 @@ export function peopleErasurePart(
     { table: 'people_guardianships', rows: counts.guardianships },
     { table: 'people_departure_requests', rows: counts.departureRequests },
     { table: 'people_import_rows', rows: counts.importRows },
+    { table: 'people_consent_events', rows: counts.consentEvents },
   ].filter((entry) => entry.rows > 0)
   const kept: ErasureKept[] = []
   if (onRequest) {

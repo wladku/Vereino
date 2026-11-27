@@ -4,7 +4,10 @@
 // them for the person named by `id` (`POST /api/people/persons/{id}/consents`). The consents follow the P-08 transitions
 // of `lib/people-rules.ts` and record the instant and the acting person; a person under 18, or without a birth date, is
 // refused with 422 `consents_minor`. The person's lock token travels in the platform header (409 on a stale one). Undo
-// restores the consents as they were; the audit log keeps every date.
+// restores the consents as they were; the audit log keeps every date. The event photos spec (#871): only the person
+// grants `image`, the administrator only records a withdrawal with a note (BR-I05); every decision is appended to
+// `people_consent_events` (DD-I07); an undo never lifts an image withdrawal (BR-I06); an image withdrawal emits
+// `people.consent.image_withdrawn` after the commit.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
 import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
@@ -15,17 +18,21 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import type { ActingRole, GrantKind } from '@vereino/core'
 import { authorizeScoped, trustedScopeOf, type AuthorizeScopedSpec, type TargetLock } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
-import { Person } from '../data/entities'
+import { Person, type ConsentEvent } from '../data/entities'
 import { ownConsentsSchema } from '../data/validators'
+import { consentDecisionRole, imageChangeProblem } from '../lib/image-consent'
 import {
   applyConsentChanges,
+  changedConsents,
   holdsOwnConsents,
   parseStoredConsents,
+  restoreConsentsKeepingWithdrawals,
   subjectOnlyChanges,
   type ConsentKind,
   type StoredConsents,
 } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
+import { emitImageWithdrawals, recordConsentEvents, type ConsentDecision } from '../services/consent-events'
 import { emitMedicalUpdated } from '../services/medical'
 import {
   actorPersonId,
@@ -58,6 +65,27 @@ export type OwnConsentsResult = {
   changed: ConsentKind[]
   /** The `medical` consent was withdrawn and the medical certificate date cleared with it (BR-O1, #682). */
   medicalCleared?: boolean
+  /** The consent decisions appended (DD-I07, #871); emitted after the commit. */
+  consentEvents?: ConsentEvent[]
+}
+
+function recordOwnDecisions(
+  em: EntityManager,
+  ctx: CommandRuntimeContext,
+  person: Person,
+  decisions: readonly ConsentDecision[],
+  actor: string | null,
+  note?: string | null,
+): Promise<ConsentEvent[]> {
+  return recordConsentEvents(em, ctx.container, {
+    scope: { tenantId: person.tenantId, organizationId: person.organizationId },
+    subjectPersonId: person.id,
+    guardianshipId: null,
+    decisions,
+    byPersonId: actor,
+    byRole: consentDecisionRole({ guardianship: false, actorPersonId: actor, owner: person.id }),
+    note,
+  })
 }
 
 function snapshotOf(person: Person): OwnConsentsSnapshot {
@@ -97,10 +125,10 @@ async function authorizeReplay(
   ctx: CommandRuntimeContext,
   personId: string | null | undefined,
   allowedKinds: readonly GrantKind[],
-): Promise<Person> {
+): Promise<{ person: Person; actor: string | null }> {
   const em = ctx.transactionalEm
   if (!em || !personId) throw new Error('[internal] own-consents replay needs the replay transaction and the person id')
-  const { entity } = await authorizeScoped(
+  const { entity, scope } = await authorizeScoped(
     {
       input: z.object({ id: z.uuid() }),
       resourceKind: RESOURCE_KIND,
@@ -115,7 +143,7 @@ async function authorizeReplay(
   )
   // An undo never writes an anonymised person's data back (#308).
   await assertNotAnonymized(entity)
-  return entity as Person
+  return { person: entity as Person, actor: actorPersonId(scope) }
 }
 
 function emitPersonUpdated(ctx: CommandRuntimeContext, person: Person, undo: boolean) {
@@ -144,15 +172,24 @@ const setOwnConsentsCommand: CommandHandler<Record<string, unknown>, OwnConsents
         await peopleErrors.throw('consents_minor')
       }
       const now = new Date()
-      const applied = applyConsentChanges(
-        before.consents,
-        authorized.parsed.changes,
-        now,
-        actorPersonId(authorized.scope),
-      )
+      const actor = actorPersonId(authorized.scope)
+      const applied = applyConsentChanges(before.consents, authorized.parsed.changes, now, actor)
       // BR-O1 (#682): only the person gives or withdraws the `medical` consent, never the club's staff.
       if (authorized.actingRole !== 'self' && subjectOnlyChanges(applied.changed).length > 0) {
         await peopleErrors.throw('medical_consent_subject_only')
+      }
+      // BR-I05 (#871): only the person grants `image`; the administrator records a withdrawal with a note.
+      if (applied.changed.includes('image')) {
+        const problem = imageChangeProblem({
+          granted: applied.consents.image?.granted === true,
+          actingRole: authorized.actingRole,
+          actorPersonId: actor,
+          owner: person.id,
+          note: authorized.parsed.note,
+        })
+        if (problem === 'scope_denied' || problem === 'image_consent_subject_only') {
+          await peopleErrors.throw('image_consent_subject_only')
+        } else if (problem) await peopleErrors.throw(problem)
       }
       if (applied.changed.length > 0) {
         person.consents = applied.consents
@@ -162,10 +199,20 @@ const setOwnConsentsCommand: CommandHandler<Record<string, unknown>, OwnConsents
       const medicalCleared =
         applied.changed.includes('medical') && !applied.consents.medical?.granted && !!person.medicalValidUntil
       if (medicalCleared) person.medicalValidUntil = null
-      return { person, actingRole: authorized.actingRole, before, changed: applied.changed, medicalCleared }
+      const decisions = applied.changed.map((kind) => ({ kind, granted: applied.consents[kind]?.granted === true }))
+      const consentEvents = await recordOwnDecisions(em, ctx, person, decisions, actor, authorized.parsed.note)
+      return {
+        person,
+        actingRole: authorized.actingRole,
+        before,
+        changed: applied.changed,
+        medicalCleared,
+        consentEvents,
+      }
     })
     if (result.medicalCleared) await emitMedicalUpdated(ctx, result.person)
     else if (result.changed.length > 0) await emitPersonUpdated(ctx, result.person, false)
+    await emitImageWithdrawals(result.consentEvents ?? [])
     return result
   },
   async buildLog({ result }) {
@@ -191,11 +238,17 @@ const setOwnConsentsCommand: CommandHandler<Record<string, unknown>, OwnConsents
   async undo({ ctx, logEntry }) {
     const before = logEntry.snapshotBefore as OwnConsentsSnapshot | null | undefined
     if (!before?.id) throw new Error('[internal] missing own-consents snapshot for undo')
-    const person = await authorizeReplay(ctx, before.id, NAMED_KINDS)
-    person.consents = parseStoredConsents(before.consents)
+    const { person, actor } = await authorizeReplay(ctx, before.id, NAMED_KINDS)
+    const em = ctx.transactionalEm as EntityManager
+    const current = parseStoredConsents(person.consents)
+    // BR-I06 (#871): an undo never turns a withdrawn image consent back into a grant.
+    const restored = restoreConsentsKeepingWithdrawals(current, parseStoredConsents(before.consents))
+    person.consents = restored
     person.updatedAt = new Date()
-    await ctx.transactionalEm?.flush()
+    const events = await recordOwnDecisions(em, ctx, person, changedConsents(current, restored), actor)
+    await em.flush()
     await emitPersonUpdated(ctx, person, true)
+    await emitImageWithdrawals(events)
   },
 }
 

@@ -542,3 +542,54 @@ export class PersonDataExportLog extends AppendOnlyEntityBase {
   @Property({ name: 'purpose', type: 'text' })
   purpose!: string
 }
+
+/**
+ * One consent decision (event photos spec *Data Models* → `people_consent_events`, DD-I07; #871): who decided, for whom,
+ * through which guardianship (null for an adult's own consent), granted or withdrawn, and the wording it was given to —
+ * the club text's `changedAt` (null = the built-in text) and the SHA-256 of the exact text shown, in the decision's
+ * locale. The proof of a consent under GDPR Art. 7(1) and the history guardians read; written in the same transaction
+ * as the consent change. Append-only: the `foundation` guard refuses an update or a delete; only the erasure of the
+ * subject deletes rows (`nativeDelete`). `note` is a staff withdrawal's reason (BR-I05), encrypted.
+ */
+@Entity({ tableName: 'people_consent_events' })
+@Index({
+  name: 'people_consent_events_org_subject_kind_created_idx',
+  properties: ['organizationId', 'subjectPersonId', 'kind', 'createdAt'],
+})
+@Index({ name: 'people_consent_events_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class ConsentEvent extends AppendOnlyEntityBase {
+  [OptionalProps]?: AppendOnlyEntityOptionalProps | 'guardianshipId' | 'byPersonId' | 'note' | 'wordingChangedAt'
+
+  @Property({ name: 'subject_person_id', type: 'uuid' })
+  subjectPersonId!: string
+
+  @Property({ name: 'guardianship_id', type: 'uuid', nullable: true })
+  guardianshipId?: string | null
+
+  /** A `CONSENT_KINDS` value. */
+  @Property({ name: 'kind', type: 'string', length: 24 })
+  kind!: string
+
+  @Property({ name: 'granted', type: 'boolean' })
+  granted!: boolean
+
+  /** The deciding person; for the carry-over at 18 the guardian whose grant was carried over. */
+  @Property({ name: 'by_person_id', type: 'uuid', nullable: true })
+  byPersonId?: string | null
+
+  /** `guardian`, `self`, `club_admin` or `system` (`ConsentDecisionRole`). */
+  @Property({ name: 'by_role', type: 'string', length: 16 })
+  byRole!: string
+
+  @Property({ name: 'note', type: 'text', nullable: true })
+  note?: string | null
+
+  @Property({ name: 'wording_changed_at', type: Date, nullable: true })
+  wordingChangedAt?: Date | null
+
+  @Property({ name: 'wording_sha256', type: 'string', length: 64, columnType: 'char(64)' })
+  wordingSha256!: string
+
+  @Property({ name: 'locale', type: 'string', length: 8 })
+  locale!: string
+}

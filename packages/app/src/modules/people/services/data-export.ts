@@ -10,7 +10,15 @@ import type { AwilixContainer } from 'awilix'
 import { findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { tryGetModules } from '@open-mercato/shared/lib/modules/registry'
 import { accountView, personDeliveriesForExport } from '@/modules/foundation'
-import { DepartureRequest, Guardianship, Person, PersonImport, PersonImportRow, RoleAssignment } from '../data/entities'
+import {
+  ConsentEvent,
+  DepartureRequest,
+  Guardianship,
+  Person,
+  PersonImport,
+  PersonImportRow,
+  RoleAssignment,
+} from '../data/entities'
 import {
   PESEL_WITHHELD,
   assembleDataExport,
@@ -171,7 +179,8 @@ export async function peoplePart(em: EntityManager, subject: PersonDataExportSub
   const scope = { tenantId: subject.tenantId, organizationId: subject.organizationId }
   const live = { ...scope, deletedAt: null }
   const personId = subject.personId
-  const [roles, guardianships, requests, rowIds, decided, importsCreated, importsCommitted] = await Promise.all([
+  const [roles, guardianships, requests, rowIds, decided, importsCreated, importsCommitted, consentEvents] =
+    await Promise.all([
     em.find(RoleAssignment, { ...live, personId }, { orderBy: { validFrom: 'asc' } }),
     em.find(
       Guardianship,
@@ -189,6 +198,8 @@ export async function peoplePart(em: EntityManager, subject: PersonDataExportSub
     em.count(DepartureRequest, { ...live, decidedByPersonId: personId }),
     em.count(PersonImport, { ...live, createdByPersonId: personId }),
     em.count(PersonImport, { ...live, committedByPersonId: personId }),
+    // The subject's consent history (event photos spec REQ-I11, #871); a staff note may name others and stays out.
+    em.find(ConsentEvent, { ...scope, subjectPersonId: personId }, { orderBy: { createdAt: 'asc' } }),
   ])
   const importRows =
     rowIds.length > 0
@@ -239,6 +250,27 @@ export async function peoplePart(em: EntityManager, subject: PersonDataExportSub
             consents: redactConsents(consentsView(parseStoredConsents(row.consents)), personId),
           }
         }),
+      },
+      {
+        module: 'people',
+        table: 'people_consent_events',
+        activity: 'A2',
+        portable: true,
+        rows: consentEvents.map((row) => ({
+          id: row.id,
+          kind: row.kind,
+          granted: row.granted,
+          by:
+            row.byPersonId === personId
+              ? 'subject'
+              : redactPerson(row.byRole === 'club_admin' ? 'staff' : 'guardian', undefined),
+          byRole: row.byRole,
+          guardianshipId: row.guardianshipId ?? null,
+          wordingChangedAt: iso(row.wordingChangedAt),
+          wordingSha256: row.wordingSha256,
+          locale: row.locale,
+          createdAt: iso(row.createdAt),
+        })),
       },
       {
         module: 'people',
