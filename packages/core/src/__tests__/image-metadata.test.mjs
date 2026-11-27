@@ -135,9 +135,28 @@ test('stripImageMetadata keeps the first orientation, standalone markers and fil
   )
   assert.deepEqual(strip(input, 'jpeg'), join(SOI, MINIMAL_EXIF(8), [0xff, 0x01], [0xff, 0xd3], DQT, SCAN, EOI))
   assert.deepEqual(
-    strip(join(SOI, exifSegment(tiff('II', [[0x0112, 3, 1, 2]])), SCAN), 'jpeg'),
-    join(SOI, MINIMAL_EXIF(2), SCAN),
+    strip(join(SOI, exifSegment(tiff('II', [[0x0112, 3, 1, 2]])), SCAN, EOI), 'jpeg'),
+    join(SOI, MINIMAL_EXIF(2), SCAN, EOI),
   )
+})
+
+test('stripImageMetadata drops everything after the end of image of a JPEG', () => {
+  // A Motion Photo clip with a GPS atom, and an MPF/Ultra HDR secondary JPEG with its own EXIF, after the primary EOI.
+  const motionClip = text('\0\0\0\x18ftypmp42SECRET-MP4-GPS')
+  const secondary = join(SOI, cameraExif('MM', 6), DQT, SCAN, EOI)
+  const input = join(SOI, APP0, cameraExif('II', 1), DQT, SCAN, EOI, secondary, motionClip)
+  const output = strip(input, 'jpeg')
+  assert.deepEqual(output, join(SOI, APP0, DQT, SCAN, EOI))
+  assert.equal(has(output, 'SECRET'), false)
+})
+
+test('stripImageMetadata filters the segments between the scans of a progressive JPEG', () => {
+  const DHT = segment(0xc4, [0x00, ...Array(16).fill(0)])
+  const SECOND_SCAN = [0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x01, 0x3f, 0x00, 0x78, 0xff, 0x00, 0x9a]
+  const input = join(SOI, APP0, DQT, SCAN, COM, XMP, DHT, [0xff, 0xff], SECOND_SCAN, EOI)
+  const output = strip(input, 'jpeg')
+  assert.deepEqual(output, join(SOI, APP0, DQT, SCAN, DHT, SECOND_SCAN, EOI))
+  assert.equal(has(output, 'SECRET'), false)
 })
 
 test('stripImageMetadata refuses a malformed JPEG', () => {
@@ -155,6 +174,8 @@ test('stripImageMetadata refuses a malformed JPEG', () => {
   malformed(SOI, [0xff, 0xdb, 0x00]) // half a length
   malformed(SOI, [0xff, 0xdb, 0x00, 0x01], SCAN) // length below 2
   malformed(SOI, APP0.slice(0, 8)) // truncated segment
+  malformed(SOI, APP0, SCAN) // no end of image after the scan
+  malformed(SOI, APP0, SCAN, [0xff]) // the scan ends on a lone 0xFF
 })
 
 // --- PNG fixtures ---

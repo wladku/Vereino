@@ -5,7 +5,9 @@
 // Input is a file already accepted by `checkFileBytes`; anything that does not parse is refused as `malformed`.
 // - JPEG: drops APP1 (EXIF, XMP), APP13 (IPTC), COM and every other APPn segment except APP0 (JFIF), APP2 ICC
 //   profiles and APP14 Adobe (colour transform). A non-default EXIF Orientation is kept in a new minimal EXIF segment
-//   holding that one tag. Everything from the start of scan onwards is copied unchanged.
+//   holding that one tag. Entropy-coded scan data is copied unchanged; the segments between progressive scans are
+//   filtered the same way, and everything after the end-of-image marker (Motion Photo clips with their own GPS, MPF
+//   and gain-map JPEGs with their own EXIF, vendor trailers) is dropped. A JPEG without an end of image is refused.
 // - PNG: drops the `eXIf`, `tEXt`, `iTXt`, `zTXt` and `tIME` chunks; kept chunks keep their CRCs.
 // - WebP: drops the `EXIF` and `XMP ` chunks and clears their flags in `VP8X`. The orientation is not kept: WebP has
 //   no orientation outside EXIF and phone cameras write JPEG, so a rotated WebP is rare.
@@ -86,11 +88,26 @@ function keepJpegSegment(marker: number, payload: Uint8Array): boolean {
   return marker !== JPEG_COM && (marker < JPEG_APP0 || marker > 0xef)
 }
 
+/**
+ * The end of the entropy-coded data that starts at `position`: the offset of the next marker, where 0xFF is followed
+ * by neither a stuffed 0x00 nor a restart marker (RSTn belongs to the scan and is copied with it), or null when the
+ * file ends first.
+ */
+function entropyDataEnd(bytes: Uint8Array, position: number): number | null {
+  for (let index = position; index + 1 < bytes.length; index++) {
+    if (bytes[index] !== 0xff) continue
+    const next = bytes[index + 1]
+    if (next !== 0x00 && (next < 0xd0 || next > 0xd7)) return index
+  }
+  return null
+}
+
 function stripJpeg(bytes: Uint8Array): Uint8Array | null {
   if (bytes[0] !== 0xff || bytes[1] !== 0xd8) return null
   const view = viewOf(bytes)
   const parts: Uint8Array[] = [bytes.subarray(0, 2)]
   let orientationKept = false
+  let scanned = false
   let position = 2
   while (position < bytes.length) {
     if (bytes[position] !== 0xff) return null
@@ -98,15 +115,17 @@ function stripJpeg(bytes: Uint8Array): Uint8Array | null {
     if (position >= bytes.length) return null
     const marker = view.getUint8(position)
     position++
-    if (marker === JPEG_SOS) {
-      parts.push(new Uint8Array([0xff, JPEG_SOS]), bytes.subarray(position))
+    if (marker === 0xd9) {
+      // End of image: whatever follows (a Motion Photo clip, MPF or gain-map JPEGs, a vendor trailer) is dropped.
+      if (!scanned) return null
+      parts.push(new Uint8Array([0xff, 0xd9]))
       return concat(parts)
     }
     if (marker === 0x01 || (marker >= 0xd0 && marker <= 0xd7)) {
       parts.push(new Uint8Array([0xff, marker])) // TEM and RSTn stand alone
       continue
     }
-    if (marker === 0x00 || marker === 0xd8 || marker === 0xd9 || position + 2 > bytes.length) return null
+    if (marker === 0x00 || marker === 0xd8 || position + 2 > bytes.length) return null
     const length = view.getUint16(position)
     if (length < 2 || position + length > bytes.length) return null
     const payload = bytes.subarray(position + 2, position + length)
@@ -120,8 +139,17 @@ function stripJpeg(bytes: Uint8Array): Uint8Array | null {
       }
     }
     position += length
+    if (marker === JPEG_SOS) {
+      // The scan's entropy-coded data, copied unchanged; the segments after it (tables, further progressive scans,
+      // APPn and COM) are filtered like the ones before the first scan.
+      const end = entropyDataEnd(bytes, position)
+      if (end === null) return null // no end of image
+      parts.push(bytes.subarray(position, end))
+      position = end
+      scanned = true
+    }
   }
-  return null // no start of scan
+  return null // no end of image
 }
 
 // --- PNG ---
