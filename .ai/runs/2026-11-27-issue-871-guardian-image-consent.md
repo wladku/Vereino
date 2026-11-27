@@ -54,7 +54,15 @@
   100 % coverage.
 - `yarn verify` → first run failed at `lint` (four errors: `@mikro-orm` imported in two routes, `String()` on a string,
   a non-null assertion) — fixed; then `format:check` (fixed with `yarn format`); then `qa-texts:check` (J-001 baseline
-  lowered 11 → 10, one hardcoded text removed); then all remaining steps passed.
+  lowered 11 → 10, one hardcoded text removed); then all remaining steps passed. Final run after the last commits:
+  green (from `format:check` after a formatting-only commit; the earlier steps passed on the same code).
+- `yarn guard` → no blocking findings.
+- `yarn test:integration:vereino --filter <ID>`, one id per run: TEST-I01 1 passed; TEST-I02 1 passed; E02-S02 6;
+  E02-S03 7; ISSUE-191 1; TEST-002 1; TEST-003 1; TEST-006 2; TEST-L11 2; TEST-O01 2; E20-S12 1; TEST-L09 2; E06-S22 1;
+  TEST-X01 1; TEST-L07 3; TEST-M07 2; TEST-O03 1; ISSUE-628 1 — all passed. J-001 first **1 failed**
+  (`expect(locator).toBeChecked() failed` at line 560: the ward page's image switch, now not given) — fixed, then
+  1 passed.
+- PR #896 opened (labels `review`, `feature`, `priority-medium`, `risk-high`, `needs-qa`); claim on #871 released.
 
 ## Open problems
 
