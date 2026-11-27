@@ -24,8 +24,8 @@ describe('appSecretProof', () => {
 
 describe('graphMeUrl', () => {
   it('asks for the id and the e-mail with the proof, keeping the endpoint', () => {
-    const url = new URL(graphMeUrl('https://graph.facebook.com/v21.0/me', 'token-1', SECRET))
-    expect(`${url.origin}${url.pathname}`).toBe('https://graph.facebook.com/v21.0/me')
+    const url = new URL(graphMeUrl('https://graph.facebook.com/v26.0/me', 'token-1', SECRET))
+    expect(`${url.origin}${url.pathname}`).toBe('https://graph.facebook.com/v26.0/me')
     expect(url.searchParams.get('fields')).toBe('id,email')
     expect(url.searchParams.get('appsecret_proof')).toBe(appSecretProof('token-1', SECRET))
     expect(url.searchParams.has('access_token')).toBe(false)

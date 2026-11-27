@@ -230,6 +230,11 @@ function buildSecurityHeaders(allowLoopbackFraming: boolean) {
         ],
       },
       {
+        // The service worker of the installed app (D-045, #873): a browser checks it for a new version on every visit.
+        source: '/sw.js',
+        headers: [{ key: 'Cache-Control', value: 'no-cache' }],
+      },
+      {
         // The application confirmation and status pages carry the e-mailed token in their path, like the request
         // confirmation (section sign-up form spec P-J3, P-J4, DD-J06, DD-J07; #799).
         source: '/p/:clubSlug/applications/:page(confirm|status)/:token',

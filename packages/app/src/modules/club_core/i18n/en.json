@@ -847,5 +847,12 @@
   "club_core.settings.fields.outlineLibraryMaxVisibility.description": "How widely coaches may share training outlines: only in the club, with clubs on Vereino, or with the public. Shared outlines are licensed under CC BY-SA 4.0. Lowering the level withdraws the outlines shared above it.",
   "club_core.settings.outlineLibraryMaxVisibility.club": "Only in the club",
   "club_core.settings.outlineLibraryMaxVisibility.clubs": "Clubs on Vereino",
-  "club_core.settings.outlineLibraryMaxVisibility.public": "Public"
+  "club_core.settings.outlineLibraryMaxVisibility.public": "Public",
+  "club_core.webApp.install": "Install the app",
+  "club_core.webApp.iosHint.title": "Add the club to your home screen",
+  "club_core.webApp.iosHint.body": "Tap Share, then “Add to Home Screen”. The club opens like an app.",
+  "club_core.webApp.iosHint.dismiss": "Close the hint",
+  "club_core.webApp.offline.title": "You are offline",
+  "club_core.webApp.offline.message": "Vereino needs a connection. Check the network and try again.",
+  "club_core.webApp.offline.retry": "Try again"
 }
