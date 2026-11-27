@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { OPTIMISTIC_LOCK_HEADER, call, createClub } from '../_fixtures/club'
 import { create, getOne, list, signInBrowser } from '../_fixtures/club-structure'
 import { uiText } from '../_fixtures/ui-text'

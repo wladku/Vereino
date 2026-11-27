@@ -5,6 +5,7 @@ import { cancelClubEvent, clubEventId, examplePlaces, partIds, readClubEvent } f
 import { create as createStructure } from '../_fixtures/club-structure'
 import { createGroup } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Club events spec AC-T11, the parts TEST-T11 leaves out (REQ-T11; #607): B-T1 lists the club events by view, a part is
 // edited in the panel and an undeclared part is removed. The administrator has an upcoming "PRZYKŁAD CUP 2026" (two
@@ -84,10 +85,7 @@ test('ISSUE-607 the administrator switches the club event views, edits a part an
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     expect((await page.request.post('/api/auth/locale', { data: { locale: 'en' } })).ok()).toBe(true)
     await page.setViewportSize({ width: 1280, height: 900 })
 

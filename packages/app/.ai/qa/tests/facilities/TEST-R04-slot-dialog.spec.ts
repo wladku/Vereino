@@ -15,6 +15,7 @@ import {
 } from '../_fixtures/facilities'
 import { addMembership, signedInStaff } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #277 (E11-S03), facilities parity spec phase 3, TEST-R04 (REQ-R02, AC-R02): a tap on a free hour of B-23 opens
 // one slot dialog with the kinds the user's features allow. The administrator saves a rental from 09:00 (a renter
@@ -87,10 +88,7 @@ test('TEST-R04 slot dialog: rental, collision, non-bookable zone, group event ov
       validFrom: addDays(today, -30),
     })
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       // The two refused saves below answer 409 on purpose; the browser logs each as a failed resource.

@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken, signInBrowserContext } from '../_fixtures/auth'
 import {
   createUserFixture,
   deleteUserIfExists,
@@ -76,8 +76,7 @@ function firstAdministrator(request: APIRequestContext, token: string, data?: Re
 }
 
 async function login(page: Page, email: string, password: string) {
-  const response = await page.request.post('/api/auth/login', { form: { email, password } })
-  expect(response.ok(), `POST /api/auth/login ${String(response.status())}`).toBe(true)
+  await signInBrowserContext(page.request, email, password)
 }
 
 test('TEST-L20 the first-administrator and institution-options routes fail closed', async ({ request }) => {
