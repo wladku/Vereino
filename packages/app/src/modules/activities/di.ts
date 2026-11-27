@@ -30,6 +30,9 @@ import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 import { ACTIVITIES_CLUB_JOBS } from './lib/club-jobs'
 import { ACTIVITIES_CLUB_TABLES } from './lib/club-tables'
 
+/** The token `people` reads (`IMAGE_USAGE_TOKEN` in `people/services/image-history.ts`). */
+const ACTIVITIES_IMAGE_USAGE = 'people.imageUsage.activities'
+
 /**
  * `vereino.audience.activity` and `vereino.audience.occurrence` (foundation III P-29, DD-M05; #71): the audience
  * providers of the kinds `activities` owns — an activity's group roster and default coach, a session's group roster on
@@ -68,9 +71,6 @@ import { ACTIVITIES_CLUB_TABLES } from './lib/club-tables'
  * on the old season's last day and may be copied into the new season. Stateless: it works in the caller's
  * EntityManager, inside the rollover's transaction.
  */
-/** The token `people` reads (`IMAGE_USAGE_TOKEN` in `people/services/image-history.ts`). */
-const ACTIVITIES_IMAGE_USAGE = 'people.imageUsage.activities'
-
 const declarationLinks = createTokenLinkService(DeclarationToken, {
   use: 'until_expiry',
   ttlMs: DECLARATION_LINK_TTL_MS,
