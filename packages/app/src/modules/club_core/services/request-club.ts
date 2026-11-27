@@ -1,5 +1,5 @@
 // The club of the current request (many clubs spec phase 3, DD-M02, REQ-M02; E22-S05 #631), for the app's server pages
-// (`/`, `/login`, the frontend catch-all, the backend layout). The club comes only from the request's `Host` header
+// (`/`, `/login`, the frontend catch-all, the backend layout) and the root layout's theme colour (#906). The club comes only from the request's `Host` header
 // (`lib/club-host.ts`), read through the approved public slug lookup of `clubCorePublicSite` (D-024/D-026); a client-sent
 // club header is never read. Not registered in DI and never loaded by the CLI or the workers: it reads `next/headers`.
 import { headers } from 'next/headers'
@@ -8,6 +8,7 @@ import { clubOrigin } from '@vereino/core'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { requestHost, sessionHostRedirect, type RequestHost } from '../lib/club-host'
+import { VEREINO_THEME_COLOR, webAppClubSlug, webAppThemeColor } from '../lib/web-app'
 import type { ClubCorePublicSite } from './public-site'
 import type { ClubCoreSettingsService } from './settings'
 
@@ -40,6 +41,28 @@ export async function requestClub(): Promise<RequestClub> {
       errorName: error instanceof Error ? error.name : typeof error,
     })
     return { host, hostClub: null }
+  }
+}
+
+/**
+ * The browser's theme colour on the request's address (`<meta name="theme-color">`, #906): the club's colour while the
+ * club publishes its page, the same rule and colour as the address's web app manifest (`services/web-app.ts`), else
+ * Vereino's. Any failure answers with Vereino's colour, which names no club.
+ */
+export async function requestThemeColor(): Promise<string> {
+  const slug = webAppClubSlug(requestHost((await headers()).get('host'), process.env), process.env)
+  if (!slug) return VEREINO_THEME_COLOR
+  try {
+    const container = await requestContainer()
+    if (!container.hasRegistration('clubCorePublicSite')) return VEREINO_THEME_COLOR
+    const frame = await container.resolve<ClubCorePublicSite>('clubCorePublicSite').clubFrame(slug)
+    if (frame.status !== 'ok') return VEREINO_THEME_COLOR
+    return webAppThemeColor({ accentColor: frame.value.club.accent?.color ?? null })
+  } catch (error: unknown) {
+    logger.warn('The theme colour of the request host could not be read', {
+      errorName: error instanceof Error ? error.name : typeof error,
+    })
+    return VEREINO_THEME_COLOR
   }
 }
 
