@@ -16,6 +16,16 @@ export const errorCodes = [
   { code: 'application_not_found', status: 404, messageKey: 'enrolment.errors.application_not_found' },
   { code: 'application_state_conflict', status: 409, messageKey: 'enrolment.errors.application_state_conflict' },
   { code: 'decision_reason_required', status: 422, messageKey: 'enrolment.errors.decision_reason_required' },
+  // Accepting (BR-J4, BR-J6, DD-J10, DD-J10a, DD-J11; phase 3, #800).
+  { code: 'group_full', status: 409, messageKey: 'enrolment.errors.group_full' },
+  { code: 'participant_already_in_group', status: 409, messageKey: 'enrolment.errors.participant_already_in_group' },
+  { code: 'start_day_invalid', status: 422, messageKey: 'enrolment.errors.start_day_invalid' },
+  { code: 'accept_person_invalid', status: 422, messageKey: 'enrolment.errors.accept_person_invalid' },
+  {
+    code: 'invitation_birth_date_required',
+    status: 422,
+    messageKey: 'enrolment.errors.invitation_birth_date_required',
+  },
   // The group sign-up QR code (#869): an unknown group, or one of another club (D-034).
   { code: 'group_not_found', status: 404, messageKey: 'enrolment.errors.group_not_found' },
 ] as const satisfies ErrorCodeTable

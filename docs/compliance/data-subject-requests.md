@@ -118,11 +118,16 @@ and anonymisation above do not find it until the application is accepted.
 
 - **Finding and erasing.** The operator finds a requester's applications by the keyed hash of their e-mail
   (`email_key`) with `yarn mercato enrolment applicant-data --tenant <id> --org <id> --email <address> [--erase]`:
-  without `--erase` it prints the applications for an access answer, with `--erase` it anonymises them (as
-  [`retention.md`](retention.md) R23) and erases their deliveries by address. **Lands in phase 3** (E26-S04, #800).
-- **Until then.** The applicant withdraws through the status link from the e-mail (a new link can be requested with
-  the same e-mail address), and the application is anonymised 30 days after closing (R23); an unconfirmed one is
-  deleted after 24 hours (R22). Once accepted, the child and the guardian are persons and the rights above apply.
+  without `--erase` it prints the applications (decrypted, as JSON) for an access answer; with `--erase` it deletes the
+  unconfirmed ones, withdraws the open ones, anonymises all of them at once (as [`retention.md`](retention.md) R23,
+  without waiting 30 days) and erases the address's deliveries by its hash (`eraseAddressDeliveries`). Since phase 3
+  (E26-S04, #800).
+- **Without the operator.** The applicant withdraws through the status link from the e-mail (a new link can be
+  requested with the same e-mail address), and the application is anonymised 30 days after closing (R23); an
+  unconfirmed one is deleted after 24 hours (R22).
+- **Accepted.** Once accepted, the child and the guardian (or the adult) are persons and the rights above apply: the
+  person data export contains the application (`people.dataExport.enrolment`, A17) and anonymising the person
+  anonymises it (`people.departure.enrolment` `erase`).
 
 ## 3. Open items
 

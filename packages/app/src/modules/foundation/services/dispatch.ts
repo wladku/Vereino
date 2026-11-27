@@ -12,6 +12,7 @@ import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import type { ActingRole, AudienceReason, AudienceSpec, Recipient, RecipientChannel } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
 import { Delivery, Dispatch } from '../data/entities'
+import { deliveryEmail } from '../encryption'
 import {
   clubEmailBacklogUntil,
   deliveryCountsOf,
@@ -420,5 +421,28 @@ export async function eraseRecipientDeliveries(
     Delivery,
     { tenantId: scope.tenantId, organizationId: scope.organizationId, personId },
     { personId: null, userId: null, email: null, emailHash: null, secretParams: null, updatedAt: new Date() },
+  )
+}
+
+/**
+ * Erasure of a bare address (sign-up form spec *API* → applicant CLI, Ask First approved on #788, 2026-11-26; #800):
+ * the deliveries sent to an address without a person record (an applicant who never became a member) lose the address
+ * with its hash and the secret parameters, found by the address's lookup hash (`email_hash`, every candidate hash
+ * version) — the counterpart of `eraseRecipientDeliveries`, which finds by person id. In the caller's transaction; only
+ * deliveries without a person are touched. Returns how many deliveries changed.
+ */
+export async function eraseAddressDeliveries(em: EntityManager, scope: DispatchScope, email: string): Promise<number> {
+  const trimmed = email.trim()
+  if (!trimmed) return 0
+  const hashes = [...new Set([...deliveryEmail.lookup(trimmed), ...deliveryEmail.lookup(trimmed.toLowerCase())])]
+  return em.nativeUpdate(
+    Delivery,
+    {
+      tenantId: scope.tenantId,
+      organizationId: scope.organizationId,
+      personId: null,
+      emailHash: { $in: hashes },
+    },
+    { userId: null, email: null, emailHash: null, secretParams: null, updatedAt: new Date() },
   )
 }

@@ -68,6 +68,29 @@ export const rejectSchema = z
 
 export const waitSchema = z.object({ id: z.uuid(), groupId: z.uuid(), updatedAt: z.string().optional() }).strict()
 
+/** `enrolment.applications.accept` (BR-J6, DD-J10, Q-J08; phase 3, #800). A person id reuses a possible duplicate. */
+export const acceptSchema = z
+  .object({
+    id: z.uuid(),
+    groupId: z.uuid(),
+    startDay: calendarDate,
+    child: z.object({ personId: z.uuid().nullable().optional() }).strict().optional(),
+    guardian: z
+      .object({
+        personId: z.uuid().nullable().optional(),
+        /** The guardian's birth date, which an account needs (the form does not ask it); for a new guardian only. */
+        birthDate: calendarDate.nullable().optional(),
+      })
+      .strict()
+      .optional(),
+    overLimit: z.boolean().optional(),
+    sendInvitation: z.boolean().default(true),
+    updatedAt: z.string().optional(),
+  })
+  .strict()
+
+export type AcceptInput = z.output<typeof acceptSchema>
+
 export const applicationListQuerySchema = z
   .object({
     tab: z.enum(APPLICATION_TABS).default('new'),

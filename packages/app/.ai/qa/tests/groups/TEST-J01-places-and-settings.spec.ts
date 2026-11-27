@@ -29,7 +29,7 @@ import { uiText } from '../_fixtures/ui-text'
 // and "Accepts applications" (API and the group's "Public page" tab); the roster shows "x / limit" on the group page,
 // the groups list and the coordinator's phone page, also above the limit, because a manual add is never blocked
 // (DD-J10a); a limit outside 1–500 is refused. The section's "accepts online applications" switch is stored through
-// the section's public route (its form field stays hidden until phase 3). The club administrator sets the age
+// the section's public route and, since phase 3 (#800), set on the section's "Public page" form. The club administrator sets the age
 // reference day, the answer time and the information for applicants on `/backend/club/settings`; a day the month lacks,
 // an answer time outside 1–60 and a text over 6000 characters are refused, and an empty text restores the built-in
 // one. The fit rule moved to `@vereino/core` (DD-J04) gives the same "Fits" result on the bulk move: a Żak team U8–U9
@@ -250,6 +250,20 @@ test('TEST-J01 group places and the switches, the application settings, "x / lim
     await expect(page.getByTestId('group-places')).toHaveText(placesText('3 / 2'))
     await page.goto(`/backend/groups/groups?sectionId=${academy}`)
     await expect(page.getByTestId('group-participant-count').filter({ hasText: '3 / 2' })).toHaveCount(1)
+
+    // Phase 3 (#800): the section's "Accepts online applications" is on the section's "Public page" form.
+    await page.goto(`/backend/club/sections/${academy}/edit?tab=public`)
+    const sectionPanel = page.getByTestId('section-public-panel')
+    const sectionSwitch = sectionPanel.getByRole('checkbox', {
+      name: uiText('club_core.sections.public.fields.acceptsApplications', { exact: true }),
+    })
+    await expect(sectionSwitch).not.toBeChecked()
+    await sectionSwitch.click()
+    await sectionPanel
+      .getByRole('button', { name: uiText('club_core.sections.public.save') })
+      .first()
+      .click()
+    await expect.poll(async () => (await getSection(request, admin, academy)).acceptsApplications).toBe(true)
 
     await page.goto('/backend/club/settings')
     await page.locator('[data-crud-field-id="applicationAgeReferenceDayOfMonth"] select').selectOption('31')
