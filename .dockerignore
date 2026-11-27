@@ -20,3 +20,9 @@ packages/app/.mercato/generated
 packages/app/.mercato/next
 
 packages/app/storage
+
+# Vereino Enterprise (enterprise package spec DD-E12): a local overlay never leaks into an image; the Dockerfile adds the
+# package only from its own clone stage, and never trusts the CI test key.
+packages/enterprise
+packages/node_modules
+packages/app/.mercato/enterprise-ci-trust.json

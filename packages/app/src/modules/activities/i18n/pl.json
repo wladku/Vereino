@@ -1130,6 +1130,7 @@
   "activities.occurrences.move.placeLocked": "Część odbywa się w miejscu imprezy klubowej; zmień miejsce imprezy, by przenieść wszystkie części.",
   "activities.club.nav.clubEvents": "Imprezy klubowe",
   "activities.club.nav.outlines": "Konspekty treningów",
+  "activities.club.nav.invitations": "Zaproszenia",
   "activities.club.nav.declarationShare": "Deklaracje w Vereino",
   "activities.clubEvents.club.list.intro": "Turnieje i inne imprezy klubowe, które organizujesz, z częściami według dni.",
   "activities.clubEvents.club.list.parts": "Części: {count}",

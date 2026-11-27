@@ -67,6 +67,8 @@ export const errorCodes = [
   },
   { code: 'second_factor_resend_limited', status: 429, messageKey: 'foundation.errors.second_factor_resend_limited' },
   { code: 'second_factor_reset_self', status: 403, messageKey: 'foundation.errors.second_factor_reset_self' },
+  // Phase 2 (#841, DD-2F07): the plain unlink of a required person's Google link; it goes through the reset.
+  { code: 'second_factor_reset_required', status: 409, messageKey: 'foundation.errors.second_factor_reset_required' },
   // ENG-Q-12 (#737): an own login e-mail change outside `PUT /api/foundation/profile/email` (the command interceptor
   // `foundation.email-change-confirmation`), and a wrong current password on that route.
   {

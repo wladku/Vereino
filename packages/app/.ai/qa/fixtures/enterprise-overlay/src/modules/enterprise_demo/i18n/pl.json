@@ -1,0 +1,11 @@
+{
+  "enterprise_demo.page.title": "Demo Enterprise",
+  "enterprise_demo.page.loading": "Wczytywanie stanu licencji…",
+  "enterprise_demo.page.error": "Nie udało się wczytać stanu licencji.",
+  "enterprise_demo.page.state": "Stan licencji tego klubu: {state}",
+  "enterprise_demo.state.on": "włączona",
+  "enterprise_demo.state.read_only": "tylko do odczytu",
+  "enterprise_demo.page.renewal": "Licencja Enterprise tego klubu wygasła. Odnów ją przed końcem okresu przejściowego.",
+  "enterprise_demo.page.readOnly": "Licencja Enterprise tego klubu wygasła: ta funkcja działa tylko do odczytu. Twoje dane nadal można przeglądać i eksportować.",
+  "enterprise_demo.page.off": "Funkcja demo Enterprise nie jest dostępna dla tego klubu."
+}

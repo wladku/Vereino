@@ -16,6 +16,10 @@ export type IdentityListResponse = {
   items: IdentityLinkRow[]
   canUnlink: boolean
   providers: Array<{ id: IdentityProvider; enabled: boolean; linked: boolean }>
+  /** `me` only (#841): the user signs in with a second factor. */
+  secondFactorRequired?: boolean
+  /** The administrator's list only (#736, #841). */
+  secondFactor?: { userId: string | null; required: boolean; canReset: boolean; unlinkGoogleThroughReset?: boolean }
 }
 
 export const PROVIDER_NAMES: Record<IdentityProvider, string> = { google: 'Google', facebook: 'Facebook' }

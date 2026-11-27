@@ -1,3 +1,8 @@
+// Vereino local patch (enterprise package spec, phase 1b): `--modules-root <dir>` scans the package that owns that
+// `src/modules` directory instead of the working directory, and `--strict` then covers every module directory under it
+// (rule in `modulesRootOption` of check-vereino-contracts.mjs), so the private Enterprise CI can run
+// `--strict --modules-root ../enterprise/src/modules`.
+// Usage: node scripts/i18n-check-hardcoded.mjs [--json] [--strict] [--modules-root <dir>]
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -168,22 +173,33 @@ export function scanHardcodedI18n(root = process.cwd()) {
 
 // Vereino local patch (engineering standards S2.4): `--strict` fails on findings in Vereino-owned
 // modules (packages/app/vereino-modules.json); scaffold findings stay advisory.
-async function strictFindings(findings) {
+async function strictFindings(findings, option) {
   const { readVereinoModuleIds } = await import('./vereino-paths.mjs')
-  const prefixes = readVereinoModuleIds().map((id) => `src/modules/${id}/`)
+  const prefixes = (option?.moduleIds ?? readVereinoModuleIds()).map((id) => `src/modules/${id}/`)
   return findings.filter((finding) => prefixes.some((prefix) => finding.file.startsWith(prefix)))
 }
 
-async function widgetTitleFindings() {
+async function widgetTitleFindings(option) {
   const { APP_ROOT, readVereinoModuleIds } = await import('./vereino-paths.mjs')
   const { checkWidgetTitles, formatWidgetTitleFinding } = await import('./vereino-widget-titles.mjs')
-  return checkWidgetTitles(APP_ROOT, readVereinoModuleIds()).map(formatWidgetTitleFinding)
+  const root = option ?? { appRoot: APP_ROOT, moduleIds: readVereinoModuleIds() }
+  return checkWidgetTitles(root.appRoot, root.moduleIds).map(formatWidgetTitleFinding)
 }
 
 async function runCli() {
-  const json = process.argv.slice(2).includes('--json')
-  const strict = process.argv.slice(2).includes('--strict')
-  const result = scanHardcodedI18n()
+  const argv = process.argv.slice(2)
+  const json = argv.includes('--json')
+  const strict = argv.includes('--strict')
+  const { modulesRootOption } = await import('./check-vereino-contracts.mjs')
+  let option
+  try {
+    option = modulesRootOption(argv)
+  } catch (error) {
+    process.stderr.write(`[i18n:check-hardcoded] ${error.message}\n`)
+    process.exitCode = 1
+    return
+  }
+  const result = option ? scanHardcodedI18n(option.appRoot) : scanHardcodedI18n()
   if (json) process.stdout.write(`${JSON.stringify(result, null, 2)}\n`)
   if (result.findings.length > 0) {
     process.stderr.write(`[i18n:check-hardcoded] advisory: ${result.findings.length} findings in ${result.filesScanned} files.\n`)
@@ -196,13 +212,13 @@ async function runCli() {
     process.stdout.write(`[i18n:check-hardcoded] ${result.filesScanned} files passed.\n`)
   }
   for (const error of result.errors) process.stderr.write(`[i18n:check-hardcoded] ${error}\n`)
-  const blocking = strict ? await strictFindings(result.findings) : []
+  const blocking = strict ? await strictFindings(result.findings, option) : []
   if (blocking.length > 0) {
     process.stderr.write(`[i18n:check-hardcoded] --strict: ${blocking.length} findings in Vereino modules must be translated or allowlisted with a reason.\n`)
   }
   // Vereino local patch (#484): every dashboard widget of a Vereino module has its title and description in each
   // catalog of the module; otherwise the platform dashboard shows the literal `metadata.title`.
-  const widgetTitles = strict ? await widgetTitleFindings() : []
+  const widgetTitles = strict ? await widgetTitleFindings(option) : []
   for (const line of widgetTitles) process.stderr.write(`${line}\n`)
   if (widgetTitles.length > 0) {
     process.stderr.write(`[i18n:check-hardcoded] --strict: ${widgetTitles.length} dashboard widget titles or descriptions lack catalog keys.\n`)

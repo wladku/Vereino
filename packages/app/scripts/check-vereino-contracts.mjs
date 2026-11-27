@@ -3,7 +3,10 @@
 //   well-formed and never redeclare a reserved platform code;
 // - every error code's message key exists in the module's en and pl catalogs;
 // - en.json and pl.json of each Vereino module have identical key sets.
-// Usage: node scripts/check-vereino-contracts.mjs [--json]
+// The checked modules are the Vereino modules of this app (vereino-modules.json) or, with `--modules-root <dir>`, every
+// module directory of another package (the private Enterprise CI: `--modules-root ../enterprise/src/modules`, see
+// `modulesRootOption`).
+// Usage: node scripts/check-vereino-contracts.mjs [--json] [--modules-root <dir>]
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -17,6 +20,7 @@ export const RESERVED_PLATFORM_CODES = [
 ]
 
 const CODE_PATTERN = /^[a-z][a-z0-9]*(_[a-z0-9]+)*$/
+const MODULE_ID_PATTERN = /^[a-z][a-z0-9_]*$/
 const LOCALES = ['en', 'pl']
 
 function flattenKeys(value, prefix = '', keys = new Set()) {
@@ -42,6 +46,35 @@ async function readErrorCodes(moduleDir, appRoot) {
     throw new Error(`${path.relative(appRoot, file).split(path.sep).join('/')}: must export an array named errorCodes`)
   }
   return loaded.errorCodes
+}
+
+/**
+ * `--modules-root <dir>` (enterprise package spec, phase 1b): the module checks (`contracts:check`,
+ * `route-isolation:check`, `i18n:check-hardcoded`) cover another package's modules instead of this app's Vereino modules.
+ * `<dir>` resolves against the working directory (`packages/app` when run through `yarn`) and must name the
+ * `src/modules` directory of a package; that package's root takes the place of the app root, so every module-relative
+ * path (catalogs, error codes, api routes, allowlists) and every package-relative one (the route inventory) follows it.
+ * Every subdirectory whose name is a module id (`[a-z][a-z0-9_]*`) is a module: such a package has no
+ * vereino-modules.json. Returns null without the flag, else `{ appRoot, moduleIds }`; throws on a missing or bad value.
+ */
+export function modulesRootOption(argv, cwd = process.cwd()) {
+  const at = argv.indexOf('--modules-root')
+  if (at === -1) return null
+  const value = argv[at + 1]
+  if (value === undefined || value.startsWith('--')) throw new Error('--modules-root needs a directory')
+  const modulesRoot = path.resolve(cwd, value)
+  if (path.basename(modulesRoot) !== 'modules' || path.basename(path.dirname(modulesRoot)) !== 'src') {
+    throw new Error(`--modules-root ${value}: must name the src/modules directory of a package`)
+  }
+  if (!fs.existsSync(modulesRoot) || !fs.statSync(modulesRoot).isDirectory()) {
+    throw new Error(`--modules-root ${value}: no such directory`)
+  }
+  const moduleIds = fs
+    .readdirSync(modulesRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && MODULE_ID_PATTERN.test(entry.name))
+    .map((entry) => entry.name)
+    .sort()
+  return { appRoot: path.dirname(path.dirname(modulesRoot)), moduleIds }
 }
 
 export async function checkContracts({ appRoot = APP_ROOT, moduleIds = readVereinoModuleIds(appRoot) } = {}) {
@@ -96,7 +129,14 @@ export async function checkContracts({ appRoot = APP_ROOT, moduleIds = readVerei
 }
 
 export async function runCli({ argv, appRoot, moduleIds, log = console.log, error = console.error }) {
-  const result = await checkContracts({ appRoot, moduleIds })
+  let option
+  try {
+    option = modulesRootOption(argv)
+  } catch (failure) {
+    error(`contracts:check: ${failure.message}`)
+    return 1
+  }
+  const result = await checkContracts(option ?? { appRoot, moduleIds })
   if (argv.includes('--json')) {
     log(JSON.stringify(result, null, 2))
   } else {

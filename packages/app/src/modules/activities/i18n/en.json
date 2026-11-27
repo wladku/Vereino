@@ -1130,6 +1130,7 @@
   "activities.occurrences.move.placeLocked": "A part takes place at the club event's place; change the event's place to move every part.",
   "activities.club.nav.clubEvents": "Club events",
   "activities.club.nav.outlines": "Training outlines",
+  "activities.club.nav.invitations": "Invitations",
   "activities.club.nav.declarationShare": "Declarations in Vereino",
   "activities.clubEvents.club.list.intro": "The tournaments and other club events you organise, with their parts by day.",
   "activities.clubEvents.club.list.parts": "Parts: {count}",

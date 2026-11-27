@@ -248,7 +248,7 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 - **Requirements closed:** REQ-S03
 - **Tests:** TEST-S03
 - **Validation:** as above
-- **Exit gate:** sign-in through the fake and a real Facebook test user; the deletion callback removes the link.
+- **Exit gate:** sign-in through the fake and a real Facebook test user, which also rechecks on the pinned Graph version (`FACEBOOK_GRAPH_VERSION` in `foundation/lib/identity.ts`) the token exchange (POST with `code_verifier`) and `/me?fields=id,email` (#832); the deletion callback removes the link.
 
 ## Requirement Traceability
 

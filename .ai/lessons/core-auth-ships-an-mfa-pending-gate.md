@@ -20,4 +20,4 @@ Rules for the provisional token and the completion routes:
 - Never declare `features` on an `auth/login` interceptor. The login route passes no user features, so the runner skips it silently (`interceptor-runner.ts`).
 - The "never throw" rule of `future-module-gates-and-auth-login-interceptors` covers only convenience interceptors such as the member landing. A security check fails closed.
 
-**Applies to**: `src/app/api/auth/login/route.ts`; `api/interceptors.ts` on `auth/login` in any Vereino module; `.ai/specs/2026-11-26-vereino-staff-second-factor.md`; reviews of anything that issues or gates a staff session.
+**Applies to**: `src/app/api/auth/login/route.ts`; `api/interceptors.ts` on `auth/login` in any Vereino module; `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`; reviews of anything that issues or gates a staff session.

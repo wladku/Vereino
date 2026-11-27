@@ -7,7 +7,7 @@ topics: ["lint", "eslint", "out-of-memory", "verify"]
 
 # When `yarn verify` fails at lint with a heap out-of-memory crash, resume with a larger Node heap
 
-**Context**: On 2026-11-26 (run for #870, a docs-only change) `yarn verify` failed at `lint` after 102 s with `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory` in the `@vereino/app` workspace (exit code 129), on a server with plenty of free RAM. The lint step itself reported no errors before the crash. The same crash hit the run for #833 the same day (`eslint .` in `@vereino/app` at about 4 GB, a change of three TypeScript files), so it does not depend on the diff.
+**Context**: On 2026-11-26 (run for #870, a docs-only change) `yarn verify` failed at `lint` after 102 s with `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory` in the `@vereino/app` workspace (exit code 129), on a server with plenty of free RAM. The lint step itself reported no errors before the crash. The same crash hit the run for #833 the same day (`eslint .` in `@vereino/app` at about 4 GB, a change of three TypeScript files) and the run for #832 (a one-constant change), so it does not depend on the diff.
 
 **Problem**: The crash looks like a lint failure, but it is Node's default heap limit being reached by ESLint over the whole app workspace; nothing in the change causes it, and retrying with the same settings can fail again.
 

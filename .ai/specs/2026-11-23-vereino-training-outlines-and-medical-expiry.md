@@ -571,7 +571,7 @@ Every criterion that names a phone page is checked at 375 px, in English and Pol
 - [ ] **AC-O04** — Without consent no date is stored; anonymisation and consent withdrawal clear it; the compliance
   pack lists the field (TEST-O03).
 - [ ] **AC-O05** — A red player in a match squad produces a warning, not a block (TEST-O04, Q-O05).
-- [ ] **AC-O06** — A coach writes, attaches and reads an outline on the phone (TEST-O05).
+- [x] **AC-O06** — A coach writes, attaches and reads an outline on the phone (TEST-O05).
 - [ ] **AC-O07** — Every session of a recurring activity has its own copy (TEST-O06).
 - [ ] **AC-O08** — The print page yields a PDF in the PZPN layout (TEST-O07).
 - [ ] **AC-O09** — Schedule and attendance CSVs match the columns above (TEST-O08).
