@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader } from '@open-mercato/ui
 import { SecondFactorForm } from '@/modules/foundation/components/SecondFactorForm'
 import { emailHint, readProvisionalClaims, secondFactorLoginPath } from '@/modules/foundation/lib/second-factor'
 
-// The code page of the staff second factor (`.ai/specs/2026-11-26-vereino-staff-second-factor.md` UI row; REQ-2F01;
+// The code page of the staff second factor (`.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md` UI row; REQ-2F01;
 // #736). An app route beside `/login`, like it: the provisional token in the HttpOnly `auth_token` cookie names the
 // address the code went to; without a provisional token the challenge is over and the browser goes back to `/login`.
 export async function generateMetadata(): Promise<Metadata> {

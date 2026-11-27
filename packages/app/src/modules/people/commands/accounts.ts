@@ -17,8 +17,11 @@ import {
   authorizeScoped,
   closeAccount,
   createAccount,
+  foundationErrors,
   localeForPerson,
   resendInvitation,
+  scopeContract,
+  trustedScopeOf,
   updateAccount,
   type AccountView,
 } from '@/modules/foundation'
@@ -26,9 +29,17 @@ import { peopleErrors } from '../api/errors'
 import { Person } from '../data/entities'
 import { createAccountSchema, personAccountSchema, updateAccountSchema } from '../data/validators'
 import { emitPeopleEvent } from '../events'
+import { shareActingRole, shareReach } from '../lib/invitation-links'
 import { calendarDateInZone } from '../lib/people-rules'
 import { assertAccountWithoutPurpose, assertNotLastClubAdmin } from '../services/account-guards'
 import { clubSettings } from '../services/club-clock'
+import {
+  clubOfScope,
+  invitationLinkUrl,
+  issueInvitationLink,
+  personActive,
+  wardGroupsOf,
+} from '../services/invitation-links'
 import { desiredRolesForPerson } from '../services/role-sync'
 import { inWriteTransaction, loadPersonLocked, personEvents, personIndexer, personTarget } from './shared'
 
@@ -295,6 +306,84 @@ const resendInvitationCommand: CommandHandler<Record<string, unknown>, ResendInv
   },
 }
 
+// Personal invitation link spec REQ-IL01, REQ-IL02, REQ-IL05, IL-D03, IL-D04 (#868): a staff member takes a personal
+// invitation link of a person whose account is still invited, to copy or show as a QR code.
+
+export type ShareInvitationCommandResult = {
+  personId: string
+  tenantId: string
+  organizationId: string
+  userId: string
+  /** The link on the club's address; the raw token in it is never logged, audited or stored. */
+  url: string
+  expiresAt: string
+  actingRole: ActingRole
+}
+
+/**
+ * `people.persons.share_invitation`: the club administrator for any person of the club; a coach for an active guardian
+ * of a child in a group they coach; a coordinator for one of a child in a section they coordinate (IL-D03). A person
+ * outside the caller's reach, gone or without an account answers 404 like an unknown id (IL-D04, D-034); an account
+ * that is no longer invited 409 `invitation_not_pending`. Issues a link valid 7 days and revokes the person's earlier
+ * links in the same transaction (REQ-IL05). The route applies the re-send limits first (IL-D02). Not undoable: the
+ * link was handed over; a newer link replaces it.
+ */
+const shareInvitationCommand: CommandHandler<Record<string, unknown>, ShareInvitationCommandResult> = {
+  id: 'people.persons.share_invitation',
+  isUndoable: false,
+  async execute(rawInput, ctx) {
+    const { id } = personAccountSchema.parse(rawInput)
+    const scope = trustedScopeOf(ctx)
+    const actorUserId = ctx.auth?.sub
+    if (!scope || !actorUserId) return foundationErrors.throw('scope_denied')
+    const issued = await inWriteTransaction(ctx, 'people.persons.share_invitation', async (em) => {
+      const person = await em.findOne(
+        Person,
+        { id, ...scope, deletedAt: null },
+        { fields: ['id', 'userId', 'deletedAt', 'anonymizedAt', 'leftOn'] },
+      )
+      const today = calendarDateInZone(new Date(), (await clubSettings(ctx.container, scope, em)).timezone)
+      if (!person || !personActive(person, today)) return peopleErrors.throw('account_not_found')
+      const reach = shareReach(await scopeContract.resolve(ctx, { em }))
+      const wards = reach.kind === 'families' ? await wardGroupsOf(ctx.container, em, scope, person.id, today) : []
+      const actingRole = shareActingRole(reach, wards)
+      if (!actingRole || !person.userId) return peopleErrors.throw('account_not_found')
+      const account = await accountView(ctx.container, scope, person.userId, em)
+      if (account.state === 'none') return peopleErrors.throw('account_not_found')
+      if (account.state !== 'invited') return peopleErrors.throw('invitation_not_pending')
+      const link = await issueInvitationLink(ctx.container, em, scope, {
+        personId: person.id,
+        userId: person.userId,
+        createdByUserId: actorUserId,
+      })
+      return { ...link, userId: person.userId, actingRole }
+    })
+    const club = await clubOfScope(ctx.container, scope)
+    return {
+      personId: id,
+      ...scope,
+      userId: issued.userId,
+      url: invitationLinkUrl(club.baseUrl, issued.rawToken),
+      expiresAt: issued.expiresAt.toISOString(),
+      actingRole: issued.actingRole,
+    }
+  },
+  async buildLog({ result }) {
+    const { translate } = await resolveTranslations()
+    return {
+      actionLabel: translate('people.audit.persons.share_invitation', 'Share the invitation link'),
+      resourceKind: RESOURCE_KIND,
+      resourceId: result.personId,
+      tenantId: result.tenantId,
+      organizationId: result.organizationId,
+      relatedResourceKind: 'auth.user',
+      relatedResourceId: result.userId,
+      // Never the URL or the token (spec *Security*).
+      context: { actingRole: result.actingRole, expiresAt: result.expiresAt },
+    }
+  },
+}
+
 export type UpdateAccountCommandResult = {
   personId: string
   tenantId: string
@@ -488,5 +577,6 @@ const closeAccountCommand: CommandHandler<Record<string, unknown>, CloseAccountC
 }
 
 registerCommand(resendInvitationCommand)
+registerCommand(shareInvitationCommand)
 registerCommand(updateAccountCommand)
 registerCommand(closeAccountCommand)

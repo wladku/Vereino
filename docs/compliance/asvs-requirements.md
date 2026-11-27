@@ -31,7 +31,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V3 Web Frontend Security | 8 | 6 | 1 | 2 | 2 | 19 |
 | V4 API and Web Service | 0 | 0 | 0 | 4 | 6 | 10 |
 | V5 File Handling | 5 | 2 | 1 | 1 | 0 | 9 |
-| V6 Authentication | 20 | 5 | 0 | 5 | 5 | 35 |
+| V6 Authentication | 20 | 6 | 0 | 5 | 4 | 35 |
 | V7 Session Management | 5 | 8 | 4 | 1 | 0 | 18 |
 | V8 Authorization | 3 | 4 | 0 | 0 | 0 | 7 |
 | V9 Self-contained Tokens | 1 | 1 | 0 | 5 | 0 | 7 |
@@ -43,7 +43,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V15 Secure Coding and Architecture | 1 | 7 | 0 | 5 | 0 | 13 |
 | V16 Security Logging and Error Handling | 0 | 7 | 2 | 7 | 0 | 16 |
 | V17 WebRTC | 0 | 0 | 0 | 0 | 7 | 7 |
-| **All** | **65** | **62** | **12** | **59** | **55** | **253** |
+| **All** | **65** | **63** | **12** | **59** | **54** | **253** |
 
 ## Requirements
 
@@ -169,7 +169,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V6.2.12 | 2 | Reject breached passwords | Owner decision on #779 (2026-11-26): an offline list, no outbound call — the NCSC top 100k is drawn from Have I Been Pwned breach data (V6.2.4): `foundation/lib/common-passwords.ts`, checked by `refuseNewPassword` in `packages/app/src/modules/foundation/services/password-check.ts` on every API path that sets a password. `TEST-PW01` (`packages/app/.ai/qa/tests/foundation/TEST-PW01-password-check-api.spec.ts`) refuses a listed password with `password_too_common` on user create and edit, profile change and reset link; `TEST-PW02` (`TEST-PW02-password-forms.spec.ts`) shows the refusal in the forms (#845) | met | — |
 | V6.3.1 | 1 | Brute-force controls in place | Platform limits 5/min per IP+e-mail and 20/min per IP, fail-open (`OM/core/src/modules/auth/lib/rateLimitCheck.ts`), plus Vereino's 10 / 15 min per account (#738); counters in Redis on Railway (boot check); `ISSUE-738-sessionless-rate-limits`. Gap: the per-client counters share one key until the proxy depth is set (A-8) | partial | #739 |
 | V6.3.2 | 1 | No default accounts | `docs/ops/deploy.md` → *First deploy* sets `OM_INIT_SUPERADMIN_EMAIL`, a generated `OM_INIT_SUPERADMIN_PASSWORD` and own addresses for the two extra accounts `yarn initialize` always creates (`admin` / `employee` at the platform's demo domain `acme.com` otherwise), deletes those two, and runs the *Default account check* (`mercato auth list-users` filtered for `@acme.com` and derived accounts); both checked on a throwaway database (#747). Staging and production not yet checked by the owner (#747) | partial | #747 |
-| V6.3.3 | 2 | Multi-factor for access | Administrators, treasurers and the platform super-admin hold `foundation.second_factor.required` and sign in with Google or a password plus an e-mail code; the login wrapper answers a provisional `mfa_pending` token the platform refuses on every page, API route and refresh except the two completion routes (`foundation/second-factor/gate.ts`, `.ai/specs/2026-11-26-vereino-staff-second-factor.md` phase 1); `TEST-2F01-staff-email-code`, `TEST-2F03-google-and-reset` | met | — |
+| V6.3.3 | 2 | Multi-factor for access | Administrators, treasurers and the platform super-admin hold `foundation.second_factor.required` and sign in with Google or a password plus an e-mail code; the login wrapper answers a provisional `mfa_pending` token the platform refuses on every page, API route and refresh except the two completion routes (`foundation/second-factor/gate.ts`, `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md` phase 1); `TEST-2F01-staff-email-code`, `TEST-2F03-google-and-reset` | met | — |
 | V6.3.4 | 2 | No undocumented sign-in paths | Paths as V6.1.3; `OM_AUTOLOGIN_*` forbidden in production (`docs/ops/deploy.md`); API-key path and equal strength not reviewed | to verify | #743 |
 | V6.4.1 | 1 | Initial secrets random, expiring, single-use | No initial passwords: invitations are 32-byte CSPRNG links stored hashed, 48 h / 60 min (`foundation/services/accounts.ts`, `TEST-F04-create-account`); single use rests on platform reset confirm (code read) | to verify | #743 |
 | V6.4.2 | 1 | No hints or secret questions | Feature absent: no hint or security-question field in `auth` entities or Vereino modules | n/a | — |
@@ -186,7 +186,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V6.8.1 | 2 | No identity spoofing across IdPs | Links found only by (`provider`, `subject`), never by e-mail, no account creation (DD-S02/DD-S03, `foundation/services/identity.ts`); `TEST-S01-google-sign-in` refuses a tenant-B reuse of a subject | met | — |
 | V6.8.2 | 2 | Assertion signatures validated | `arctic` decodes the Google id token without a signature check by decision V-S04 (TLS back channel); iss/aud/azp/exp/sub checked in `foundation/lib/identity.ts`, `lib/__tests__/identity.test.ts` | partial | #743 |
 | V6.8.3 | 2 | SAML assertion replay | Feature absent: no SAML (enterprise `sso` not installed) | n/a | — |
-| V6.8.4 | 2 | IdP authentication strength checked | Google is the staff second factor; Google's ID token carries no reliable `amr`, so 2-Step Verification on the Google account cannot be checked — accepted by the owner (Q-2F04 of `.ai/specs/2026-11-26-vereino-staff-second-factor.md`, decided 2026-11-26); staff are asked to turn it on | n/a | #736 |
+| V6.8.4 | 2 | IdP authentication strength checked | Google is the staff second factor, and a staff member who connected Google must sign in with it: the password answers 403 `second_factor_use_google` (phase 2, #841; `foundation/services/second-factor/gate.ts`, `TEST-2F03-google-and-reset` item 9). Google's ID token carries no reliable `amr`, so 2-Step Verification on the Google account cannot be checked — accepted by the owner (Q-2F04 of `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`, decided 2026-11-26); the profile's "Connected accounts" asks staff to turn it on (`secondFactorRequired` of `GET /api/foundation/identity/me`) | partial | — |
 
 ### V7 Session Management
 

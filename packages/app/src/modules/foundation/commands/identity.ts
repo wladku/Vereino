@@ -10,7 +10,10 @@
 //   which the callback turns into the generic link failure with a fingerprint (nothing revealed).
 // - `foundation.identity.unlink` — the account holder's own link (`self_user`) or any link of the organization for
 //   the club administrator (`club_admin`), with the link's lock token; the last sign-in method is kept (409
-//   `identity_last_method`); the row is hard-deleted (DD-S06).
+//   `identity_last_method`); the row is hard-deleted (DD-S06). Staff second factor phase 2 (#841, DD-2F07): the Google
+//   link of someone else who holds `foundation.second_factor.required` is their second factor, so it is removed only
+//   through the reset (`foundation.second_factor.reset`, with a note and the end of their sessions): 409
+//   `second_factor_reset_required`. The account holder may still remove their own.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { z } from 'zod'
@@ -22,8 +25,10 @@ import { foundationErrors } from '../api/errors'
 import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { IDENTITY_PROVIDERS, canRemoveMethod } from '../lib/identity'
+import { providerCountsAsSecondFactor } from '../lib/second-factor'
 import { authorizeScoped } from '../services/authorize-scoped'
 import { identityEventPayload, lockedSignInMethods } from '../services/identity-links'
+import { holdsSecondFactorRequirement } from '../services/second-factor/requirement'
 
 export const IDENTITY_RESOURCE_KIND = 'foundation.identity_link'
 
@@ -172,6 +177,13 @@ const unlinkIdentityCommand: CommandHandler<Record<string, unknown>, IdentityCom
       )
       const link = authorized.entity as IdentityLink
       const scope = { tenantId: link.tenantId, organizationId: link.organizationId }
+      if (
+        link.userId !== ctx.auth?.sub &&
+        providerCountsAsSecondFactor(link.provider) &&
+        (await holdsSecondFactorRequirement(ctx.container, link.userId, scope))
+      ) {
+        return foundationErrors.throw('second_factor_reset_required')
+      }
       const methods = await lockedSignInMethods(em, scope, link.userId)
       if (!canRemoveMethod(methods.hasPassword, methods.linkCount)) {
         return foundationErrors.throw('identity_last_method')
