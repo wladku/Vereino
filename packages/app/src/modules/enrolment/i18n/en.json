@@ -200,7 +200,6 @@
   "enrolment.email.withdrawn.lead": "You have withdrawn your application to {section}.",
   "enrolment.email.withdrawn.subject": "Application withdrawn: {section}",
   "enrolment.errors.accept_person_invalid": "Choose a new person or one of the possible duplicates.",
-  "enrolment.errors.accept_requires_admin": "Only a club administrator can accept an application, because it adds persons to the club.",
   "enrolment.errors.age_out_of_bounds": "The age does not fit this form: a child must be 3–17 and an adult 18 or older.",
   "enrolment.errors.application_field_invalid": "Check the highlighted fields.",
   "enrolment.errors.application_group_invalid": "This group does not take applications. Choose another one.",

@@ -459,10 +459,8 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
   const stored = row.duplicateCandidates ?? []
   const [fees, candidates] = await Promise.all([
     groupFees(ctx.container, ctx.scope, row.sectionId),
-    // The names of existing club persons go to the club administrator only, who alone accepts (`accept_requires_admin`).
-    sections === 'all'
-      ? candidatePersons(ctx.container, ctx.scope, [...new Set(stored.map((entry) => entry.personId))])
-      : Promise.resolve(new Map<string, { name: string; birthDate: string | null; hasAccount: boolean }>()),
+    // Every decider of the section sees the possible duplicates and may reuse one on accept (J-J05, #800).
+    candidatePersons(ctx.container, ctx.scope, [...new Set(stored.map((entry) => entry.personId))]),
   ])
   const groups = reference
     .filter((target) => target.isActive)

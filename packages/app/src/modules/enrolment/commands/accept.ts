@@ -15,7 +15,10 @@
 // The nested commands share the transaction (`transactionalEm`) and defer their events (`bulkImport`, the people
 // import's pattern); after the commit the owners' events are emitted, then the account invitation
 // (`people.persons.create_account`, on by default, Q-J08) runs — a failed invitation never undoes the acceptance.
-// Creating persons is a club administrator's write in `people`; a coordinator gets 403 `accept_requires_admin`.
+// Delegated acceptance (owner default 2026-11-27 on #800): the decider is any user BR-J5 lets decide the section, a
+// coordinator included. Creating persons, guardianships and accounts stays a club administrator's write in `people`,
+// so after the section check the three `people` commands run in a server-only job context of the application's club
+// (`system_job`); no user gains that right outside this flow, and this command's audit entry names the decider.
 // Not undoable: a mistake is corrected with the roster's End/Remove and the person screens (DD-J10).
 import type { EntityManager } from '@mikro-orm/postgresql'
 import {
@@ -26,7 +29,7 @@ import {
 } from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { createLogger } from '@open-mercato/shared/lib/logger'
-import { assertTransition } from '@/modules/foundation'
+import { assertTransition, jobCommandContext } from '@/modules/foundation'
 import type { MembershipImporter } from '../../people/services/membership-importer'
 import type { PersonDirectory } from '../../people/services/person-directory'
 import { enrolmentErrors } from '../api/errors'
@@ -92,6 +95,18 @@ function nestedContext(ctx: CommandRuntimeContext, em: EntityManager): CommandRu
   return { ...ctx, request: undefined, transactionalEm: em, bulkImport: { skipEvents: true, skipReindex: true } }
 }
 
+/**
+ * The context of the nested `people` writes: the club's job context (`system_job`), the accept's transaction and the
+ * deferred events. Built only after `authorizeDecision` passed for the application's section (BR-J5).
+ */
+function peopleContext(ctx: CommandRuntimeContext, scope: EnrolmentScope, em: EntityManager): CommandRuntimeContext {
+  return {
+    ...jobCommandContext(ctx.container, scope),
+    transactionalEm: em,
+    bulkImport: { skipEvents: true, skipReindex: true },
+  }
+}
+
 function directory(ctx: CommandRuntimeContext): PersonDirectory {
   return ctx.container.resolve<PersonDirectory>(PEOPLE_PERSON_DIRECTORY)
 }
@@ -105,19 +120,14 @@ function membershipImporter(ctx: CommandRuntimeContext): MembershipImporter {
 
 type CreatedPerson = { person: Ids & { userId?: string | null; birthDate?: string | null } }
 
-/** `people.persons.create` nested; a refusal of the caller's grant becomes 403 `accept_requires_admin`. */
+/** `people.persons.create` nested in the job context. */
 async function createPerson(
   bus: CommandBus,
   nested: CommandRuntimeContext,
   input: Record<string, string>,
 ): Promise<CreatedPerson['person']> {
-  try {
-    const { result } = await bus.execute<unknown, CreatedPerson>('people.persons.create', { input, ctx: nested })
-    return result.person
-  } catch (error: unknown) {
-    if (errorCodeOf(error) === 'scope_denied') return enrolmentErrors.throw('accept_requires_admin')
-    throw error
-  }
+  const { result } = await bus.execute<unknown, CreatedPerson>('people.persons.create', { input, ctx: nested })
+  return result.person
 }
 
 function present(values: Record<string, string | null | undefined>): Record<string, string> {
@@ -141,7 +151,6 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
       const input = authorized.parsed
       const scope: EnrolmentScope = { tenantId: row.tenantId, organizationId: row.organizationId }
       if (!isDecidableState(row.state)) return enrolmentErrors.throw('application_state_conflict')
-      if (authorized.actingRole !== 'club_admin') return enrolmentErrors.throw('accept_requires_admin')
       const before = applicationSnapshot(row)
       const settings = await enrolmentSettings(ctx.container, scope)
       const today = clubDay(settings, now)
@@ -210,12 +219,13 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
 
       const bus = ctx.container.resolve<CommandBus>('commandBus')
       const nested = nestedContext(ctx, em)
+      const asJob = peopleContext(ctx, scope, em)
       const adult = row.kind === 'adult'
       let participantId = plan.participant.reuse
       if (!participantId) {
         const person = await createPerson(
           bus,
-          nested,
+          asJob,
           present({
             firstName: app.participantFirstName,
             lastName: app.participantLastName,
@@ -234,7 +244,7 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
         if (!guardianId) {
           const person = await createPerson(
             bus,
-            nested,
+            asJob,
             present({
               firstName: app.guardianFirstName ?? '',
               lastName: app.guardianLastName ?? '',
@@ -250,25 +260,20 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
         const guardians = (await directory(ctx).activeGuardians(scope, [participantId], today, em)).get(participantId)
         if (!guardians?.includes(guardianId)) {
           const payers = await directory(ctx).primaryPayers(scope, [participantId], today, em)
-          try {
-            const { result: link } = await bus.execute<
-              unknown,
-              { guardianship: Ids & { guardianPersonId: string; wardPersonId: string } }
-            >('people.guardianships.create', {
-              input: {
-                guardianPersonId: guardianId,
-                wardPersonId: participantId,
-                relation: 'parent',
-                isPrimaryPayer: !payers.has(participantId),
-                validFrom: today,
-              },
-              ctx: nested,
-            })
-            written.guardianship = link.guardianship
-          } catch (error: unknown) {
-            if (errorCodeOf(error) === 'scope_denied') return enrolmentErrors.throw('accept_requires_admin')
-            throw error
-          }
+          const { result: link } = await bus.execute<
+            unknown,
+            { guardianship: Ids & { guardianPersonId: string; wardPersonId: string } }
+          >('people.guardianships.create', {
+            input: {
+              guardianPersonId: guardianId,
+              wardPersonId: participantId,
+              relation: 'parent',
+              isPrimaryPayer: !payers.has(participantId),
+              validFrom: today,
+            },
+            ctx: asJob,
+          })
+          written.guardianship = link.guardianship
         }
       }
 
@@ -341,7 +346,7 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
     try {
       await ctx.container.resolve<CommandBus>('commandBus').execute('people.persons.create_account', {
         input: { id: written.invitation.personId, email: written.invitation.email },
-        ctx,
+        ctx: jobCommandContext(ctx.container, scope),
       })
       return result
     } catch (error: unknown) {

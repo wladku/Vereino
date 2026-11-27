@@ -31,7 +31,7 @@ import {
   type DecisionOutcome,
 } from './applications-client'
 
-const DECIDE_FEATURES = ['enrolment.applications.decide', 'enrolment.manage'] as const
+const DECIDE_FEATURES = ['enrolment.applications.decide'] as const
 
 export type ApplicationViewProps = {
   id: string
@@ -298,8 +298,8 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
 
   const application = query.data.application
   const canDecide = application.canDecide && grants['enrolment.applications.decide']
-  // Accepting creates club persons, a club administrator's write in `people` (`accept_requires_admin` otherwise).
-  const canAccept = canDecide && grants['enrolment.manage']
+  // Everyone who decides the section may accept (delegated acceptance, #800).
+  const canAccept = canDecide
 
   const onOutcome = (outcome: DecisionOutcome) => {
     const decided = sheet

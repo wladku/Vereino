@@ -180,6 +180,7 @@ export function acceptedRow(
   accepted_child_person_id: string | null
   accepted_guardian_person_id: string | null
   accepted_membership_id: string | null
+  decided_by_user_id: string | null
 }> {
   return withClient(async (client) => {
     const { rows } = await client.query<{
@@ -188,8 +189,10 @@ export function acceptedRow(
       accepted_child_person_id: string | null
       accepted_guardian_person_id: string | null
       accepted_membership_id: string | null
+      decided_by_user_id: string | null
     }>(
-      `select state, note, accepted_child_person_id, accepted_guardian_person_id, accepted_membership_id
+      `select state, note, accepted_child_person_id, accepted_guardian_person_id, accepted_membership_id,
+              decided_by_user_id
          from enrolment_applications where organization_id = $1 and id = $2`,
       [club.tenant.organizationId, id],
     )

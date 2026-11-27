@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { calendarDate, createClub, createPerson, getPerson, uniqueSuffix } from '../_fixtures/club'
+import { calendarDate, call, createClub, createPerson, getPerson, uniqueSuffix } from '../_fixtures/club'
 import { create as createStructure } from '../_fixtures/club-structure'
 import { awaitEmails } from '../_fixtures/communication'
 import {
@@ -21,8 +21,9 @@ import { guardianships } from '../_fixtures/people'
 // guardian, whose birth date the decider gives on the sheet, the account invitation after the commit. A second child of
 // the same guardian (same e-mail) reuses the guardian, so no second guardian is created. A child already in the club
 // (same name and birth date) is reused; accepting it into the group it is already in answers 409
-// `participant_already_in_group`. Only a possible duplicate may be reused (422), and a coordinator, who cannot create club
-// persons, gets 403 `accept_requires_admin`.
+// `participant_already_in_group`. Only a possible duplicate may be reused (422). Delegated acceptance (#800): the section's
+// coordinator accepts the new family — the persons and the guardianship are written in the club's job context — while
+// creating a person directly stays refused to the coordinator.
 test.describe.configure({ timeout: 360_000 })
 
 type Duplicate = { personId: string; role: string; reason: string; name: string | null; hasAccount: boolean }
@@ -84,16 +85,13 @@ test('TEST-J07 accept a new family, reuse a guardian and a child', async ({ requ
       role: 'coordinator',
       sectionId: section,
     })
-    const refused = await acceptApplication(request, coordinator.token, olaId, {
-      groupId: zaki,
-      startDay: today,
-      sendInvitation: false,
-      updatedAt: ola?.updatedAt,
+    // No new right outside the accept flow: the coordinator still cannot create a club person directly.
+    const direct = await call(request, 'POST', '/api/people/persons', coordinator.token, {
+      data: { firstName: 'Not', lastName: `Allowed${tag}` },
     })
-    expect(refused.status, JSON.stringify(refused.body)).toBe(403)
-    expect(refused.body?.code).toBe('accept_requires_admin')
+    expect(direct.status, JSON.stringify(direct.body)).toBe(403)
 
-    const accepted = await acceptApplication(request, admin, olaId, {
+    const accepted = await acceptApplication(request, coordinator.token, olaId, {
       groupId: zaki,
       startDay: today,
       guardian: { birthDate: '1988-05-01' },
@@ -129,6 +127,7 @@ test('TEST-J07 accept a new family, reuse a guardian and a child', async ({ requ
       accepted_child_person_id: childId,
       accepted_guardian_person_id: guardianId,
       accepted_membership_id: accepted.body?.membershipId,
+      decided_by_user_id: coordinator.userId,
     })
     const welcome = await awaitEmails(anna, 'Welcome to Piłka nożna J07')
     expect(welcome[0].text).toContain('Żaki')

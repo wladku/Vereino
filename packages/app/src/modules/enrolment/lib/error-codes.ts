@@ -26,8 +26,6 @@ export const errorCodes = [
     status: 422,
     messageKey: 'enrolment.errors.invitation_birth_date_required',
   },
-  // Creating persons and guardianships is a club administrator's write in `people` (`people.persons.create`).
-  { code: 'accept_requires_admin', status: 403, messageKey: 'enrolment.errors.accept_requires_admin' },
 ] as const satisfies ErrorCodeTable
 
 export type EnrolmentErrorCode = (typeof errorCodes)[number]['code']

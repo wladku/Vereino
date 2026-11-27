@@ -48,7 +48,6 @@ const KNOWN_PROBLEMS = new Set([
   'application_group_invalid',
   'accept_person_invalid',
   'invitation_birth_date_required',
-  'accept_requires_admin',
 ])
 
 type Candidate = ApplicationDetail['duplicates'][number]

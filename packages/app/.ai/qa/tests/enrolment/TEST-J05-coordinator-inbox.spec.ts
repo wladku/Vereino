@@ -125,6 +125,7 @@ test('TEST-J05 coordinator inbox, administrator view and flags', async ({ page, 
     expect((detail.body?.duplicates as { role: string; reason: string }[])[0]).toMatchObject({
       role: 'guardian',
       reason: 'email',
+      name: expect.stringContaining('Ewa'),
     })
 
     // Past the answer time (7 days).
@@ -162,6 +163,8 @@ test('TEST-J05 coordinator inbox, administrator view and flags', async ({ page, 
       await page.goto(`/club/applications/${String(stas?.id)}`)
       await expect(page.getByTestId('enrolment-application')).toBeVisible()
       await expect(page.getByTestId('enrolment-action-reject')).toBeVisible()
+      // Delegated acceptance (#800): the section's coordinator is offered Accept too.
+      await expect(page.getByTestId('enrolment-action-accept')).toBeVisible()
       await expectNoPageOverflow(page, 375)
       Object.assign(
         violations,

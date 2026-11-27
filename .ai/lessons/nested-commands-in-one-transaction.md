@@ -16,7 +16,12 @@ topics: ["commands", "transactions", "events", "indexing", "optimistic-lock", "g
 Two more facts from #800 (2026-11-27, the enrolment accept): (1) a nested command authorizes with the **caller's**
 grants — `people.persons.create`, `people.guardianships.create` and `people.persons.create_account` allow only
 `club_admin`, so a coordinator's composed command fails inside with 403 `scope_denied`; check every nested command's
-`allowedKinds` while designing, and never widen them unasked (Ask First: security). (2) A command in another module
+`allowedKinds` while designing, and never widen them unasked (Ask First: security). The approved way out (owner
+default on #800, 2026-11-27, "delegated acceptance"): the composing command first authorizes its own user for its own
+resource (BR-J5), then runs the owner's commands in `jobCommandContext(container, scope)` plus `transactionalEm` and
+`bulkImport`; the owner's command accepts `system_job` only from such a context (`sessionOrJob(ctx, kinds)` in
+`people/commands/shared.ts`). The composing command's audit entry names the user; never pass a session context and a
+`system_job` grant together. (2) A command in another module
 cannot import the owner's event configs (`personEvents`, S4.3): prefer an owner seam that returns its own emitter
 (`groups.membershipImporter.emitSideEffects`), else emit the owner's published payload after the commit from a small
 service in your module (`enrolment/services/owner-events.ts`) and name the contract it mirrors.

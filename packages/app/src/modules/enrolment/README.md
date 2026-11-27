@@ -23,7 +23,7 @@ Rules:
 - **No enumeration.** The form answers 202 for a repeated application (a new link instead of a second row) and the resend routes answer 202 for any address.
 - **Waiting numbers are computed** from `waiting_since` per group (ties by id), never stored.
 - **Scope (BR-J5).** A coordinator decides the applications of their sections; an application of another section answers 404. Applications of a section without a coordinator reach the club administrators.
-- **Accepting is a club administrator's write.** It creates club persons through `people.persons.create`, `people.guardianships.create` and `people.persons.create_account`, which only a club administrator may run; a coordinator gets 403 `accept_requires_admin` and the sheet is not offered.
+- **Delegated acceptance (#800).** Every decider of the section (BR-J5: its coordinators and the club administrators) may accept. After that check the accept runs `people.persons.create`, `people.guardianships.create` and `people.persons.create_account` in a server-only job context of the club (`system_job`), so a coordinator gains no right to create persons outside this flow; the audit entry of `enrolment.applications.accept` names the decider.
 - **Only a found duplicate is reused.** The accept sheet offers a new person or a possible duplicate of that role (DD-J11); any other person id answers 422.
 
 Not yet built: trial sessions (phase 4).

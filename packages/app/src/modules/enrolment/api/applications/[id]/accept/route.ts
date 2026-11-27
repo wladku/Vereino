@@ -78,7 +78,7 @@ export const openApi: OpenApiRouteDoc = {
       errors: [
         { status: 400, description: 'Invalid input, `lock_token_required`', schema: errorSchema },
         { status: 401, description: 'Unauthorized', schema: errorSchema },
-        { status: 403, description: '`accept_requires_admin`', schema: errorSchema },
+        { status: 403, description: 'Missing feature `enrolment.applications.decide`', schema: errorSchema },
         { status: 404, description: '`application_not_found`', schema: errorSchema },
         {
           status: 409,

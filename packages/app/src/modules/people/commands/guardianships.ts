@@ -48,6 +48,7 @@ import {
   loadGuardianshipLocked,
   loadPersonLocked,
   lockPerson,
+  sessionOrJob,
   type GuardianshipSnapshot,
 } from './shared'
 
@@ -315,7 +316,8 @@ const createGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
           {
             input: guardianshipCreateSchema,
             resourceKind: RESOURCE_KIND,
-            allowedKinds: MANAGE_KINDS,
+            // A job context: the accept of an application, after `enrolment` authorized its decider (#800).
+            ...sessionOrJob(ctx, MANAGE_KINDS),
             resolveTarget: (parsed, _entity, scope) => ({ id, ...scope, personId: parsed.wardPersonId }),
           },
           rawInput,

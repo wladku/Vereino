@@ -200,7 +200,6 @@
   "enrolment.email.withdrawn.lead": "Zgłoszenie do sekcji {section} zostało wycofane.",
   "enrolment.email.withdrawn.subject": "Zgłoszenie wycofane: {section}",
   "enrolment.errors.accept_person_invalid": "Wybierz nową osobę albo jeden z możliwych duplikatów.",
-  "enrolment.errors.accept_requires_admin": "Zgłoszenie może przyjąć tylko administrator klubu, bo dodaje osoby do klubu.",
   "enrolment.errors.age_out_of_bounds": "Wiek nie pasuje do tego formularza: dziecko musi mieć 3–17 lat, a dorosły co najmniej 18.",
   "enrolment.errors.application_field_invalid": "Sprawdź zaznaczone pola.",
   "enrolment.errors.application_group_invalid": "Ta grupa nie przyjmuje zgłoszeń. Wybierz inną.",
