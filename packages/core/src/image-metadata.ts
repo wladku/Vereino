@@ -94,9 +94,10 @@ function keepJpegSegment(marker: number, payload: Uint8Array): boolean {
  * file ends first.
  */
 function entropyDataEnd(bytes: Uint8Array, position: number): number | null {
+  const view = viewOf(bytes)
   for (let index = position; index + 1 < bytes.length; index++) {
     if (bytes[index] !== 0xff) continue
-    const next = bytes[index + 1]
+    const next = view.getUint8(index + 1)
     if (next !== 0x00 && (next < 0xd0 || next > 0xd7)) return index
   }
   return null
