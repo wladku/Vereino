@@ -109,6 +109,9 @@
         "why": "Changes only the caller's own consents (the person comes from the session); the body names no record."
       }
     },
+    "/api/people/me/consents/[personId]/image-history": {
+      "GET": { "probe": "foreign-id", "params": { "personId": "$B:memberPerson" } }
+    },
     "/api/people/me/departure-requests": {
       "GET": { "probe": "read" },
       "POST": {
@@ -173,6 +176,9 @@
         "params": { "id": "$B:memberPerson" },
         "body": { "id": "$B:memberPerson", "changes": { "image": true } }
       }
+    },
+    "/api/people/persons/[id]/consents/image-history": {
+      "GET": { "probe": "foreign-id", "params": { "id": "$B:memberPerson" } }
     },
     "/api/people/persons/[id]/medical": {
       "PUT": {
