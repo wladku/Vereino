@@ -50,3 +50,14 @@
 ## Open problems / next steps
 
 - None for #833. The per-IP rate limit for Facebook's shared IPs stays as is (out of scope).
+
+## 2026-11-27 — base refresh (om-auto-fix-pr, PR #844)
+
+- Trigger: PR #844 conflicted with `main` again (`merge-train-conflict`). Worked on a detached HEAD at the PR head and
+  merged `origin/main` (no force-push, no history rewrite).
+- Conflict: `.ai/lessons/verify-lint-heap-out-of-memory.md` was added on both sides (`main` got the same slug from the
+  #870 run). Kept `main`'s record and added #833 as a second occurrence plus this branch's rule that the gate ends with
+  one full green run and the lint config is never edited. The spec and code merged cleanly.
+- `NODE_OPTIONS=--max-old-space-size=8192 yarn verify` — `all 24 step(s) passed`.
+- `yarn test:integration:vereino --filter TEST-S03` — `1 passed (1.1m)`.
+- `yarn guard` — no blocking findings.
