@@ -20,6 +20,7 @@ import { foundationErrors } from '../api/errors'
 import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { identityEventPayload } from './identity-links'
+import { limitStaffSessionAtSignIn } from './staff-session'
 import {
   HANDOFF_TTL_MS,
   STATE_COOKIE,
@@ -294,6 +295,8 @@ export async function issueSession(
     email: user.email,
     roles,
   })
+  // A staff account's session ends after the idle timeout (S8.5, ENG-Q-12; #737), as after a password sign-in.
+  await limitStaffSessionAtSignIn(em, { sessionId: session.id, userId: user.id, roles })
   await em.nativeUpdate(
     IdentityLink,
     { id: link.id, tenantId: link.tenantId, organizationId: link.organizationId },

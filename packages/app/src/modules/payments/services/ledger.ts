@@ -42,11 +42,12 @@ export async function paidTotals(
   container: AwilixContainer,
   scope: PaymentsScope,
   chargeIds: readonly string[],
+  em?: EntityManager,
 ): Promise<Map<string, number>> {
   const unique = [...new Set(chargeIds)]
   const totals = new Map<string, number>()
   if (unique.length === 0) return totals
-  const rows = await freshEm(container).find(
+  const rows = await (em ?? freshEm(container)).find(
     Payment,
     { ...scope, chargeId: { $in: unique }, isOverpayment: false, deletedAt: null },
     { fields: ['id', 'chargeId', 'amount'] },
@@ -70,10 +71,12 @@ export async function chargeDescriptions(
   container: AwilixContainer,
   scope: PaymentsScope,
   chargeIds: readonly string[],
+  em?: EntityManager,
 ): Promise<Map<string, string>> {
   if (chargeIds.length === 0) return new Map()
+  // Decrypted on a fork with its own identity map; given `em`, on its transaction's connection (#836).
   const rows = await findWithDecryption(
-    freshEm(container),
+    em ? em.fork({ keepTransactionContext: true }) : freshEm(container),
     Charge,
     { id: { $in: [...chargeIds] }, ...scope, deletedAt: null },
     { fields: ['id', 'description'] },

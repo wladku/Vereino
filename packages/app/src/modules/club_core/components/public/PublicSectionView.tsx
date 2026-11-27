@@ -5,11 +5,14 @@
 // its schedule and instructors from the `groups` and `activities` providers (#91; `PublicClasses`). Each card's fee
 // and sibling discount come from `payments.publicPrices` (#112); without public groups the classes area says that no classes are published.
 // A breadcrumb "Club › Sections › {name}" leads back to the club page (E06-S07, #89).
+// The spot `vereino:public:section:actions` (context `{ clubSlug, sectionSlug, placement }`) renders once under the
+// section's header and once after the classes: `enrolment` puts its "Apply" button there (sign-up form spec P-J1, #799).
 // Headings: h1 section, h2 blocks. States: loading, error with retry, 404 with a link back to the club page (#263) and
 // "the club does not publish a page".
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton } from '@vereino/ui'
@@ -38,6 +41,16 @@ function Block({ id, title, children }: { id: string; title: string; children: R
 
 /** The next step under an empty list (REQ-N15). */
 const EMPTY_ACTION_CLASS = 'inline-flex min-h-11 items-center underline underline-offset-4 sm:min-h-6'
+
+/** The section's actions from other modules (the "Apply" button of `enrolment`, P-J1 #799). */
+function SectionActions({ page, placement }: { page: PublicSectionPage; placement: 'header' | 'footer' }) {
+  return (
+    <InjectionSpot
+      spotId="vereino:public:section:actions"
+      context={{ clubSlug: page.club.slug, sectionSlug: page.section.slug, placement }}
+    />
+  )
+}
 
 /** "Club › Sections › {name}" (E06-S07, #89): the way back to the club page and to its section tiles. */
 function Breadcrumb({ page }: { page: PublicSectionPage }) {
@@ -99,6 +112,7 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
           ) : null}
         </div>
       </section>
+      <SectionActions page={page} placement="header" />
       <Block id="classes" title={t('club_core.public.classes.title')}>
         <PublicClasses
           groups={blocks.groups}
@@ -117,6 +131,7 @@ function SectionBody({ page }: { page: PublicSectionPage }) {
           }
         />
       </Block>
+      <SectionActions page={page} placement="footer" />
       {blocks.conditions ? (
         <Block id="conditions" title={t('club_core.public.conditions.title')}>
           <p className="max-w-prose whitespace-pre-line">{blocks.conditions.text}</p>

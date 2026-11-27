@@ -26,6 +26,7 @@ import { PAYMENTS_CHARGE_SERVICE, createChargeService } from './services/charge-
 import { PAYMENTS_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { PAYMENTS_DEPARTURE_CONTRIBUTOR, departureContribution } from './services/departure-contribution'
 import { PAYMENTS_ORDER_LINKS } from './services/order-links'
+import { PAYMENTS_PAID_ON_TIME, createPaidOnTime } from './services/paid-on-time'
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { PAYMENTS_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
 import { TEST_GATEWAY_PROVIDER, readTestGatewaySessionId, testGatewayAdapter } from './services/test-gateway'
@@ -99,6 +100,9 @@ export function register(container: AppContainer) {
     // persons' names through `people.personDirectory`.
     [PAYMENTS_DATA_EXPORT_CONTRIBUTOR]: asFunction(() => createDataExportContribution(container)).scoped(),
     [PAYMENTS_PUBLIC_PRICES]: asFunction(() => createPublicPrices(container)).scoped(),
+    // `payments.paidOnTime` (E27-S03, #820): the "Paid on time" indicator of the pilot report, which `activities`
+    // reads with `hasRegistration`; without `payments` the report hides it. Read only, counts per section.
+    [PAYMENTS_PAID_ON_TIME]: asFunction(() => createPaidOnTime(container)).scoped(),
   })
   // The gateway registries live on `globalThis`, so registering again for every container replaces the same entry.
   if (checkoutProviderKey() !== TEST_GATEWAY_PROVIDER) return

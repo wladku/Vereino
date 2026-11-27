@@ -50,6 +50,14 @@ export const errorCodes = [
   { code: 'password_policy', status: 422, messageKey: 'foundation.errors.password_policy' },
   { code: 'password_too_common', status: 422, messageKey: 'foundation.errors.password_too_common' },
   { code: 'password_context_word', status: 422, messageKey: 'foundation.errors.password_context_word' },
+  // ENG-Q-12 (#737): an own login e-mail change outside `PUT /api/foundation/profile/email` (the command interceptor
+  // `foundation.email-change-confirmation`), and a wrong current password on that route.
+  {
+    code: 'email_change_confirmation_required',
+    status: 403,
+    messageKey: 'foundation.errors.email_change_confirmation_required',
+  },
+  { code: 'current_password_invalid', status: 400, messageKey: 'foundation.errors.current_password_invalid' },
 ] as const satisfies ErrorCodeTable
 
 export type FoundationErrorCode = (typeof errorCodes)[number]['code']

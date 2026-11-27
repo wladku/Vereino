@@ -55,7 +55,7 @@ async function ledSessions(
   subject: DepartureSubject,
   lock: boolean,
 ): Promise<Occurrence[]> {
-  const { timeZone } = await clubClock(container, scopeOf(subject))
+  const { timeZone } = await clubClock(container, scopeOf(subject), undefined, em)
   const from = zonedInstant(addDays(subject.lastDay, 1), '00:00', timeZone)
   return em.find(
     Occurrence,
@@ -246,7 +246,10 @@ export function createDepartureContribution(container: AwilixContainer): Departu
       const scope = { tenantId: ctx.tenantId, organizationId: ctx.organizationId }
       const entryIds = changes.filter((change) => change.kind === 'substitution_entry').map((c) => c.recordId)
       if (entryIds.length > 0) {
-        const em = ctx.container.resolve<EntityManager>('em').fork()
+        // Inside the replay transaction on undo/redo: its connection, not a second pooled one (#836).
+        const em = ctx.em
+          ? ctx.em.fork({ keepTransactionContext: true })
+          : ctx.container.resolve<EntityManager>('em').fork()
         const entries = await em.find(SubstitutionEntry, { ...scope, id: { $in: entryIds } })
         const sessions = await em.find(Occurrence, {
           ...scope,

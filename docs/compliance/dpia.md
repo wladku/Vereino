@@ -28,10 +28,11 @@ a DPIA is carried out.
 - **Nature.** A web application for one club: membership register, guardianships and consents, groups and session
   attendance, messages and e-mail notices, fees and payments (manual, bank import, online through Stripe), orders,
   place rentals for outside renters, facility logs and incidents, the validity date of sports medical certificates
-  (art. 9 data, with explicit consent; #682). The activities A1–A15 and their tables are in [`ropa.md`](ropa.md).
-- **Scope.** The pilot club: its members, wards, guardians, staff and outside renters — in the order of hundreds of
-  people, one organization. No profiling, no automated decisions with legal effect, no monitoring of public places,
-  no biometric, genetic or location data.
+  (art. 9 data, with explicit consent; #682), the shared outline library, applications to a section from people who
+  are not members (#799). The activities A1–A17 and their tables are in [`ropa.md`](ropa.md).
+- **Scope.** The pilot club: its members, wards, guardians, staff, outside renters and applicants — in the order of
+  hundreds of people, one organization. No profiling, no automated decisions with legal effect, no monitoring of
+  public places, no biometric, genetic or location data.
 - **Context.** Children cannot judge the processing themselves; guardians act for them (S9.3). Accounts of 13–17-year
   olds are enabled by a guardian, never by self sign-up; consent-based options follow the 16-year rule (B1). Staff
   are volunteers or part-time coaches using their own phones.
@@ -46,7 +47,7 @@ a DPIA is carried out.
 | Lawful basis | art. 6(1)(b) for core processing, 6(1)(c) for accounting, 6(1)(f) for safety logs, 6(1)(a) only for optional processing, art. 9(2)(a) explicit consent for the medical certificate date (S9.2; [`ropa.md`](ropa.md) A15) |
 | Minimisation | a field exists only if a club spec requirement needs it; PESEL optional; of a medical certificate only the "valid until" date; public pages show no participant or guardian names; no personal data in logs, events, URLs or errors (S9.4) |
 | Accuracy | members correct their contacts themselves (`PUT /api/people/me`); staff correct the rest ([`data-subject-requests.md`](data-subject-requests.md)) |
-| Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3; R9 enforced since #525) |
+| Storage limitation | [`retention.md`](retention.md) — several periods are not yet enforced by a job (gaps R1, R3; R9 enforced since #525); applications to a section are deleted or anonymised by the `enrolment` jobs (R22–R24) |
 | Information | privacy notices in Polish and English and a short version for children (E19-S03, #469) |
 | Data subjects' rights | [`data-subject-requests.md`](data-subject-requests.md) |
 | Processors and transfers | [`processors.md`](processors.md); DPA not yet signed (P-0) |
@@ -62,7 +63,7 @@ open measures are listed in §5.
 | D-1 | Another club or an outsider reads a child's data through a scope or authorization bug | low | high | server-derived tenant and organization scope, fail closed; feature-based ACL; second-tenant and insufficient-feature tests per route (S8.3, S13.4) | low |
 | D-2 | A staff member reads more than needed (e.g. all guardians' phone numbers) | medium | medium | contacts shown to coaches only with the `share_contact_with_coaches` consent; every read logged in `activities_contact_access_log` | low |
 | D-3 | A personal link (declaration, order, rental) is forwarded or leaked and opened by someone else | medium | medium | 32-byte tokens stored as hashes, one purpose and one subject, expiry, `no-referrer`, `no-store` (S8.6, S8.7) | medium — dead tokens are deleted 30 days after use or expiry (R9, #525) |
-| D-4 | An administrator's or treasurer's account is taken over (phishing, reused password) and payment or child data is exposed or changed | medium | high | platform sign-in rate limits; audit log | **medium** — no MFA in 1.0 (ENG-Q-09) and 8-hour sessions without idle timeout (ENG-Q-12) |
+| D-4 | An administrator's or treasurer's account is taken over (phishing, reused password) and payment or child data is exposed or changed | medium | high | platform sign-in rate limits; audit log; staff sessions end after 30 min idle and within 8 h, no "remember me" for staff, an e-mail change needs the current password (ENG-Q-12, #737) | **medium** — no MFA in 1.0 (ENG-Q-09) |
 | D-5 | Data are lost (database failure, operator mistake) | low | medium | nightly encrypted off-site dump, restore drill, RTO ≤ 60 min ([`backups.md`](../ops/backups.md)) | medium — up to 24 h of data can be lost (no PITR, ENG-Q-03) |
 | D-6 | Payment data are misused (wrong person charged, fraud with account numbers from bank imports) | low | high | encrypted counterparty data; only exact payer-code matches booked automatically (S10.7); immutable payments; no card data stored | low |
 | D-7 | E-mail goes to the wrong person or reveals another family's data | low | medium | templates without other participants' names; addresses from the person record; staging only to an allowlist (S12.6) | low |
@@ -73,6 +74,7 @@ open measures are listed in §5.
 | D-12 | A child's name or image is published without permission | low | high | public pages show no participant names (S9.4); image and name publication only with recorded consent (S9.2) | low |
 | D-13 | A person cannot get a copy of their data (no export) or the request is missed | medium | low | procedure ([`data-subject-requests.md`](data-subject-requests.md)) and the logged person data export (#527) | low |
 | D-14 | A coach sees health-related data of players (medical certificate validity); exposed if a staff account is taken over (#682) | medium | medium | only a "valid until" date, no scan, result, doctor or diagnosis; encrypted with the club's tenant key; coaches see status and date only for their own groups, and every coach read is logged through `auditedRead`; stored only with explicit consent of the adult or a guardian, cleared on withdrawal, erasure, or 12 months after the date passed (R20) | low — legal basis to be confirmed by the lawyer before the production release (Q-O06); account takeover as D-4 |
+| D-15 | Applications to a section (A17, #799): a stranger submits a child's data that is not theirs; a mistyped e-mail sends the confirmation or status link to someone else, who sees the child's name and the application; the public form is used for spam or to probe who applied | medium | medium | one-time confirmation link valid 1 hour, and nothing reaches the club (no notice, no inbox row) before it is confirmed; unconfirmed applications deleted after 24 hours (R22); only the fields of BR-J1 — no address, PESEL, school or health data; honeypot, per-IP limits and a fail-closed per-e-mail limit; names, contacts and note encrypted with the club's tenant key, lookups by keyed hashes only; the status page shows only that one application and no person of the club; the form and the link requests answer a uniform 202, so they reveal nothing about who applied; closed applications anonymised 30 days after closing (R23, R24) | low — legal basis and information text to be confirmed by the lawyer before the production release (Q-J09) |
 
 ## 4. Measures (art. 35(7)(d))
 
@@ -84,7 +86,7 @@ and [`asvs-checklist.md`](asvs-checklist.md); the incident and breach path is in
 | Id | Measure | Reduces | Owner |
 |---|---|---|---|
 | DP-1 | Sign the DPA; confirm regions and transfer mechanisms of Railway and Resend; choose the backup provider and the uptime monitor (P-0 … P-5) | D-11 | product owner |
-| DP-2 | Decide ENG-Q-09 (MFA) and ENG-Q-12 (session lifetime); at least hide "remember me" for staff roles | D-4 | product owner |
+| DP-2 | Decide ENG-Q-09 (MFA); ENG-Q-12 (session lifetime) answered and built on 2026-11-26 (#737) | D-4 | product owner |
 | DP-3 | Build the retention jobs: former participants after 12 months (#471), dead tokens, and the open periods (R-A … R-G) | D-3, D-9, D-10 | #471, #525, #526, #528 |
 | DP-4 | Club instruction to staff on free text; decide the art. 9(2) basis for incident and substitution notes (e.g. art. 9(2)(c) vital interests or (f) legal claims) | D-8 | club |
 | DP-5 | ~~Person data export for access and portability~~ — done (#527) | D-13 | #527 |

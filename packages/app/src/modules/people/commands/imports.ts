@@ -623,7 +623,7 @@ async function rerunMemberships(
     scope,
   )
   if (rows.length === 0) return peopleErrors.throw('import_already_committed')
-  const today = await clubToday(ctx.container, scope)
+  const today = await clubToday(ctx.container, scope, undefined, em)
   const candidates = rows.map((row) => ({
     row,
     participantPersonId: row.result?.participantPersonId ?? null,
@@ -691,7 +691,7 @@ const commitImportCommand: CommandHandler<Record<string, unknown>, ImportCommitR
         { orderBy: { rowNo: 'asc' } },
         scope,
       )
-      const today = await clubToday(ctx.container, scope)
+      const today = await clubToday(ctx.container, scope, undefined, em)
       const { plans, directory } = await planStoredImport(em, record, rows, today)
       const pending = plans.filter((plan) => plan.needsDecision).map((plan) => plan.rowNo)
       if (pending.length > 0) return peopleErrors.throw('import_review_pending', { rowNos: pending.slice(0, 50) })
