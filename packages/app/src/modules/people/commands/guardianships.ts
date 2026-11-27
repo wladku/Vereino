@@ -7,7 +7,10 @@
 // person with a live guardian is not a guardian, a live guardian is not a ward (422, `assertLinkAllowed`). A guardian
 // of the ward (or the administrator) changes the consents through `set_consents`; the ward cannot.
 // Consents follow the P-08 transitions and record who changed them and when. The `people.guardianship.*` events let
-// the role sync grant `vereino_payer` to an adult guardian with an account.
+// the role sync grant `vereino_payer` to an adult guardian with an account. The event photos spec (#871): only the
+// guardian of the row grants `image`, staff only record a withdrawal with a note (BR-I05); every decision is appended to
+// `people_consent_events` in the same transaction (DD-I07), an undo never lifts an image withdrawal (BR-I06), and an
+// image withdrawal emits `people.consent.image_withdrawn` after the commit.
 import { randomUUID } from 'node:crypto'
 import { LockMode } from '@mikro-orm/core'
 import type { EntityManager } from '@mikro-orm/postgresql'
@@ -20,23 +23,27 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { endsBefore, isInvertedPeriod, type ActingRole, type GrantKind, type Scope } from '@vereino/core'
 import { authorizeScoped, foundationErrors, type AuthorizeScopedSpec } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
-import { Guardianship, Person } from '../data/entities'
+import { Guardianship, Person, type ConsentEvent } from '../data/entities'
 import {
   guardianshipConsentsSchema,
   guardianshipCreateSchema,
   guardianshipEndSchema,
   guardianshipUpdateSchema,
 } from '../data/validators'
+import { consentDecisionRole, imageChangeProblem } from '../lib/image-consent'
 import {
   applyConsentChanges,
+  changedConsents,
   firstOverlapping,
   parseStoredConsents,
+  restoreConsentsKeepingWithdrawals,
   subjectOnlyChanges,
   withdraws,
   type ConsentChanges,
   type StoredConsents,
 } from '../lib/people-rules'
 import { clubToday } from '../services/club-clock'
+import { emitImageWithdrawals, recordConsentEvents, type ConsentDecision } from '../services/consent-events'
 import { emitMedicalUpdated } from '../services/medical'
 import {
   actorPersonId,
@@ -66,6 +73,8 @@ export type GuardianshipCommandResult = {
   before: GuardianshipSnapshot | null
   /** The ward whose medical certificate date a `medical` withdrawal cleared (BR-O1, #682). */
   medicalClearedWard?: Person | null
+  /** The consent decisions appended by the command (DD-I07, #871); emitted after the commit. */
+  consentEvents?: ConsentEvent[]
 }
 
 /** Clears the ward's medical certificate date under its row lock; the ward when a date was cleared, else null. */
@@ -182,7 +191,13 @@ type ConsentChangeContext = {
   em: EntityManager
   /** The guardianship's period after the command. */
   period: Period
+  /** The guardian of the row: the only one who grants `image` on it (BR-I05). */
+  guardianPersonId: string
+  /** A staff withdrawal's note (BR-I05). */
+  note?: string | null
 }
+
+type ConsentChangeResult = { consents: StoredConsents; decisions: ConsentDecision[] }
 
 /**
  * The consents after the requested changes, recorded with the acting person (P-08 transitions). A request that
@@ -193,16 +208,51 @@ async function changeConsents(
   current: StoredConsents,
   changes: ConsentChanges | undefined,
   context: ConsentChangeContext,
-): Promise<StoredConsents> {
-  if (!changes) return current
-  const result = applyConsentChanges(current, changes, new Date(), actorPersonId(context.actorScope))
-  if (result.changed.length === 0) return current
+): Promise<ConsentChangeResult> {
+  if (!changes) return { consents: current, decisions: [] }
+  const actor = actorPersonId(context.actorScope)
+  const result = applyConsentChanges(current, changes, new Date(), actor)
+  if (result.changed.length === 0) return { consents: current, decisions: [] }
   if (context.actingRole !== 'guardian' && subjectOnlyChanges(result.changed).length > 0) {
     await peopleErrors.throw('medical_consent_subject_only')
   }
+  if (result.changed.includes('image')) {
+    const problem = imageChangeProblem({
+      granted: result.consents.image?.granted === true,
+      actingRole: context.actingRole,
+      actorPersonId: actor,
+      owner: context.guardianPersonId,
+      note: context.note,
+    })
+    if (problem === 'scope_denied') await foundationErrors.throw('scope_denied')
+    else if (problem) await peopleErrors.throw(problem)
+  }
   const today = await clubToday(context.ctx.container, context.clubScope, undefined, context.em)
   if (endsBefore(context.period, today)) await peopleErrors.throw('guardianship_ended')
-  return result.consents
+  return {
+    consents: result.consents,
+    decisions: result.changed.map((kind) => ({ kind, granted: result.consents[kind]?.granted === true })),
+  }
+}
+
+/** Appends the decisions on `row` to `people_consent_events` in the command's transaction (DD-I07). */
+function recordGuardianshipDecisions(
+  em: EntityManager,
+  ctx: CommandRuntimeContext,
+  row: Guardianship,
+  decisions: readonly ConsentDecision[],
+  actor: string | null,
+  note?: string | null,
+): Promise<ConsentEvent[]> {
+  return recordConsentEvents(em, ctx.container, {
+    scope: { tenantId: row.tenantId, organizationId: row.organizationId },
+    subjectPersonId: row.wardPersonId,
+    guardianshipId: row.id,
+    decisions,
+    byPersonId: actor,
+    byRole: consentDecisionRole({ guardianship: true, actorPersonId: actor, owner: row.guardianPersonId }),
+    note,
+  })
 }
 
 function emitGuardianship(ctx: CommandRuntimeContext, row: Guardianship, action: 'created' | 'updated') {
@@ -234,10 +284,19 @@ async function authorizeGuardianshipReplay(
   id: string | null | undefined,
   allowedKinds: readonly GrantKind[],
 ): Promise<Guardianship> {
+  return (await authorizeGuardianshipReplayActor(ctx, id, allowedKinds)).row
+}
+
+/** `authorizeGuardianshipReplay` with the replaying person (the author of the consent events an undo appends). */
+async function authorizeGuardianshipReplayActor(
+  ctx: CommandRuntimeContext,
+  id: string | null | undefined,
+  allowedKinds: readonly GrantKind[],
+): Promise<{ row: Guardianship; actor: string | null }> {
   const em = ctx.transactionalEm
   if (!em || !id) throw new Error('[internal] guardianship replay needs the replay transaction and the id')
   const spec = existingSpec(z.object({ id: z.uuid() }), ctx, allowedKinds)
-  const { entity } = await authorizeScoped(spec, { id }, ctx, em, { mode: 'replay' })
+  const { entity, scope } = await authorizeScoped(spec, { id }, ctx, em, { mode: 'replay' })
   const row = entity as Guardianship
   // An undo never writes consents back onto an anonymised ward's guardianship, nor revives a link of one (#308).
   const anonymized = await em.count(Person, {
@@ -247,7 +306,7 @@ async function authorizeGuardianshipReplay(
     anonymizedAt: { $ne: null },
   })
   if (anonymized > 0) await peopleErrors.throw('person_anonymized')
-  return row
+  return { row, actor: actorPersonId(scope) }
 }
 
 async function buildGuardianshipLog(result: GuardianshipCommandResult, labelKey: string, fallback: string) {
@@ -269,12 +328,13 @@ async function buildGuardianshipLog(result: GuardianshipCommandResult, labelKey:
 
 /**
  * Undo of an update or an end restores the relation, the payer flag, the consents and the period (the payer rule is
- * checked again); undo of a consent change restores the consents only.
+ * checked again); undo of a consent change restores the consents only. An image withdrawal stays (BR-I06), and every
+ * consent the undo changes is appended as a correcting consent event by the undoing person (DD-I07).
  */
 function restoreGuardianship(allowedKinds: readonly GrantKind[], restores: 'all' | 'consents') {
   return async (ctx: CommandRuntimeContext, before: GuardianshipSnapshot | null | undefined): Promise<void> => {
     if (!before?.id) throw new Error('[internal] missing guardianship snapshot for undo')
-    const row = await authorizeGuardianshipReplay(ctx, before.id, allowedKinds)
+    const { row, actor } = await authorizeGuardianshipReplayActor(ctx, before.id, allowedKinds)
     const em = ctx.transactionalEm as EntityManager
     if (restores === 'all') {
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
@@ -287,9 +347,13 @@ function restoreGuardianship(allowedKinds: readonly GrantKind[], restores: 'all'
       row.validFrom = period.validFrom
       row.validTo = period.validTo
     }
-    row.consents = parseStoredConsents(before.consents)
+    const current = parseStoredConsents(row.consents)
+    const restored = restoreConsentsKeepingWithdrawals(current, parseStoredConsents(before.consents))
+    row.consents = restored
     row.updatedAt = new Date()
+    const events = await recordGuardianshipDecisions(em, ctx, row, changedConsents(current, restored), actor)
     await mapPayerViolation(() => em.flush())
+    await emitImageWithdrawals(events)
     await emitCrudUndoSideEffects({
       dataEngine: ctx.container.resolve<DataEngine>('dataEngine'),
       action: 'updated',
@@ -333,13 +397,14 @@ const createGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
         const period = { validFrom: parsed.validFrom, validTo: parsed.validTo ?? null }
         await assertLinkAllowed(em, scope, parsed, period, null)
         if (parsed.isPrimaryPayer) await assertPrimaryPayerFree(em, scope, parsed.wardPersonId, period, null)
-        const consents = await changeConsents({}, parsed.consents, {
+        const changed = await changeConsents({}, parsed.consents, {
           ctx,
           actingRole: authorized.actingRole,
           actorScope: authorized.scope,
           clubScope: scope,
           em,
           period,
+          guardianPersonId: parsed.guardianPersonId,
         })
         const guardianship = em.create(Guardianship, {
           id,
@@ -349,15 +414,23 @@ const createGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
           wardPersonId: parsed.wardPersonId,
           relation: parsed.relation,
           isPrimaryPayer: parsed.isPrimaryPayer,
-          consents,
+          consents: changed.consents,
           validFrom: period.validFrom,
           validTo: period.validTo,
         })
         em.persist(guardianship)
-        return { guardianship, actingRole: authorized.actingRole, before: null }
+        const consentEvents = await recordGuardianshipDecisions(
+          em,
+          ctx,
+          guardianship,
+          changed.decisions,
+          actorPersonId(authorized.scope),
+        )
+        return { guardianship, actingRole: authorized.actingRole, before: null, consentEvents }
       }),
     )
     await emitGuardianship(ctx, result.guardianship, 'created')
+    await emitImageWithdrawals(result.consentEvents ?? [])
     return result
   },
   buildLog: ({ result }) => buildGuardianshipLog(result, 'people.audit.guardianships.create', 'Add a guardianship'),
@@ -400,24 +473,35 @@ const updateGuardianshipCommand: CommandHandler<Record<string, unknown>, Guardia
         await lockPair(em, scope, [row.guardianPersonId, row.wardPersonId])
         await assertLinkAllowed(em, scope, row, period, row.id)
         if (isPrimaryPayer) await assertPrimaryPayerFree(em, scope, row.wardPersonId, period, row.id)
-        const consents = await changeConsents(before.consents, patch.consents, {
+        const changed = await changeConsents(before.consents, patch.consents, {
           ctx,
           actingRole: authorized.actingRole,
           actorScope: authorized.scope,
           clubScope: scope,
           em,
           period,
+          guardianPersonId: row.guardianPersonId,
+          note: patch.note,
         })
         if (patch.relation !== undefined) row.relation = patch.relation
         row.isPrimaryPayer = isPrimaryPayer
-        row.consents = consents
+        row.consents = changed.consents
         row.validFrom = period.validFrom
         row.validTo = period.validTo
         row.updatedAt = new Date()
-        return { guardianship: row, actingRole: authorized.actingRole, before }
+        const consentEvents = await recordGuardianshipDecisions(
+          em,
+          ctx,
+          row,
+          changed.decisions,
+          actorPersonId(authorized.scope),
+          patch.note,
+        )
+        return { guardianship: row, actingRole: authorized.actingRole, before, consentEvents }
       }),
     )
     await emitGuardianship(ctx, result.guardianship, 'updated')
+    await emitImageWithdrawals(result.consentEvents ?? [])
     return result
   },
   buildLog: ({ result }) => buildGuardianshipLog(result, 'people.audit.guardianships.update', 'Change a guardianship'),
@@ -475,15 +559,26 @@ const setConsentsCommand: CommandHandler<Record<string, unknown>, GuardianshipCo
       const row = authorized.entity as Guardianship
       const before = guardianshipSnapshot(row)
       const scope = { tenantId: row.tenantId, organizationId: row.organizationId }
-      row.consents = await changeConsents(before.consents, authorized.parsed.consents, {
+      const changed = await changeConsents(before.consents, authorized.parsed.consents, {
         ctx,
         actingRole: authorized.actingRole,
         actorScope: authorized.scope,
         clubScope: scope,
         em,
         period: { validFrom: row.validFrom, validTo: row.validTo ?? null },
+        guardianPersonId: row.guardianPersonId,
+        note: authorized.parsed.note,
       })
+      row.consents = changed.consents
       row.updatedAt = new Date()
+      const consentEvents = await recordGuardianshipDecisions(
+        em,
+        ctx,
+        row,
+        changed.decisions,
+        actorPersonId(authorized.scope),
+        authorized.parsed.note,
+      )
       // A guardian's withdrawal of the `medical` consent clears the ward's date (BR-O1, #682), whatever another
       // guardian decided: the date is entered again once a consent is in force.
       const ward =
@@ -492,10 +587,11 @@ const setConsentsCommand: CommandHandler<Record<string, unknown>, GuardianshipCo
         !row.consents.medical?.granted
           ? await clearWardMedicalDate(em, ctx, row.wardPersonId)
           : null
-      return { guardianship: row, actingRole: authorized.actingRole, before, medicalClearedWard: ward }
+      return { guardianship: row, actingRole: authorized.actingRole, before, medicalClearedWard: ward, consentEvents }
     })
     await emitGuardianship(ctx, result.guardianship, 'updated')
     if (result.medicalClearedWard) await emitMedicalUpdated(ctx, result.medicalClearedWard)
+    await emitImageWithdrawals(result.consentEvents ?? [])
     return result
   },
   buildLog: ({ result }) =>

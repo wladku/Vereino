@@ -19,7 +19,7 @@
   ".ai/qa/tests/club_core/TEST-U08-place-regulations-photos.spec.ts": 3,
   ".ai/qa/tests/groups/E03-S01-groups-pages.spec.ts": 0,
   ".ai/qa/tests/groups/E06-S08-groups-filters-and-counts.spec.ts": 1,
-  ".ai/qa/tests/journeys/J-001-club-structure-and-family.spec.ts": 11,
+  ".ai/qa/tests/journeys/J-001-club-structure-and-family.spec.ts": 10,
   ".ai/qa/tests/journeys/J-002-training-declaration-attendance.spec.ts": 7,
   ".ai/qa/tests/journeys/J-003-cancellation-announcement-case.spec.ts": 1,
   ".ai/qa/tests/payments/E07-S01-fees-and-generation-pages.spec.ts": 2,

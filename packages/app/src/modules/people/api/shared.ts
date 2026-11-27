@@ -340,3 +340,26 @@ export function ownConsentsResponse(person: Person) {
     updatedAt: iso(person.updatedAt),
   }
 }
+
+/** The page of an image consent history (event photos spec REQ-I07, #871). */
+export const imageHistoryQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+})
+
+export const imageHistorySchema = z.object({
+  items: z.array(
+    z.object({
+      granted: z.boolean(),
+      at: z.string(),
+      byName: z.string().nullable(),
+      byRole: z.enum(['guardian', 'self', 'club_admin', 'system']),
+      currentWording: z.boolean(),
+    }),
+  ),
+  total: z.number().int(),
+  page: z.number().int(),
+  pageSize: z.number().int(),
+  totalPages: z.number().int(),
+  earlier: z.array(z.object({ granted: z.boolean(), at: z.string() })),
+})

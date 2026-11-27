@@ -90,7 +90,7 @@ test('E02-S02 one record for a coordinator who is also a guardian: permissions a
       wardPersonId: ola,
       relation: 'parent',
       isPrimaryPayer: true,
-      consents: { regulations: true, image: true, trips: true },
+      consents: { regulations: true, trips: true },
       validFrom: calendarDate(),
     })
 
@@ -134,7 +134,7 @@ test('E02-S02 one record for a coordinator who is also a guardian: permissions a
     expect(ownFamily.items[0]?.consents?.regulations.granted).toBe(true)
     // The club administrator sees every family's consents.
     const asAdmin = await guardianships(request, club.adminToken, `personId=${ola}`)
-    expect(asAdmin.items[0]?.consents?.image.granted).toBe(true)
+    expect(asAdmin.items[0]?.consents?.trips.granted).toBe(true)
 
     // The coordinator role does not let him change another family's consents.
     const deniedConsents = await setConsents(

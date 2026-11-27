@@ -1,7 +1,7 @@
 # Photos and graphics on club events, with the guardian's image consent
 
 **Date**: 2026-11-26
-**Status**: Ready for implementation — approved by the product owner on 2026-11-26 (#870 comment 7203995918: Q-I01–Q-I03 decided as recommended, the migrations of *Rollout* approved); the consent wording is under the lawyer's review (OA-I1) and may still change
+**Status**: In progress — approved by the product owner on 2026-11-26 (#870 comment 7203995918: Q-I01–Q-I03 decided as recommended, the migrations of *Rollout* approved); the consent wording is under the lawyer's review (OA-I1) and may still change
 
 > Design authority: `.ai/specs/product-brief.md` (refresh of 2026-11-26, PR #864) with D-044 (the club page stays a simple club card; only photos and graphics on club events), Q19 (closed 2026-11-26: Vereino collects each child's image consent from the guardian and blocks publishing without it), N06 (no page editor), D-029 (phone first for every role but the administrator) and D-035 (the lawyer items). This spec completes `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md` (REQ-T08, REQ-T09, DD-T10, DD-T11: the poster and funder logos of a club event) and `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L10, DD-L11, DD-L12: the `image` consent and the consent texts). It does not edit their bodies. Ids carry the letter **I** (`REQ-I01`, `DD-I01`, `BR-I01`, `J-I01`, `TEST-I01`, `AC-I01`, `Q-I01`), which no other spec uses.
 

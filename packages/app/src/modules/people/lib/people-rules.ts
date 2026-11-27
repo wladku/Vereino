@@ -281,11 +281,16 @@ export function withdraws(
 }
 export type ConsentKind = (typeof CONSENT_KINDS)[number]
 
-/** One consent as `people_guardianships.consents` stores it: `{ granted, at, by_person_id }` (the spec's keys). */
+/**
+ * One consent as `people_guardianships.consents` stores it: `{ granted, at, by_person_id }` (the spec's keys). `via`
+ * marks an adult's consent copied from the guardianships on the 18th birthday (`carry_over`, BR-I03 of the event photos
+ * spec, #871): `by_person_id` then names the guardian who gave it, and the grant still counts as the adult's own.
+ */
 export type StoredConsentEntry = {
   readonly granted: boolean
   readonly at: string
   readonly by_person_id: string | null
+  readonly via?: 'carry_over'
 }
 export type StoredConsents = { readonly [kind in ConsentKind]?: StoredConsentEntry }
 
@@ -298,9 +303,10 @@ export type ConsentChanges = { readonly [kind in ConsentKind]?: boolean }
 
 function storedEntry(value: unknown): StoredConsentEntry | null {
   if (value === null || typeof value !== 'object') return null
-  const { granted, at, by_person_id: byPersonId } = value as Record<string, unknown>
+  const { granted, at, by_person_id: byPersonId, via } = value as Record<string, unknown>
   if (typeof granted !== 'boolean' || typeof at !== 'string' || Number.isNaN(Date.parse(at))) return null
-  return { granted, at, by_person_id: typeof byPersonId === 'string' ? byPersonId : null }
+  const entry = { granted, at, by_person_id: typeof byPersonId === 'string' ? byPersonId : null }
+  return via === 'carry_over' ? { ...entry, via } : entry
 }
 
 /** The well-formed consents of a stored `consents` value; anything else is dropped (never granted). */
@@ -395,6 +401,33 @@ export function effectiveConsents(
     trips: given('trips'),
     medical: given('medical'),
   }
+}
+
+/**
+ * BR-I06 of the event photos spec (#871): the consents an undo writes back — the `snapshot` — except that a withdrawn
+ * `image` consent stays withdrawn. A replay never turns a withdrawal back into a grant, nor removes the withdrawal (a
+ * withdrawal on a guardianship is a veto that only that guardianship's own guardian lifts, BR-I05).
+ */
+export function restoreConsentsKeepingWithdrawals(current: StoredConsents, snapshot: StoredConsents): StoredConsents {
+  const kept = current.image
+  if (kept?.granted !== false || snapshot.image?.granted === false) return snapshot
+  return { ...snapshot, image: kept }
+}
+
+/**
+ * The consent kinds whose decision differs between `before` and `after` — a new grant, a new withdrawal, or a decision
+ * that appeared or disappeared — with the state after (`granted`, false when the decision disappeared). For the consent
+ * events an undo appends (DD-I07): only what really changed.
+ */
+export function changedConsents(
+  before: StoredConsents,
+  after: StoredConsents,
+): { kind: ConsentKind; granted: boolean }[] {
+  return CONSENT_KINDS.flatMap((kind) => {
+    const was = before[kind]?.granted ?? null
+    const is = after[kind]?.granted ?? null
+    return was === is ? [] : [{ kind, granted: is === true }]
+  })
 }
 
 /**
