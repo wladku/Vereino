@@ -317,7 +317,7 @@ The platform checks a new password against four variables (`OM_PASSWORD_*`, tabl
 create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
 the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment.
 
-On top of them the Vereino password check (#779, `.ai/specs/2026-11-26-vereino-password-check.md`) refuses, on every
+On top of them the Vereino password check (#779, `.ai/specs/implemented/2026-11-26-vereino-password-check.md`) refuses, on every
 API path that sets a password (user create and edit, profile, the reset and invitation link):
 
 - more than 64 characters or 72 bytes (bcrypt reads no further), and a space at the start or the end;
@@ -330,8 +330,10 @@ does. No extra variable; the check needs no configuration. `mercato auth set-pas
 ### Staff second factor
 
 Club administrators, treasurers and the platform super-admin sign in with Google or with the password and a six-digit
-code e-mailed to the account's address (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, #736). It holds only
-while these are true:
+code e-mailed to the account's address (`.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`, #736).
+Since phase 2 (#841) one who connected Google must sign in with it: the password answers 403
+`second_factor_use_google`. While Google sign-in is not configured (`VEREINO_OAUTH_GOOGLE_*` unset) nobody can, so
+the e-mail code stays their way in. It holds only while these are true:
 
 - **Transactional e-mail works.** The code is the fallback's only channel; while the provider is down the sign-in of
   staff without Google answers 503 and the logs show `foundation.second_factor.unavailable` (fail closed). The
@@ -541,6 +543,18 @@ Expiry: a feature stays `on` until `expiresAt` plus the key's grace period (14 d
 `enterprise_feature_read_only`. **Keep an expired key installed**: removing the last key of a tenant turns its features
 `off` (404 `enterprise_feature_disabled`), so remove it only after the customer's export or termination. A renewal is a
 new key added next to the old one; the key whose grace period ends last wins.
+
+### Building an Enterprise image
+
+The image ships Enterprise modules only when it is built with the private package (spec DD-E12, #713). Set two Railway
+**build** variables on the service that should carry them: `ENTERPRISE_REF` (a tag of `wladku/vereino-enterprise`) and
+`ENTERPRISE_TOKEN` (a fine-grained, read-only token for that one repository, sealed); `ENTERPRISE_REPO` overrides the
+repository. The Dockerfile clones the tag in a stage of its own, so the token reaches neither the builder layers nor the
+deployed image, runs `scripts/enterprise-overlay.mjs` (which fails when the package would change a third-party
+resolution in `yarn.lock`) and sets `NEXT_PUBLIC_VEREINO_ENTERPRISE=true` for the build and in the image. Without
+`ENTERPRISE_REF` the image is the public one. The server refuses to start when the switch, the installed package and the
+generated module registry disagree (`Refusing to start: NEXT_PUBLIC_VEREINO_ENTERPRISE is set but @vereino/enterprise is
+not installed`, and the other way round). Build the app and the worker from the same variables.
 
 Staging and production never trust the committed test key pair (`packages/app/.ai/qa/fixtures/licence-test-key-pair.json`,
 kid `test-…`): a test-signed key shows as `unknown_kid` there. That is the exit check of phase 1a.

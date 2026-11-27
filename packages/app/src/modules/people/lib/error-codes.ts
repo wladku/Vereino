@@ -11,6 +11,8 @@ export const errorCodes = [
   // while an active role, guardianship or membership remains.
   { code: 'account_not_found', status: 404, messageKey: 'people.errors.account_not_found' },
   { code: 'invitation_not_pending', status: 409, messageKey: 'people.errors.invitation_not_pending' },
+  // Personal invitation link spec REQ-IL04 (#868): every invalid cause of a guardian's link answers the same code.
+  { code: 'invitation_link_invalid', status: 410, messageKey: 'people.errors.invitation_link_invalid' },
   { code: 'last_club_admin', status: 422, messageKey: 'people.errors.last_club_admin' },
   { code: 'account_has_purpose', status: 409, messageKey: 'people.errors.account_has_purpose' },
   // People life-cycle spec phase L3 (REQ-L13; #305): the panel's first administrator once the club has one (the

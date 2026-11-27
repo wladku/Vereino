@@ -15,6 +15,9 @@ TODO: Fix that latter to have reference by the package names
 @source "../../node_modules/@open-mercato/onboarding/src/**/*.{ts,tsx}";
 @source "../../node_modules/@open-mercato/content/src/**/*.{ts,tsx}";
 @source "../../node_modules/@open-mercato/ai-assistant/src/**/*.{ts,tsx}";
+/* Vereino Enterprise (enterprise package spec DD-E03, #713): the overlaid private package. Present only in an overlay
+   build; in the public build the path does not exist and Tailwind scans nothing there. */
+@source "../../node_modules/@vereino/enterprise/src/**/*.{ts,tsx}";
 
 @custom-variant dark (&:is(.dark *));
 

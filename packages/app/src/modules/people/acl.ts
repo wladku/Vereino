@@ -34,6 +34,10 @@ export const features = [
     module: 'people',
     dependsOn: ['people.medical.view'],
   },
+  // Personal invitation link spec REQ-IL01, REQ-IL02, Q-IL05 (approved 2026-11-26; #868): take a guardian's personal
+  // invitation link. The record scope narrows it: the administrator any person, a coach the families of the own groups,
+  // a coordinator those of the own sections. No `dependsOn`: a coach holds no `people.view`.
+  { id: 'people.invitations.share', title: 'Share personal invitation links', module: 'people' },
 ]
 
 export default features

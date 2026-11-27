@@ -1389,6 +1389,8 @@
   "facilities.nav.badge.waiting": "{count} oczekuje",
   "facilities.places.nav.clubEvents": "Imprezy klubowe",
   "facilities.places.nav.outlines": "Konspekty treningów",
+  "facilities.places.nav.invitations": "Zaproszenia",
+  "facilities.places.nav.declarationShare": "Deklaracje w Vereino",
   "facilities.rangeSwitch.group": "Zakres",
   "facilities.rangeSwitch.day": "Dzień",
   "facilities.rangeSwitch.week": "Tydzień",

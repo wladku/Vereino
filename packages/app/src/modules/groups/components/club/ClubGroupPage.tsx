@@ -15,6 +15,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
@@ -24,11 +25,13 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { errorCodeOf } from '@vereino/core'
 import {
   CLUB_GROUPS_HREF,
+  CLUB_INVITATIONS_HREF,
   MedicalStatusTag,
   MemberSkeleton,
   StatusTag,
   isMedicalNotValid,
   useClubToday,
+  useMemberNavFeatures,
   type MedicalStatusItem,
 } from '@vereino/ui'
 import {
@@ -186,6 +189,8 @@ function Roster({ group }: { group: GroupDetail }) {
   const t = useT()
   const today = useClubToday()
   const canManage = useCanManageGroups()
+  // The families of this group with a pending invitation (`people`, #868), for a coach or coordinator who shares links.
+  const canInvite = useMemberNavFeatures(apiCall)?.includes('people.invitations.share') === true
   const queryClient = useQueryClient()
   const [view, setView] = React.useState<PeriodStatus>('active')
   const [sheet, setSheet] = React.useState<Sheets>(null)
@@ -350,6 +355,17 @@ function Roster({ group }: { group: GroupDetail }) {
         >
           {t('groups.club.pzpnExport')}
         </Link>
+        {canInvite ? (
+          <Link
+            href={`${CLUB_INVITATIONS_HREF}?groupId=${encodeURIComponent(group.id)}`}
+            className="text-primary inline-flex min-h-11 items-center self-start text-sm underline"
+            data-testid="club-group-invite-families"
+          >
+            {t('groups.club.inviteFamilies')}
+          </Link>
+        ) : null}
+        {/* Actions other modules add to the group, e.g. the sign-up QR code of `enrolment` (#869). */}
+        <InjectionSpot spotId="vereino:club:group:actions" context={{ groupId: group.id }} />
         {canManage ? null : (
           <p className="text-muted-foreground text-sm" data-testid="club-roster-read-only">
             {t('groups.club.roster.readOnly')}

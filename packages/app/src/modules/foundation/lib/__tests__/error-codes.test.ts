@@ -56,6 +56,11 @@ describe('foundation error codes', () => {
       },
       { code: 'second_factor_reset_self', status: 403, messageKey: 'foundation.errors.second_factor_reset_self' },
       {
+        code: 'second_factor_reset_required',
+        status: 409,
+        messageKey: 'foundation.errors.second_factor_reset_required',
+      },
+      {
         code: 'email_change_confirmation_required',
         status: 403,
         messageKey: 'foundation.errors.email_change_confirmation_required',

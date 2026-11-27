@@ -1,0 +1,1 @@
+| 2026-11-26 | Close-out V (#842): Status set to In progress; ENG-AC-08…10 relinked to #855 (live staging and production evidence), ENG-AC-11 to #856 (owner approval of the compliance pack), ENG-AC-05 to reopened #578 (Windows half), ENG-AC-12 notes Renovate and release-please state (#581). |

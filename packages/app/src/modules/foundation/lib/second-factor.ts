@@ -1,4 +1,4 @@
-// Staff second factor rules (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, DD-2F03…DD-2F05, DD-2F08; #736).
+// Staff second factor rules (`.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`, DD-2F03…DD-2F05, DD-2F08; #736).
 // Pure: the challenge id and the code, the code hash and its constant-time check, the challenge marker's shape and
 // key, the attempt and resend rules, the provisional token's claims and the masked e-mail hint. The services in
 // `second-factor/` bind them to the platform cache, the advisory lock, the session and the e-mail sender.

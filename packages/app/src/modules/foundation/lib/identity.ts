@@ -32,8 +32,12 @@ export const GOOGLE_SCOPES = ['openid', 'email'] as const
  * Facebook's endpoints (phase 2, #567): OAuth 2.0 without an id token, so the identity comes from the Graph API's
  * `/me?fields=id,email` called with the access token of the back-channel exchange (spec *Architecture and Data Flow*).
  * The Graph version is pinned here; a newer one is a one-line change.
+ * v26.0: released 2026-07-29; Meta keeps a version for at least two years, so it stays available until at least
+ * 2028-07-29 (the exact expiry is "TBD" in Meta's versions table until v27.0 is listed there:
+ * https://developers.facebook.com/docs/graph-api/changelog/versions/). After its expiry Meta silently serves the oldest
+ * supported version, so pin a newer one before then and recheck the token exchange and `/me` with a test user (#832).
  */
-export const FACEBOOK_GRAPH_VERSION = 'v21.0'
+export const FACEBOOK_GRAPH_VERSION = 'v26.0'
 export const FACEBOOK_AUTHORIZATION_URL = `https://www.facebook.com/${FACEBOOK_GRAPH_VERSION}/dialog/oauth`
 export const FACEBOOK_TOKEN_URL = `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/oauth/access_token`
 export const FACEBOOK_ME_URL = `https://graph.facebook.com/${FACEBOOK_GRAPH_VERSION}/me`

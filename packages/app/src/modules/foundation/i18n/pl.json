@@ -120,5 +120,9 @@
   "foundation.secondFactor.reset.cancel": "Anuluj",
   "foundation.secondFactor.reset.success": "Drugi składnik zresetowany; sesje zakończone.",
   "foundation.secondFactor.reset.errors.gone": "Ta osoba nie loguje się już z drugim składnikiem. Odśwież stronę.",
-  "foundation.secondFactor.reset.errors.failed": "Nie udało się zresetować drugiego składnika. Spróbuj ponownie."
+  "foundation.secondFactor.reset.errors.failed": "Nie udało się zresetować drugiego składnika. Spróbuj ponownie.",
+  "foundation.errors.second_factor_reset_required": "Ta osoba loguje się przez Google jako drugi składnik. Usuń go przyciskiem „Zresetuj drugi składnik”.",
+  "foundation.secondFactor.reset.unlinkGoogle": "Google jest drugim składnikiem tej osoby: „Odłącz Google” otwiera „Zresetuj drugi składnik”.",
+  "foundation.secondFactor.reset.unlinkGoogleNoReset": "Google jest drugim składnikiem tej osoby. Usunąć go może tylko administrator z uprawnieniem do resetowania drugiego składnika.",
+  "foundation.secondFactor.profile.required": "Twoja rola loguje się przez Google albo hasłem i kodem z e-maila. Włącz weryfikację dwuetapową na swoim koncie Google."
 }

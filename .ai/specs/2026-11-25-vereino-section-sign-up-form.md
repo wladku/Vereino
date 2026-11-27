@@ -1,7 +1,7 @@
 # Sign-up form for a section: age check, places, waiting list and trial session
 
 **Date**: 2026-11-25
-**Status**: Ready for implementation — approved by the product owner on 2026-11-26 ([owner decision on #788](https://github.com/wladku/Vereino/issues/788#issuecomment-7183799608)); issue #788, epic E26 #787, decision D-041 in PR #786
+**Status**: In progress — approved by the product owner on 2026-11-26 ([owner decision on #788](https://github.com/wladku/Vereino/issues/788#issuecomment-7183799608)); issue #788, epic E26 #787, decision D-041 in PR #786
 
 > Use om-spec-writing for the process. This spec is design-only: nothing is built in its PR.
 
@@ -665,28 +665,28 @@ the design does not need. Anything beyond the spec still needs a separate approv
 Every criterion that names a phone or public page is checked at 375 px, in English and Polish, in light and dark mode
 (D-029).
 
-- [ ] **AC-J01** — An administrator sets a group's limit and switches, the section switch, the reference day, the answer
-  time and the information text; the roster shows "x / limit" (TEST-J01).
+- [x] **AC-J01** — An administrator sets a group's limit and switches, the section switch, the reference day, the answer
+  time and the information text; the roster shows "x / limit" (TEST-J01). — PR #813, `groups/TEST-J01-places-and-settings.spec.ts`; the section switch is set through the API until its form field ships with phase 3 (#800) (close-out V #842)
 - [ ] **AC-J02** — The "Apply" button shows only when the section and at least one group accept applications; the
-  three-step form asks exactly the fields of BR-J1 (TEST-J01, TEST-J02).
+  three-step form asks exactly the fields of BR-J1 (TEST-J01, TEST-J02). — gap: #799 (phase 2, TEST-J02)
 - [ ] **AC-J03** — Matching groups are listed first by age on the reference date and, for "U" teams, by birth year; an
-  outside group needs a warning, "choose for us" always works, and the hard limits refuse (TEST-J02).
+  outside group needs a warning, "choose for us" always works, and the hard limits refuse (TEST-J02). — gap: #799 (TEST-J02)
 - [ ] **AC-J04** — Nothing reaches the club before the one-hour, one-time confirmation; the honeypot and the limits
-  refuse abuse (TEST-J03).
-- [ ] **AC-J05** — The status link shows the state and withdraws; a new link replaces the old (TEST-J04).
+  refuse abuse (TEST-J03). — gap: #799 (TEST-J03)
+- [ ] **AC-J05** — The status link shows the state and withdraws; a new link replaces the old (TEST-J04). — gap: #799 (TEST-J04)
 - [ ] **AC-J06** — Coordinators see their sections' applications on the phone with tabs, flags and a Today tile; the
-  administrator sees every section and the overdue widget (TEST-J05).
-- [ ] **AC-J07** — The four decisions work and each e-mails the applicant (TEST-J06, TEST-J07, TEST-J10).
+  administrator sees every section and the overdue widget (TEST-J05). — gap: #799 (TEST-J05)
+- [ ] **AC-J07** — The four decisions work and each e-mails the applicant (TEST-J06, TEST-J07, TEST-J10). — gap: #799 (reject, waiting list), #800 (accept), #801 (trial)
 - [ ] **AC-J08** — Accepting creates or reuses persons, relation and membership from the chosen day, sends the
-  invitation after commit, and names the fee rule (TEST-J07, TEST-J08).
+  invitation after commit, and names the fee rule (TEST-J07, TEST-J08). — gap: #800 (TEST-J07, TEST-J08)
 - [ ] **AC-J09** — Waiting lists are numbered per group, freed places are announced once, and accepting beyond the
-  limit needs the confirmation (TEST-J09).
+  limit needs the confirmation (TEST-J09). — gap: #799 (numbering), #800 (freed places, TEST-J09)
 - [ ] **AC-J10** — A trial participant is on the session's attendance page without a membership or a fee, and the
-  existing attendance data and reports are unchanged (TEST-J10).
+  existing attendance data and reports are unchanged (TEST-J10). — gap: #801 (TEST-J10)
 - [ ] **AC-J11** — Retention, export, erasure and season-end clearing work as specified and the compliance pack lists
-  them (TEST-J11).
-- [ ] **AC-J12** — The cross-club isolation guard passes with every new route (TEST-J12).
-- [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green.
+  them (TEST-J11). — gap: #799 (retention), #800 (export, erasure, season end; TEST-J11)
+- [ ] **AC-J12** — The cross-club isolation guard passes with every new route (TEST-J12). — gap: #799, #800, #801 (each phase adds its routes to `inventory/enrolment.json`; TEST-J12)
+- [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green. — gap: #799, #800, #801
 
 ## Final Compliance Report
 

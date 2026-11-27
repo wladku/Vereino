@@ -3,7 +3,7 @@
 - **Date:** 2026-11-21
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` with the repo-local override, Cezar run a6049026
 - **Trigger:** `cezar` label on issue #451 (owner, 2026-11-21)
-- **Spec / issue / branch:** `.ai/specs/2026-11-18-batch-merge-train.md` phase 2 (REQ-BT04, BT-TEST-03, rehearsal); #451 (E16-S03, epic #443, depends on #450, merged in #518); `feat/issue-451-merge-train-batch-branch`
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-18-batch-merge-train.md` phase 2 (REQ-BT04, BT-TEST-03, rehearsal); #451 (E16-S03, epic #443, depends on #450, merged in #518); `feat/issue-451-merge-train-batch-branch`
 - **Status:** completed
 
 ## Goal

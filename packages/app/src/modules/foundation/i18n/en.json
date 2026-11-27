@@ -120,5 +120,9 @@
   "foundation.secondFactor.reset.cancel": "Cancel",
   "foundation.secondFactor.reset.success": "Second factor reset; sessions ended.",
   "foundation.secondFactor.reset.errors.gone": "This person no longer signs in with a second factor. Reload the page.",
-  "foundation.secondFactor.reset.errors.failed": "The second factor could not be reset. Try again."
+  "foundation.secondFactor.reset.errors.failed": "The second factor could not be reset. Try again.",
+  "foundation.errors.second_factor_reset_required": "This person signs in with Google as their second factor. Remove it with Reset second factor.",
+  "foundation.secondFactor.reset.unlinkGoogle": "Google is this person's second factor: Unlink Google opens Reset second factor.",
+  "foundation.secondFactor.reset.unlinkGoogleNoReset": "Google is this person's second factor. Only an administrator who may reset second factors can remove it.",
+  "foundation.secondFactor.profile.required": "Your role signs in with Google, or with your password and an e-mail code. Turn on 2-Step Verification in your Google account."
 }

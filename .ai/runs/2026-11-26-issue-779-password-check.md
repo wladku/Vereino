@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** Cezar task, `om-auto-fix-issue 779`, feature route. The owner decided on #779 (2026-11-26): a
   built-in list of ~100k common passwords, no external service; "write the spec and build it".
-- **Spec:** `.ai/specs/2026-11-26-vereino-password-check.md` (new; changelog `2026-11-26-initial-spec.md`).
+- **Spec:** `.ai/specs/implemented/2026-11-26-vereino-password-check.md` (new; changelog `2026-11-26-initial-spec.md`).
 - **Issue:** #779 · **Branch:** `feat/issue-779-app-password-check` · worktree: Cezar task `465c43e3`.
 
 ## Steps

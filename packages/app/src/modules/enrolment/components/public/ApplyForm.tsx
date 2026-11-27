@@ -12,6 +12,8 @@
 // the reader back to the step that holds it. The honeypot `website` is hidden from people and assistive technology.
 // Sent: "Check your e-mail — the link is valid for one hour" with "Send again". States: loading, error with retry,
 // applications closed (with the way back to the section), too many attempts (with the wait), network error (retry).
+// A group sign-up QR code (#869) opens the form with `?group={id}`: step 2 starts with that group chosen, and a group
+// the form does not offer (not public, not active, not accepting) shows "applications closed" instead.
 import * as React from 'react'
 import Link from 'next/link'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
@@ -25,6 +27,7 @@ import { StatusTag, privacyPolicyHref } from '@vereino/ui'
 import { applicationSubmitSchema } from '../../data/validators'
 import { ageFitOf, ageLimitIssue, ageOnReference } from '../../lib/age'
 import { NOTE_MAX } from '../../lib/applications'
+import { linkedGroup } from '../../lib/paths'
 import { EXPERIENCE_LEVELS, type AgeFit, type ApplicationKind } from '../../lib/states'
 import {
   PublicEnrolmentError,
@@ -665,18 +668,21 @@ function Form({
   clubSlug,
   sectionSlug,
   form,
+  initialChoice,
   onClosed,
   onGroupsChanged,
 }: {
   clubSlug: string
   sectionSlug: string
   form: PublicFormView
+  /** The group a sign-up QR code chose (#869), or ''. */
+  initialChoice: string
   onClosed: () => void
   onGroupsChanged: () => void
 }) {
   const t = useT()
   const locale = useLocale()
-  const [draft, setDraft] = React.useState<Draft>(EMPTY_DRAFT)
+  const [draft, setDraft] = React.useState<Draft>(() => ({ ...EMPTY_DRAFT, choice: initialChoice }))
   const [step, setStep] = React.useState<Step>(1)
   const [errors, setErrors] = React.useState<Errors>({})
   const [problem, setProblem] = React.useState<Problem | null>(null)
@@ -1056,16 +1062,35 @@ function Form({
   )
 }
 
-export function ApplyForm({ clubSlug, sectionSlug }: { clubSlug: string; sectionSlug: string }) {
+export function ApplyForm({
+  clubSlug,
+  sectionSlug,
+  groupParam,
+}: {
+  clubSlug: string
+  sectionSlug: string
+  /** `?group=` of a group sign-up QR code (#869). */
+  groupParam?: string | readonly string[]
+}) {
   const t = useT()
   const query = usePublicForm(clubSlug, sectionSlug)
   // A submission refused with `applications_closed` closes the page even while the cached form still says open.
   const [closed, setClosed] = React.useState(false)
   const load = query.data
+  // The group a QR code chose (#869), against the offered groups of the latest form: a group that stops being offered
+  // closes the page; the chosen radio itself is only the form's starting value, so a refetch never resets the reader's
+  // own choice.
+  const link =
+    load?.status === 'ok'
+      ? linkedGroup(
+          groupParam,
+          load.form.groups.map((group) => group.id),
+        )
+      : null
 
   if (!load && query.isFetching) return <PublicEnrolmentLoading label={t('enrolment.public.form.loading')} />
   if (!load) return <PublicEnrolmentError onRetry={() => void query.refetch()} />
-  if (load.status === 'closed' || closed) {
+  if (load.status === 'closed' || closed || link?.status === 'closed') {
     return (
       <PublicEnrolmentFrame club={load.status === 'ok' ? load.form.club : load.club}>
         <ClosedNotice clubSlug={clubSlug} sectionSlug={sectionSlug} />
@@ -1078,6 +1103,7 @@ export function ApplyForm({ clubSlug, sectionSlug }: { clubSlug: string; section
         clubSlug={clubSlug}
         sectionSlug={sectionSlug}
         form={load.form}
+        initialChoice={link?.status === 'chosen' ? link.groupId : ''}
         onClosed={() => {
           setClosed(true)
         }}

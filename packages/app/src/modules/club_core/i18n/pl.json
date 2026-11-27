@@ -847,5 +847,12 @@
   "club_core.settings.fields.outlineLibraryMaxVisibility.description": "Jak szeroko trenerzy mogą udostępniać konspekty: tylko w klubie, klubom w Vereino lub publicznie. Udostępnione konspekty są na licencji CC BY-SA 4.0. Obniżenie poziomu wycofuje konspekty udostępnione szerzej.",
   "club_core.settings.outlineLibraryMaxVisibility.club": "Tylko w klubie",
   "club_core.settings.outlineLibraryMaxVisibility.clubs": "Kluby w Vereino",
-  "club_core.settings.outlineLibraryMaxVisibility.public": "Publicznie"
+  "club_core.settings.outlineLibraryMaxVisibility.public": "Publicznie",
+  "club_core.webApp.install": "Zainstaluj aplikację",
+  "club_core.webApp.iosHint.title": "Dodaj klub do ekranu początkowego",
+  "club_core.webApp.iosHint.body": "Stuknij Udostępnij, a potem „Do ekranu początkowego”. Klub otworzy się jak aplikacja.",
+  "club_core.webApp.iosHint.dismiss": "Zamknij podpowiedź",
+  "club_core.webApp.offline.title": "Brak połączenia",
+  "club_core.webApp.offline.message": "Vereino potrzebuje internetu. Sprawdź połączenie i spróbuj ponownie.",
+  "club_core.webApp.offline.retry": "Spróbuj ponownie"
 }

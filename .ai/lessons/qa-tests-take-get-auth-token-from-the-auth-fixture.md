@@ -21,7 +21,11 @@ there and breaks only after the two branches meet, which is in the merge train, 
 **Rule**: in `packages/app/.ai/qa/tests/**` import `getAuthToken` (and `clearAuthTokenCache`) from `_fixtures/auth`,
 never from `@open-mercato/core/helpers/integration/api`; it finishes the challenge with the e-mailed code. After merging
 `main` into a PR that changes sign-in, grep the merged-in specs for the platform import and for raw `/api/auth/login`
-calls.
+calls. A test that starts its own app server (ENT-TEST-03 of #814 runs a second `next start` with licence keys) cannot
+use the fixture's sign-in helpers, which post to the runner's `BASE_URL`: post the login and
+`/api/foundation/second-factor/verify` to that server's URL, with `capturedCount`, `isChallenge` and `waitForCode` from
+`_fixtures/auth`. A raw `page.request.post('/api/auth/login')` answers 200 with only the provisional token, so the next
+page opens `/login` (#814, 2026-11-27).
 
 **Applies to**: every integration test and fixture under `packages/app/.ai/qa/tests/`; PRs that change the sign-in
 flow and merge `main`.

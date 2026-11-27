@@ -9,7 +9,7 @@
 //
 // Env: GH_TOKEN (a token whose pushes trigger CI — not the workflow's GITHUB_TOKEN), GITHUB_REPOSITORY (owner/name),
 // MERGE_TRAIN_SKIP_LABELS (optional, comma-separated), MERGE_TRAIN_DRY_RUN=1 (log the plan, change nothing),
-// MERGE_TRAIN_BATCH_SIZE (batch train, `.ai/specs/2026-11-18-batch-merge-train.md`): 1 (unset) keeps the one-PR train
+// MERGE_TRAIN_BATCH_SIZE (batch train, `.ai/specs/implemented/2026-11-18-batch-merge-train.md`): 1 (unset) keeps the one-PR train
 // below; 2 or more runs the batch train (`batchTrain`), which builds `merge-train/batch` with the Merges API, merges a
 // green batch PR by PR with a tree check after each merge and pauses itself on a mismatch. The owner switches it on in
 // phase 3; until then this repository keeps 1. MERGE_TRAIN_REQUIRED_CHECKS (optional, comma-separated) replaces the
