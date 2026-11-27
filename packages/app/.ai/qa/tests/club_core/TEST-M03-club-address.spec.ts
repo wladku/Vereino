@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { capturedCount, finishSignInOnPage } from '../_fixtures/auth'
 import { expectNoPageOverflow, scanInColorSchemes } from '../_fixtures/axe'
 import { createClub, uniqueSuffix, type Club } from '../_fixtures/club'
 import { startClubDomainApp, type ClubDomainApp } from '../_fixtures/club-domain'
@@ -123,11 +124,12 @@ test('TEST-M02 sign-in targets the host’s club, another club’s session goes 
 
   // On A's address the same account signs in and lands in the app there.
   await page.goto(`${clubA.origin}/login`)
+  const since = capturedCount(clubA.club.tenant.email)
   const accepted = await signInOnForm(page, clubA.club.tenant.email, clubA.club.tenant.password)
   expect(accepted.status()).toBe(200)
-  await page.waitForURL((url) => url.origin === clubA.origin && !url.pathname.startsWith('/login'), {
-    timeout: 30_000,
-  })
+  // The club administrator finishes with the e-mailed code (staff second factor, #736).
+  await finishSignInOnPage(page, clubA.club.tenant.email, since)
+  expect(new URL(page.url()).origin).toBe(clubA.origin)
 
   // A's session carried over to B's address (the cookie is host-only, so it is copied by hand) goes back to A's address.
   const session = (await page.context().cookies(clubA.origin)).find((cookie) => cookie.name === 'auth_token')

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { createUserFixture, setRoleAclFeatures } from '@open-mercato/core/helpers/integration/authFixtures'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'

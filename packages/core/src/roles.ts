@@ -24,6 +24,12 @@ export type AssignableRole = 'club_admin' | 'coordinator' | 'coach' | 'facility_
 
 export const VEREINO_AUTH_ROLE_PREFIX = 'vereino_'
 
+/**
+ * The ACL feature that makes a user sign in with a second factor (staff second factor spec DD-2F02; #736): Google, or a
+ * password and an e-mail code. Seeded on the club administrator and the treasurer; never checked by role name.
+ */
+export const SECOND_FACTOR_REQUIRED_FEATURE = 'foundation.second_factor.required'
+
 export type VereinoAuthRole = `${typeof VEREINO_AUTH_ROLE_PREFIX}${VereinoRole}`
 
 export type RoleDefinition = {
@@ -60,6 +66,10 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'dictionaries.*',
       // Social sign-in (#566): the administrator lists and unlinks any person's sign-in identities.
       'foundation.identity.manage',
+      // Staff second factor (#736, DD-2F02, DD-2F07): signs in with Google or a password and an e-mail code, and
+      // resets another person's second factor after verifying them.
+      SECOND_FACTOR_REQUIRED_FEATURE,
+      'foundation.second_factor.reset',
       // The panel dashboard (README B-01) with the Vereino widgets the other features offer (#88).
       'dashboards.view',
     ],
@@ -168,6 +178,8 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'payments.cash.settle',
       'payments.orders.manage',
       'dashboards.view',
+      // Staff second factor (#736, DD-2F02): signs in with Google or a password and an e-mail code.
+      SECOND_FACTOR_REQUIRED_FEATURE,
     ],
     implies: ['member'],
     requiresScope: null,
@@ -237,6 +249,21 @@ export function catalogueAuthRoles(): VereinoAuthRole[] {
 export function catalogueRoleFeatures(): Record<VereinoAuthRole, string[]> {
   const entries = VEREINO_ROLES.map((role) => [roleCatalogue[role].authRole, [...roleCatalogue[role].features]])
   return Object.fromEntries(entries) as Record<VereinoAuthRole, string[]>
+}
+
+/**
+ * True when the `auth` role names `next` grant the second-factor requirement (#736, DD-2F10) that `previous` did not:
+ * the role sync then ends the user's sessions, which were never challenged. Role names outside the catalogue grant
+ * nothing here.
+ */
+export function gainsSecondFactorRequirement(previous: readonly string[], next: readonly string[]): boolean {
+  const requiring = new Set(
+    VEREINO_ROLES.filter((role) => roleCatalogue[role].features.includes(SECOND_FACTOR_REQUIRED_FEATURE)).map(
+      (role) => roleCatalogue[role].authRole as string,
+    ),
+  )
+  const held = (roles: readonly string[]) => roles.some((role) => requiring.has(role))
+  return held(next) && !held(previous)
 }
 
 /** A role assignment as the role sync needs it: the role and its validity period. */

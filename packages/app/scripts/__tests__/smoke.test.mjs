@@ -1,14 +1,20 @@
 // Unit tests for the post-deploy smoke check `scripts/smoke.mjs` (engineering standards S14.5; issue #462).
 import assert from 'node:assert/strict'
+import fs from 'node:fs'
+import os from 'node:os'
+import path from 'node:path'
 import { test } from 'node:test'
 import {
+  captureReader,
   checkHealth,
   checkNoStore,
   checkSignInPage,
+  latestSignInCode,
   normalizeBaseUrl,
   runChecks,
   runCli,
   SECURITY_HEADERS,
+  signIn,
 } from '../../../../scripts/smoke.mjs'
 
 const BASE = 'https://vereino.example'
@@ -222,6 +228,126 @@ test('checkNoStore fails on a network error and on a non-Error rejection', async
     password: 'p',
   })
   assert.equal(odd.detail, 'authenticated request failed: boom')
+})
+
+const SMOKE = 'smoke@vereino.example'
+const mail = (to, subject) => JSON.stringify({ to, subject })
+const challenge = () =>
+  new Response(JSON.stringify({ token: 'provisional', secondFactor: { method: 'email_code' } }), { status: 200 })
+
+test('latestSignInCode answers the newest code e-mailed to the account, or null', () => {
+  const capture = [
+    'not json',
+    '{broken',
+    mail(SMOKE, 'Your Vereino sign-in code: 111 222'),
+    mail('other@vereino.example', 'Your Vereino sign-in code: 999 999'),
+    mail(SMOKE, 'Welcome to Vereino'),
+    mail(SMOKE, 'Your Vereino sign-in code: 333 444'),
+    '',
+  ].join('\r\n')
+  assert.equal(latestSignInCode(capture, SMOKE), '333444')
+  assert.equal(latestSignInCode(capture, 'nobody@vereino.example'), null)
+  assert.equal(latestSignInCode('', SMOKE), null)
+})
+
+test('signIn answers the token of a sign-in without a second factor', async () => {
+  const { fetchImpl } = fakeFetch({ '/api/auth/login': tokenResponse })
+  assert.deepEqual(await signIn({ baseUrl: BASE, fetchImpl, email: SMOKE, password: 'pw' }), { token: 'tok-123' })
+})
+
+test('signIn finishes a second-factor challenge with the newest captured code', async () => {
+  const { fetchImpl, calls } = fakeFetch({
+    '/api/auth/login': challenge,
+    '/api/foundation/second-factor/verify': () => new Response(JSON.stringify({ token: 'full' }), { status: 200 }),
+  })
+  const readCapture = async () => mail(SMOKE, 'Your Vereino sign-in code: 123 456')
+  assert.deepEqual(await signIn({ baseUrl: BASE, fetchImpl, email: SMOKE, password: 'pw', readCapture }), {
+    token: 'full',
+  })
+  const verify = calls.find((call) => call.pathname === '/api/foundation/second-factor/verify')
+  assert.equal(verify.init.method, 'POST')
+  assert.equal(verify.init.headers.authorization, 'Bearer provisional')
+  assert.deepEqual(JSON.parse(verify.init.body), { code: '123456' })
+})
+
+test('signIn names what is missing for a second-factor challenge', async () => {
+  const { fetchImpl } = fakeFetch({ '/api/auth/login': challenge })
+  const noCapture = await signIn({ baseUrl: BASE, fetchImpl, email: SMOKE, password: 'pw' })
+  assert.match(noCapture.error, /VEREINO_SMOKE_EMAIL_CAPTURE/)
+  const noCode = await signIn({ baseUrl: BASE, fetchImpl, email: SMOKE, password: 'pw', readCapture: async () => '' })
+  assert.equal(noCode.error, 'no sign-in code for the smoke account in the e-mail capture')
+})
+
+test('signIn fails when the second-factor verify answers no token', async () => {
+  const readCapture = async () => mail(SMOKE, 'Your Vereino sign-in code: 123 456')
+  const refused = await signIn({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch({
+      '/api/auth/login': challenge,
+      '/api/foundation/second-factor/verify': () => new Response('{}', { status: 400 }),
+    }).fetchImpl,
+    email: SMOKE,
+    password: 'pw',
+    readCapture,
+  })
+  assert.equal(
+    refused.error,
+    'the second factor of the smoke account failed (POST /api/foundation/second-factor/verify 400)',
+  )
+  const notJson = await signIn({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch({
+      '/api/auth/login': challenge,
+      '/api/foundation/second-factor/verify': () => new Response('nope', { status: 200 }),
+    }).fetchImpl,
+    email: SMOKE,
+    password: 'pw',
+    readCapture,
+  })
+  assert.match(notJson.error, /verify 200/)
+})
+
+test('checkNoStore passes for an account with a second factor and fails without the capture', async () => {
+  const routes = {
+    '/api/auth/login': challenge,
+    '/api/foundation/second-factor/verify': () => new Response(JSON.stringify({ token: 'full' }), { status: 200 }),
+    '/api/auth/profile': (init) =>
+      init.headers.authorization === 'Bearer full'
+        ? new Response('{}', { status: 200, headers: { 'cache-control': 'no-store' } })
+        : new Response('{}', { status: 401 }),
+  }
+  const readCapture = async () => mail(SMOKE, 'Your Vereino sign-in code: 123 456')
+  const passed = await checkNoStore({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch(routes).fetchImpl,
+    email: SMOKE,
+    password: 'pw',
+    readCapture,
+  })
+  assert.equal(passed.status, 'pass')
+  const failed = await checkNoStore({
+    baseUrl: BASE,
+    fetchImpl: fakeFetch(routes).fetchImpl,
+    email: SMOKE,
+    password: 'pw',
+  })
+  assert.equal(failed.status, 'fail')
+  assert.match(failed.detail, /second factor/)
+})
+
+test('captureReader reads the capture file named in the environment', async () => {
+  assert.equal(captureReader({}), undefined)
+  assert.equal(captureReader({ VEREINO_SMOKE_EMAIL_CAPTURE: '  ' }), undefined)
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'smoke-capture-'))
+  try {
+    const file = path.join(dir, 'mail.jsonl')
+    const read = captureReader({ VEREINO_SMOKE_EMAIL_CAPTURE: file })
+    assert.equal(await read(), '')
+    fs.writeFileSync(file, 'line\n')
+    assert.equal(await read(), 'line\n')
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 })
 
 test('runChecks runs every check in order', async () => {

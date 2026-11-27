@@ -9,6 +9,8 @@ topics: ["i18n", "locale", "integration-tests", "member-shell"]
 
 **Context**: #595 made `TEST-C13-cash-and-coach-pages` run M-15 and M-18 in `en` and `pl` by setting the `locale` cookie before each pass, as `TEST-C12-guardian-orders-on-the-phone` does. The `en` pass failed on `<html lang>`: `/club` rendered English, but after a click and a reload the coach page was Polish.
 
+Again on #819 (2026-11-26): `E27-S02-declaration-share-on-the-phone` set only the `locale` cookie for its Polish pass; `<html lang>` read `pl` at first, then the shell switched back to the club default `en` and the Polish text assertion failed. Setting the club's `defaultLocale` to `pl` fixed it.
+
 **Problem**: The member shell (`people/components/club/ClubFrame.tsx`, `useMemberLocale`) writes the member's resolved locale — the person's `preferred_locale`, then the club's `default_locale` (DD-34, `memberLocale`) — into the `locale` cookie and refreshes the page. A cookie that disagrees with it holds only until the shell's first effect, so a pass "in English" can silently render Polish. `uiText()` patterns match the English and the Polish text alike, so the text assertions still pass and the test proves nothing about the second locale.
 
 **Rule**: To run a member page in a locale, set what the member's locale resolves from — the club's `defaultLocale` (`updateClubSettings`) when the member has no preferred locale, or the person's `preferredLocale` — together with the cookie, and assert `await expect(page.locator('html')).toHaveAttribute('lang', locale)` after each navigation. When the administrator signs into the browser later in the test, update the token used for the settings call (lesson `sign-in-browser-ends-the-api-token`).

@@ -1,7 +1,7 @@
 # App-owned password check: one policy for forms and API, common and breached passwords (ASVS V6.2)
 
 **Date**: 2026-11-26
-**Status**: In progress — approved by the owner on #779 (2026-11-26: built-in list, write the spec and build it)
+**Status**: Implemented — approved by the owner on #779 (2026-11-26: built-in list, write the spec and build it)
 
 > Related: #779 (this spec), #747 / PR #781 (production `OM_PASSWORD_*` policy, `docs/ops/deploy.md` → *Password policy*), #743 (V6.2.9 long passwords), epic #734; `docs/compliance/asvs-requirements.md` rows V6.1.2, V6.2.4, V6.2.5, V6.2.8, V6.2.11, V6.2.12; engineering standards S3.1 (platform source stays untouched), S6.7 (error codes). Platform code read: `@open-mercato/shared/lib/auth/passwordPolicy.ts`, `@open-mercato/core/modules/auth/api/{profile/route.ts,users/route.ts,reset/confirm.ts}`, `commands/users.ts`, the client pages `backend/profile/change-password`, `backend/auth/profile`, `frontend/reset/[token]`, `backend/users/create`, `backend/users/[id]/edit`. Identifiers: decisions `PW-D01…`, requirements `REQ-PW01…`, tests `TEST-PW01…`, acceptance `PW-AC-01…`.
 
@@ -123,9 +123,9 @@ One phase: the check, its enforcement points, the bridge and the docs ship toget
 
 ## Acceptance
 
-- [ ] **PW-AC-01** — TEST-PW01 passes: every API path refuses a common, too long, whitespace-bounded and context-word password with its code, and accepts a good passphrase; a trimmed current password is refused. — gap: #845 (PR #812's TEST-PW01 covers `PUT /api/auth/users` and the reset link fully; `POST /api/auth/users` is not called and `PUT /api/auth/profile` checks only `password_context_word`)
-- [x] **PW-AC-02** — TEST-PW02 passes in a production build: the forms state the server's policy and accept a lower-case passphrase. — PR #812, `foundation/TEST-PW02-password-forms.spec.ts` (close-out V #842)
-- [ ] **PW-AC-03** — the six ASVS rows name the check and its tests. — gap: #845 (all six rows name the check; V6.1.2 names no test, V6.2.12 neither file nor test)
+- [x] **PW-AC-01** — TEST-PW01 passes: every API path refuses a common, too long, whitespace-bounded and context-word password with its code, and accepts a good passphrase; a trimmed current password is refused. — evidence: #812, #845; `TEST-PW01` covers `POST` and `PUT /api/auth/users`, `PUT /api/auth/profile` and `POST /api/auth/reset/confirm`
+- [x] **PW-AC-02** — TEST-PW02 passes in a production build: the forms state the server's policy and accept a lower-case passphrase. — evidence: #812; `TEST-PW02`
+- [x] **PW-AC-03** — the six ASVS rows name the check and its tests. — evidence: #812, #845; `docs/compliance/asvs-requirements.md` rows V6.1.2, V6.2.4, V6.2.5, V6.2.8, V6.2.11, V6.2.12
 
 ## Rollback
 

@@ -63,16 +63,35 @@ function countsText(t: Translate, key: string, counts: Counts): string {
   return t(key, { declared: counts.declared, total: counts.total, percent: counts.percent ?? 0 })
 }
 
+export type DeclarationShareKind = 'confirm' | 'absence' | 'headline'
+
+/**
+ * The text of one share of a section row, the same on the panel table and the coordinator's phone page (E27-S02, #819):
+ * a section without a completed session reads "No completed sessions", never 0 %.
+ */
+export function declarationShareText(t: Translate, kind: DeclarationShareKind, row: DeclarationShareRow): string {
+  const prefix = 'activities.reports.declarationShare'
+  if (kind === 'confirm') {
+    if (row.sessions === 0) return t(`${prefix}.noSessions`)
+    if (row.confirm.total === 0) return t(`${prefix}.noConfirm`)
+    return countsText(t, `${prefix}.confirmValue`, row.confirm)
+  }
+  if (kind === 'absence') {
+    if (row.sessions === 0) return '—'
+    if (row.absence.total === 0) return t(`${prefix}.noAbsences`)
+    return countsText(t, `${prefix}.absenceValue`, row.absence)
+  }
+  if (row.headline.total === 0) return '—'
+  return countsText(t, `${prefix}.headlineValue`, row.headline)
+}
+
 function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
   const prefix = 'activities.reports.declarationShare'
-  const cell = (
-    kind: 'confirm' | 'absence' | 'headline',
-    text: (row: DeclarationShareRow) => string,
-  ): TableColumns<DeclarationShareRow>[number]['cell'] =>
+  const cell = (kind: DeclarationShareKind): TableColumns<DeclarationShareRow>[number]['cell'] =>
     function ShareCell({ row }) {
       return (
         <span className="tabular-nums" data-testid={`declaration-share-${kind}-${row.original.sectionId}`}>
-          {text(row.original)}
+          {declarationShareText(t, kind, row.original)}
         </span>
       )
     }
@@ -82,35 +101,9 @@ function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
       header: t(`${prefix}.columns.section`),
       cell: ({ row }) => <span className="font-medium">{row.original.sectionName}</span>,
     },
-    {
-      id: 'confirm',
-      meta: { truncate: false },
-      header: t(`${prefix}.columns.confirm`),
-      cell: cell('confirm', (row) => {
-        if (row.sessions === 0) return t(`${prefix}.noSessions`)
-        if (row.confirm.total === 0) return t(`${prefix}.noConfirm`)
-        return countsText(t, `${prefix}.confirmValue`, row.confirm)
-      }),
-    },
-    {
-      id: 'absence',
-      meta: { truncate: false },
-      header: t(`${prefix}.columns.absence`),
-      cell: cell('absence', (row) => {
-        if (row.sessions === 0) return '—'
-        if (row.absence.total === 0) return t(`${prefix}.noAbsences`)
-        return countsText(t, `${prefix}.absenceValue`, row.absence)
-      }),
-    },
-    {
-      id: 'headline',
-      meta: { truncate: false },
-      header: t(`${prefix}.columns.headline`),
-      cell: cell('headline', (row) => {
-        if (row.headline.total === 0) return '—'
-        return countsText(t, `${prefix}.headlineValue`, row.headline)
-      }),
-    },
+    { id: 'confirm', meta: { truncate: false }, header: t(`${prefix}.columns.confirm`), cell: cell('confirm') },
+    { id: 'absence', meta: { truncate: false }, header: t(`${prefix}.columns.absence`), cell: cell('absence') },
+    { id: 'headline', meta: { truncate: false }, header: t(`${prefix}.columns.headline`), cell: cell('headline') },
   ]
 }
 
