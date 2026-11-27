@@ -16,6 +16,8 @@ export const errorCodes = [
   { code: 'application_not_found', status: 404, messageKey: 'enrolment.errors.application_not_found' },
   { code: 'application_state_conflict', status: 409, messageKey: 'enrolment.errors.application_state_conflict' },
   { code: 'decision_reason_required', status: 422, messageKey: 'enrolment.errors.decision_reason_required' },
+  // The group sign-up QR code (#869): an unknown group, or one of another club (D-034).
+  { code: 'group_not_found', status: 404, messageKey: 'enrolment.errors.group_not_found' },
 ] as const satisfies ErrorCodeTable
 
 export type EnrolmentErrorCode = (typeof errorCodes)[number]['code']

@@ -72,6 +72,14 @@
         }
       ]
     },
+    "/api/enrolment/groups/[id]/sign-up-code": {
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:enrolmentGroup"
+        }
+      }
+    },
     "/api/enrolment/overdue": {
       "GET": {
         "probe": "read"
