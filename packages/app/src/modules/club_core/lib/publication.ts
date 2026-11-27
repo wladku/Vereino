@@ -85,13 +85,6 @@ export function publishedBlocks(publication: Publication): PublicationBlock[] {
   return PUBLICATION_BLOCKS.filter((block) => isBlockPublished(publication, block))
 }
 
-/**
- * Whether the section form shows "Accepts online applications" (sign-up form spec REQ-J01, phase 2 release rule): the
- * switch is stored and set through the API from phase 1, but the form hides it until phase 3 (accepting) merges, so no
- * club turns on a form that cannot accept anyone. Phase 3 sets this to true.
- */
-export const SECTION_APPLICATIONS_SWITCH_SHOWN = false
-
 export const PUBLIC_SLUG_MIN_LENGTH = 3
 export const PUBLIC_SLUG_MAX_LENGTH = 60
 const PUBLIC_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/

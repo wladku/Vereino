@@ -2,6 +2,11 @@
 
 const segment = (value: string): string => encodeURIComponent(value)
 
+/** The club's public page (P-01), where an applicant whose season ended applies again. */
+export function clubPagePath(clubSlug: string): string {
+  return `/p/${segment(clubSlug)}`
+}
+
 /** P-J2: the form of a section. */
 export function applyPath(clubSlug: string, sectionSlug: string): string {
   return `/p/${segment(clubSlug)}/sections/${segment(sectionSlug)}/apply`

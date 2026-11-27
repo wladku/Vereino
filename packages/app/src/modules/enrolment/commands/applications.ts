@@ -25,11 +25,11 @@ import { assertTransition, authorizeScoped, foundationErrors } from '@/modules/f
 import { enrolmentErrors } from '../api/errors'
 import { Application, ApplicationLink, ConfirmationLink } from '../data/entities'
 import { applicationSubmitSchema, emailBodySchema, rejectSchema, tokenBodySchema, waitSchema } from '../data/validators'
+import { seasonEnded } from '../lib/accept'
 import { ageFitOf, ageLimitIssue, ageReferenceDate } from '../lib/age'
 import {
   STATUS_LINK_TTL_MS,
   anonymiseCutoff,
-  anonymisedBirthDate,
   cleanName,
   confirmedState,
   unconfirmedCutoff,
@@ -56,6 +56,8 @@ import {
   reissueStatusLink,
 } from '../services/links'
 import { applicantLocale, enqueueApplicantMail, notifyDeciders, publishDispatches } from '../services/mail'
+import { announceFreedPlaces } from '../services/places'
+import { anonymiseApplications } from '../services/retention'
 import {
   APPLICANT_ROLE,
   applicationSnapshot,
@@ -719,7 +721,7 @@ const jobSchema = z.object({ now: z.iso.datetime({ offset: true }).optional() })
 
 export type RetentionJobResult = {
   now: string
-  counts: { deleted: number; anonymised: number; linksPurged: number }
+  counts: { deleted: number; anonymised: number; linksPurged: number; expired?: number; placesFreed?: number }
 }
 
 async function authorizeJob(rawInput: unknown, ctx: CommandRuntimeContext, em: EntityManager) {
@@ -766,39 +768,14 @@ async function anonymiseClosed(em: EntityManager, scope: EnrolmentScope, at: Dat
       closedAt: { $lte: anonymiseCutoff(at) },
       anonymizedAt: null,
     },
-    { fields: ['id', 'participantBirthDate'], limit: 500 },
+    { fields: ['id'], limit: 500 },
   )
-  for (const row of rows) {
-    await em.nativeUpdate(
-      Application,
-      { ...scope, id: row.id, anonymizedAt: null },
-      {
-        participantFirstName: null,
-        participantLastName: null,
-        guardianFirstName: null,
-        guardianLastName: null,
-        guardianEmail: null,
-        guardianPhone: null,
-        note: null,
-        decisionReason: null,
-        participantBirthDate: anonymisedBirthDate(row.participantBirthDate ?? null),
-        applicantKey: null,
-        emailKey: null,
-        locale: null,
-        duplicateCandidates: null,
-        acceptedChildPersonId: null,
-        acceptedGuardianPersonId: null,
-        anonymizedAt: at,
-        updatedAt: at,
-      },
-    )
-  }
-  if (rows.length > 0) {
-    const ids = rows.map((row) => row.id)
-    await em.nativeDelete(ConfirmationLink, { ...scope, applicationId: { $in: ids } })
-    await em.nativeDelete(ApplicationLink, { ...scope, applicationId: { $in: ids } })
-  }
-  return rows.length
+  return anonymiseApplications(
+    em,
+    scope,
+    rows.map((row) => row.id),
+    at,
+  )
 }
 
 const expireUnconfirmedCommand: CommandHandler<Record<string, unknown>, RetentionJobResult> = {
@@ -813,19 +790,104 @@ const expireUnconfirmedCommand: CommandHandler<Record<string, unknown>, Retentio
   },
 }
 
+/**
+ * DD-J14, R24 (phase 3, #800): an open application whose reference date's season (`seasonEndsOn` of
+ * `groups.applicationTargets`) ended before the club's day becomes `expired`; its status link is cut and the applicant
+ * gets `enrolment.season_closed`. Without a season row an application never expires by season.
+ */
+async function expireEndedSeasons(
+  ctx: CommandRuntimeContext,
+  em: EntityManager,
+  scope: EnrolmentScope,
+  at: Date,
+  dispatchIds: Array<string | null>,
+): Promise<string[]> {
+  const settings = await enrolmentSettings(ctx.container, scope)
+  const today = clubDay(settings, at)
+  const rows = await em.find(
+    Application,
+    { ...scope, deletedAt: null, state: { $in: ['new', 'trial', 'waiting'] } },
+    { orderBy: { confirmedAt: 'asc', id: 'asc' }, limit: 500, lockMode: LockMode.PESSIMISTIC_WRITE },
+  )
+  const seasonEnds = new Map<string, string | null>()
+  const expired: string[] = []
+  for (const row of rows) {
+    const key = `${row.sectionId}|${row.referenceDate}`
+    if (!seasonEnds.has(key)) {
+      const targets = await applicationTargets(ctx.container, scope, {
+        sectionId: row.sectionId,
+        date: row.referenceDate,
+        em,
+      })
+      seasonEnds.set(key, targets[0]?.seasonEndsOn ?? null)
+    }
+    if (!seasonEnded(seasonEnds.get(key) ?? null, today)) continue
+    await assertTransition(applicationTransitions, row.state, 'expired')
+    row.state = 'expired'
+    row.waitingSince = null
+    row.closedAt = at
+    row.updatedAt = at
+    expired.push(row.id)
+  }
+  if (expired.length === 0) return expired
+  await em.flush()
+  const names = await sectionNames(ctx.container, scope, [...new Set(rows.map((row) => row.sectionId))], em)
+  for (const row of rows.filter((entry) => expired.includes(entry.id))) {
+    await cutStatusLinks(em, scope, row.id, at)
+    const contact = await decryptedApplication(em, scope, row.id)
+    if (!contact?.guardianEmail || !settings.publicSlug) continue
+    dispatchIds.push(
+      await enqueueApplicantMail(ctx.container, em, scope, {
+        applicationId: row.id,
+        template: 'season_closed',
+        event: 'season_closed',
+        params: {
+          applicationId: row.id,
+          clubSlug: settings.publicSlug,
+          sectionName: names.get(row.sectionId) ?? '—',
+        },
+        email: contact.guardianEmail,
+        locale: applicantLocale(row.locale, settings.locale),
+      }),
+    )
+  }
+  return expired
+}
+
 const dailyCommand: CommandHandler<Record<string, unknown>, RetentionJobResult> = {
   id: 'enrolment.applications.daily',
   isUndoable: false,
   async execute(rawInput, ctx) {
-    return inWriteTransaction(ctx, 'enrolment.applications.daily', async (em) => {
+    const dispatchIds: Array<string | null> = []
+    let expiredIds: string[] = []
+    const result = await inWriteTransaction(ctx, 'enrolment.applications.daily', async (em) => {
       const { scope, at } = await authorizeJob(rawInput, ctx, em)
       const deleted = await deleteUnconfirmed(em, scope, at)
+      expiredIds = await expireEndedSeasons(ctx, em, scope, at, dispatchIds)
       const anonymised = await anonymiseClosed(em, scope, at)
       const linksPurged =
         (await confirmationLinks(ctx.container).purgeDead(em, scope, at)) +
         (await applicationLinks(ctx.container).purgeDead(em, scope, at))
-      return { now: at.toISOString(), counts: { deleted, anonymised, linksPurged } }
+      return {
+        scope,
+        at,
+        value: {
+          now: at.toISOString(),
+          counts: { deleted, anonymised, linksPurged, expired: expiredIds.length, placesFreed: 0 },
+        },
+      }
     })
+    const { scope, at, value } = result
+    await publishDispatches(ctx.container, scope, dispatchIds)
+    for (const id of expiredIds) await emitAfterCommit('enrolment.application.expired', scope, { id })
+    // DD-J15: every group with a waiting list is counted again on the club's day (end dates that passed, rollovers).
+    try {
+      const today = clubDay(await enrolmentSettings(ctx.container, scope), at)
+      value.counts.placesFreed = (await announceFreedPlaces(ctx.container, scope, today)).length
+    } catch {
+      // A failed notice is retried by the next day's run; the waiting list shows the places anyway.
+    }
+    return value
   },
 }
 

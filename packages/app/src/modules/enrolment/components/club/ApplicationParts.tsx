@@ -22,6 +22,7 @@ import {
 } from './applications-client'
 
 const FLAG_STATUS: Readonly<Record<ApplicationFlag, StatusTagStatus>> = {
+  group_closed: 'error',
   outside_age: 'warning',
   group_full: 'warning',
   overdue: 'warning',
