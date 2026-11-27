@@ -31,15 +31,25 @@ copy them from there, and check this runbook against the page again if the two d
 | Purpose | Type | Name | Value |
 |---|---|---|---|
 | DKIM | TXT | `resend._domainkey.mail` | `p=MIGf…` — the public key Resend shows, in full |
-| SPF on the custom Return-Path | TXT | `send.mail` | `v=spf1 include:amazonses.com ~all` |
-| Bounces to the Return-Path | MX | `send.mail` | `feedback-smtp.eu-west-1.amazonses.com`, priority `10` |
+| SPF and bounces on the custom Return-Path | CNAME | `send.mail` | `send.forge.rmta.net.` |
+| SPF, the provider's EU relay | CNAME | `rsend.mail` | `rsend-euw1.forge.rmta.net.` |
 | DMARC | TXT | `_dmarc.mail` | `v=DMARC1; p=none; rua=mailto:<report alias>; adkim=r; aspf=r` |
 
+The two CNAME rows are what Resend's domain page showed on 2026-11-27. Before that it asked for a TXT
+`v=spf1 include:amazonses.com ~all` and an MX `feedback-smtp.eu-west-1.amazonses.com` (priority 10) at `send.mail`;
+a domain added then may still show those. **Copy the rows the domain page shows**; the check command (section 4)
+accepts either setup.
+
 - Names are relative to `vereino.org` (`send.mail` is `send.mail.vereino.org`). Some DNS hosts want the full name.
-- The SPF record lives on the Return-Path host, not on `mail.vereino.org` itself: the provider sends with
+- **End a CNAME value with a dot** (`send.forge.rmta.net.`). A DNS panel that reads the value as relative appends the
+  zone, and the record then points at `send.forge.rmta.net.vereino.org` (seen in the cyberfolks panel 2026-11-27); the
+  check command names this case.
+- A name with a CNAME may hold no other record. If the DNS host refuses the zone with `CNAME and other data`, remove
+  the TXT or MX record of the older setup at `send.mail`, or the CNAME, so that only one setup is left.
+- The SPF records live on the Return-Path host, not on `mail.vereino.org` itself: the provider sends with
   `send.mail.vereino.org` as the envelope sender, and SPF aligns with `mail.vereino.org` under relaxed alignment.
-- Keep exactly one `v=spf1` record per name and one `v=DMARC1` record per name; two of either make the check fail and
-  receivers ignore both.
+- Keep exactly one `v=DMARC1` record per name (and, in the older setup, one `v=spf1` record); two make the check fail
+  and receivers ignore both.
 - `<report alias>` is the separate alias (for example `dmarc-reports` at `vereino.org`) that forwards to the maintainers.
   When the alias is on a domain other than `vereino.org`, that domain must publish the RFC 7489 authorisation record
   `vereino.org._report._dmarc.<that domain>` (TXT `v=DMARC1`).
@@ -72,8 +82,12 @@ Without `--from` the command checks `NOTIFICATIONS_EMAIL_FROM` and `EMAIL_FROM` 
 public DNS only, no secret, and checks:
 
 - **DKIM:** a TXT record with a public key at `resend._domainkey.<subdomain>` (`--dkim-selector` for another selector);
-- **SPF:** exactly one `v=spf1` record at `send.<subdomain>` that includes `amazonses.com` and ends in `~all` or `-all`;
-- **Return-Path MX:** `send.<subdomain>` points at `feedback-smtp.eu-west-1.amazonses.com` (`--region` for another);
+- **SPF and Return-Path**, by the setup it finds at `send.<subdomain>`:
+  - a CNAME there (current Resend): `send.<subdomain>` and `rsend.<subdomain>` are CNAMEs to hosts under `rmta.net`;
+    a value with the zone appended (missing final dot) is named as such;
+  - no CNAME (older Resend): exactly one `v=spf1` record at `send.<subdomain>` that includes `amazonses.com` and ends in
+    `~all` or `-all`, and an MX to `feedback-smtp.eu-west-1.amazonses.com` (`--region` for another);
+  - nothing at all: it asks for the CNAME records;
 - **DMARC:** exactly one `v=DMARC1` record at `_dmarc.<subdomain>`, else at `_dmarc.vereino.org`, with a valid `p=` and
   a `rua=mailto:` report address; `--policy quarantine` also requires that policy (section 6);
 - **From:** every from-address is on the subdomain itself.
