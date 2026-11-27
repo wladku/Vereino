@@ -84,3 +84,8 @@
 
 - `main` brought #880 (#851: AC-M08 and AC-M09 of many clubs amended to the cell model and ticked), plus #864, #877 and #878 (no conflict).
 - Resolution: AC-M06 and AC-M07 keep this PR's evidence; AC-M08 and AC-M09 take `main`'s amended, ticked version; the generic coverage criterion now names only #850 as its gap (#851 is closed). The PR body's many clubs row is updated to match.
+
+## Third merge of main (2026-11-27, PR #861 conflict)
+
+- `main` brought #881 (#850: a deleted club's queued one-off jobs end on their own; TEST-M07 asserts cache entries; AC-M06 ticked, key destruction stays with #740), plus #814, #878 and #880 (no conflict).
+- Resolution: AC-M01..M05 and AC-M07 keep this PR's evidence; AC-M06 takes `main`'s tick with this PR's evidence plus PR #881, key destruction still gap #740. The generic coverage criterion lost its last gap (#850 closed) and is ticked with TEST-M01..M11; the leftovers outside the criteria stay with #852.
