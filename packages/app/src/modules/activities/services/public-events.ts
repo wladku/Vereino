@@ -48,6 +48,9 @@ const SESSION_READ_LIMIT = 1000
 /** Upper bound of the published club events one P-06 read takes. */
 const CLUB_EVENT_READ_LIMIT = 200
 
+/** The kinds of club event files a public read lists and streams without the picture rule (BR-I01). */
+const PUBLIC_FILE_KINDS = ['poster', 'funder_logo'] as const
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const NONE: PublicEventLists = { upcoming: [], past: [] }
@@ -266,7 +269,15 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
       const em = fork()
       const event = await publishedClubEvent(em, scope, eventSlug)
       if (!event) return null
-      const file = await em.findOne(ClubEventFile, { ...scope, id: fileId, clubEventId: event.id, deletedAt: null })
+      // Only the poster and the logos stream here as they are; a picture (`photo`, `graphic`) is public only under
+      // BR-I01 of the event photos spec, checked separately, so no picture row is ever reachable without it.
+      const file = await em.findOne(ClubEventFile, {
+        ...scope,
+        id: fileId,
+        clubEventId: event.id,
+        kind: { $in: [...PUBLIC_FILE_KINDS] },
+        deletedAt: null,
+      })
       if (!file) return null
       return {
         attachmentId: file.attachmentId,
@@ -307,7 +318,12 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
         em,
       ),
       placesById(container, scope, [event.placeId], em),
-      em.find(ClubEventFile, { ...scope, clubEventId: event.id, deletedAt: null }),
+      em.find(ClubEventFile, {
+        ...scope,
+        clubEventId: event.id,
+        kind: { $in: [...PUBLIC_FILE_KINDS] },
+        deletedAt: null,
+      }),
       clubTimeZone(container, scope),
     ])
     return publicClubEventView({
