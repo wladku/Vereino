@@ -6,7 +6,7 @@ import { z } from 'zod'
 import { isLocalTime } from '@vereino/core'
 import { calendarDateSchema } from '@/modules/foundation'
 import { ACTIVITY_TYPES, OCCURRENCE_STATUSES, type ActivityType } from '../lib/activities-rules'
-import { CLUB_EVENT_FILE_KINDS } from '../lib/club-event-files'
+import { CLUB_EVENT_FILE_KINDS, CLUB_EVENT_PICTURE_KINDS, MAX_PICTURE_MARKS } from '../lib/club-event-files'
 import {
   CLUB_EVENT_DESCRIPTION_MAX,
   CLUB_EVENT_NAME_MAX,
@@ -532,7 +532,33 @@ export const clubEventFileAddSchema = z
     clubEventId: z.uuid(),
     kind: z.enum(CLUB_EVENT_FILE_KINDS),
     funderName: z.string().max(1000).nullable().optional(),
+    /** A picture's description (event photos spec REQ-I01); checked for 2–200 characters by the command. */
+    description: z.string().max(1000).nullable().optional(),
   })
   .strict()
 
 export const clubEventFileDeleteSchema = z.object({ clubEventId: z.uuid(), id: z.uuid() }).strict()
+
+/** A picture of a club event (event photos spec, #872). */
+export const clubEventPictureRefSchema = z.object({ clubEventId: z.uuid(), id: z.uuid() }).strict()
+
+export const clubEventPictureUpdateSchema = z
+  .object({
+    clubEventId: z.uuid(),
+    id: z.uuid(),
+    description: z.string().max(1000).optional(),
+    kind: z.enum(CLUB_EVENT_PICTURE_KINDS).optional(),
+    position: z.number().int().min(0).max(1000).optional(),
+  })
+  .strict()
+
+export const clubEventPicturePeopleSchema = z
+  .object({
+    clubEventId: z.uuid(),
+    id: z.uuid(),
+    personIds: z.array(z.uuid()).max(MAX_PICTURE_MARKS),
+    confirmed: z.boolean(),
+  })
+  .strict()
+
+export const clubEventPicturesPublishAllSchema = z.object({ clubEventId: z.uuid() }).strict()

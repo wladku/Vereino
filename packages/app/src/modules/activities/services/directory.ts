@@ -317,6 +317,34 @@ export async function consentFlags(
 }
 
 /**
+ * Whether the image of each person among `ids` may be published on `today` (event photos spec BR-I02, BR-I03; #872):
+ * one boolean per live person. Fails closed: an empty map (no person publishable) when the installed `people` does not
+ * offer the contract.
+ */
+export async function imagePublishable(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+  today: CalendarDate,
+  em?: EntityManager,
+): Promise<Map<string, boolean>> {
+  if (ids.length === 0) return new Map()
+  const directory = personDirectory(container)
+  if (typeof directory.imagePublishable !== 'function') return new Map()
+  return directory.imagePublishable(scope, [...new Set(ids)], today, em)
+}
+
+/** The live persons of the club whose name matches `term` (people search), or null for no filter. */
+export function searchPersonIds(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  term: string,
+  em?: EntityManager,
+): Promise<Set<string> | null> {
+  return personDirectory(container).searchPersonIds(scope, term, em)
+}
+
+/**
  * The club's time zone (club spec DD-37: `Europe/Warsaw` by default). The club settings reads below take the caller's
  * `em` inside a write transaction, so they read on its connection instead of a second pooled one (#728, #836).
  */

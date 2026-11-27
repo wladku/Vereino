@@ -11,8 +11,9 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
-import { CLUB_EVENT_FILE_KINDS } from '../../../lib/club-event-files'
-import { clubEventTarget } from '../../../services/club-event-scope'
+import { CLUB_EVENT_DOCUMENT_KINDS, CLUB_EVENT_PICTURE_KINDS } from '../../../lib/club-event-files'
+import { clubEventPictureViews } from '../../../services/club-event-pictures'
+import { clubEventRecordManagerRole, clubEventTarget } from '../../../services/club-event-scope'
 import {
   clubEventDerived,
   clubEventFileViews,
@@ -57,7 +58,7 @@ const partSchema = z.object({
 
 const clubEventFileSchema = z.object({
   id: z.uuid(),
-  kind: z.enum(CLUB_EVENT_FILE_KINDS),
+  kind: z.enum(CLUB_EVENT_DOCUMENT_KINDS),
   funderName: z.string().nullable().describe('The funder’s name, the logo’s alternative text; null for the poster.'),
   fileName: z.string(),
   mimeType: z.string(),
@@ -66,6 +67,30 @@ const clubEventFileSchema = z.object({
   url: z.string().describe('The authenticated image route `/api/attachments/image/{id}`.'),
   createdAt: z.string(),
   updatedAt: z.string().describe('The file’s lock token (DELETE).'),
+})
+
+const markSchema = z.object({ id: z.uuid(), displayName: z.string() })
+
+const pictureSchema = z.object({
+  id: z.uuid(),
+  kind: z.enum(CLUB_EVENT_PICTURE_KINDS),
+  description: z.string().describe('The alternative text.'),
+  position: z.number().int(),
+  state: z
+    .enum(['draft', 'unconfirmed', 'waiting_for_consent', 'event_not_public', 'public'])
+    .describe('BR-I01 at the moment of the read.'),
+  marks: z.array(markSchema),
+  missingConsent: z.array(markSchema).describe('The marked people without image consent now (managers only).'),
+  missingConsentCount: z.number().int(),
+  peopleConfirmed: z.boolean(),
+  peopleConfirmedAt: z.string().nullable(),
+  publishedAt: z.string().nullable(),
+  fileName: z.string(),
+  mimeType: z.string(),
+  fileSize: z.number().int(),
+  url: z.string().describe('The manager-checked content route (never an attachment id).'),
+  createdAt: z.string(),
+  updatedAt: z.string().describe('The picture’s lock token.'),
 })
 
 const responseSchema = clubEventListItemSchema.extend({
@@ -77,6 +102,10 @@ const responseSchema = clubEventListItemSchema.extend({
   files: z
     .array(clubEventFileSchema)
     .describe('The poster first, then the funder logos in upload order (REQ-T08); staff image URLs.'),
+  pictures: z
+    .array(pictureSchema)
+    .optional()
+    .describe('The event’s pictures with their states (event photos spec REQ-I04); only for the event’s managers.'),
 })
 
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
@@ -90,11 +119,13 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     const grants = await scopeContract.resolve(ctx)
     await assertInScope(grants, CLUB_EVENT_READ_KINDS, clubEventTarget(row), CLUB_EVENT_READ_OPTIONS)
     const { timeZone } = await attendanceSettings(ctx.container, scope)
-    const [derived, parts, publicPath, files] = await Promise.all([
+    const manages = clubEventRecordManagerRole(grants, row) !== null
+    const [derived, parts, publicPath, files, pictures] = await Promise.all([
       clubEventDerived(ctx.container, scope, grants, [row], timeZone),
       clubEventPartViews(ctx.container, scope, row.id),
       clubEventPublicPathOf(ctx.container, scope, row),
       clubEventFileViews(ctx.container, scope, row.id),
+      manages ? clubEventPictureViews(ctx.container, scope, row) : Promise.resolve(null),
     ])
     return Response.json({
       id: row.id,
@@ -114,6 +145,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       publicPath,
       parts,
       files,
+      ...(pictures ? { pictures } : {}),
     })
   } catch (error: unknown) {
     return errorResponse(error, 'activities.club_events.detail')
@@ -127,7 +159,7 @@ export const openApi: OpenApiRouteDoc = {
     GET: {
       summary: 'Read a club event with its parts',
       description:
-        'Returns the club event when the caller is a coordinator or the club administrator of the club (Q-T18), with its dates, place, `mayManage`, its parts in time order and its poster and funder logos.',
+        'Returns the club event when the caller is a coordinator or the club administrator of the club (Q-T18), with its dates, place, `mayManage`, its parts in time order and its poster and funder logos; for the event’s managers also its pictures with their states.',
       responses: [{ status: 200, description: 'The club event', schema: responseSchema }],
       errors: [
         { status: 401, description: 'Unauthorized', schema: errorSchema },

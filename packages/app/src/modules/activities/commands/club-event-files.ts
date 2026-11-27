@@ -11,6 +11,13 @@
 // of a delete restores the link (a logo keeps its position; a poster only while no newer poster is live, 409
 // `club_event_poster_replaced` otherwise). Removing a link keeps the file in `attachments`, so every undo finds it. No events: the audit log records
 // every change.
+//
+// Event photos spec (REQ-I01, REQ-I10, DD-I12, BR-I07; #872): `add` also stores the pictures (`photo`, `graphic`) — at
+// most 30 live per event, counted under the event's row lock — with a description, their metadata already removed by
+// the route, and their own attachment owner (`activities:club_event_picture`, record = the picture) as the only
+// assignment. Deleting a picture is final: the row and its marks are deleted and the bytes released after the commit,
+// so an undo answers 409 `club_event_picture_erased`, as does an undo or redo of an `add` of a picture that no longer
+// exists. The undo of a picture's `add` only unlinks it, like a logo's; its redo links it again.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
@@ -26,12 +33,17 @@ import {
   CLUB_EVENT_FILE_ASSIGNMENT,
   CLUB_EVENT_FILE_OWNER_ENTITY,
   CLUB_EVENT_FILE_PARTITION,
+  CLUB_EVENT_PICTURE_OWNER_ENTITY,
   funderNameOf,
   fundersLimitReached,
+  isPictureKind,
   nextFilePosition,
+  pictureDescriptionOf,
+  picturesLimitReached,
   type ClubEventFileKind,
 } from '../lib/club-event-files'
 import { CLUB_EVENT_MANAGE_KINDS, clubEventTarget } from '../services/club-event-scope'
+import { deletePictureRows, releasePictureFiles } from '../services/club-event-pictures'
 import { assertClubEventOpen } from './club-events'
 import { activitiesLog, inWriteTransaction, trustedTenantId, type ActivitiesCommandResult } from './shared'
 
@@ -73,6 +85,8 @@ export type ClubEventFileSnapshot = {
   funderName: string | null
   position: number
   fileName: string
+  /** A picture's description; null for the poster and the logos. */
+  description?: string | null
   /** The poster an added poster replaced, so the undo of the add puts it back. */
   replacedId?: string | null
 }
@@ -93,6 +107,7 @@ export function clubEventFileSnapshot(row: ClubEventFile): ClubEventFileSnapshot
     funderName: row.funderName ?? null,
     position: row.position,
     fileName: row.fileName,
+    description: row.description ?? null,
   }
 }
 
@@ -118,7 +133,7 @@ function eventSpec(ctx: CommandRuntimeContext): AuthorizeScopedSpec<typeof clubE
 }
 
 /** A file and its event as one target: the file's `updated_at` is the lock token of a delete. */
-type FileTarget = { updatedAt: Date; file: ClubEventFile; event: ClubEvent }
+export type FileTarget = { updatedAt: Date; file: ClubEventFile; event: ClubEvent }
 
 /** A file of a live club event; the event row is locked first, so a restore counts the logos like an upload does. */
 function fileSpec<TSchema extends z.ZodType<{ clubEventId: string; id: string }>>(
@@ -152,15 +167,32 @@ function fileSpec<TSchema extends z.ZodType<{ clubEventId: string; id: string }>
   }
 }
 
+/**
+ * BR-I07: the replay of a write to a picture that no longer exists — deleted by staff or by the erasure of a person
+ * marked on it — answers 409 `club_event_picture_erased` (never 404, and never a picture brought back).
+ */
+export async function assertPictureNotErased(
+  em: EntityManager,
+  ctx: CommandRuntimeContext,
+  snapshot: { id?: string; kind?: string } | null | undefined,
+): Promise<void> {
+  if (!snapshot?.id || !snapshot.kind || !isPictureKind(snapshot.kind)) return
+  const tenantId = trustedTenantId(ctx)
+  if (!tenantId) return
+  const exists = await em.count(ClubEventFile, { id: snapshot.id, tenantId })
+  if (exists === 0) await activitiesErrors.throw('club_event_picture_erased')
+}
+
 /** The replay of a file write is authorized like the write: the event's managers, the file found with deleted rows. */
 async function authorizeFileReplay(
   ctx: CommandRuntimeContext,
-  snapshot: { id?: string; clubEventId?: string } | null | undefined,
+  snapshot: { id?: string; clubEventId?: string; kind?: string } | null | undefined,
 ): Promise<FileTarget & { actingRole: ActingRole }> {
   const em = ctx.transactionalEm
   if (!em || !snapshot?.id || !snapshot.clubEventId) {
     throw new Error('[internal] club event file replay needs the replay transaction and the ids')
   }
+  await assertPictureNotErased(em, ctx, snapshot)
   const authorized = await authorizeScoped(
     fileSpec(ctx, z.object({ clubEventId: z.uuid(), id: z.uuid() }), true),
     { clubEventId: snapshot.clubEventId, id: snapshot.id },
@@ -185,6 +217,24 @@ async function liveLogoPositions(em: EntityManager, scope: Scope, clubEventId: s
 async function nextLogoSlot(em: EntityManager, scope: Scope, clubEventId: string): Promise<number> {
   const positions = await liveLogoPositions(em, scope, clubEventId)
   if (fundersLimitReached(positions.length)) await activitiesErrors.throw('club_event_funders_limit', { field: 'file' })
+  return nextFilePosition(positions)
+}
+
+/** The positions of the event's live pictures. */
+async function livePicturePositions(em: EntityManager, scope: Scope, clubEventId: string): Promise<number[]> {
+  const rows = await em.find(
+    ClubEventFile,
+    { ...scope, clubEventId, kind: { $in: ['photo', 'graphic'] }, deletedAt: null },
+    { fields: ['id', 'position'] },
+  )
+  return rows.map((row) => row.position)
+}
+
+/** Refuses a thirty-first live picture (422 `club_event_pictures_limit`); returns the next position otherwise. */
+async function nextPictureSlot(em: EntityManager, scope: Scope, clubEventId: string): Promise<number> {
+  const positions = await livePicturePositions(em, scope, clubEventId)
+  if (picturesLimitReached(positions.length))
+    await activitiesErrors.throw('club_event_pictures_limit', { field: 'file' })
   return nextFilePosition(positions)
 }
 
@@ -221,6 +271,9 @@ async function relink(em: EntityManager, row: ClubEventFile): Promise<string | n
   if (row.kind === 'funder_logo') {
     const positions = await liveLogoPositions(em, scope, row.clubEventId)
     if (fundersLimitReached(positions.length)) await activitiesErrors.throw('club_event_funders_limit')
+  } else if (isPictureKind(row.kind)) {
+    const positions = await livePicturePositions(em, scope, row.clubEventId)
+    if (picturesLimitReached(positions.length)) await activitiesErrors.throw('club_event_pictures_limit')
   } else {
     replacedId = await retirePoster(em, scope, row.clubEventId, row.id)
   }
@@ -228,6 +281,13 @@ async function relink(em: EntityManager, row: ClubEventFile): Promise<string | n
   row.updatedAt = new Date()
   await em.flush()
   return replacedId
+}
+
+/** A picture's description (null for the other kinds); 422 `club_event_picture_description_invalid` otherwise. */
+async function pictureDescription(kind: ClubEventFileKind, raw: string | null | undefined): Promise<string | null> {
+  const checked = pictureDescriptionOf(kind, raw)
+  if (!checked.valid) return activitiesErrors.throw('club_event_picture_description_invalid', { field: 'description' })
+  return checked.name
 }
 
 /** The funder's name of the input (null for a poster); 422 `club_event_funder_name_invalid` for a logo without one. */
@@ -245,6 +305,8 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
     const upload = uploadOf(ctx)
     const fields = clubEventFileAddSchema.parse(rawInput)
     const name = await funderName(fields.kind, fields.funderName)
+    const description = await pictureDescription(fields.kind, fields.description)
+    const picture = isPictureKind(fields.kind)
     const spec = eventSpec(ctx)
     // An early refusal before the bytes are stored; the count is repeated under the lock in `persistLink`.
     await inWriteTransaction(ctx, 'activities.club_event_files.add.check', async (em) => {
@@ -252,6 +314,7 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
       const event = authorized.entity as ClubEvent
       await assertClubEventOpen(event)
       if (fields.kind === 'funder_logo') await nextLogoSlot(em, scopeOf(event), event.id)
+      if (picture) await nextPictureSlot(em, scopeOf(event), event.id)
       return true
     })
     const scope = trustedScopeOf(ctx)
@@ -261,13 +324,14 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
     await attachmentServiceOf(ctx).createScoped({
       tenantId: scope.tenantId,
       organizationId: scope.organizationId,
-      entityId: CLUB_EVENT_FILE_OWNER_ENTITY,
-      recordId: fields.clubEventId,
+      // A picture's owner is the picture itself and its only assignment (DD-I12), so a delete can release the bytes.
+      entityId: picture ? CLUB_EVENT_PICTURE_OWNER_ENTITY : CLUB_EVENT_FILE_OWNER_ENTITY,
+      recordId: picture ? id : fields.clubEventId,
       partitionCode: CLUB_EVENT_FILE_PARTITION,
       fileName: upload.fileName,
       declaredMimeType: upload.mimeType,
       buffer: upload.buffer,
-      assignments: [{ type: CLUB_EVENT_FILE_ASSIGNMENT, id }],
+      ...(picture ? {} : { assignments: [{ type: CLUB_EVENT_FILE_ASSIGNMENT, id }] }),
       persistLink: async (tx, attachmentId) => {
         const authorized = await authorizeScoped(spec, fields, ctx, tx)
         const event = authorized.entity as ClubEvent
@@ -276,6 +340,7 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
         let position = 0
         let replacedId: string | null = null
         if (fields.kind === 'funder_logo') position = await nextLogoSlot(tx, eventScope, event.id)
+        else if (picture) position = await nextPictureSlot(tx, eventScope, event.id)
         else replacedId = await retirePoster(tx, eventScope, event.id)
         const row = tx.create(ClubEventFile, {
           id,
@@ -284,6 +349,7 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
           attachmentId,
           kind: fields.kind,
           funderName: name,
+          description,
           position,
           fileName: upload.fileName,
           mimeType: upload.mimeType,
@@ -346,16 +412,24 @@ const deleteClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEv
   isUndoable: true,
   atomicReplay: true,
   async execute(rawInput, ctx) {
-    return inWriteTransaction(ctx, 'activities.club_event_files.delete', async (em) => {
+    const box: { released: { id: string; attachmentId: string }[] } = { released: [] }
+    const result = await inWriteTransaction(ctx, 'activities.club_event_files.delete', async (em) => {
       const authorized = await authorizeScoped(fileSpec(ctx, clubEventFileDeleteSchema), rawInput, ctx, em)
       const { file, event } = authorized.entity as FileTarget
-      await assertClubEventOpen(event)
       const before = clubEventFileSnapshot(file)
+      if (isPictureKind(file.kind)) {
+        // Final, also on a cancelled event: a manager may always take a picture down for good.
+        box.released = await deletePictureRows(em, scopeOf(file), [file.id])
+        return { entity: file, actingRole: authorized.actingRole, before, replacedId: null }
+      }
+      await assertClubEventOpen(event)
       const now = new Date()
       file.deletedAt = now
       file.updatedAt = now
       return { entity: file, actingRole: authorized.actingRole, before, replacedId: null }
     })
+    await releasePictureFiles(ctx, scopeOf(result.entity), box.released)
+    return result
   },
   buildLog: ({ result }) =>
     activitiesLog({
