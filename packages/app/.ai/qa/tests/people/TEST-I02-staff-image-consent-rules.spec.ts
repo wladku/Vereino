@@ -49,10 +49,16 @@ async function lockOf(request: APIRequestContext, token: string, guardianshipId:
 }
 
 function withNote(request: APIRequestContext, token: string, id: string, note: string | undefined, lock: string) {
-  return call<{ code?: string; updatedAt?: string }>(request, 'POST', `/api/people/guardianships/${id}/consents`, token, {
-    data: { consents: { image: false }, ...(note === undefined ? {} : { note }) },
-    headers: { [OPTIMISTIC_LOCK_HEADER]: lock },
-  })
+  return call<{ code?: string; updatedAt?: string }>(
+    request,
+    'POST',
+    `/api/people/guardianships/${id}/consents`,
+    token,
+    {
+      data: { consents: { image: false }, ...(note === undefined ? {} : { note }) },
+      headers: { [OPTIMISTIC_LOCK_HEADER]: lock },
+    },
+  )
 }
 
 async function staffEvents(club: Club, personId: string) {
@@ -73,9 +79,21 @@ test('TEST-I02 staff only record image withdrawals, one guardian cannot change t
   const club = await createClub(request, 'test-i02')
   try {
     const admin = club.adminToken
-    const kasia = await createStaff(request, club, { firstName: 'Kasia', lastName: 'Zgoda', birthDate: birthDateTurning(37) })
-    const tomek = await createStaff(request, club, { firstName: 'Tomek', lastName: 'Zgoda', birthDate: birthDateTurning(39) })
-    const jas = await createPerson(request, admin, { firstName: 'Jaś', lastName: 'Zgoda', birthDate: birthDateTurning(10) })
+    const kasia = await createStaff(request, club, {
+      firstName: 'Kasia',
+      lastName: 'Zgoda',
+      birthDate: birthDateTurning(37),
+    })
+    const tomek = await createStaff(request, club, {
+      firstName: 'Tomek',
+      lastName: 'Zgoda',
+      birthDate: birthDateTurning(39),
+    })
+    const jas = await createPerson(request, admin, {
+      firstName: 'Jaś',
+      lastName: 'Zgoda',
+      birthDate: birthDateTurning(10),
+    })
     const kasiaRow = await createGuardianship(request, admin, {
       guardianPersonId: kasia.personId,
       wardPersonId: jas,
@@ -89,7 +107,13 @@ test('TEST-I02 staff only record image withdrawals, one guardian cannot change t
     })
 
     // Staff grants answer 422 everywhere a consent is written.
-    const bySetConsents = await setConsents(request, admin, tomekRow, { image: true }, await lockOf(request, admin, tomekRow))
+    const bySetConsents = await setConsents(
+      request,
+      admin,
+      tomekRow,
+      { image: true },
+      await lockOf(request, admin, tomekRow),
+    )
     expect(bySetConsents.status, JSON.stringify(bySetConsents.body)).toBe(422)
     expect(bySetConsents.body?.code).toBe('image_consent_subject_only')
     const byUpdate = await updateGuardianship(
@@ -100,13 +124,26 @@ test('TEST-I02 staff only record image withdrawals, one guardian cannot change t
     )
     expect(byUpdate.status, JSON.stringify(byUpdate.body)).toBe(422)
     expect(byUpdate.body?.code).toBe('image_consent_subject_only')
-    const other = await createPerson(request, admin, { firstName: 'Ola', lastName: 'Zgoda', birthDate: birthDateTurning(8) })
+    const other = await createPerson(request, admin, {
+      firstName: 'Ola',
+      lastName: 'Zgoda',
+      birthDate: birthDateTurning(8),
+    })
     const byCreate = await call<{ code?: string }>(request, 'POST', '/api/people/guardianships', admin, {
-      data: { guardianPersonId: kasia.personId, wardPersonId: other, validFrom: calendarDate(), consents: { image: true } },
+      data: {
+        guardianPersonId: kasia.personId,
+        wardPersonId: other,
+        validFrom: calendarDate(),
+        consents: { image: true },
+      },
     })
     expect(byCreate.status, JSON.stringify(byCreate.body)).toBe(422)
     expect(byCreate.body?.code).toBe('image_consent_subject_only')
-    const adult = await createPerson(request, admin, { firstName: 'Beata', lastName: 'Zgoda', birthDate: birthDateTurning(30) })
+    const adult = await createPerson(request, admin, {
+      firstName: 'Beata',
+      lastName: 'Zgoda',
+      birthDate: birthDateTurning(30),
+    })
     const byOwn = await call<{ code?: string }>(request, 'POST', `/api/people/persons/${adult}/consents`, admin, {
       data: { changes: { image: true } },
       headers: { [OPTIMISTIC_LOCK_HEADER]: String((await getPerson(request, admin, adult)).body?.updatedAt) },
@@ -116,10 +153,22 @@ test('TEST-I02 staff only record image withdrawals, one guardian cannot change t
 
     // Kasia gives it on her row; she cannot touch Tomek's row (403).
     const kasiaToken = await signInAs(request, club, kasia.userId, kasia.email)
-    const kasiaGives = await setConsents(request, kasiaToken, kasiaRow, { image: true }, await lockOf(request, admin, kasiaRow))
+    const kasiaGives = await setConsents(
+      request,
+      kasiaToken,
+      kasiaRow,
+      { image: true },
+      await lockOf(request, admin, kasiaRow),
+    )
     expect(kasiaGives.status, JSON.stringify(kasiaGives.body)).toBe(200)
     expect((await wardOf(request, kasiaToken, jas)).imagePublishable).toBe(true)
-    const onOtherRow = await setConsents(request, kasiaToken, tomekRow, { image: true }, await lockOf(request, admin, tomekRow))
+    const onOtherRow = await setConsents(
+      request,
+      kasiaToken,
+      tomekRow,
+      { image: true },
+      await lockOf(request, admin, tomekRow),
+    )
     expect(onOtherRow.status, JSON.stringify(onOtherRow.body)).toBe(403)
     expect(onOtherRow.body?.code).toBe('scope_denied')
 
@@ -138,12 +187,30 @@ test('TEST-I02 staff only record image withdrawals, one guardian cannot change t
     expect(staffRows[0]?.note).not.toContain(note)
 
     // Kasia gives it again; Tomek gives and withdraws on his row: the veto holds.
-    const regive = await setConsents(request, kasiaToken, kasiaRow, { image: true }, await lockOf(request, admin, kasiaRow))
+    const regive = await setConsents(
+      request,
+      kasiaToken,
+      kasiaRow,
+      { image: true },
+      await lockOf(request, admin, kasiaRow),
+    )
     expect(regive.status, JSON.stringify(regive.body)).toBe(200)
     const tomekToken = await signInAs(request, club, tomek.userId, tomek.email)
-    const tomekGives = await setConsents(request, tomekToken, tomekRow, { image: true }, await lockOf(request, admin, tomekRow))
+    const tomekGives = await setConsents(
+      request,
+      tomekToken,
+      tomekRow,
+      { image: true },
+      await lockOf(request, admin, tomekRow),
+    )
     expect(tomekGives.status, JSON.stringify(tomekGives.body)).toBe(200)
-    const tomekWithdraws = await setConsents(request, tomekToken, tomekRow, { image: false }, tomekGives.body?.updatedAt)
+    const tomekWithdraws = await setConsents(
+      request,
+      tomekToken,
+      tomekRow,
+      { image: false },
+      tomekGives.body?.updatedAt,
+    )
     expect(tomekWithdraws.status, JSON.stringify(tomekWithdraws.body)).toBe(200)
     expect((await wardOf(request, kasiaToken, jas)).imagePublishable).toBe(false)
 
@@ -202,7 +269,9 @@ test('TEST-I02 staff only record image withdrawals, one guardian cannot change t
       .poll(async () => (await getGuardianship(request, freshAdmin, kasiaRow)).body?.consents?.image.granted)
       .toBe(false)
     await kasiaItem.getByTestId('people-image-history').click()
-    await expect(page.getByTestId('people-image-history-dialog').getByTestId('people-image-history-item')).toHaveCount(6)
+    await expect(page.getByTestId('people-image-history-dialog').getByTestId('people-image-history-item')).toHaveCount(
+      6,
+    )
   } finally {
     await club.cleanup()
   }

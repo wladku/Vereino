@@ -161,7 +161,13 @@ test('TEST-I01 a guardian gives the image consent on the phone, the other withdr
       tomekAfter.guardianship.updatedAt,
     )
     expect(given.status, JSON.stringify(given.body)).toBe(200)
-    const vetoed = await setConsents(request, tomekToken, tomekAfter.guardianship.id, { image: false }, given.body?.updatedAt)
+    const vetoed = await setConsents(
+      request,
+      tomekToken,
+      tomekAfter.guardianship.id,
+      { image: false },
+      given.body?.updatedAt,
+    )
     expect(vetoed.status, JSON.stringify(vetoed.body)).toBe(200)
     const kasiaView = await wardOf(request, kasiaToken, jas)
     expect(kasiaView.guardianship.consents.image.granted).toBe(true)
@@ -175,12 +181,7 @@ test('TEST-I01 a guardian gives the image consent on the phone, the other withdr
       [false, 'guardian'],
     ])
     for (const row of events) expect(row.wording_sha256).toMatch(/^[0-9a-f]{64}$/)
-    const history = await call<HistoryBody>(
-      request,
-      'GET',
-      `/api/people/me/consents/${jas}/image-history`,
-      kasiaToken,
-    )
+    const history = await call<HistoryBody>(request, 'GET', `/api/people/me/consents/${jas}/image-history`, kasiaToken)
     expect(history.status, JSON.stringify(history.body)).toBe(200)
     expect(history.body?.total).toBe(3)
     expect(history.body?.items.map((item) => [item.granted, item.byName])).toEqual([
