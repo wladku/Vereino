@@ -25,6 +25,7 @@ import {
   personIndexer,
   personSnapshot,
   personTarget,
+  sessionOrJob,
   type PersonSnapshot,
 } from './shared'
 
@@ -138,7 +139,8 @@ const createPersonCommand: CommandHandler<Record<string, unknown>, PersonCommand
           {
             input: personCreateSchema,
             resourceKind: RESOURCE_KIND,
-            allowedKinds: CREATE_KINDS,
+            // A job context: the accept of an application, after `enrolment` authorized its decider (#800).
+            ...sessionOrJob(ctx, CREATE_KINDS),
             resolveTarget: (_parsed, _entity, scope) => ({ id, ...scope, personId: id }),
           },
           rawInput,

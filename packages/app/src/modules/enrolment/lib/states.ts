@@ -64,6 +64,8 @@ export const applicationTransitions = defineTransitions({
     ['waiting', 'withdrawn'],
     ['waiting', 'trial'],
     ['waiting', 'waiting'],
+    // DD-J15a (phase 3, #800): a season rollover closed the group, so the application goes back to the coordinator.
+    ['waiting', 'new'],
     ['waiting', 'expired'],
   ],
   terminal: ['accepted', 'rejected', 'withdrawn', 'expired'],
