@@ -2,12 +2,19 @@ import { describe, expect, it } from '@jest/globals'
 import {
   FUNDER_LOGO_MAX_BYTES,
   MAX_FUNDER_LOGOS,
+  MAX_PICTURES,
+  PICTURE_MAX_BYTES,
   POSTER_MAX_BYTES,
   checkClubEventFile,
   clubEventFileMaxBytes,
   funderNameOf,
   fundersLimitReached,
+  isPictureKind,
   nextFilePosition,
+  pictureContentUrl,
+  pictureDescriptionOf,
+  picturesLimitReached,
+  reorderedPositions,
   sortClubEventFiles,
   staffImageUrl,
 } from '../club-event-files'
@@ -85,5 +92,67 @@ describe('club event files (DD-T10, REQ-T08)', () => {
     ]
     expect(sortClubEventFiles(rows).map((row) => row.id)).toEqual(['e', 'a', 'a2', 'b', 'c', 'd'])
     expect(sortClubEventFiles([rows[3], rows[3]]).map((row) => row.id)).toEqual(['a', 'a'])
+  })
+})
+
+describe('club event pictures (event photos spec REQ-I01, #872)', () => {
+  it('tells the picture kinds from the poster and the logos', () => {
+    expect(isPictureKind('photo')).toBe(true)
+    expect(isPictureKind('graphic')).toBe(true)
+    expect(isPictureKind('poster')).toBe(false)
+    expect(isPictureKind('funder_logo')).toBe(false)
+  })
+
+  it('limits a picture to 10 MB and an event to 30 pictures', () => {
+    expect(clubEventFileMaxBytes('photo')).toBe(PICTURE_MAX_BYTES)
+    expect(clubEventFileMaxBytes('graphic')).toBe(10 * 1024 * 1024)
+    expect(checkClubEventFile(bytes(JPEG, 9 * 1024 * 1024), 'photo').ok).toBe(true)
+    expect(checkClubEventFile(bytes(JPEG, 11 * 1024 * 1024), 'photo')).toEqual({ ok: false, problem: 'too_large' })
+    expect(picturesLimitReached(MAX_PICTURES - 1)).toBe(false)
+    expect(picturesLimitReached(MAX_PICTURES)).toBe(true)
+  })
+
+  it('needs a description of 2–200 characters for a picture and none for the other kinds', () => {
+    expect(pictureDescriptionOf('photo', '  Final  ')).toEqual({ valid: true, name: 'Final' })
+    expect(pictureDescriptionOf('graphic', 'x')).toEqual({ valid: false })
+    expect(pictureDescriptionOf('photo', 'x'.repeat(201))).toEqual({ valid: false })
+    expect(pictureDescriptionOf('photo', null)).toEqual({ valid: false })
+    expect(pictureDescriptionOf('poster', 'ignored')).toEqual({ valid: true, name: null })
+    expect(funderNameOf('photo', 'ignored')).toEqual({ valid: true, name: null })
+  })
+
+  it('moves a picture to a new index and returns only the changed positions', () => {
+    const rows = [
+      { id: 'a', position: 0 },
+      { id: 'b', position: 1 },
+      { id: 'c', position: 2 },
+    ]
+    expect(reorderedPositions(rows, 'c', 0)).toEqual(
+      new Map([
+        ['c', 0],
+        ['a', 1],
+        ['b', 2],
+      ]),
+    )
+    expect(reorderedPositions(rows, 'a', 1)).toEqual(
+      new Map([
+        ['b', 0],
+        ['a', 1],
+      ]),
+    )
+    expect(reorderedPositions(rows, 'a', 99)).toEqual(
+      new Map([
+        ['b', 0],
+        ['c', 1],
+        ['a', 2],
+      ]),
+    )
+    expect(reorderedPositions(rows, 'b', -5).get('b')).toBe(0)
+    expect(reorderedPositions(rows, 'b', 1).size).toBe(0)
+    expect(reorderedPositions(rows, 'missing', 0).size).toBe(0)
+  })
+
+  it('streams a picture through the manager-checked content route', () => {
+    expect(pictureContentUrl('e 1', 'f/1')).toBe('/api/activities/club-events/e%201/files/f%2F1/content')
   })
 })

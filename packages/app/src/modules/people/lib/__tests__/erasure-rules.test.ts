@@ -241,4 +241,20 @@ describe('erasureAudit', () => {
   it('records nothing for no parts', () => {
     expect(erasureAudit([])).toEqual({ tablesTouched: [], keptData: [] })
   })
+
+  it('lists the records deleted for good by kind, each id once (event photos spec BR-I07)', () => {
+    const audit = erasureAudit([
+      { touched: [], kept: [], erased: [{ kind: 'activities.club_event_file', ids: ['p1', 'p2'] }] },
+      {
+        touched: [],
+        kept: [],
+        erased: [
+          { kind: 'activities.club_event_file', ids: ['p2', 'p3'] },
+          { kind: 'other', ids: [] },
+        ],
+        afterCommit: () => Promise.resolve(),
+      },
+    ])
+    expect(audit.erasedRecords).toEqual([{ kind: 'activities.club_event_file', ids: ['p1', 'p2', 'p3'] }])
+  })
 })

@@ -7,7 +7,13 @@
 // passes the club's public sections. Every query carries that scope. A guest gets names, types, dates, times, places,
 // cancellations, public groups and visiting teams' names — never a roster, a participant, a contact, a coach or a
 // cancellation reason.
+//
+// Event photos spec (REQ-I05, BR-I01, DD-I11; #872): P-T1 also lists the pictures BR-I01 allows at the moment of the
+// read — published, people confirmed, and a graphic or every marked person's image consent in force — asking
+// `people`'s `imagePublishable` inside the club the slug lookup found. The file route applies the same check and
+// marks a picture's bytes `no-store`; a picture that fails it answers like an unknown file. Never a marked name.
 import type { EntityManager } from '@mikro-orm/postgresql'
+import { createLogger } from '@open-mercato/shared/lib/logger'
 import type { AwilixContainer } from 'awilix'
 import { calendarDateInZone } from '@vereino/core'
 import type {
@@ -18,7 +24,12 @@ import type {
   PublicEventsProvider,
 } from '../../club_core/services/public-blocks'
 import { Activity, ClubEvent, ClubEventFile, ClubEventPart, Occurrence } from '../data/entities'
-import { CLUB_EVENT_FILE_ASSIGNMENT, CLUB_EVENT_FILE_OWNER_ENTITY } from '../lib/club-event-files'
+import {
+  CLUB_EVENT_FILE_ASSIGNMENT,
+  CLUB_EVENT_FILE_OWNER_ENTITY,
+  CLUB_EVENT_PICTURE_OWNER_ENTITY,
+  isPictureKind,
+} from '../lib/club-event-files'
 import { isClubEventSlug } from '../lib/club-events'
 import { publicClubEventView } from '../lib/public-club-event'
 import {
@@ -31,6 +42,7 @@ import {
   type PublicEventPlace,
 } from '../lib/public-events'
 import { storedVenue } from '../lib/venue'
+import { publicPicturesOf } from './club-event-pictures'
 import {
   clubTimeZone,
   findExternalTeams,
@@ -47,6 +59,16 @@ const SESSION_READ_LIMIT = 1000
 
 /** Upper bound of the published club events one P-06 read takes. */
 const CLUB_EVENT_READ_LIMIT = 200
+
+/** The kinds of club event files a public read lists and streams without the picture rule (BR-I01). */
+const PUBLIC_FILE_KINDS = ['poster', 'funder_logo'] as const
+
+const logger = createLogger('activities').child({ component: 'public-events' })
+
+/** A log line when a public read holds pictures back (counts only, never a person's id; *Observability*). */
+function logHeldBack(published: number, shown: number): void {
+  if (published > shown) logger.info('Public club event read held pictures back', { held: published - shown })
+}
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -268,6 +290,19 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
       if (!event) return null
       const file = await em.findOne(ClubEventFile, { ...scope, id: fileId, clubEventId: event.id, deletedAt: null })
       if (!file) return null
+      if (isPictureKind(file.kind)) {
+        // A picture streams only while BR-I01 holds now; its bytes are never kept by a shared cache (DD-I11).
+        const shown = await publicPicturesOf(em, container, scope, event.id)
+        if (!shown.some((picture) => picture.id === file.id)) return null
+        return {
+          attachmentId: file.attachmentId,
+          owner: { entityId: CLUB_EVENT_PICTURE_OWNER_ENTITY, recordId: file.id },
+          assignment: { type: CLUB_EVENT_PICTURE_OWNER_ENTITY, id: file.id },
+          mimeType: file.mimeType,
+          noStore: true,
+        }
+      }
+      if (!(PUBLIC_FILE_KINDS as readonly string[]).includes(file.kind)) return null
       return {
         attachmentId: file.attachmentId,
         owner: { entityId: CLUB_EVENT_FILE_OWNER_ENTITY, recordId: event.id },
@@ -285,7 +320,7 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
     const { parts, sessions } = await liveParts(em, scope, [event.id])
     if (parts.length === 0) return null
     const sessionList = [...sessions.values()]
-    const [groups, publicGroupRows, teams, places, files, timeZone] = await Promise.all([
+    const [groups, publicGroupRows, teams, places, files, timeZone, pictures, publishedPictures] = await Promise.all([
       findGroups(
         container,
         scope,
@@ -307,10 +342,24 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
         em,
       ),
       placesById(container, scope, [event.placeId], em),
-      em.find(ClubEventFile, { ...scope, clubEventId: event.id, deletedAt: null }),
+      em.find(ClubEventFile, {
+        ...scope,
+        clubEventId: event.id,
+        kind: { $in: [...PUBLIC_FILE_KINDS] },
+        deletedAt: null,
+      }),
       clubTimeZone(container, scope),
+      publicPicturesOf(em.fork(), container, scope, event.id),
+      em.count(ClubEventFile, {
+        ...scope,
+        clubEventId: event.id,
+        kind: { $in: ['photo', 'graphic'] },
+        publishedAt: { $ne: null },
+        deletedAt: null,
+      }),
     ])
-    return publicClubEventView({
+    logHeldBack(publishedPictures, pictures.length)
+    const view = publicClubEventView({
       event: {
         name: event.name,
         slug: event.publicSlug,
@@ -344,5 +393,14 @@ export function createPublicEvents(container: AwilixContainer): PublicEventsProv
       })),
       timeZone,
     })
+    if (!view) return null
+    return {
+      ...view,
+      pictures: pictures.map((picture) => ({
+        fileId: picture.id,
+        description: picture.description ?? '',
+        kind: picture.kind as 'photo' | 'graphic',
+      })),
+    }
   }
 }

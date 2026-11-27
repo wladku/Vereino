@@ -33,6 +33,14 @@ export function clubEventTarget(
   }
 }
 
+/** The role the caller manages a club event record in, or null (DD-T06; event photos spec REQ-I04). */
+export function clubEventRecordManagerRole(
+  grants: Scope,
+  event: Pick<ClubEvent, 'id' | 'tenantId' | 'organizationId'> & { sectionId?: string | null },
+): ActingRole | null {
+  return findActingRole(grants, CLUB_EVENT_MANAGE_KINDS, clubEventTarget(event))
+}
+
 /** The role the caller manages the club event in, or null (DD-T06). */
 export function clubEventManagerRole(grants: Scope, event: PartEvent): ActingRole | null {
   return findActingRole(grants, CLUB_EVENT_MANAGE_KINDS, clubEventTarget(event))

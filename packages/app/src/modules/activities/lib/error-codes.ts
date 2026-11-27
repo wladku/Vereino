@@ -147,6 +147,25 @@ export const errorCodes = [
     status: 422,
     messageKey: 'activities.errors.club_event_funder_name_invalid',
   },
+  // Event photos spec (#872): the pictures of a club event.
+  { code: 'club_event_pictures_limit', status: 422, messageKey: 'activities.errors.club_event_pictures_limit' },
+  {
+    code: 'club_event_picture_description_invalid',
+    status: 422,
+    messageKey: 'activities.errors.club_event_picture_description_invalid',
+  },
+  { code: 'club_event_photo_unmarked', status: 422, messageKey: 'activities.errors.club_event_photo_unmarked' },
+  {
+    code: 'club_event_graphic_has_no_people',
+    status: 422,
+    messageKey: 'activities.errors.club_event_graphic_has_no_people',
+  },
+  {
+    code: 'club_event_people_unconfirmed',
+    status: 422,
+    messageKey: 'activities.errors.club_event_people_unconfirmed',
+  },
+  { code: 'club_event_picture_erased', status: 409, messageKey: 'activities.errors.club_event_picture_erased' },
 ] as const satisfies ErrorCodeTable
 
 export type ActivitiesErrorCode = (typeof errorCodes)[number]['code']

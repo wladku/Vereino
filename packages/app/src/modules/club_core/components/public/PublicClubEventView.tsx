@@ -3,7 +3,8 @@
 // DD-T11, DD-T12, J-T04, the 375 px drawing; #381): the poster, the name, the dates, the status, the place with its
 // address and a map link, the description, the days with their parts (time, title, category, type, our team with its
 // section or the club's name, the visiting teams, a cancelled part struck through), "Organised by {club}" and the
-// funders' logos with their names as alternative text. A cancelled event shows a banner without the reason. States:
+// funders' logos with their names as alternative text; the gallery of public pictures below the description (event
+// photos spec REQ-I05, DD-I09; #872). A cancelled event shows a banner without the reason. States:
 // loading, error with retry, the club without published events, and "This event is not published" with the club page
 // link (an unknown, unpublished or empty event). Dates are club-zone dates, formatted in the reader's locale.
 import * as React from 'react'
@@ -13,6 +14,7 @@ import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { PublicClubEventGallery } from './PublicClubEventGallery'
 import { PublicFrame, PublicNotice } from './PublicFrame'
 import {
   clubHref,
@@ -154,6 +156,7 @@ function ClubEventBody({ page }: { page: PublicClubEventPage }) {
         ) : null}
         {event.description ? <p className="max-w-prose whitespace-pre-line">{event.description}</p> : null}
       </section>
+      <PublicClubEventGallery pictures={event.pictures ?? []} />
       <section className="flex flex-col gap-4" aria-labelledby="public-club-event-schedule">
         <h2 id="public-club-event-schedule" className="text-lg font-semibold">
           {t('club_core.public.clubEvent.schedule')}

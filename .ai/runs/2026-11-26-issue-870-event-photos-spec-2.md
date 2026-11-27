@@ -2,7 +2,7 @@
 
 - **Goal and trigger:** cezar task (`om-auto-fix-issue` 870, label `cezar` re-added 2026-11-26T21:44Z) after the owner answered the spec's open questions on #870 (comment 7203995918): write the answers into the spec, set it to `Ready for implementation`, take PR #877 out of draft.
 - **Branch:** `docs/issue-870-photo-image-consent-spec` (PR #877). The branch is still checked out in the first run's worktree, so this run worked on its own local branch reset to the PR head and pushed to the PR branch.
-- **Spec:** `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md`.
+- **Spec:** `.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`.
 
 ## Steps
 

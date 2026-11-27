@@ -245,6 +245,18 @@ Club events spec phase 4 (REQ-T08, DD-T10; migration T2):
 - **Routes:** `POST /api/activities/club-events/{id}/files` (multipart `file`, `kind`, `funderName`; 422 `club_event_file_missing`, `club_event_file_too_large`, `club_event_file_format_unsupported`, `club_event_funders_limit`, `club_event_funder_name_invalid`; 503 without the attachment service) and `DELETE …/files/{fileId}` (the file's `updatedAt` as the lock token). `GET /api/activities/club-events/{id}` gains `files[]` (poster first, then the logos) with staff image URLs `/api/attachments/image/{id}`.
 - **B-T3 Files tab** (`ClubEventFilesPanel`): the poster preview with Replace, the logos with their names and Remove (confirmed), an upload status naming the file, and the server's 422 message beside the upload. Public serving comes with E14-S06; the phone files block with E14-S05.
 
+## Club event pictures, public only with consent (#872)
+
+Event photos spec phase 2 (`.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`, REQ-I01–REQ-I13; migration `Migration20261127172542_activities`):
+
+- **Data:** the kinds `photo` and `graphic` of `activities_club_event_files` are the event's pictures, with `description` (2–200, the alternative text), the people confirmation (`people_confirmed_at`, `…_by_person_id`) and the publication (`published_at`, `…_by_person_id`); the marks are `activities_club_event_file_people` (picture → club person id). A picture's bytes have their own owner `activities:club_event_picture` (record = the picture) as the only assignment, so a delete releases them (DD-I12).
+- **Rules:** `lib/club-event-files.ts` (10 MB, 30 pictures per event, description, reordering) and `lib/public-pictures.ts` (BR-I01: published, people confirmed, and a graphic or every marked person with `imagePublishable` now; the staff states `draft`, `unconfirmed`, `waiting_for_consent`, `event_not_public`, `public`). The upload route removes the metadata with `stripImageMetadata` of `@vereino/core` and never keeps the uploaded file name.
+- **Commands** (`commands/club-event-files.ts`, `commands/club-event-pictures.ts`): `add` and `delete` also handle pictures (a picture's delete is final), `update`, `set_people`, `publish`, `unpublish`, `publish_all`. A replay of a picture that no longer exists answers 409 `club_event_picture_erased` (BR-I07).
+- **Routes:** `PUT …/files/{fileId}`, `PUT …/files/{fileId}/people`, `POST …/files/{fileId}/publish|unpublish`, `POST …/files/publish-all`, `GET …/files/{fileId}/content` (managers only, `private, no-store`), `GET /api/activities/club-events/{id}/people-options`; `GET /api/activities/club-events/{id}` adds `pictures[]` for the event's managers only.
+- **Public read:** `activities.publicEvents.clubEvent` adds the pictures BR-I01 allows at the read; `clubEventFile` streams a picture only under the same rule, `private, no-store` (`services/club-event-pictures.ts`).
+- **Side effects:** the subscriber `activities:notify-pictures-held-back` on `people.consent.image_withdrawn` (one notice per event to its managers, event and count only); the departure contributor's `erase` deletes the pictures that mark an anonymised person (ids as tombstones, bytes released after the commit); `people.imageUsage.activities` gives the ward page the public photo count; the person data export lists the marks (RoPA A18).
+- **UI:** the phone Pictures block (`components/club/ClubEventPicturesBlock.tsx`) and the panel Files tab table (`components/ClubEventPicturesPanel.tsx`) share `useClubEventPictures` and `ClubEventPictureDialogs`.
+
 ## Club events on the phone (#380)
 
 Club events spec phase 5 (REQ-T12, J-T01 and the phone half of J-T05), over the routes of #376, #377 and #379 — no new route and no migration:

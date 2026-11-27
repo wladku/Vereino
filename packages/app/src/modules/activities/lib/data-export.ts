@@ -18,6 +18,8 @@ export const ACTIVITIES_EXPORT_MODULE = 'activities' as const
 export const ACTIVITIES_EXPORT_ACTIVITY = 'A3' as const
 /** RoPA activity *Contact access log* (`docs/compliance/ropa.md`). */
 export const CONTACT_ACCESS_EXPORT_ACTIVITY = 'A10' as const
+/** RoPA activity *Event photos* (`docs/compliance/ropa.md`; event photos spec, #872). */
+export const EVENT_PHOTOS_EXPORT_ACTIVITY = 'A18' as const
 /** What a declaration link is for: the table stores no purpose, every link declares attendance (REQ-017). */
 export const DECLARATION_LINK_PURPOSE = 'attendance_declaration' as const
 
@@ -94,8 +96,21 @@ export type ActivitiesActorCounts = {
   contactReads: number
 }
 
+/** A picture of a club event the subject is marked on (event photos spec REQ-I11). */
+export type ExportPictureMark = {
+  fileId: string
+  clubEventId: string
+  eventName: string | null
+  kind: string
+  description: string | null
+  markedAt: Date
+  publishedAt: Date | null
+}
+
 export type ActivitiesExportInput = {
   personId: string
+  /** The pictures the subject is marked on (event photos spec REQ-I11); none when absent. */
+  pictureMarks?: readonly ExportPictureMark[]
   attendances: readonly ExportAttendance[]
   tokens: readonly ExportDeclarationToken[]
   contactReads: readonly ExportContactRead[]
@@ -244,6 +259,20 @@ export function activitiesExportPart(input: ActivitiesExportInput): DataExportPa
         activity: ACTIVITIES_EXPORT_ACTIVITY,
         reviewFields: ['reason'],
         rows: input.substitutions.map((row) => substitutionRow(row, input)),
+      },
+      {
+        ...section,
+        table: 'activities_club_event_file_people',
+        activity: EVENT_PHOTOS_EXPORT_ACTIVITY,
+        rows: (input.pictureMarks ?? []).map((row) => ({
+          pictureId: row.fileId,
+          clubEventId: row.clubEventId,
+          clubEvent: row.eventName,
+          kind: row.kind,
+          description: row.description,
+          markedAt: iso(row.markedAt),
+          publishedAt: iso(row.publishedAt),
+        })),
       },
     ],
     actorCounts: [

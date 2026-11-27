@@ -1,4 +1,4 @@
-// The image consent of the event photos spec (`.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md`, phase 1,
+// The image consent of the event photos spec (`.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`, phase 1,
 // #871): whether a person's image may be published now (BR-I02 for a minor, BR-I03 for an adult, BR-I04 grant author),
 // who may change the consent (BR-I05), the carry-over at the 18th birthday (BR-I03), the role a consent event records
 // and the built-in wording a decision is given to (DD-I07). Pure: the callers read the stored consents and pass them in.

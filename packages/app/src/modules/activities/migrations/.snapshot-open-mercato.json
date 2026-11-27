@@ -1,8 +1,6 @@
 {
   "name": "public",
-  "namespaces": [
-    "public"
-  ],
+  "namespaces": ["public"],
   "tables": [
     {
       "name": "activities_activities",
@@ -487,10 +485,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "club_event_id"
-          ],
+          "columnNames": ["organization_id", "club_event_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_org_club_event_idx",
@@ -498,11 +493,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "group_id",
-            "is_active"
-          ],
+          "columnNames": ["organization_id", "group_id", "is_active"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_org_group_active_idx",
@@ -510,10 +501,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "section_id"
-          ],
+          "columnNames": ["organization_id", "section_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_org_section_idx",
@@ -521,9 +509,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_activities_pkey",
@@ -531,10 +517,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_activities_tenant_org_idx",
@@ -774,9 +757,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_attendance_policies_pkey",
@@ -793,10 +774,7 @@
           "expression": "create unique index \"activities_attendance_policies_scope_unique\" on \"activities_attendance_policies\" (\"organization_id\", \"scope\", coalesce(\"group_id\"::text, ''), coalesce(\"activity_type\", '')) where deleted_at is null"
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendance_policies_tenant_org_idx",
@@ -1148,10 +1126,7 @@
           "expression": "create unique index \"activities_attendances_occurrence_person_unique\" on \"activities_attendances\" (\"occurrence_id\", \"person_id\") where deleted_at is null"
         },
         {
-          "columnNames": [
-            "organization_id",
-            "occurrence_id"
-          ],
+          "columnNames": ["organization_id", "occurrence_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_org_occurrence_idx",
@@ -1159,10 +1134,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "person_id"
-          ],
+          "columnNames": ["organization_id", "person_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_org_person_idx",
@@ -1170,11 +1142,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "declaration_status",
-            "pending_until"
-          ],
+          "columnNames": ["organization_id", "declaration_status", "pending_until"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_org_status_pending_idx",
@@ -1182,9 +1150,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_attendances_pkey",
@@ -1192,15 +1158,175 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_attendances_tenant_org_idx",
           "primary": false,
           "unique": false
+        }
+      ],
+      "checks": [],
+      "triggers": [],
+      "foreignKeys": {},
+      "comment": null
+    },
+    {
+      "name": "activities_club_event_file_people",
+      "schema": "public",
+      "columns": {
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "created_by_person_id": {
+          "name": "created_by_person_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "file_id": {
+          "name": "file_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": true,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": true,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": "gen_random_uuid()",
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "person_id": {
+          "name": "person_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
+        "tenant_id": {
+          "name": "tenant_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": false,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        }
+      },
+      "indexes": [
+        {
+          "columnNames": ["organization_id", "person_id"],
+          "composite": true,
+          "constraint": false,
+          "keyName": "activities_club_event_file_people_org_person_idx",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": ["id"],
+          "composite": false,
+          "constraint": true,
+          "keyName": "activities_club_event_file_people_pkey",
+          "primary": true,
+          "unique": true
+        },
+        {
+          "columnNames": ["tenant_id", "organization_id"],
+          "composite": true,
+          "constraint": false,
+          "keyName": "activities_club_event_file_people_tenant_org_idx",
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": ["file_id", "person_id"],
+          "composite": true,
+          "constraint": true,
+          "keyName": "activities_club_event_file_people_unique",
+          "primary": false,
+          "unique": true
         }
       ],
       "checks": [],
@@ -1279,6 +1405,23 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "datetime"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "text"
         },
         "file_name": {
           "name": "file_name",
@@ -1399,6 +1542,40 @@
           "enumItems": [],
           "mappedType": "uuid"
         },
+        "people_confirmed_at": {
+          "name": "people_confirmed_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "people_confirmed_by_person_id": {
+          "name": "people_confirmed_by_person_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
+        },
         "position": {
           "name": "position",
           "type": "int",
@@ -1415,6 +1592,40 @@
           "collation": null,
           "enumItems": [],
           "mappedType": "integer"
+        },
+        "published_at": {
+          "name": "published_at",
+          "type": "timestamptz(6)",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": 6,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "datetime"
+        },
+        "published_by_person_id": {
+          "name": "published_by_person_id",
+          "type": "uuid",
+          "unsigned": false,
+          "autoincrement": false,
+          "primary": false,
+          "nullable": true,
+          "unique": false,
+          "length": null,
+          "precision": null,
+          "scale": null,
+          "default": null,
+          "comment": null,
+          "collation": null,
+          "enumItems": [],
+          "mappedType": "uuid"
         },
         "tenant_id": {
           "name": "tenant_id",
@@ -1453,9 +1664,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "attachment_id"
-          ],
+          "columnNames": ["attachment_id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_club_event_files_attachment_unique",
@@ -1463,11 +1672,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "organization_id",
-            "club_event_id",
-            "kind"
-          ],
+          "columnNames": ["organization_id", "club_event_id", "kind"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_event_files_org_event_kind_idx",
@@ -1475,9 +1680,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_club_event_files_pkey",
@@ -1494,10 +1697,16 @@
           "expression": "create unique index \"activities_club_event_files_poster_unique\" on \"activities_club_event_files\" (\"organization_id\", \"club_event_id\") where kind = 'poster' and deleted_at is null"
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": [],
+          "composite": false,
+          "constraint": false,
+          "keyName": "activities_club_event_files_published_pictures_idx",
+          "primary": false,
+          "unique": false,
+          "expression": "create index \"activities_club_event_files_published_pictures_idx\" on \"activities_club_event_files\" (\"organization_id\", \"club_event_id\") where kind in ('photo', 'graphic') and published_at is not null and deleted_at is null"
+        },
+        {
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_event_files_tenant_org_idx",
@@ -1510,6 +1719,11 @@
           "name": "activities_club_event_files_funder_name",
           "expression": "(kind = 'funder_logo') = (funder_name IS NOT NULL)",
           "definition": "check ((kind = 'funder_logo') = (funder_name IS NOT NULL))"
+        },
+        {
+          "name": "activities_club_event_files_picture_description",
+          "expression": "(kind IN ('photo', 'graphic')) = (description IS NOT NULL)",
+          "definition": "check ((kind IN ('photo', 'graphic')) = (description IS NOT NULL))"
         }
       ],
       "triggers": [],
@@ -1804,10 +2018,7 @@
           "expression": "create unique index \"activities_club_event_parts_activity_unique\" on \"activities_club_event_parts\" (\"activity_id\") where deleted_at is null"
         },
         {
-          "columnNames": [
-            "organization_id",
-            "club_event_id"
-          ],
+          "columnNames": ["organization_id", "club_event_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_event_parts_org_event_idx",
@@ -1815,9 +2026,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_club_event_parts_pkey",
@@ -1825,10 +2034,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_event_parts_tenant_org_idx",
@@ -2131,10 +2337,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "place_id"
-          ],
+          "columnNames": ["organization_id", "place_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_events_org_place_idx",
@@ -2142,10 +2345,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "section_id"
-          ],
+          "columnNames": ["organization_id", "section_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_events_org_section_idx",
@@ -2162,9 +2362,7 @@
           "expression": "create unique index \"activities_club_events_org_slug_unique\" on \"activities_club_events\" (\"organization_id\", \"public_slug\") where deleted_at is null"
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_club_events_pkey",
@@ -2172,10 +2370,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_club_events_tenant_org_idx",
@@ -2371,11 +2566,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "occurrence_id",
-            "created_at"
-          ],
+          "columnNames": ["organization_id", "occurrence_id", "created_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_contact_access_log_org_occurrence_created_idx",
@@ -2383,9 +2574,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_contact_access_log_pkey",
@@ -2393,10 +2582,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_contact_access_log_tenant_org_idx",
@@ -2620,10 +2806,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "occurrence_id"
-          ],
+          "columnNames": ["organization_id", "occurrence_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_declaration_tokens_org_occurrence_idx",
@@ -2631,9 +2814,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_declaration_tokens_pkey",
@@ -2641,10 +2822,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_declaration_tokens_tenant_org_idx",
@@ -2652,9 +2830,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "token_hash"
-          ],
+          "columnNames": ["token_hash"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_declaration_tokens_token_hash_unique",
@@ -3099,10 +3275,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "activity_id"
-          ],
+          "columnNames": ["organization_id", "activity_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_activity_idx",
@@ -3110,11 +3283,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "coach_person_id",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "coach_person_id", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_coach_start_idx",
@@ -3122,11 +3291,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "group_id",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "group_id", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_group_start_idx",
@@ -3134,11 +3299,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "place_id",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "place_id", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_place_start_idx",
@@ -3146,11 +3307,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "organization_id",
-            "status",
-            "start_at"
-          ],
+          "columnNames": ["organization_id", "status", "start_at"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_org_status_start_idx",
@@ -3158,9 +3315,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_occurrences_pkey",
@@ -3177,10 +3332,7 @@
           "expression": "create unique index \"activities_occurrences_slot_unique\" on \"activities_occurrences\" (\"activity_id\", \"occurrence_date\") where deleted_at is null and is_detached = false"
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_occurrences_tenant_org_idx",
@@ -3403,10 +3555,7 @@
       },
       "indexes": [
         {
-          "columnNames": [
-            "organization_id",
-            "occurrence_id"
-          ],
+          "columnNames": ["organization_id", "occurrence_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_substitution_entries_org_occurrence_idx",
@@ -3414,9 +3563,7 @@
           "unique": false
         },
         {
-          "columnNames": [
-            "id"
-          ],
+          "columnNames": ["id"],
           "composite": false,
           "constraint": true,
           "keyName": "activities_substitution_entries_pkey",
@@ -3424,10 +3571,7 @@
           "unique": true
         },
         {
-          "columnNames": [
-            "tenant_id",
-            "organization_id"
-          ],
+          "columnNames": ["tenant_id", "organization_id"],
           "composite": true,
           "constraint": false,
           "keyName": "activities_substitution_entries_tenant_org_idx",
