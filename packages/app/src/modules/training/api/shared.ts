@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { CrudCtx } from '@open-mercato/shared/lib/crud/factory'
 import { OUTLINE_LANGUAGES } from '../lib/outline'
 import { findGroups, findOccurrences, findPersons, type TrainingScope } from '../services/directory'
+import { outlinesWithPart as clubOutlinesWithPart } from '../services/outline-view'
 
 export const OUTLINE_ENTITY_ID = 'training:outline'
 
@@ -77,6 +78,16 @@ function trustedScope(ctx: CrudCtx): TrainingScope | null {
   const tenantId = ctx.auth?.tenantId
   const organizationId = ctx.selectedOrganizationId ?? ctx.auth?.orgId
   return tenantId && organizationId ? { tenantId, organizationId } : null
+}
+
+/**
+ * The outlines of the caller's club with at least one exercise in `part` (the list's part filter, M-O5; #847), or an
+ * empty list without a trusted scope. The list route still narrows them by the record scope.
+ */
+export async function outlinesWithPart(ctx: CrudCtx, part: string): Promise<string[]> {
+  const scope = trustedScope(ctx)
+  if (!scope) return []
+  return clubOutlinesWithPart(ctx.container, scope, part)
 }
 
 /** The author's and the group's names and the session's day of the listed outlines. */

@@ -438,7 +438,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
   - both history routes;
   - the directory method `imagePublishable`;
   - the event `people.consent.image_withdrawn`;
-  - the shared `ConsentToggle` in `packages/ui/src/member/` (the foundation primitive of phase A2 of `.ai/specs/2026-10-27-vereino-foundation-primitives.md`; owner decision on #857, 2026-11-26: #871 builds it, as its second consumer next to the M-10 consent switch), used by the ward page and M-10, with its unit tests;
+  - the shared `ConsentToggle` in `packages/ui/src/member/` (the foundation primitive of phase A2 of `.ai/specs/implemented/2026-10-27-vereino-foundation-primitives.md`; owner decision on #857, 2026-11-26: #871 builds it, as its second consumer next to the M-10 consent switch), used by the ward page and M-10, with its unit tests;
   - ward page, M-10 and B-10 changes;
   - i18n `en`/`pl`;
   - the person data export of consent history;

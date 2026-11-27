@@ -46,3 +46,19 @@ export function signedRequestUserId(signedRequest: unknown, appSecret: string): 
   if (typeof userId !== 'string' || userId.length === 0 || userId.length > MAX_SUBJECT_LENGTH) return null
   return userId
 }
+
+/**
+ * The largest body the data-deletion callback reads (#833): Facebook's form holds one `signed_request` of at most
+ * 8192 characters, so 16 KiB leaves room for its encoding and refuses anything larger before it is read.
+ */
+export const MAX_DELETION_BODY_BYTES = 16 * 1024
+
+/**
+ * Whether the data-deletion callback may read a body with this `content-length` header (#833): only a plain decimal
+ * length of at most `MAX_DELETION_BODY_BYTES`. A missing header (a chunked body of unknown size) or any other value is
+ * refused, because the sessionless route must not read an anonymous body of unbounded size.
+ */
+export function deletionBodyAllowed(contentLength: string | null): boolean {
+  if (contentLength === null || !/^\d{1,9}$/.test(contentLength.trim())) return false
+  return Number(contentLength.trim()) <= MAX_DELETION_BODY_BYTES
+}

@@ -6,6 +6,11 @@
 //   and the clubs, due, leased and failing counts of its job state.
 // - `foundation club-jobs sweep [--job <key>] [--now <ISO instant>]`: one sweep of a job type (every declared type
 //   without `--job`) now — what its schedule does every 5 minutes; `--now` moves the clock (the integration tests).
+//   For a job type with a round report (`afterSweep`, the payments invariants heartbeat, #852) the round check is
+//   queued as by the schedule; `--round return` prints the round instead of queueing it.
+// - `foundation club-jobs check-round --round '<round JSON>'`: one look at a printed round, in this process: prints
+//   `{"done":false}` while a run is unfinished, else the outcome after reporting it (the heartbeat ping is sent from
+//   this process, with its environment).
 // - `foundation retire-club-schedules [--job <key>] [--dry-run]`: moves a job type (every type without `--job`) from
 //   its per-club schedules onto its sweep; idempotent.
 // - `foundation restore-club-schedules [--job <key>]`: the rollback of a job type (every type without `--job`).
@@ -41,13 +46,20 @@ import {
   restoreClubSchedules,
   retirableJobKeys,
   retireClubSchedules,
+  stepClubJobRound,
   sweepClubJobType,
 } from './services/club-jobs'
+import { parseClubJobRound, serializeClubJobRound } from './lib/club-job-round'
 
 function readOptions(argv: string[]) {
   const { values, positionals } = parseArgs({
     args: argv,
-    options: { job: { type: 'string' }, now: { type: 'string' }, 'dry-run': { type: 'boolean' } },
+    options: {
+      job: { type: 'string' },
+      now: { type: 'string' },
+      'dry-run': { type: 'boolean' },
+      round: { type: 'string' },
+    },
     strict: false,
     allowPositionals: true,
   })
@@ -58,11 +70,13 @@ function readOptions(argv: string[]) {
     now,
     badNow: now !== undefined && Number.isNaN(now.getTime()),
     dryRun: values['dry-run'] === true,
+    round: typeof values.round === 'string' ? values.round : undefined,
   }
 }
 
 const USAGE = {
-  'club-jobs': 'Usage: mercato foundation club-jobs <status [--job <key>] | sweep [--job <key>] [--now <ISO instant>]>',
+  'club-jobs':
+    "Usage: mercato foundation club-jobs <status [--job <key>] | sweep [--job <key>] [--now <ISO instant>] [--round queue|return] | check-round --round '<round JSON>'>",
   'retire-club-schedules':
     'Usage: mercato foundation retire-club-schedules [--job <key>] [--dry-run] [--now <ISO instant>]',
   'restore-club-schedules': 'Usage: mercato foundation restore-club-schedules [--job <key>]',
@@ -91,9 +105,23 @@ function jobsToRun(command: keyof typeof USAGE, job: string | undefined, all: st
 const clubJobs: ModuleCli = {
   command: 'club-jobs',
   async run(argv) {
-    const { positionals, job, now, badNow } = readOptions(argv)
+    const { positionals, job, now, badNow, round } = readOptions(argv)
     const action = positionals[0]
     if (badNow) fail('club-jobs', '--now must be an ISO instant')
+    if (action === 'check-round') {
+      let parsed: ReturnType<typeof parseClubJobRound> = null
+      try {
+        parsed = parseClubJobRound(JSON.parse(round ?? 'null'))
+      } catch {
+        parsed = null
+      }
+      if (!parsed) fail('club-jobs', '--round must be a round printed by club-jobs sweep --round return')
+      const container = await createRequestContainer()
+      process.stdout.write(`${JSON.stringify(await stepClubJobRound(container, parsed))}\n`)
+      return
+    }
+    if (round !== undefined && round !== 'queue' && round !== 'return')
+      fail('club-jobs', '--round must be queue or return')
     // Created before the job check: the declarations come from the modules' DI registrars.
     const container = await createRequestContainer()
     if (action === 'status') {
@@ -108,7 +136,11 @@ const clubJobs: ModuleCli = {
         clubJobDeclarations().map((declaration) => declaration.key),
       )
       const sweeps = []
-      for (const key of keys) sweeps.push(await sweepClubJobType(container, key, now))
+      const mode = round === 'return' ? 'return' : 'queue'
+      for (const key of keys) {
+        const result = await sweepClubJobType(container, key, now, { round: mode })
+        sweeps.push({ ...result, round: result.round ? serializeClubJobRound(result.round) : null })
+      }
       process.stdout.write(`${JSON.stringify({ sweeps })}\n`)
       return
     }

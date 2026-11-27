@@ -4,6 +4,7 @@
 // outline of the club. `view=mine` lists the caller's own outlines attached nowhere (the ones to copy into a session),
 // `sessions` the session outlines, `series` the series outlines. A session's outline is read-only 72 hours after the
 // session's end (409 `outline_locked`); a session or an activity has at most one outline (409 `outline_exists`).
+// `part` keeps the outlines with at least one exercise in that part (M-O5's part filter; #847).
 import { z } from 'zod'
 import { escapeLikePattern } from '@open-mercato/shared/lib/db/escapeLikePattern'
 import { makeCrudRoute, type CrudCtx } from '@open-mercato/shared/lib/crud/factory'
@@ -22,10 +23,13 @@ import {
   createdResponseSchema,
   outlineListItem,
   outlineListItemSchema,
+  outlinesWithPart,
   updateResponseSchema,
 } from '../shared'
 
 type OutlineListQuery = z.infer<typeof outlineListQuerySchema>
+
+const NO_ROW: Where = { id: { $exists: false } } as Where
 
 const rawBodySchema = z.object({}).loose()
 
@@ -80,6 +84,10 @@ export const { metadata, GET, POST, PUT, DELETE } = makeCrudRoute({
       if (query.activityId) business.push({ activity_id: query.activityId })
       if (query.ageCategory) business.push({ age_category: query.ageCategory })
       if (query.search) business.push({ topic: { $ilike: `%${escapeLikePattern(query.search)}%` } })
+      if (query.part) {
+        const ids = await outlinesWithPart(ctx, query.part)
+        business.push(ids.length > 0 ? ({ id: { $in: ids } } as Where) : NO_ROW)
+      }
       return { $and: [scopeWhere(scope, OUTLINE_KINDS, OUTLINE_COLUMNS), ...business] } as Where
     },
     transformItem: outlineListItem,

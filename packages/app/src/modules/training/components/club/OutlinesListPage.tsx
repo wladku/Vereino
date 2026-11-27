@@ -2,7 +2,7 @@
 // `/club/training/outlines` — the coach's outlines on the phone (training outlines spec M-O5; REQ-O06; #683): the views
 // "My outlines" (own outlines attached nowhere — the ones to copy into a session), "Sessions" (session outlines) and
 // "All" the caller's grants admit (own, the groups they coach, the sections they coordinate, the club for the
-// administrator); filters by topic text and age category; "New outline". States: loading, error with retry, empty.
+// administrator); filters by topic text, age category and part (an outline with exercises in it; #847); "New outline". States: loading, error with retry, empty.
 import * as React from 'react'
 import Link from 'next/link'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
@@ -11,6 +11,7 @@ import { Input } from '@open-mercato/ui/primitives/input'
 import { Label } from '@open-mercato/ui/primitives/label'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton, StatusTag } from '@vereino/ui'
+import { OUTLINE_PARTS, type OutlinePart } from '../../lib/outline'
 import { TrainingClubFrame } from './TrainingClubFrame'
 import { LIBRARY_HREF } from './library-client'
 import {
@@ -23,6 +24,9 @@ import {
 } from './club-client'
 
 const VIEWS: readonly OutlineListView[] = ['mine', 'sessions', 'all']
+
+const selectClass =
+  'border-input bg-background focus-visible:ring-ring min-h-11 rounded-md border px-3 text-base focus-visible:ring-2 focus-visible:outline-none'
 
 function OutlineCard({ item }: { item: OutlineListItem }) {
   const t = useT()
@@ -60,7 +64,12 @@ function OutlineCard({ item }: { item: OutlineListItem }) {
 function Outlines() {
   const t = useT()
   const id = React.useId()
-  const [filters, setFilters] = React.useState<OutlineListFilters>({ view: 'mine', search: '', ageCategory: '' })
+  const [filters, setFilters] = React.useState<OutlineListFilters>({
+    view: 'mine',
+    search: '',
+    ageCategory: '',
+    part: '',
+  })
   const [search, setSearch] = React.useState('')
   const query = useOutlines(filters)
   React.useEffect(() => {
@@ -90,7 +99,9 @@ function Outlines() {
     body = (
       <p className="text-muted-foreground" data-testid="training-outlines-empty">
         {t(
-          filters.search || filters.ageCategory ? 'training.list.emptyFiltered' : `training.list.empty.${filters.view}`,
+          filters.search || filters.ageCategory || filters.part
+            ? 'training.list.emptyFiltered'
+            : `training.list.empty.${filters.view}`,
         )}
       </p>
     )
@@ -140,7 +151,7 @@ function Outlines() {
           </Button>
         ))}
       </div>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="flex flex-col gap-1">
           <Label htmlFor={`${id}-search`}>{t('training.list.search')}</Label>
           <Input
@@ -166,6 +177,26 @@ function Outlines() {
             }}
             data-testid="training-outlines-age"
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label htmlFor={`${id}-part`}>{t('training.library.part')}</Label>
+          <select
+            id={`${id}-part`}
+            className={selectClass}
+            value={filters.part ?? ''}
+            onChange={(event) => {
+              const part = event.target.value as OutlinePart | ''
+              setFilters((current) => ({ ...current, part }))
+            }}
+            data-testid="training-outlines-part"
+          >
+            <option value="">{t('training.library.anyPart')}</option>
+            {OUTLINE_PARTS.map((part) => (
+              <option key={part} value={part}>
+                {t(`training.outline.parts.${part}`)}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
       {body}

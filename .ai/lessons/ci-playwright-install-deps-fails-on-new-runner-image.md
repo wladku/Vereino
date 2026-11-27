@@ -13,4 +13,6 @@ topics: ["ci", "playwright", "integration-tests", "flaky-infra"]
 
 **Rule**: Read the failed step before touching code. When a shard fails in "Install Playwright browser" with apt `Unable to locate package`, classify it as infra: push the branch's next real commit (or rerun the failed job) and check that the new run's shards install the browser. If two consecutive runs hit it, the `ubuntu-latest` rollout has reached the repository: propose to the owner pinning `runs-on: ubuntu-24.04` for the jobs that run `playwright install --with-deps` (or a Playwright version that supports the new image) in a separate CI PR; never change `ci.yml` from a feature PR.
 
+**Second failure mode (#889, 2026-11-27)**: On PR #883 two consecutive runs lost one shard each in the same step with `packages.microsoft.com/ubuntu/26.04/prod resolute InRelease 403 Forbidden` … `is no longer signed`. That source ships with the runner image, and Playwright needs nothing from it. Since #889 every GitHub-hosted `--with-deps` step in `ci.yml` removes `/etc/apt/sources.list.d/microsoft-prod.*` before the install. A new job that runs `playwright install --with-deps` does the same.
+
 **Applies to**: `.github/workflows/ci.yml` jobs `integration-shard` and `browser-smoke`; CI triage in `om-auto-fix-pr` runs.

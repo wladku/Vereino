@@ -22,10 +22,12 @@ const verifyInvariantsCommand: CommandHandler<Record<string, unknown>, VerifyInv
   id: 'payments.invariants.verify',
   isUndoable: false,
   async execute(rawInput, ctx) {
-    const job = await authorizePaymentsJob(ctx, 'payments.invariants.verify.authorize', rawInput)
+    // `sweepRun: true` (the claimed run of the club job sweep, #852): the sweep's round pings, not this run.
+    const { sweepRun, ...jobInput } = rawInput ?? {}
+    const job = await authorizePaymentsJob(ctx, 'payments.invariants.verify.authorize', jobInput)
     const scope = { tenantId: job.tenantId, organizationId: job.organizationId }
     const report = await readPaymentsInvariants(ctx.container.resolve<EntityManager>('em').fork(), scope)
-    const heartbeat = await reportPaymentsInvariants(scope, report)
+    const heartbeat = await reportPaymentsInvariants(scope, report, { ping: sweepRun !== true })
     return { job, ...report, drift: hasDrift(report), heartbeat }
   },
 }

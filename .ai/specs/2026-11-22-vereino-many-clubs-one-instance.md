@@ -498,7 +498,9 @@ phases.
 - **Phase 5:** limits default to generous values, then tightened from the capacity report.
 - **Observability:** `club-jobs status`; the existing worker heartbeat; the payments invariants heartbeat becomes per
   run of the sweep (one ping after all clubs, with the count of failing clubs), replacing the "last clean club clears
-  the check" behaviour (`docs/ops/monitoring.md:83`).
+  the check" behaviour (`docs/ops/monitoring.md:83`). Built in #852 per sweep run: the round check reads only the clubs
+  the run claimed, each in its scope; a night whose clubs fall into several 5-minute ticks pings once per tick. The
+  release N+1 removal and the staging exit gates are still open (changelog `2026-11-26-issue-852-sweep-heartbeat.md`).
 
 ## Risks and Tradeoffs
 

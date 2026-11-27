@@ -18,8 +18,8 @@ import {
 // a subject without a link, a refusal at Facebook, a failing token endpoint and a failing Graph `/me` end without a
 // session. The data-deletion callback refuses a missing or badly signed `signed_request` (400, the link kept), deletes
 // the link of a valid one and answers the status URL and a confirmation code — again for a repeat and for an unknown
-// user id — and the status page shows the code. Only Facebook has the callback (404 for Google). No route creates a
-// platform user.
+// user id — and the status page shows the code. A body over 16 KiB or a chunked one without `content-length` is refused
+// with 413 before it is read (#833). Only Facebook has the callback (404 for Google). No route creates a platform user.
 test.describe.configure({ timeout: 300_000, mode: 'serial' })
 
 type IdentityList = {
@@ -29,6 +29,24 @@ type IdentityList = {
 }
 
 type DeletionAnswer = { status: number; body: { url?: string; confirmation_code?: string; error?: string } }
+
+/** POSTs a form body as a stream, so it goes chunked without `content-length` (#833). */
+async function chunkedDeletion(baseURL: string, form: Record<string, string>): Promise<DeletionAnswer> {
+  const bytes = new TextEncoder().encode(new URLSearchParams(form).toString())
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      controller.enqueue(bytes)
+      controller.close()
+    },
+  })
+  const response = await fetch(new URL('/api/foundation/identity/facebook/deletion', baseURL), {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body,
+    duplex: 'half',
+  } as RequestInit & { duplex: 'half' })
+  return { status: response.status, body: (await response.json()) as DeletionAnswer['body'] }
+}
 
 let fake: OAuthFake
 test.beforeAll(async () => {
@@ -146,6 +164,15 @@ test('TEST-S03 Facebook links without an e-mail, signs in, and its deletion call
     const forged = await deletion(api, base, { signed_request: facebookSignedRequest(martaSubject, 'not-the-secret') })
     expect(forged.status).toBe(400)
     expect(forged.body).toEqual({ error: 'Bad request' })
+    expect(probeLink('facebook', martaSubject).count).toBe(1)
+
+    // #833: a body over 16 KiB, or a chunked one without `content-length`, is refused unread even when validly signed.
+    const valid = facebookSignedRequest(martaSubject)
+    const oversized = await deletion(api, base, { signed_request: valid, padding: 'x'.repeat(20_000) })
+    expect(oversized.status).toBe(413)
+    expect(oversized.body).toEqual({ error: 'Payload too large' })
+    const chunked = await chunkedDeletion(base, { signed_request: valid })
+    expect(chunked.status).toBe(413)
     expect(probeLink('facebook', martaSubject).count).toBe(1)
 
     // A valid request deletes Marta's link and answers the status URL with a confirmation code.

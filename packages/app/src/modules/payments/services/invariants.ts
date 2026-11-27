@@ -4,6 +4,10 @@
 // `docs/ops/monitoring.md`): drift is an `error` log line with the alert token `vereino.ops.payments.invariants.drift`
 // and a `/fail` ping of the heartbeat check `VEREINO_OPS_PAYMENTS_INVARIANTS_HEARTBEAT_URL`; a clean run logs at
 // `info` and pings the check, so a check that never runs alerts too. It writes nothing.
+// On the club job sweep (#852) a club's run pings nothing: the sweep run's round reports once, after all the clubs it
+// enqueued, with the count of failing clubs (`reportInvariantsSweep`), so a later clean club no longer clears the
+// alert of an earlier one. A run without the sweep (a per-club schedule of the old setup, `payments run-job`) still
+// pings per club.
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { chargeLedgerTotals, handoverNumbers, receiptNumberIssues } from '../data/queries'
@@ -13,7 +17,10 @@ import {
   hasDrift,
   heartbeatUrl,
   invariantsReport,
+  sweepAlertFields,
+  sweepFailed,
   type InvariantsReport,
+  type InvariantsSweepOutcome,
 } from '../lib/invariants'
 import type { PaymentsScope } from './directory'
 
@@ -33,22 +40,15 @@ export async function readPaymentsInvariants(em: EntityManager, scope: PaymentsS
   })
 }
 
-/** `skipped`: no heartbeat check configured; `sent`: the monitor accepted the ping; `failed`: refused or unreachable. */
-export type InvariantsHeartbeat = 'skipped' | 'sent' | 'failed'
-
 /**
- * Writes the run's log line and pings the heartbeat check. A refused ping is logged and never fails the job: the
- * log line already carries the alert.
+ * `skipped`: no heartbeat check configured; `sent`: the monitor accepted the ping; `failed`: refused or unreachable;
+ * `sweep`: a run of the club job sweep, whose round pings once for all its clubs.
  */
-export async function reportPaymentsInvariants(
-  scope: PaymentsScope,
-  report: InvariantsReport,
-): Promise<InvariantsHeartbeat> {
-  const drift = hasDrift(report)
-  const fields = { tenantId: scope.tenantId, organizationId: scope.organizationId, ...alertFields(report) }
-  if (drift) logger.error('Payments invariants drift', fields)
-  else logger.info('Payments invariants verified', fields)
-  const url = heartbeatUrl(process.env[INVARIANTS_HEARTBEAT_URL_VARIABLE], drift)
+export type InvariantsHeartbeat = 'skipped' | 'sent' | 'failed' | 'sweep'
+
+/** Pings the heartbeat check (`<url>/fail` when `failed`). A refused ping is logged and never fails the job. */
+async function pingInvariantsHeartbeat(failed: boolean): Promise<InvariantsHeartbeat> {
+  const url = heartbeatUrl(process.env[INVARIANTS_HEARTBEAT_URL_VARIABLE], failed)
   if (!url) return 'skipped'
   try {
     const response = await fetch(url, { method: 'GET', signal: AbortSignal.timeout(HEARTBEAT_TIMEOUT_MS) })
@@ -58,4 +58,34 @@ export async function reportPaymentsInvariants(
   }
   logger.warn('Payments invariants heartbeat ping failed', { variable: INVARIANTS_HEARTBEAT_URL_VARIABLE })
   return 'failed'
+}
+
+/**
+ * Writes the run's log line and, unless the club job sweep reports the run (`ping: false`), pings the heartbeat
+ * check. A refused ping is logged and never fails the job: the log line already carries the alert.
+ */
+export async function reportPaymentsInvariants(
+  scope: PaymentsScope,
+  report: InvariantsReport,
+  options: { ping?: boolean } = {},
+): Promise<InvariantsHeartbeat> {
+  const drift = hasDrift(report)
+  const fields = { tenantId: scope.tenantId, organizationId: scope.organizationId, ...alertFields(report) }
+  if (drift) logger.error('Payments invariants drift', fields)
+  else logger.info('Payments invariants verified', fields)
+  if (options.ping === false) return 'sweep'
+  return pingInvariantsHeartbeat(drift)
+}
+
+/**
+ * The round report of one sweep run of `payments:verify-invariants` (`afterSweep`, #852): one log line with the
+ * counts and one ping, `<url>/fail` when any of the run's clubs drifted, failed or gave no result. The per-club lines
+ * name the clubs.
+ */
+export async function reportInvariantsSweep(outcome: InvariantsSweepOutcome): Promise<InvariantsHeartbeat> {
+  const failed = sweepFailed(outcome)
+  const fields = sweepAlertFields(outcome)
+  if (failed) logger.error('Payments invariants sweep found failing clubs', fields)
+  else logger.info('Payments invariants sweep verified', fields)
+  return pingInvariantsHeartbeat(failed)
 }

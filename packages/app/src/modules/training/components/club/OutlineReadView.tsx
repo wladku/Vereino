@@ -48,7 +48,8 @@ function Exercise({ outlineId, exercise, index }: { outlineId: string; exercise:
   )
 }
 
-export function OutlineReadView({ outline }: { outline: Outline }) {
+/** `facts={false}` shows the parts only (the back-office form edits the header itself; #847). */
+export function OutlineReadView({ outline, facts: showFacts = true }: { outline: Outline; facts?: boolean }) {
   const t = useT()
   const facts: Array<[string, React.ReactNode]> = [
     [t('training.outline.fields.ageCategory'), outline.ageCategory],
@@ -66,14 +67,16 @@ export function OutlineReadView({ outline }: { outline: Outline }) {
   if (outline.equipment) facts.push([t('training.outline.fields.equipment'), outline.equipment])
   return (
     <div className="flex flex-col gap-4" data-testid="training-outline-read">
-      <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-        {facts.map(([label, value]) => (
-          <div key={label} className="flex min-w-0 flex-col gap-1">
-            <dt className="text-muted-foreground text-xs">{label}</dt>
-            <dd className="text-sm break-words whitespace-pre-line">{value}</dd>
-          </div>
-        ))}
-      </dl>
+      {showFacts ? (
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+          {facts.map(([label, value]) => (
+            <div key={label} className="flex min-w-0 flex-col gap-1">
+              <dt className="text-muted-foreground text-xs">{label}</dt>
+              <dd className="text-sm break-words whitespace-pre-line">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       {OUTLINE_PARTS.map((part) => (
         <section key={part} className="flex flex-col gap-2" aria-labelledby={`outline-${outline.id}-${part}`}>
           <h3 id={`outline-${outline.id}-${part}`} className="flex items-baseline justify-between gap-2 font-semibold">

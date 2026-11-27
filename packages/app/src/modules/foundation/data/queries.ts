@@ -474,6 +474,31 @@ export async function clubJobsOf(
   }))
 }
 
+/**
+ * The run state of one club's job of one type (the round check of a sweep run, #852), narrowed to the club the sweep's
+ * claim returned; null when the row is gone.
+ */
+export async function clubJobRunState(
+  em: EntityManager,
+  scope: ClubJobScope,
+  jobKey: string,
+): Promise<{ leaseUntil: Date | null; lastFinishedAt: Date | null; lastError: string | null } | null> {
+  const rows = await em.execute<
+    Array<{ lease_until: Date | string | null; last_finished_at: Date | string | null; last_error: string | null }>
+  >(
+    `select lease_until, last_finished_at, last_error from foundation_club_jobs
+     where tenant_id = ? and organization_id = ? and job_key = ?`,
+    [scope.tenantId, scope.organizationId, jobKey],
+  )
+  const row = rows.at(0)
+  if (!row) return null
+  return {
+    leaseUntil: row.lease_until ? new Date(row.lease_until) : null,
+    lastFinishedAt: row.last_finished_at ? new Date(row.last_finished_at) : null,
+    lastError: row.last_error,
+  }
+}
+
 /** Deletes the club's job-state rows (`removeClub`, a club deleted in phase 4). */
 export async function deleteClubJobs(em: EntityManager, scope: ClubJobScope): Promise<number> {
   const rows = await em.execute<Array<{ id: string }>>(

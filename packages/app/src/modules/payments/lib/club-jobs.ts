@@ -2,6 +2,9 @@
 // foundation's club job sweep from `di.ts` (payments parity spec DD-C08, DD-C09, DD-42; REQ-043; S9.5).
 import type { ClubJobDeclaration } from '@/modules/foundation'
 
+/** The nightly invariant check, whose sweep runs report once for all their clubs (#852). */
+export const INVARIANTS_JOB_KEY = 'payments:verify-invariants'
+
 export const PAYMENTS_CLUB_JOBS: readonly ClubJobDeclaration[] = [
   {
     key: 'payments:generate-charges',
@@ -29,7 +32,7 @@ export const PAYMENTS_CLUB_JOBS: readonly ClubJobDeclaration[] = [
     description: 'Delete the order links that expired 30 days ago.',
   },
   {
-    key: 'payments:verify-invariants',
+    key: INVARIANTS_JOB_KEY,
     schedule: { dailyAt: '03:00' },
     description: 'Check that charges match their payments and receipt numbers run without gaps.',
   },

@@ -6,12 +6,15 @@
 // confirmation code, as Facebook requires. Idempotent: an unknown or already deleted subject gets a code too, so the
 // answer reveals nothing. A bad signature answers 400 without detail and leaves every link in place. Only Facebook has
 // this callback: another provider answers 404 `identity_provider_disabled`, as does Facebook while it is disabled.
+// A body over `MAX_DELETION_BODY_BYTES`, or one sent without `content-length`, answers 413 before it is read (#833).
+// The rate limit counts per client IP, and Facebook sends these callbacks from shared server IPs, so a burst of real
+// deletions can get 429; Facebook retries them, which the owner accepted on #833.
 import { randomBytes } from 'node:crypto'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { z } from 'zod'
 import { foundationErrors } from '../../../errors'
-import { signedRequestUserId } from '../../../../lib/facebook'
+import { deletionBodyAllowed, signedRequestUserId } from '../../../../lib/facebook'
 import { deletionStatusUrl } from '../../../../lib/identity'
 import { deleteLinkBySubject, reportIdentityFailure } from '../../../../services/identity'
 import { providerConfig } from '../../../../services/identity-providers'
@@ -40,6 +43,9 @@ export async function POST(request: Request, context: { params: Promise<{ provid
     const params = providerParamsSchema.safeParse(await context.params)
     const config = params.success && params.data.provider === 'facebook' ? providerConfig('facebook') : null
     if (!config) throw await foundationErrors.create('identity_provider_disabled')
+    if (!deletionBodyAllowed(request.headers.get('content-length'))) {
+      return Response.json({ error: 'Payload too large' }, { status: 413, headers: NO_STORE })
+    }
     const subject = signedRequestUserId(await signedRequestOf(request), config.clientSecret)
     if (!subject) {
       reportIdentityFailure('foundation.identity.deletion_bad_signature', { provider: config.id })
@@ -70,7 +76,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Delete the Facebook link of a signed request',
       description:
-        "Sessionless; called by Facebook with a form-encoded `signed_request` (HMAC-SHA256 with the app secret). Deletes the link of the request's app-scoped user id and answers the status URL and a confirmation code; an unknown user id gets a code too. Only `facebook` has this callback. Rate-limited per client IP.",
+        "Sessionless; called by Facebook with a form-encoded `signed_request` (HMAC-SHA256 with the app secret). Deletes the link of the request's app-scoped user id and answers the status URL and a confirmation code; an unknown user id gets a code too. Only `facebook` has this callback. A body over 16 KiB or without `content-length` is refused unread (413). Rate-limited per client IP.",
       requestBody: {
         contentType: 'application/x-www-form-urlencoded',
         schema: z.object({ signed_request: z.string() }),
@@ -79,6 +85,11 @@ export const openApi: OpenApiRouteDoc = {
       errors: [
         { status: 400, description: 'Missing or badly signed `signed_request`', schema: identityErrorSchema },
         { status: 404, description: '`identity_provider_disabled`', schema: identityErrorSchema },
+        {
+          status: 413,
+          description: 'Body over 16 KiB or without `content-length`, refused before it is read',
+          schema: identityErrorSchema,
+        },
         { status: 429, description: 'Too many requests', schema: identityErrorSchema },
       ],
     },
