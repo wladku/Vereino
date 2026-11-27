@@ -248,5 +248,19 @@
   "training.public.kicker": "Konspekt treningu udostępniony w Vereino",
   "training.public.loading": "Wczytywanie konspektu…",
   "training.public.notFound": "Ten konspekt jest niedostępny.",
-  "training.public.error": "Nie udało się wczytać konspektu."
+  "training.public.error": "Nie udało się wczytać konspektu.",
+  "training.backend.description": "Wszystkie konspekty klubu: własne, konspekty terminów i konspekty serii. Otwórz konspekt, aby zmienić nagłówek; ćwiczenia i obrazy edytuje się w edytorze w strefie członka.",
+  "training.backend.kind.own": "Własny",
+  "training.backend.columns.kind": "Rodzaj",
+  "training.backend.columns.duration": "Czas trwania",
+  "training.backend.columns.group": "Grupa",
+  "training.backend.columns.author": "Autor",
+  "training.backend.columns.session": "Termin",
+  "training.backend.columns.updatedAt": "Ostatnia zmiana",
+  "training.backend.filters.view": "Rodzaj",
+  "training.backend.actions.edit": "Otwórz",
+  "training.backend.actions.exercises": "Edytuj ćwiczenia",
+  "training.backend.groups.header": "Nagłówek",
+  "training.backend.groups.parts": "Części i ćwiczenia",
+  "training.backend.problems.players": "Podaj od {min} do {max} zawodników albo zostaw puste."
 }

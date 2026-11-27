@@ -85,7 +85,13 @@ export type OutlineListItem = {
 
 export type OutlineListView = 'all' | 'mine' | 'sessions' | 'series'
 
-export type OutlineListFilters = { view: OutlineListView; search: string; ageCategory: string }
+export type OutlineListFilters = {
+  view: OutlineListView
+  search: string
+  ageCategory: string
+  /** Only outlines with at least one exercise in this part (M-O5's part filter; #847). */
+  part?: OutlinePart | ''
+}
 
 export const OUTLINES_QUERY_KEY = 'training-outlines'
 export const OUTLINE_QUERY_KEY = 'training-outline'
@@ -101,6 +107,7 @@ export function outlinesUrl(
   if (filters.view && filters.view !== 'all') params.set('view', filters.view)
   if (filters.search) params.set('search', filters.search)
   if (filters.ageCategory) params.set('ageCategory', filters.ageCategory)
+  if (filters.part) params.set('part', filters.part)
   if (filters.occurrenceId) params.set('occurrenceId', filters.occurrenceId)
   return `/api/training/outlines?${params.toString()}`
 }

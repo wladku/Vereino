@@ -18,6 +18,23 @@ export async function outlineImageReferences(
   return Number(rows[0]?.count ?? 0)
 }
 
+/**
+ * The live outlines of the organization with at least one exercise in `part` (`warm_up`, `main`, `cool_down`; validated
+ * by the caller): the outline list's part filter (training outlines spec M-O5, #847). The caller narrows them further by
+ * the record scope.
+ */
+export async function outlineIdsWithPart(
+  em: EntityManager,
+  scope: { tenantId: string; organizationId: string },
+  part: string,
+): Promise<string[]> {
+  const rows = await em.execute<{ id: string }[]>(
+    "select id from training_outlines where tenant_id = ? and organization_id = ? and deleted_at is null and jsonb_array_length(coalesce(parts -> ?, '[]'::jsonb)) > 0",
+    [scope.tenantId, scope.organizationId, part],
+  )
+  return rows.map((row) => row.id)
+}
+
 /** The library tenant and organization (the configured scope, DD-O10): every library query names both. */
 export type LibraryQueryScope = { tenantId: string; organizationId: string }
 

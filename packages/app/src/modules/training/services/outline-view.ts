@@ -8,6 +8,7 @@ import type { Scope } from '@vereino/core'
 import { assertInScope } from '@/modules/foundation'
 import { OUTLINE_KINDS, outlineTarget, selfPersonId } from '../commands/shared'
 import { Outline, OutlineAuthor } from '../data/entities'
+import { outlineIdsWithPart } from '../data/queries'
 import { LIBRARY_TERMS_VERSION, readLevel, readOrigin, type CreditOrigin, type LibraryLevel } from '../lib/library'
 import { TRAINING_LIBRARY, type TrainingLibrary } from './library'
 import {
@@ -186,4 +187,16 @@ export async function readOutline(
   const enabled = container.resolve<TrainingLibrary>(TRAINING_LIBRARY).config() !== null
   const library: OutlineLibraryState = { enabled, maxVisibility: readLevel(level), termsAccepted: accepted > 0 }
   return { row, view: { ...view, clubName: club, library } }
+}
+
+/**
+ * The outlines of the club with at least one exercise in `part` (the outline list's part filter, M-O5; #847). The list
+ * route still narrows them by the caller's record scope.
+ */
+export function outlinesWithPart(
+  container: AwilixContainer,
+  scope: { tenantId: string; organizationId: string },
+  part: string,
+): Promise<string[]> {
+  return outlineIdsWithPart(container.resolve<EntityManager>('em').fork(), scope, part)
 }
