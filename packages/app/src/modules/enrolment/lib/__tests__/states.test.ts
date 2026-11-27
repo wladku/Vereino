@@ -23,6 +23,8 @@ describe('application states (sign-up form spec *Domain Vocabulary* → State)',
     expect(applicationTransitions.canTransition('waiting', 'waiting')).toBe(true)
     expect(applicationTransitions.canTransition('new', 'new')).toBe(false)
     expect(applicationTransitions.canTransition('trial', 'new')).toBe(true)
+    expect(applicationTransitions.canTransition('waiting', 'new')).toBe(true)
+    expect(applicationTransitions.canTransition('new', 'accepted')).toBe(true)
     for (const state of CLOSED_STATES) expect(applicationTransitions.isTerminal(state)).toBe(true)
   })
 

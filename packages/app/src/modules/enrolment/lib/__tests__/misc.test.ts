@@ -11,6 +11,7 @@ import {
   applyPath,
   backendApplicationHref,
   clubApplicationHref,
+  clubPagePath,
   publicApplicationsApi,
   publicSectionApi,
 } from '../paths'
@@ -55,6 +56,7 @@ describe('module tables, jobs and codes', () => {
 
 describe('paths', () => {
   it('builds the public and member paths', () => {
+    expect(clubPagePath('ks orzel')).toBe('/p/ks%20orzel')
     expect(applyPath('ks orzel', 'pilka')).toBe('/p/ks%20orzel/sections/pilka/apply')
     expect(applicationConfirmPath('ks', 'ab')).toBe('/p/ks/applications/confirm/ab')
     expect(applicationStatusPath('ks', 'ab')).toBe('/p/ks/applications/status/ab')

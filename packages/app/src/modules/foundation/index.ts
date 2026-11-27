@@ -170,6 +170,7 @@ export {
 export {
   DISPATCH_QUEUE,
   createDispatchService,
+  eraseAddressDeliveries,
   eraseRecipientDeliveries,
   type DeliveryCounts,
   type DeliveryView,

@@ -11,6 +11,8 @@ import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import type { ApplicationTarget, ApplicationTargetsService } from '../../groups/services/application-targets'
 import type { DuplicateCandidatesService, DuplicateQuery } from '../../people/services/duplicate-candidates'
 import type { PersonDirectory } from '../../people/services/person-directory'
+import type { PublicBlockProvider } from '../../club_core/services/public-blocks'
+import type { PublicPricesBlock } from '../../payments/lib/public-prices'
 import { DEFAULT_REFERENCE_DAY, parseReferenceDay } from '../lib/age'
 
 export type EnrolmentScope = { tenantId: string; organizationId: string }
@@ -21,6 +23,7 @@ const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
 const GROUPS_APPLICATION_TARGETS = 'groups.applicationTargets'
 const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory'
 const PEOPLE_DUPLICATE_CANDIDATES = 'people.duplicateCandidates'
+const PAYMENTS_PUBLIC_PRICES = 'payments.publicPrices'
 
 function required(container: AwilixContainer, token: string): AwilixContainer {
   if (!container.hasRegistration(token)) throw new Error('[internal] enrolment requires the DI service ' + token)
@@ -75,7 +78,14 @@ export function clubDay(settings: Pick<EnrolmentSettings, 'timeZone'>, now: Date
 export function applicationTargets(
   container: AwilixContainer,
   scope: EnrolmentScope,
-  query: { sectionId: string; date: CalendarDate; groupIds?: readonly string[]; em?: EntityManager },
+  query: {
+    sectionId: string
+    date: CalendarDate
+    groupIds?: readonly string[]
+    /** Row-lock this group first (DD-J10a; needs `em`, the caller's transaction). */
+    lockGroupId?: string
+    em?: EntityManager
+  },
 ): Promise<ApplicationTarget[]> {
   return required(container, GROUPS_APPLICATION_TARGETS)
     .resolve<ApplicationTargetsService>(GROUPS_APPLICATION_TARGETS)
@@ -141,4 +151,49 @@ export async function duplicateCandidates(
 ) {
   if (!container.hasRegistration(PEOPLE_DUPLICATE_CANDIDATES)) return []
   return container.resolve<DuplicateCandidatesService>(PEOPLE_DUPLICATE_CANDIDATES).candidates(scope, query, { today })
+}
+
+/** The candidates' display data for the accept sheet (DD-J11): name, birth date and whether they have an account. */
+export async function candidatePersons(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  ids: readonly string[],
+): Promise<Map<string, { name: string; birthDate: string | null; hasAccount: boolean }>> {
+  if (ids.length === 0) return new Map()
+  const directory = people(container)
+  const [persons, users] = await Promise.all([directory.findPersons(scope, ids), directory.findUserIds(scope, ids)])
+  return new Map(
+    [...persons.values()].map((person) => [
+      person.id,
+      {
+        name: `${person.firstName} ${person.lastName}`.trim(),
+        birthDate: person.birthDate,
+        hasAccount: users.has(person.id),
+      },
+    ]),
+  )
+}
+
+export type GroupFee = { amount: number; currency: 'PLN'; period: string; siblingDiscountPercent: number | null }
+
+/**
+ * Q-J06: the fees of the section's public groups valid today, by group (`payments.publicPrices`, the prices block of
+ * the public section page). Empty without `payments` or for a group that is not public: the accept sheet then names
+ * the rule without an amount.
+ */
+export async function groupFees(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  sectionId: string,
+): Promise<Map<string, GroupFee[]>> {
+  if (!container.hasRegistration(PAYMENTS_PUBLIC_PRICES)) return new Map()
+  const provider = container.resolve<PublicBlockProvider>(PAYMENTS_PUBLIC_PRICES)
+  const block = (await provider.sectionBlock?.({
+    ...scope,
+    clubSlug: '',
+    sectionId,
+    sectionSlug: '',
+    publishedBlocks: [],
+  })) as PublicPricesBlock | null | undefined
+  return new Map((block?.groups ?? []).map((group) => [group.groupId, group.fees]))
 }

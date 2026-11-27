@@ -1,6 +1,7 @@
 // The HTTP side of the coordinator's applications pages (sign-up form spec M-J1, M-J2, M-J3, B-J1; #799): the member
 // profile (`GET /api/people/me`, the query key `people`'s pages use), the list by tab, one application, the overdue
-// count and the two decisions of phase 2 — reject and waiting list — each sending the `updatedAt` it was read with.
+// count, the decisions reject and waiting list (phase 2) and accept (phase 3, #800), each sending the `updatedAt` it
+// was read with.
 // Authorization stays on the routes and commands; a refused decision comes back as an outcome the page shows (409:
 // changed by someone else, 404: gone) instead of a thrown error.
 import { useQuery } from '@tanstack/react-query'
@@ -226,6 +227,69 @@ export function rejectApplication(id: string, reason: string, updatedAt: string)
 
 export function waitApplication(id: string, groupId: string, updatedAt: string): Promise<DecisionOutcome> {
   return decide(id, 'waiting', { groupId, updatedAt })
+}
+
+// --- Accept (phase 3, #800) ---
+
+export type AcceptRequest = {
+  groupId: string
+  startDay: string
+  childPersonId: string | null
+  guardianPersonId: string | null
+  guardianBirthDate: string | null
+  overLimit: boolean
+  sendInvitation: boolean
+  updatedAt: string
+}
+
+export type AcceptOutcome =
+  | { status: 'ok'; invitation: 'sent' | 'skipped' | 'failed' }
+  | { status: 'conflict' }
+  | { status: 'not_found' }
+  /** Refused input, a full group, an overlap or a missing grant: the sheet stays open and names the problem. */
+  | { status: 'invalid'; code: string | null; field: string | null }
+  | { status: 'error' }
+
+/** The 409 codes the accept sheet answers itself; any other 409 is "changed by someone else". */
+const ACCEPT_REFUSALS = new Set(['group_full', 'membership_overlap', 'guardianship_duplicate'])
+
+export async function acceptApplication(id: string, request: AcceptRequest): Promise<AcceptOutcome> {
+  let call
+  try {
+    call = await apiCall<{ ok?: boolean; invitation?: 'sent' | 'skipped' | 'failed'; code?: string; field?: string }>(
+      `${APPLICATIONS_API}/${encodeURIComponent(id)}/accept`,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          groupId: request.groupId,
+          startDay: request.startDay,
+          child: { personId: request.childPersonId },
+          guardian: { personId: request.guardianPersonId, birthDate: request.guardianBirthDate },
+          overLimit: request.overLimit,
+          sendInvitation: request.sendInvitation,
+          updatedAt: request.updatedAt,
+        }),
+      },
+    )
+  } catch {
+    return { status: 'error' }
+  }
+  const result = call.result
+  if (call.ok && result?.ok) return { status: 'ok', invitation: result.invitation ?? 'skipped' }
+  const code = result?.code ?? null
+  if (call.status === 409 && code && ACCEPT_REFUSALS.has(code)) return { status: 'invalid', code, field: null }
+  if (call.status === 409) return { status: 'conflict' }
+  if (call.status === 404) return { status: 'not_found' }
+  if (call.status === 400 || call.status === 403 || call.status === 422) {
+    return { status: 'invalid', code, field: result?.field ?? null }
+  }
+  return { status: 'error' }
+}
+
+/** A fee in grosz as money in the reader's language. */
+export function moneyLabel(grosz: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: 'currency', currency: 'PLN' }).format(grosz / 100)
 }
 
 // --- Formatting ---
