@@ -984,6 +984,196 @@ Rules 1–2 are accepted or corrected through the wording below; rules 3–5 are
 | 736 | `facilities.zones.actions.back` | Wróć do stref | Back to zones |  | |
 | 737 | `facilities.zones.actions.create` | Dodaj regułę strefy | Add zone rule |  | |
 
+## Addendum — new strings on `main` at `ee5ddb2a` (2026-11-26)
+
+The table above was built at `5683e44c`. Later merges added strings of the same five kinds; they are listed here with the same selection rules, so one review covers everything that `main` shows today. The new `training` module (training outlines, #685) is now in `packages/app/vereino-modules.json` and is included. No Polish value already in the table above has changed since `5683e44c`, and none of its keys was removed.
+
+Fill in **Change to** here the same way as above. **Since the sheet** says why the row is here. 54 rows to review: 1 in the member shell and 53 in the modules.
+
+| Section | Rows |
+|---|---|
+| Member and public shell | 1 |
+| foundation | 4 |
+| club_core | 4 |
+| people | 7 |
+| activities | 4 |
+| payments | 10 |
+| training | 24 |
+| **Total** | **54** |
+
+Note for the reviewer: rows A48 and A49 (reporting a shared outline in the training library) use "zgłoś" / "zgłoszenie" for a content report, while glossary rule 4 keeps the noun "zgłoszenie" for outside booking requests only. Please confirm or reword them; `glossary:check` does not catch it, because "zgłoszenie" is not a retired term.
+
+### Addendum — member and public shell
+
+| # | Keys (all copies) | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| AS1 | `people.club.nav.outlines`<br>`groups.club.nav.outlines`<br>`activities.club.nav.outlines`<br>`communication.club.nav.outlines`<br>`payments.club.nav.outlines`<br>`facilities.places.nav.outlines`<br>`training.club.nav.outlines` | Konspekty treningów | Training outlines | member menu and bottom bar | new | |
+
+The `training` module also holds copies of the member shell labels already in *Member and public shell* above, with the same Polish text. A change marked on one of those rows also applies to these copies, so they are not reviewed again:
+
+| Row above | New copy | Polish (now) |
+|---|---|---|
+| 1 | `training.club.nav.acceptCash` | Przyjmij gotówkę |
+| 2 | `training.club.nav.allWards` | Wszyscy |
+| 3 | `training.club.nav.backend` | Panel administracyjny |
+| 4 | `training.club.nav.calendar` | Kalendarz |
+| 5 | `training.club.nav.clubEvents` | Imprezy klubowe |
+| 6 | `training.club.nav.context` | Kontekst |
+| 7 | `training.club.nav.contextCoach` | jako trener |
+| 8 | `training.club.nav.contextCoachCoordinator` | jako trener / koordynator |
+| 9 | `training.club.nav.contextMember` | jako członek / opiekun |
+| 10 | `training.club.nav.facilities` | Obiekty |
+| 11 | `training.club.nav.facilitiesMore` | Obiekty i rezerwacje |
+| 12 | `training.club.nav.facilityToday` | Dziś na obiekcie |
+| 13 | `training.club.nav.groupPayments` | Płatności moich grup |
+| 14 | `training.club.nav.groups` | Grupy |
+| 15 | `training.club.nav.label` | Strefa członka |
+| 16 | `training.club.nav.me` | Ja |
+| 17 | `training.club.nav.messages` | Wiadomości |
+| 18 | `training.club.nav.more` | Więcej |
+| 19 | `training.club.nav.myUnits` | Moje jednostki |
+| 20 | `training.club.nav.orders` | Zamówienia (np. stroje) |
+| 21 | `training.club.nav.payments` | Płatności |
+| 22 | `training.club.nav.profile` | Profil |
+| 23 | `training.club.nav.signOut` | Wyloguj |
+| 24 | `training.club.nav.today` | Dziś |
+| 25 | `training.club.nav.ward` | Pokazuję |
+
+### Addendum — module `foundation`
+
+#### Page titles
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A1 | `foundation.identity.deletion.title` | Prośba o usunięcie danych | Data deletion request | /identity/deletion | new | |
+| A2 | `foundation.identity.title` | Połączone konta | Connected accounts |  | new | |
+
+#### Buttons
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A3 | `foundation.identity.login.signInWith` | Zaloguj się przez {provider} | Sign in with {provider} |  | new | |
+| A4 | `foundation.identity.retry` | Spróbuj ponownie | Try again |  | new | |
+
+### Addendum — module `club_core`
+
+#### Page titles
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A5 | `club_core.landing.title` | Vereino | Vereino |  | new | |
+
+#### Buttons
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A6 | `club_core.landing.signIn` | Zaloguj się, aby zarządzać usługą | Sign in to manage the service |  | new | |
+| A7 | `club_core.offboarding.banner.download` | Pobierz eksport | Download the export |  | new | |
+| A8 | `club_core.offboarding.banner.retry` | Spróbuj ponownie | Try again |  | new | |
+
+### Addendum — module `people`
+
+#### Statuses
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A9 | `people.club.medical.state.expired` | Wygasło — było ważne do {date} | Expired — was valid until {date} |  | new | |
+| A10 | `people.club.medical.state.expiring` | Ważne do {date} — zostało mniej niż miesiąc | Valid until {date} — under a month left |  | new | |
+| A11 | `people.club.medical.state.missing` | Brak | Missing |  | new | |
+| A12 | `people.club.medical.state.unknown` | Nieznane | Unknown |  | new | |
+| A13 | `people.club.medical.state.valid` | Ważne do {date} | Valid until {date} |  | new | |
+
+#### Buttons
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A14 | `people.club.medical.clear` | Usuń datę | Delete date |  | new | |
+| A15 | `people.club.medical.save` | Zapisz datę | Save date |  | new | |
+
+### Addendum — module `activities`
+
+#### Menu
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A16 | `activities.reports.declarationShare.title` | Deklaracje w Vereino | Declarations in Vereino | /backend/activities/reports/declaration-share | new | |
+
+#### Page titles
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A17 | `activities.club.pzpn.title` | Eksport do PZPN | PZPN exports | /club/reports/pzpn | new | |
+
+#### Buttons
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A18 | `activities.occurrences.actions.reopen` | Otwórz ponownie | Reopen session |  | new | |
+| A19 | `activities.occurrences.reopen.confirm` | Otwórz ponownie | Reopen session |  | new | |
+
+### Addendum — module `payments`
+
+#### Page titles
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A20 | `payments.cashHandovers.title` | Przekazania do potwierdzenia | Handovers to confirm | /club/cash-handovers | new | |
+
+#### Statuses
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A21 | `payments.cashCustody.history.status.confirmed` | Potwierdzone | Confirmed |  | new | |
+| A22 | `payments.cashCustody.history.status.pending` | Czeka na potwierdzenie | Waiting for confirmation |  | new | |
+| A23 | `payments.cashCustody.history.status.rejected` | Odrzucone | Rejected |  | new | |
+| A24 | `payments.cashCustody.history.status.settled` | Rozliczone bez przekazującego | Settled without the collector |  | new | |
+| A25 | `payments.cashCustody.history.status.withdrawn` | Wycofane | Withdrawn |  | new | |
+| A26 | `payments.coach.handover.status.pending` | Czeka na potwierdzenie | Waiting for confirmation |  | new | |
+
+#### Buttons
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A27 | `payments.cashHandovers.confirm` | Potwierdź | Confirm |  | new | |
+| A28 | `payments.cashHandovers.reject` | Odrzuć | Reject |  | new | |
+| A29 | `payments.coach.handover.send` | Wyślij przekazanie | Send handover |  | new | |
+
+### Addendum — module `training`
+
+#### Page titles
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A30 | `training.club.title` | Klub | Club |  | new | |
+| A31 | `training.editor.newTitle` | Nowy konspekt | New training outline | /club/training/outlines/new | new | |
+| A32 | `training.editor.title` | Konspekt | Training outline | /club/training/outlines/[id] | new | |
+| A33 | `training.library.entryTitle` | Udostępniony konspekt | Shared outline | /club/training/library/[entryId] | new | |
+| A34 | `training.library.title` | Biblioteka konspektów | Outline library | /club/training/library | new | |
+| A35 | `training.list.title` | Konspekty treningów | Training outlines | /club/training/outlines | new | |
+| A36 | `training.print.pageTitle` | Konspekt — wydruk | Training outline — print | /club/training/outlines/[id]/print | new | |
+| A37 | `training.public.pageTitle` | Konspekt treningu | Training outline | /library/o/[entryId] | new | |
+| A38 | `training.publish.title` | Udostępnianie | Sharing |  | new | |
+| A39 | `training.widget.title` | Konspekt | Outline |  | new | |
+
+#### Buttons
+
+| # | Key | Polish (now) | English (source) | Where | Since the sheet | Change to |
+|---|---|---|---|---|---|---|
+| A40 | `training.actions.pdf` | PDF | PDF |  | new | |
+| A41 | `training.club.actions.retry` | Spróbuj ponownie | Try again |  | new | |
+| A42 | `training.editor.back` | Wróć do konspektów | Back to outlines |  | new | |
+| A43 | `training.editor.cancel` | Anuluj | Cancel |  | new | |
+| A44 | `training.editor.delete` | Usuń | Delete |  | new | |
+| A45 | `training.editor.save` | Zapisz | Save |  | new | |
+| A46 | `training.library.back` | Wróć do biblioteki | Back to the library |  | new | |
+| A47 | `training.library.report.cancel` | Anuluj | Cancel |  | new | |
+| A48 | `training.library.report.open` | Zgłoś | Report |  | new | |
+| A49 | `training.library.report.send` | Wyślij zgłoszenie | Send report |  | new | |
+| A50 | `training.print.back` | Wróć do konspektu | Back to the outline |  | new | |
+| A51 | `training.publish.open` | Otwórz w bibliotece | Open in the library |  | new | |
+| A52 | `training.publish.submit` | Udostępnij | Share |  | new | |
+| A53 | `training.widget.edit` | Edytuj | Edit |  | new | |
+
 ## Result
 
 - [ ] Accepted as written
