@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
 import { familyFor } from '../_fixtures/attendance'
+import { getAuthToken } from '../_fixtures/auth'
 import { call, createClub } from '../_fixtures/club'
 import { signInBrowser, signOutBrowser } from '../_fixtures/club-structure'
 import { uiText } from '../_fixtures/ui-text'
