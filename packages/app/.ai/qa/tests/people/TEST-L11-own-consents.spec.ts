@@ -353,9 +353,7 @@ test('TEST-L11 the phone profile: "My consents" with the effect lines, giving at
       const section = page.getByTestId('club-profile-own-consents')
       await expect(section).toBeVisible()
       await expect(section).toContainText(uiText('people.club.profile.ownConsents.title'))
-      await expect(page.getByTestId('club-consent-effect-image')).toContainText(
-        uiText('people.club.profile.consents.effect.image'),
-      )
+      await expect(page.getByTestId('club-consent-effect-image')).toContainText(uiText('people.consents.image.effect'))
       await expectNoPageOverflow(page)
       Object.assign(
         violations,
@@ -376,18 +374,18 @@ test('TEST-L11 the phone profile: "My consents" with the effect lines, giving at
     await expect(tripsSwitch).not.toBeChecked()
     await tripsSwitch.click()
     await expect(tripsSwitch).toBeChecked()
-    // Withdrawing asks first and names the effect; "Keep the consent" changes nothing.
+    // Withdrawing the image consent asks first and names the effect (#871); "Keep the consent" changes nothing.
     const imageSwitch = page.getByTestId('club-own-consent-image').getByRole('switch')
     await expect(imageSwitch).toBeChecked()
     await imageSwitch.click()
     const dialog = page.getByRole('alertdialog')
-    await expect(dialog).toContainText(uiText('people.club.profile.consents.effect.image'))
-    await dialog.getByRole('button', { name: uiText('people.club.profile.ownConsents.confirm.keep') }).click()
+    await expect(dialog).toContainText(uiText('people.consents.image.confirm.text'))
+    await dialog.getByRole('button', { name: uiText('people.consents.image.confirm.keep') }).click()
     await expect(imageSwitch).toBeChecked()
     await imageSwitch.click()
     await page
       .getByRole('alertdialog')
-      .getByRole('button', { name: uiText('people.club.profile.ownConsents.confirm.withdraw') })
+      .getByRole('button', { name: uiText('people.consents.image.confirm.withdraw') })
       .click()
     await expect(imageSwitch).not.toBeChecked()
     const stored = await call<{ ownConsents?: Consents }>(request, 'GET', `/api/people/persons/${adultId}`, admin)

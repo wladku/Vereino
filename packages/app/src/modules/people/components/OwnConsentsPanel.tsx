@@ -4,6 +4,8 @@
 // trips — with the date and the author, and changes them through `POST /api/people/persons/{id}/consents` with the
 // person's lock token (a withdrawal asks for confirmation; a conflict shows the platform conflict bar). The read
 // carries the consents only for `people.manage` (`ownConsents`), so a coordinator or a guardian never sees the panel.
+// The event photos spec (#871, BR-I05): the image consent has no checkbox — only the person gives it — but staff record
+// the person's withdrawal with a note and read its history (`ImageConsentStaff`).
 import * as React from 'react'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
@@ -23,13 +25,18 @@ import {
   type PersonDetail,
   type Translate,
 } from './client-helpers'
+import { ImageConsentStaff } from './ImageConsentStaff'
 
-type Flags = Record<ConsentKind, boolean>
+/** The consents staff change here: never `image` (BR-I05, #871). */
+type StaffConsentKind = Exclude<ConsentKind, 'image'>
+const STAFF_CONSENT_KINDS: readonly StaffConsentKind[] = CONSENT_KINDS.filter(
+  (kind): kind is StaffConsentKind => kind !== 'image',
+)
+type Flags = Record<StaffConsentKind, boolean>
 
 function flagsOf(consents: Record<ConsentKind, OwnConsent>): Flags {
   return {
     regulations: consents.regulations.granted,
-    image: consents.image.granted,
     trips: consents.trips.granted,
   }
 }
@@ -54,7 +61,7 @@ export function OwnConsentsPanel({ person, onChanged }: { person: PersonDetail; 
   if (!consents || !flags || !person.holdsOwnConsents) return null
 
   const changes = Object.fromEntries(
-    CONSENT_KINDS.filter((kind) => flags[kind] !== consents[kind].granted).map((kind) => [kind, flags[kind]]),
+    STAFF_CONSENT_KINDS.filter((kind) => flags[kind] !== consents[kind].granted).map((kind) => [kind, flags[kind]]),
   )
   const withdraws = Object.values(changes).some((granted) => !granted)
 
@@ -96,7 +103,7 @@ export function OwnConsentsPanel({ person, onChanged }: { person: PersonDetail; 
       <SectionHeader title={t('people.persons.ownConsents.title')} />
       <p className="text-muted-foreground max-w-prose text-sm">{t('people.persons.ownConsents.lead')}</p>
       <ul className="flex flex-col gap-3">
-        {CONSENT_KINDS.map((kind) => (
+        {STAFF_CONSENT_KINDS.map((kind) => (
           <li key={kind} className="flex flex-col gap-1" data-testid={`person-own-consent-${kind}`}>
             <div className="flex items-center gap-2">
               <Checkbox
@@ -112,6 +119,17 @@ export function OwnConsentsPanel({ person, onChanged }: { person: PersonDetail; 
             <span className="text-muted-foreground pl-6 text-xs">{stateLine(consents[kind], t)}</span>
           </li>
         ))}
+        <li className="flex flex-col gap-1" data-testid="person-own-consent-image">
+          <span className="text-sm font-medium">{t('people.guardianships.consents.image')}</span>
+          <span className="text-muted-foreground text-xs">{stateLine(consents.image, t)}</span>
+          <ImageConsentStaff
+            subjectPersonId={person.id}
+            granted={consents.image.granted}
+            canManage
+            target={{ kind: 'own', personId: person.id, lockToken: person.updatedAt }}
+            onChanged={onChanged}
+          />
+        </li>
       </ul>
       <div>
         <Button

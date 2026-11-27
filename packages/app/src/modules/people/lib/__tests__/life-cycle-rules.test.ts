@@ -119,7 +119,8 @@ describe('carriedOverConsents', () => {
       trips: { granted: true, at: '2024-01-01T08:00:00.000Z', by_person_id: null },
     }
     const older = { regulations: { granted: false, at: '2020-01-01T00:00:00.000Z', by_person_id: JOANNA } }
-    expect(carriedOverConsents({}, [first, second, older])).toEqual({
+    const of = (guardianPersonId: string, consents: object) => ({ guardianPersonId, consents })
+    expect(carriedOverConsents({}, [of(KASIA, first), of(JOANNA, second), of(JOANNA, older)])).toEqual({
       consents: {
         regulations: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA },
         image: { granted: false, at: '2026-03-01T08:00:00.000Z', by_person_id: JOANNA },
@@ -131,12 +132,30 @@ describe('carriedOverConsents', () => {
 
   it("keeps the adult's own decision and copies nothing nobody decided", () => {
     const own = { image: { granted: false, at: '2026-12-16T08:00:00.000Z', by_person_id: PERSON } }
-    const ending = [{ image: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA } }]
+    const ending = [
+      {
+        guardianPersonId: KASIA,
+        consents: { image: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA } },
+      },
+    ]
     expect(carriedOverConsents(own, ending)).toEqual({ consents: own, copied: [] })
     expect(carriedOverConsents({}, [])).toEqual({ consents: {}, copied: [] })
     // The medical consent is never carried over: the adult gives their own (BR-O1, #682).
-    const medical = [{ medical: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA } }]
+    const medical = [
+      {
+        guardianPersonId: KASIA,
+        consents: { medical: { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA } },
+      },
+    ]
     expect(carriedOverConsents({}, medical)).toEqual({ consents: {}, copied: [] })
+  })
+
+  it("carries a guardian-given image consent over as the adult's own (BR-I03, #871)", () => {
+    const grant = { granted: true, at: '2025-09-02T08:00:00.000Z', by_person_id: KASIA }
+    expect(carriedOverConsents({}, [{ guardianPersonId: KASIA, consents: { image: grant } }])).toEqual({
+      consents: { image: { ...grant, via: 'carry_over' } },
+      copied: ['image'],
+    })
   })
 })
 

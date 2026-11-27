@@ -8,7 +8,8 @@
 // shows the club's own wording (DD-39), "given to an earlier wording" when given before the club changed it (DD-L11),
 // and the line saying what withdrawing changes. Phase L8 (#310): the lines "May have an own account — ask the club" and
 // "Turns 18 on {date}: from then {name} decides alone". #682 (M-O4): the ward's sports medical certificate — the
-// guardian's `medical` consent and the date (`MedicalSection`).
+// guardian's `medical` consent and the date (`MedicalSection`). The event photos spec (#871, REQ-I06): the image consent
+// is its own row (`ImageConsentSection`), saved at once on the guardian's own guardianship with its history.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
@@ -23,12 +24,12 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSwitchField, StatusTag } from '@vereino/ui'
 import { ClubFrame } from './ClubFrame'
 import { ConsentEffect, EarlierWording, useConsentLabel, useConsentStatus } from './ConsentList'
+import { ImageConsentSection } from './ImageConsentSection'
 import { WardNotices } from './LifeCycleNotices'
 import { MedicalSection } from './MedicalSection'
 import {
   CLUB_HOME_HREF,
   MEMBER_PROFILE_QUERY_KEY,
-  WARD_CONSENT_KINDS,
   formatCalendarDate,
   fullName,
   type ConsentTexts,
@@ -37,12 +38,14 @@ import {
   type WardConsentKind,
 } from './member-client'
 
-type ConsentState = Record<WardConsentKind, boolean>
+/** The consents the form saves together; `image` has its own row (#871). */
+type FormConsentKind = Exclude<WardConsentKind, 'image'>
+const FORM_CONSENT_KINDS: readonly FormConsentKind[] = ['regulations', 'trips']
+type ConsentState = Record<FormConsentKind, boolean>
 
 function consentState(ward: MemberWard): ConsentState {
   return {
     regulations: ward.guardianship.consents.regulations.granted,
-    image: ward.guardianship.consents.image.granted,
     trips: ward.guardianship.consents.trips.granted,
   }
 }
@@ -98,7 +101,7 @@ function WardConsents({ ward, timeZone, texts }: { ward: MemberWard; timeZone: s
       <h2 id="club-ward-consents" className="text-lg font-semibold">
         {t('people.club.ward.consents.title')}
       </h2>
-      {WARD_CONSENT_KINDS.map((kind) => {
+      {FORM_CONSENT_KINDS.map((kind) => {
         return (
           <div key={kind} className="flex flex-col gap-1">
             <MemberSwitchField
@@ -120,6 +123,20 @@ function WardConsents({ ward, timeZone, texts }: { ward: MemberWard; timeZone: s
         <Button type="submit" disabled={busy} className="min-h-11 w-full sm:w-auto">
           {t('people.club.ward.actions.save')}
         </Button>
+      </div>
+      <div className="border-t pt-4">
+        <ImageConsentSection
+          personId={ward.personId}
+          name={ward.firstName}
+          consent={ward.guardianship.consents.image}
+          target={{
+            kind: 'guardianship',
+            guardianshipId: ward.guardianship.id,
+            lockToken: ward.guardianship.updatedAt,
+          }}
+          timeZone={timeZone}
+          texts={texts}
+        />
       </div>
     </form>
   )

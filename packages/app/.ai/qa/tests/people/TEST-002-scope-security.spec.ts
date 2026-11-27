@@ -51,7 +51,7 @@ test('TEST-002 a coordinator and a member get 403/404 outside their scope, with 
       guardianPersonId: foreignGuardian,
       wardPersonId: foreignWard,
       isPrimaryPayer: true,
-      consents: { image: true },
+      consents: { trips: true },
       validFrom: '2020-01-01',
     })
     const foreignSection = await createStructure(request, second.adminToken, 'sections', {
@@ -189,7 +189,7 @@ test('TEST-002 a coordinator and a member get 403/404 outside their scope, with 
           request,
           coordinatorToken,
           foreignGuardianship,
-          { image: false },
+          { trips: false },
           familyDetail.body?.updatedAt,
         )
       ).status,
@@ -275,14 +275,14 @@ test('TEST-002 a coordinator and a member get 403/404 outside their scope, with 
       request,
       first.adminToken,
       foreignGuardianship,
-      { image: false },
+      { trips: false },
       familyDetail.body?.updatedAt,
     )
     expect(crossConsents.status).toBe(404)
     // The second club's records are unchanged.
     const foreignAfter = await getPerson(request, second.adminToken, foreignWard)
     expect(foreignAfter.body?.firstName).toBe('Antek')
-    expect((await getGuardianship(request, second.adminToken, foreignGuardianship)).body?.consents?.image.granted).toBe(
+    expect((await getGuardianship(request, second.adminToken, foreignGuardianship)).body?.consents?.trips.granted).toBe(
       true,
     )
   } finally {

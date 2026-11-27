@@ -48,13 +48,13 @@ test('TEST-003 guardian and wards: member + payer for the guardian, member only 
       birthDate: birthDateTurning(14),
     })
 
-    // Guardianship with consents; one primary payer per ward.
+    // Guardianship with consents (staff never give the image consent, #871); one primary payer per ward.
     for (const wardId of [elevenId, fourteenId]) {
       await createGuardianship(request, club.adminToken, {
         guardianPersonId: guardianId,
         wardPersonId: wardId,
         isPrimaryPayer: true,
-        consents: { regulations: true, image: wardId === fourteenId },
+        consents: { regulations: true, trips: wardId === fourteenId },
         validFrom: calendarDate(),
       })
     }
@@ -96,7 +96,7 @@ test('TEST-003 guardian and wards: member + payer for the guardian, member only 
     // The guardian sees both wards with their consents; the 14-year-old sees no ward and no payments.
     const guardianMe = await getMe(request, await signInAs(request, club, guardianUserId, guardianEmail))
     expect(guardianMe.status, JSON.stringify(guardianMe.body)).toBe(200)
-    expect(guardianMe.body?.wards.map((ward) => [ward.personId, ward.guardianship.consents.image.granted])).toEqual([
+    expect(guardianMe.body?.wards.map((ward) => [ward.personId, ward.guardianship.consents.trips.granted])).toEqual([
       [fourteenId, true],
       [elevenId, false],
     ])

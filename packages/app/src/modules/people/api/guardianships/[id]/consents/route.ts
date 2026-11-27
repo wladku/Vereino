@@ -7,7 +7,7 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse } from '@/modules/foundation'
 import type { GuardianshipCommandResult } from '../../../../commands/guardianships'
-import { consentChangesSchema } from '../../../../data/validators'
+import { consentChangesSchema, consentNoteSchema } from '../../../../data/validators'
 import { errorSchema, guardianshipView, guardianshipViewSchema } from '../../../shared'
 
 export const metadata = {
@@ -15,7 +15,7 @@ export const metadata = {
 }
 
 const paramsSchema = z.object({ id: z.uuid() })
-const bodySchema = z.object({ consents: consentChangesSchema })
+const bodySchema = z.object({ consents: consentChangesSchema, note: consentNoteSchema.optional() })
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   try {
@@ -45,7 +45,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: 'Grant or withdraw consents',
       description:
-        'A guardian of the ward or the club administrator; `true` grants, `false` withdraws, an absent key keeps the consent. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied` (the ward, a coordinator, a former guardian), 404, 409 `optimistic_lock_conflict`, 409 `guardianship_ended`.',
+        "A guardian of the ward or the club administrator; `true` grants, `false` withdraws, an absent key keeps the consent. Every change is appended to the consent history. The `image` consent (event photos spec BR-I05): only the guardian of this guardianship grants it or changes it (403 `scope_denied` for the other guardian); the club administrator only withdraws it, on the guardian's request, with a `note` (2–200 characters) — a grant answers 422 `image_consent_subject_only`, a withdrawal without a note 422 `consent_note_required`. Send the lock token in the platform optimistic-lock header (400 `lock_token_required` without it). Errors: 403 `scope_denied` (the ward, a coordinator, a former guardian), 404, 409 `optimistic_lock_conflict`, 409 `guardianship_ended`.",
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [
         {
@@ -58,6 +58,7 @@ export const openApi: OpenApiRouteDoc = {
         { status: 403, description: 'scope_denied', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
         { status: 409, description: 'optimistic_lock_conflict, guardianship_ended', schema: errorSchema },
+        { status: 422, description: 'image_consent_subject_only, consent_note_required', schema: errorSchema },
       ],
     },
   },

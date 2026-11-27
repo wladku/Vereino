@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { calendarDateSchema, refineValidity, validityShape } from '@/modules/foundation'
 import { IMPORT_FIELDS, type ImportField } from '../lib/import-mapping'
 import { IMPORT_CLASSIFICATIONS, IMPORT_DECISIONS } from '../lib/import-rules'
+import { CONSENT_NOTE_MAX, CONSENT_NOTE_MIN } from '../lib/image-consent'
 import { GUARDIAN_RELATIONS, type ConsentKind } from '../lib/people-rules'
 import { PERSON_ATTENTION_FILTERS, PERSON_FILTER_ROLES, PERSON_LIST_VIEWS } from '../lib/person-list-filters'
 import { MAX_AGE_YEARS } from '@vereino/core'
@@ -93,6 +94,12 @@ export const consentChangesSchema = z
   } satisfies Record<ConsentKind, z.ZodOptional<z.ZodBoolean>>)
   .strict()
 
+/**
+ * A staff withdrawal's note (event photos spec BR-I05, #871): whose request the withdrawal records, 2–200 characters;
+ * stored encrypted on the consent event.
+ */
+export const consentNoteSchema = z.string().trim().min(CONSENT_NOTE_MIN).max(CONSENT_NOTE_MAX)
+
 export const guardianshipCreateSchema = z
   .object({
     guardianPersonId: z.uuid(),
@@ -111,6 +118,7 @@ export const guardianshipUpdateSchema = z
     relation: relationSchema.optional(),
     isPrimaryPayer: z.boolean().optional(),
     consents: consentChangesSchema.optional(),
+    note: consentNoteSchema.optional(),
     validFrom: calendarDateSchema.optional(),
     validTo: calendarDateSchema.nullable().optional(),
   })
@@ -132,6 +140,7 @@ export const ownConsentsSchema = z
   .object({
     id: z.uuid().optional(),
     changes: consentChangesSchema,
+    note: consentNoteSchema.optional(),
   })
   .strict()
 
@@ -151,6 +160,7 @@ export const guardianshipConsentsSchema = z
   .object({
     id: z.uuid(),
     consents: consentChangesSchema,
+    note: consentNoteSchema.optional(),
   })
   .strict()
 

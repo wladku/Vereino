@@ -3,6 +3,7 @@
 // carry-over, the account age, the dispatch keys that make every notice "sent once", and the notice lines the member
 // pages show. Pure: `today` is the club's calendar date (S3.5: time is a parameter).
 import { ADULT_AGE, addDays, ageOn, isActiveAt, isCalendarDate, type CalendarDate } from '@vereino/core'
+import { carriedOverImage, type ImageConsentGuardianship } from './image-consent'
 import { CONSENT_KINDS, type ConsentKind, type StoredConsentEntry, type StoredConsents } from './people-rules'
 
 /** How many days ahead the family hears about an 18th birthday (Q-L12). */
@@ -79,12 +80,13 @@ export function guardianshipsEndingAt18<T extends LifeCycleGuardianship>(
 
 /**
  * The consent carry-over of DD-L08: per kind, the most recent decision among the ending guardianships, copied with
- * `granted`, `at` and `by_person_id`. A decision the adult already made themself (`own`) is kept. Returns the new own
- * consents and the kinds copied.
+ * `granted`, `at` and `by_person_id`. `image` follows BR-I03 of the event photos spec instead (#871,
+ * `carriedOverImage`): a grant only when the guardians' consent held for publishing, the veto carries over. A decision
+ * the adult already made themself (`own`) is kept. Returns the new own consents and the kinds copied.
  */
 export function carriedOverConsents(
   own: StoredConsents,
-  ending: readonly StoredConsents[],
+  ending: readonly ImageConsentGuardianship[],
 ): { consents: StoredConsents; copied: ConsentKind[] } {
   const next: Partial<Record<ConsentKind, StoredConsentEntry>> = { ...own }
   const copied: ConsentKind[] = []
@@ -92,12 +94,17 @@ export function carriedOverConsents(
     // `medical` is not carried over: the adult gives their own; the guardian's stays in force 30 days (BR-O1, #682).
     if (own[kind] || kind === 'medical') continue
     let latest: StoredConsentEntry | null = null
-    for (const consents of ending) {
-      const entry = consents[kind]
-      if (entry && (!latest || Date.parse(entry.at) > Date.parse(latest.at))) latest = entry
+    if (kind === 'image') latest = carriedOverImage(ending)
+    else {
+      for (const { consents } of ending) {
+        const entry = consents[kind]
+        if (entry && (!latest || Date.parse(entry.at) > Date.parse(latest.at))) latest = entry
+      }
     }
     if (!latest) continue
-    next[kind] = { granted: latest.granted, at: latest.at, by_person_id: latest.by_person_id }
+    next[kind] = latest.via
+      ? { granted: latest.granted, at: latest.at, by_person_id: latest.by_person_id, via: latest.via }
+      : { granted: latest.granted, at: latest.at, by_person_id: latest.by_person_id }
     copied.push(kind)
   }
   return { consents: next, copied }

@@ -72,6 +72,15 @@ const events = [
   { id: 'people.guardianship.created', label: 'Guardianship created', entity: 'guardianship', category: 'crud' },
   { id: 'people.guardianship.updated', label: 'Guardianship updated', entity: 'guardianship', category: 'crud' },
   { id: 'people.guardianship.deleted', label: 'Guardianship deleted', entity: 'guardianship', category: 'crud' },
+  // Event photos spec (REQ-I09, #871): an `image` consent went from granted to withdrawn, after the commit. Payload
+  // `{ tenantId, organizationId, subjectPersonId, consentEventId }` (ids only); phase 2's `activities` subscriber
+  // notifies the managers of club events whose published photos the withdrawal holds back.
+  {
+    id: 'people.consent.image_withdrawn',
+    label: 'Image consent withdrawn',
+    entity: 'consent_event',
+    category: 'lifecycle',
+  },
   // A bulk import was committed (#28, club spec *Events*): ids only; the audit entry carries the counts and the ids.
   { id: 'people.import.committed', label: 'People import committed', entity: 'import', category: 'lifecycle' },
 ] as const

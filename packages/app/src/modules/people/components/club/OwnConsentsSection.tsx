@@ -5,7 +5,8 @@
 // it (DD-39; a consent given before that reads "given to an earlier wording", DD-L11) and the line saying what
 // withdrawing changes. Giving saves at once; withdrawing asks for confirmation first and names the effect. Each change
 // goes through `PUT /api/people/me/consents` with the person's lock token; a conflict shows the platform conflict bar.
-// Nothing blocks taking part when a consent is not given (Q-L15). A minor gets no section (`ownConsents` is null).
+// Nothing blocks taking part when a consent is not given (Q-L15). A minor gets no section (`ownConsents` is null). The
+// event photos spec (#871, REQ-I06): the image consent is `ImageConsentSection`, with its history and public photos.
 import * as React from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
@@ -16,6 +17,7 @@ import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimi
 import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSwitchField } from '@vereino/ui'
 import { ConsentEffect, EarlierWording, useConsentLabel, useConsentStatus } from './ConsentList'
+import { ImageConsentSection } from './ImageConsentSection'
 import {
   MEMBER_PROFILE_QUERY_KEY,
   OWN_CONSENTS_API,
@@ -96,6 +98,20 @@ export function OwnConsentsSection({ profile }: { profile: MemberProfile }) {
       <ul className="flex flex-col gap-4">
         {WARD_CONSENT_KINDS.map((kind) => {
           const consent = consents[kind]
+          if (kind === 'image') {
+            return (
+              <li key={kind} className="flex flex-col gap-1 border-t pt-4 first:border-t-0 first:pt-0">
+                <ImageConsentSection
+                  personId={profile.person.id}
+                  name={profile.person.firstName}
+                  consent={consent}
+                  target={{ kind: 'own', lockToken: profile.person.updatedAt }}
+                  timeZone={profile.club.timezone}
+                  texts={profile.consentTexts}
+                />
+              </li>
+            )
+          }
           return (
             <li
               key={kind}

@@ -80,7 +80,8 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
     expect(after.find((row) => row.rowNo === 2)?.classification).toBe('error')
     expect(after.find((row) => row.rowNo === 3)?.committedAt).toBeTruthy()
 
-    // Consent authors: Kasia (guardian) gives trips, the club administrator gives image on the same guardianship.
+    // Consent authors: Kasia (guardian) gives trips, the club administrator gives regulations on the same guardianship
+    // (staff never give image, #871).
     const settings = await updateClubSettings(request, token, { ownAccountMinAge: 13 })
     expect(settings.status, JSON.stringify(settings.body)).toBe(200)
     const kasia = await createStaff(request, club, {
@@ -104,7 +105,7 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
     const link = kasiaBefore.body?.wards.find((ward) => ward.personId === ola.personId)?.guardianship
     const byKasia = await setConsents(request, kasiaToken, linkId, { trips: true }, link?.updatedAt)
     expect(byKasia.status, JSON.stringify(byKasia.body)).toBe(200)
-    const byAdmin = await setConsents(request, token, linkId, { image: true }, byKasia.body?.updatedAt)
+    const byAdmin = await setConsents(request, token, linkId, { regulations: true }, byKasia.body?.updatedAt)
     expect(byAdmin.status, JSON.stringify(byAdmin.body)).toBe(200)
     const admin = (await getPerson(request, token, club.adminPersonId)).body as { firstName: string; lastName: string }
 
@@ -113,11 +114,14 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
     const olaMe = await getMe(request, olaToken)
     expect(olaMe.status, JSON.stringify(olaMe.body)).toBe(200)
     const olaConsents = olaMe.body?.guardians[0]?.consents
-    expect(olaConsents?.image).toMatchObject({ granted: true, byName: null, byRole: 'club_admin' })
+    expect(olaConsents?.regulations).toMatchObject({ granted: true, byName: null, byRole: 'club_admin' })
     expect(olaConsents?.trips).toMatchObject({ granted: true, byName: 'Kasia Rodzic', byRole: null })
     expect(JSON.stringify(olaMe.body)).not.toContain(`${admin.firstName} ${admin.lastName}`)
     const kasiaMe = await getMe(request, kasiaToken)
-    expect(kasiaMe.body?.wards[0]?.guardianship.consents.image).toMatchObject({ byName: null, byRole: 'club_admin' })
+    expect(kasiaMe.body?.wards[0]?.guardianship.consents.regulations).toMatchObject({
+      byName: null,
+      byRole: 'club_admin',
+    })
 
     // The administrator's person form shows the phone error next to the field.
     page.setDefaultTimeout(30_000)
@@ -133,12 +137,12 @@ test('ISSUE-191 one phone rule on the person form and the import; a consent auth
     await expect(page).toHaveURL(/\/backend\/people\/persons\/create$/)
     await expect(page.getByText(/Enter a Polish phone number|Podaj polski numer telefonu/).first()).toBeVisible()
 
-    // Ola's profile at 375 px: the image consent names the role, the trips consent her mother.
+    // Ola's profile at 375 px: the regulations consent names the role, the trips consent her mother.
     await page.setViewportSize({ width: 375, height: 812 })
     await switchBrowserUser(page, request, club, ola.userId, ola.email)
     await page.goto('/club/profile')
     const guardian = page.getByTestId('club-profile-guardian').first()
-    await expect(guardian.getByTestId('club-consent-image')).toContainText(
+    await expect(guardian.getByTestId('club-consent-regulations')).toContainText(
       uiText('people.persons.filterRoles.club_admin'),
     )
     await expect(guardian.getByTestId('club-consent-trips')).toContainText('Kasia Rodzic')

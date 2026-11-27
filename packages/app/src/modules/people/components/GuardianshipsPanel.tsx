@@ -5,7 +5,8 @@
 // person ("Add a guardian" / "Add a ward"; links never chain, so a person with a live guardian gets no "Add a ward"
 // and a live guardian no "Add a guardian", with the reason shown) from a chosen start date, edits the relation, payer
 // flag, start and end day (people life-cycle spec REQ-L12, #304) and the consents, and ends a guardianship (never
-// deletes it).
+// deletes it). The event photos spec (#871, BR-I05): staff never give the image consent — the editor and the add form
+// leave it out — but record a guardian's withdrawal with a note and read its history (`ImageConsentStaff`).
 import * as React from 'react'
 import Link from 'next/link'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -51,15 +52,20 @@ import {
 } from '@vereino/ui'
 import { createCrud } from '@open-mercato/ui/backend/utils/crud'
 import { splitPersonName } from '../lib/person-name'
+import { ImageConsentStaff } from './ImageConsentStaff'
 
-type ConsentFlags = Record<ConsentKind, boolean>
+/** The consents staff set in the editor: never `image`, which only a guardian gives (BR-I05, #871). */
+type StaffConsentKind = Exclude<ConsentKind, 'image'>
+const STAFF_CONSENT_KINDS: readonly StaffConsentKind[] = CONSENT_KINDS.filter(
+  (kind): kind is StaffConsentKind => kind !== 'image',
+)
+type ConsentFlags = Record<StaffConsentKind, boolean>
 
-const NO_CONSENTS: ConsentFlags = { regulations: false, image: false, trips: false }
+const NO_CONSENTS: ConsentFlags = { regulations: false, trips: false }
 
 function consentFlags(row: GuardianshipRow): ConsentFlags {
   return {
     regulations: row.consents?.regulations.granted ?? false,
-    image: row.consents?.image.granted ?? false,
     trips: row.consents?.trips.granted ?? false,
   }
 }
@@ -109,7 +115,7 @@ function ConsentCheckboxes({
   return (
     <fieldset className="flex flex-col gap-2">
       <legend className="mb-1 text-sm font-medium">{t('people.guardianships.consents.title')}</legend>
-      {CONSENT_KINDS.map((kind) => (
+      {STAFF_CONSENT_KINDS.map((kind) => (
         <div key={kind} className="flex items-center gap-2">
           <Checkbox
             id={`${idPrefix}-${kind}`}
@@ -122,6 +128,7 @@ function ConsentCheckboxes({
           <Label htmlFor={`${idPrefix}-${kind}`}>{t(`people.guardianships.consents.${kind}`)}</Label>
         </div>
       ))}
+      <p className="text-muted-foreground text-xs">{t('people.consents.image.staff.onlyGuardian')}</p>
     </fieldset>
   )
 }
@@ -168,6 +175,7 @@ function GuardianshipItem({
   busy,
   onEnd,
   onSave,
+  onChanged,
   t,
 }: {
   row: GuardianshipRow
@@ -176,6 +184,7 @@ function GuardianshipItem({
   busy: boolean
   onEnd: (row: GuardianshipRow) => void
   onSave: (row: GuardianshipRow, state: EditorState) => Promise<boolean>
+  onChanged: () => Promise<void>
   t: Translate
 }) {
   const today = useClubToday()
@@ -236,6 +245,15 @@ function GuardianshipItem({
         ) : null}
       </div>
       <ConsentBadges row={row} t={t} />
+      {row.consents ? (
+        <ImageConsentStaff
+          subjectPersonId={row.wardPersonId}
+          granted={row.consents.image.granted}
+          canManage={canManage}
+          target={{ kind: 'guardianship', guardianshipId: row.id, lockToken: row.updatedAt }}
+          onChanged={onChanged}
+        />
+      ) : null}
       {editor ? (
         <form
           className="bg-muted/30 flex flex-col gap-3 rounded-md border p-3"
@@ -707,6 +725,7 @@ export function GuardianshipsPanel({ personId, canManage }: { personId: string; 
                 void end(target)
               }}
               onSave={save}
+              onChanged={refresh}
               t={t}
             />
           ))}

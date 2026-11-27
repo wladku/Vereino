@@ -105,6 +105,10 @@ export const errorCodes = [
   { code: 'medical_consent_missing', status: 409, messageKey: 'people.errors.medical_consent_missing' },
   { code: 'medical_consent_subject_only', status: 403, messageKey: 'people.errors.medical_consent_subject_only' },
   { code: 'medical_status_too_many', status: 400, messageKey: 'people.errors.medical_status_too_many' },
+  // The image consent (event photos spec BR-I05; #871): a grant by anyone but the guardian of that guardianship or the
+  // adult person, and a staff withdrawal without the note that records whose request it was.
+  { code: 'image_consent_subject_only', status: 422, messageKey: 'people.errors.image_consent_subject_only' },
+  { code: 'consent_note_required', status: 422, messageKey: 'people.errors.consent_note_required' },
 ] as const satisfies ErrorCodeTable
 
 export type PeopleErrorCode = (typeof errorCodes)[number]['code']

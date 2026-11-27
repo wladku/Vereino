@@ -7,7 +7,7 @@ import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { z } from 'zod'
 import { commandContextForRequest, errorResponse } from '@/modules/foundation'
 import type { OwnConsentsResult } from '../../../../commands/own-consents'
-import { consentChangesSchema } from '../../../../data/validators'
+import { consentChangesSchema, consentNoteSchema } from '../../../../data/validators'
 import { errorSchema, ownConsentsResponse, ownConsentsResponseSchema } from '../../../shared'
 
 export const metadata = {
@@ -15,7 +15,7 @@ export const metadata = {
 }
 
 const paramsSchema = z.object({ id: z.uuid() })
-const bodySchema = z.object({ changes: consentChangesSchema }).strict()
+const bodySchema = z.object({ changes: consentChangesSchema, note: consentNoteSchema.optional() }).strict()
 
 export async function POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   try {
@@ -41,7 +41,7 @@ export const openApi: OpenApiRouteDoc = {
     POST: {
       summary: "Change an adult participant's own consents",
       description:
-        'The club administrator gives or withdraws the consents `regulations`, `image` and `trips` of an adult participant (`true` gives, `false` withdraws, an absent key keeps); each change records the instant and the acting person. 422 `consents_minor` for a person under 18 or without a birth date. Send the person lock token in the platform optimistic-lock header.',
+        'The club administrator gives or withdraws the consents `regulations` and `trips` of an adult participant (`true` gives, `false` withdraws, an absent key keeps); each change records the instant and the acting person and is appended to the consent history. The `image` consent is only withdrawn here, on the request of the person, with a `note` (2–200 characters): a grant answers 422 `image_consent_subject_only`, a withdrawal without a note 422 `consent_note_required` (event photos spec BR-I05). 422 `consents_minor` for a person under 18 or without a birth date. Send the person lock token in the platform optimistic-lock header.',
       requestBody: { contentType: 'application/json', schema: bodySchema },
       responses: [{ status: 200, description: 'The consents after the change', schema: ownConsentsResponseSchema }],
       errors: [
@@ -49,7 +49,11 @@ export const openApi: OpenApiRouteDoc = {
         { status: 403, description: 'scope_denied', schema: errorSchema },
         { status: 404, description: 'Not found', schema: errorSchema },
         { status: 409, description: 'optimistic_lock_conflict', schema: errorSchema },
-        { status: 422, description: 'consents_minor', schema: errorSchema },
+        {
+          status: 422,
+          description: 'consents_minor, image_consent_subject_only, consent_note_required',
+          schema: errorSchema,
+        },
       ],
     },
   },

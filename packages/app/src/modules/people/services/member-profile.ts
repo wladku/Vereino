@@ -19,6 +19,7 @@ import { detectLocale, resolveSupportedLocalesForRequest } from '@open-mercato/s
 import { ageOn, isActiveAt, type ActingRole, type AssignableRole } from '@vereino/core'
 import { scopeContract } from '@/modules/foundation'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
+import { imagePublishable } from './person-directory'
 import { memberMedicalView, type MemberMedicalView } from './medical'
 import {
   consentAuthorIds,
@@ -99,6 +100,11 @@ export type MemberWardView = {
   notices: WardNotice[]
   /** The ward's sports medical certificate date and status (M-O4, #682); the guardian sets both. */
   medical?: MemberMedicalView
+  /**
+   * Whether the ward's image may be published now (event photos spec BR-I02, #871): a guardian gave the image consent
+   * and no guardian withdrew it.
+   */
+  imagePublishable?: boolean
 }
 
 /** One active guardian of the member (E06-S22 #104): who they are and the consents they gave for the member. */
@@ -141,6 +147,8 @@ export type MemberProfile = {
    * more with a known birth date; null otherwise (a minor's consents stay with the guardians).
    */
   ownConsents: MemberConsentsView | null
+  /** Whether the adult's own image may be published now (BR-I03, #871); null for a minor. */
+  ownImagePublishable: boolean | null
   /** The club's consent texts by key with the instant of the last change (DD-L11); a missing key = built-in text. */
   consentTexts: ClubConsentTexts
   /** The member's own card before and after their 18th birthday (#310); null otherwise or without a birth date. */
@@ -375,6 +383,9 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     const row = wardPersons.find((candidate) => candidate.id === ward.personId)
     if (row) ward.medical = await memberMedicalView(em, scope, row, today)
   }
+  // BR-I02 / BR-I03 (#871): whether each ward's image, and the adult's own, may be published now.
+  const publishable = await imagePublishable(em, scope, [person.id, ...wards.map((ward) => ward.personId)], today)
+  for (const ward of wards) ward.imagePublishable = publishable.get(ward.personId) === true
   const contribution = membershipContribution(ctx.container)
   const isParticipant = contribution
     ? await contribution.isActiveParticipant(em, { ...scope, personId: person.id }, today)
@@ -397,6 +408,7 @@ export async function loadMemberProfile(ctx: CommandRuntimeContext, scope: ClubS
     paymentsVisible: payments.access === 'allowed',
     isParticipant,
     ownConsents,
+    ownImagePublishable: ownConsents ? publishable.get(person.id) === true : null,
     consentTexts: await clubConsentTexts(ctx.container, scope),
     notice: ownNotice(person.birthDate, today),
     medical,

@@ -191,7 +191,7 @@ test('TEST-006 the member pages: Today, profile and ward with loading, error, em
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 375, height: 812 })
 
-    // The ward by keyboard: switch the image consent with Space, save with Enter.
+    // The ward by keyboard: the image consent saves with Space at once (#871); trips with Space, saved with Enter.
     await page.getByTestId('club-ward').click()
     const wardReady = () => expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).toBeVisible()
     await wardReady()
@@ -199,13 +199,21 @@ test('TEST-006 the member pages: Today, profile and ward with loading, error, em
     const image = page.getByRole('switch', { name: /Image|Wizerunek/ })
     await image.focus()
     await page.keyboard.press('Space')
+    await expect(page.getByText(uiText('people.consents.image.flash.given')).first()).toBeVisible()
     await expect(image).toBeChecked()
+    const trips = page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })
+    await trips.focus()
+    await page.keyboard.press('Space')
+    await expect(trips).toBeChecked()
     await page.getByRole('button', { name: uiText('people.club.ward.actions.save') }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText(/consents have been saved|Zgody zostały zapisane/)).toBeVisible()
     await expect
-      .poll(async () => (await getMe(request, token)).body?.wards[0]?.guardianship.consents.image.granted)
-      .toBe(true)
+      .poll(async () => {
+        const consents = (await getMe(request, token)).body?.wards[0]?.guardianship.consents
+        return [consents?.image.granted, consents?.trips.granted]
+      })
+      .toEqual([true, true])
     await expectNoPageOverflow(page)
     await page.setViewportSize({ width: 375, height: 812 })
 

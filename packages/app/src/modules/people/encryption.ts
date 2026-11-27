@@ -31,6 +31,10 @@ export const departureRequestDeclineReason = encryptedField({
   field: 'decline_reason',
 })
 
+export const CONSENT_EVENT_ENTITY_ID = 'people:consent_event'
+/** A staff withdrawal's note on a consent event (event photos spec BR-I05, `people_consent_events.note`; #871). */
+export const consentEventNote = encryptedField({ entityId: CONSENT_EVENT_ENTITY_ID, field: 'note' })
+
 export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
   {
     entityId: PERSON_ENTITY_ID,
@@ -50,6 +54,7 @@ export const defaultEncryptionMaps: ModuleEncryptionMap[] = [
     entityId: DEPARTURE_REQUEST_ENTITY_ID,
     fields: [departureRequestNote.mapEntry, departureRequestDeclineReason.mapEntry],
   },
+  { entityId: CONSENT_EVENT_ENTITY_ID, fields: [consentEventNote.mapEntry] },
 ]
 
 export default defaultEncryptionMaps
