@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type TestInfo } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { addDays } from '../_fixtures/activities'
 import { familyFor, memberAccount } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'

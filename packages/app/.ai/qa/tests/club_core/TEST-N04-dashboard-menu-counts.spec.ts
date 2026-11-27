@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type Page, type TestInfo } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { createUserFixture } from '@open-mercato/core/helpers/integration/authFixtures'
 import { createActivity } from '../_fixtures/activities'
 import { prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'

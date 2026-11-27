@@ -8,6 +8,7 @@ import { create as createStructure, switchBrowserUser } from '../_fixtures/club-
 import { addMembership, createGroup, signedInStaff } from '../_fixtures/groups'
 import { createGuardianship } from '../_fixtures/people'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Club events spec TEST-T11 without the files steps (phase 3, REQ-T11, REQ-T04 UI, AC-T11 in part, AC-T03 in the
 // panel; #378). The administrator opens B-T1 (empty, "New club event"), creates "PRZYKŁAD CUP 2026" with a new external
@@ -105,10 +106,7 @@ test('TEST-T11 the administrator lists, creates and works a club event in the pa
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
     await prepareForAccessibilityScan(page)
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await setLocale(page, 'en')
     await page.setViewportSize({ width: 1280, height: 900 })
 

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { familyFor, weeklySeries } from '../_fixtures/attendance'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { OPTIMISTIC_LOCK_HEADER, calendarDate, call, createClub } from '../_fixtures/club'
