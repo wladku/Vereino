@@ -164,6 +164,30 @@ export function memberLanding(input: LandingInput): { redirect: string; notice: 
   return null
 }
 
+/** The member's own change-password page (#876; README M-10). */
+export const MEMBER_PASSWORD_HREF = '/club/profile/password'
+
+export type PanelPasswordInput = {
+  /** The user is linked to a person of their organization. */
+  readonly linked: boolean
+  /** The user holds `people.self`. */
+  readonly selfFeature: boolean
+  /** The grant kinds of the person's scope. */
+  readonly grants: readonly string[]
+}
+
+/**
+ * Where the panel's change-password page sends its visitor (#876, Q1, default applied 2026-11-27): a member — linked,
+ * with `people.self` — goes to `MEMBER_PASSWORD_HREF`; staff with panel access (a `club_admin` or `treasurer` grant,
+ * the panel grants of `memberLanding`) and a user linked to no person stay on the panel page (null). Grants and
+ * features, never a role name (DD-N09).
+ */
+export function panelPasswordRedirect(input: PanelPasswordInput): string | null {
+  if (!input.linked || !input.selfFeature) return null
+  if (input.grants.includes('club_admin') || input.grants.includes('treasurer')) return null
+  return MEMBER_PASSWORD_HREF
+}
+
 /**
  * The query parameter and value that make the `people.injection.not-linked-notice` banner say the account is linked to
  * no person (#352). Not the platform `?flash=`: its 3-second toast is read by whichever of its two hosts runs first, so

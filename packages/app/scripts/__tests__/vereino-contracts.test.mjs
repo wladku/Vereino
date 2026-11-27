@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { after, test } from 'node:test'
-import { RESERVED_PLATFORM_CODES, checkContracts, runCli } from '../check-vereino-contracts.mjs'
+import { RESERVED_PLATFORM_CODES, checkContracts, modulesRootOption, runCli } from '../check-vereino-contracts.mjs'
 
 const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'vereino-contracts-'))
 after(() => fs.rmSync(fixtureRoot, { recursive: true, force: true }))
@@ -150,4 +150,88 @@ test('runCli uses the console by default', async () => {
     console.log = original
   }
   assert.deepEqual(lines, ['contracts:check: 0 Vereino module(s), 0 error code(s), 0 problem(s)'])
+})
+
+// Enterprise package spec phase 1b: `--modules-root` points the module checks at another package's src/modules.
+const packageRoot = path.join(fixtureRoot, 'packages', 'enterprise')
+const packageModules = path.join(packageRoot, 'src', 'modules')
+fs.mkdirSync(path.join(packageModules, 'ent_demo', 'i18n'), { recursive: true })
+fs.writeFileSync(path.join(packageModules, 'ent_demo', 'i18n', 'en.json'), JSON.stringify({ 'ent_demo.title': 'Demo' }))
+fs.mkdirSync(path.join(packageModules, 'ent_beta'), { recursive: true })
+fs.mkdirSync(path.join(packageModules, '__tests__'), { recursive: true })
+fs.mkdirSync(path.join(packageModules, 'NotAModule'), { recursive: true })
+fs.writeFileSync(path.join(packageModules, 'index.ts'), 'export {}\n')
+
+test('modulesRootOption is null without the flag', () => {
+  assert.equal(modulesRootOption(['--json']), null)
+})
+
+test('modulesRootOption lists every module directory and takes the package root as the app root', () => {
+  assert.deepEqual(
+    modulesRootOption(['--modules-root', 'enterprise/src/modules'], path.join(fixtureRoot, 'packages')),
+    {
+      appRoot: packageRoot,
+      moduleIds: ['ent_beta', 'ent_demo'],
+    },
+  )
+})
+
+test('modulesRootOption resolves against the working directory by default', () => {
+  const relative = path.relative(process.cwd(), packageModules)
+  assert.equal(modulesRootOption(['--json', '--modules-root', relative]).appRoot, packageRoot)
+})
+
+test('modulesRootOption rejects a missing value, a non-modules directory and a missing directory', () => {
+  assert.throws(() => modulesRootOption(['--modules-root']), /^Error: --modules-root needs a directory$/)
+  assert.throws(() => modulesRootOption(['--modules-root', '--json']), /^Error: --modules-root needs a directory$/)
+  assert.throws(
+    () => modulesRootOption(['--modules-root', packageRoot]),
+    /must name the src\/modules directory of a package$/,
+  )
+  assert.throws(
+    () => modulesRootOption(['--modules-root', path.join(packageRoot, 'modules')]),
+    /must name the src\/modules directory of a package$/,
+  )
+  assert.throws(
+    () => modulesRootOption(['--modules-root', path.join(fixtureRoot, 'missing', 'src', 'modules')]),
+    /: no such directory$/,
+  )
+  fs.mkdirSync(path.join(fixtureRoot, 'file-package', 'src'), { recursive: true })
+  fs.writeFileSync(path.join(fixtureRoot, 'file-package', 'src', 'modules'), '')
+  assert.throws(
+    () => modulesRootOption(['--modules-root', path.join(fixtureRoot, 'file-package', 'src', 'modules')]),
+    /: no such directory$/,
+  )
+})
+
+test('runCli with --modules-root checks the modules of that package', async () => {
+  const lines = []
+  const problems = []
+  const code = await runCli({
+    argv: ['--modules-root', packageModules],
+    appRoot: fixtureRoot,
+    moduleIds: ['alpha'],
+    log: (line) => lines.push(line),
+    error: (line) => problems.push(line),
+  })
+  assert.equal(code, 1)
+  assert.deepEqual(problems, [
+    'contracts:check: ent_beta: missing i18n/en.json',
+    'contracts:check: ent_beta: missing i18n/pl.json',
+    'contracts:check: ent_demo: missing i18n/pl.json',
+  ])
+  assert.deepEqual(lines, ['contracts:check: 2 Vereino module(s), 0 error code(s), 3 problem(s)'])
+})
+
+test('runCli reports a bad --modules-root and returns 1', async () => {
+  const lines = []
+  const problems = []
+  const code = await runCli({
+    argv: ['--modules-root'],
+    log: (line) => lines.push(line),
+    error: (line) => problems.push(line),
+  })
+  assert.equal(code, 1)
+  assert.deepEqual(problems, ['contracts:check: --modules-root needs a directory'])
+  assert.deepEqual(lines, [])
 })

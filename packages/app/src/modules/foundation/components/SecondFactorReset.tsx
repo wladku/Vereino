@@ -3,7 +3,8 @@
 // J-2F03; #736). Shown only for a person who signs in with a second factor, to an administrator holding
 // `foundation.second_factor.reset`, never on their own record (`secondFactor.canReset` of the identity list). The
 // dialog requires a note on how the person was verified and an "I verified this person" confirmation; success removes
-// the person's links, ends their sessions and reloads the list.
+// the person's links, ends their sessions and reloads the list. The record's "Unlink Google" of a required person
+// opens the same dialog (#841): the widget holds `open` and passes it here.
 import * as React from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -28,7 +29,14 @@ function resetErrorKey(code: string | null): string {
   return 'foundation.secondFactor.reset.errors.failed'
 }
 
-export function SecondFactorReset({ url }: { url: string }) {
+type Props = {
+  url: string
+  /** The dialog's state, held by the widget so "Unlink Google" can open it too (#841). */
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}
+
+export function SecondFactorReset({ url, open, onOpenChange }: Props) {
   const t = useT()
   const ids = React.useId()
   const queryClient = useQueryClient()
@@ -42,7 +50,6 @@ export function SecondFactorReset({ url }: { url: string }) {
     },
   })
   const state = query.data?.secondFactor
-  const [open, setOpen] = React.useState(false)
   const [note, setNote] = React.useState('')
   const [verified, setVerified] = React.useState(false)
   const [pending, setPending] = React.useState(false)
@@ -53,7 +60,7 @@ export function SecondFactorReset({ url }: { url: string }) {
   const noteValid = note.trim().length >= NOTE_MIN && note.trim().length <= NOTE_MAX
 
   const close = () => {
-    setOpen(false)
+    onOpenChange(false)
     setNote('')
     setVerified(false)
     setError(null)
@@ -93,7 +100,7 @@ export function SecondFactorReset({ url }: { url: string }) {
           variant="outline"
           className="min-h-11"
           onClick={() => {
-            setOpen(true)
+            onOpenChange(true)
           }}
           data-testid="second-factor-reset-open"
         >
@@ -103,7 +110,7 @@ export function SecondFactorReset({ url }: { url: string }) {
       <Dialog
         open={open}
         onOpenChange={(next) => {
-          if (next) setOpen(true)
+          if (next) onOpenChange(true)
           else close()
         }}
       >

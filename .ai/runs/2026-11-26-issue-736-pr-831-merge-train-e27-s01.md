@@ -3,7 +3,7 @@
 - **Goal and trigger:** cezar task `om-auto-fix-pr 831`. The PR carried `merge-train-failed`
   (`merge-train/verdict` = failure on `14ed9230`, "broke a batch on its own"). Fix what the train reported, merge
   `main` in (no force-push, no history rewrite), never merge.
-- **Spec / issue / branch:** `.ai/specs/2026-11-26-vereino-staff-second-factor.md`, #736, PR #831, head
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`, #736, PR #831, head
   `feat/issue-736-staff-second-factor` (worked on a detached HEAD at its origin tip; pushed with
   `git push origin HEAD:feat/issue-736-staff-second-factor`).
 

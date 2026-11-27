@@ -1,4 +1,4 @@
-// The Vereino password check (#779, spec .ai/specs/2026-11-26-vereino-password-check.md): the rules a new password
+// The Vereino password check (#779, spec .ai/specs/implemented/2026-11-26-vereino-password-check.md): the rules a new password
 // must pass on top of the platform policy (`OM_PASSWORD_*`). Pure: the common-password lookup and the context words
 // come from the caller (`services/password-check.ts`), and so does the platform policy check (S4.9: no platform import).
 

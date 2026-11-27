@@ -55,6 +55,7 @@
   "exclude": [
     "node_modules",
     "src/modules/**/agents/**/scripts/**",
-    "src/modules/**/agents/**/tools/**"
+    "src/modules/**/agents/**/tools/**",
+    ".ai/qa/fixtures/enterprise-overlay/**"
   ]
 }

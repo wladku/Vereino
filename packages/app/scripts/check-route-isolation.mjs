@@ -7,10 +7,14 @@
 // must be bound, and an exemption or a non-default expected status must say why. A `library` probe (training outlines
 // spec phase 4, #685) addresses the shared outline library, which shows club A what club B published on purpose: it
 // must say why, may expect a 2xx, and the guard checks it for 5xx and for any club B data beyond the published entry.
-// Usage: node scripts/check-route-isolation.mjs [--json]
+// `--modules-root <dir>` checks another package's modules instead (the private Enterprise CI:
+// `--modules-root ../enterprise/src/modules`; rule in `modulesRootOption` of check-vereino-contracts.mjs): its routes
+// against the inventory of that package, `<package>/.ai/qa/tests/_fixtures/isolation/inventory/`, never this app's.
+// Usage: node scripts/check-route-isolation.mjs [--json] [--modules-root <dir>]
 import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { modulesRootOption } from './check-vereino-contracts.mjs'
 import { APP_ROOT, readVereinoModuleIds } from './vereino-paths.mjs'
 
 export const INVENTORY_DIR = '.ai/qa/tests/_fixtures/isolation/inventory'
@@ -182,7 +186,15 @@ export function readInventory(appRoot = APP_ROOT) {
 }
 
 export function runCli({ argv, appRoot, moduleIds, log = console.log, error = console.error }) {
-  const result = checkInventory({ routes: listRoutes({ appRoot, moduleIds }), inventory: readInventory(appRoot) })
+  let option
+  try {
+    option = modulesRootOption(argv)
+  } catch (failure) {
+    error(`route-isolation:check: ${failure.message}`)
+    return 1
+  }
+  const root = option ?? { appRoot, moduleIds }
+  const result = checkInventory({ routes: listRoutes(root), inventory: readInventory(root.appRoot) })
   if (argv.includes('--json')) {
     log(JSON.stringify(result, null, 2))
   } else {

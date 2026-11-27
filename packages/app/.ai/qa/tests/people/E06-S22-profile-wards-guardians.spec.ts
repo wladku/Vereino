@@ -222,10 +222,10 @@ test('E06-S22 profile: wards with groups and consents, a ward sees their guardia
       'Orliki · Akademia piłkarska',
     )
 
-    // "Change password" opens the auth page.
+    // "Change password" opens the member's own page in the member app (#876; the panel's page before).
     await page.goto('/club/profile')
     await page.getByTestId('club-profile-change-password').click()
-    await expect(page).toHaveURL(/\/backend\/profile\/change-password$/)
+    await expect(page).toHaveURL(/\/club\/profile\/password$/)
     await expect(page.locator('input[type="password"]').first()).toBeVisible()
 
     // The app as Ola: her guardians and the consents without controls; no wards section.
