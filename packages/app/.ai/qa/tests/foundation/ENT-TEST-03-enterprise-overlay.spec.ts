@@ -5,6 +5,7 @@ import net from 'node:net'
 import path from 'node:path'
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 import { setRoleAclFeatures } from '@open-mercato/core/helpers/integration/authFixtures'
+import { capturedCount, isChallenge, textOf, waitForCode, type JsonBody } from '../_fixtures/auth'
 import { APP_ROOT, createClub, type Club } from '../_fixtures/club'
 
 // ENT-TEST-03 @enterprise-overlay, overlay shape (enterprise package spec DD-E03, DD-E07, DD-E11, REQ-E02, REQ-E04,
@@ -115,11 +116,21 @@ async function grantDemo(request: APIRequestContext, club: Club): Promise<void> 
   })
 }
 
+// Signs the club administrator in on the licensed server, completing the staff second factor there (#736): the shared
+// helpers in `_fixtures/auth.ts` post to the runner's BASE_URL, so the verify call is made against `baseUrl` here.
 async function openDemoPage(page: Page, baseUrl: string, club: Club): Promise<void> {
-  const login = await page.request.post(`${baseUrl}/api/auth/login`, {
-    form: { email: club.tenant.email, password: club.tenant.password },
-  })
-  expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+  const { email, password } = club.tenant
+  const since = capturedCount(email)
+  const login = await page.request.post(`${baseUrl}/api/auth/login`, { form: { email, password } })
+  const answer = { status: login.status(), body: (await login.json().catch(() => null)) as JsonBody }
+  expect(answer.status, `POST /api/auth/login ${String(answer.status)}`).toBe(200)
+  if (isChallenge(answer)) {
+    const verify = await page.request.post(`${baseUrl}/api/foundation/second-factor/verify`, {
+      headers: { Authorization: `Bearer ${textOf(answer.body, 'token')}`, 'Content-Type': 'application/json' },
+      data: { code: await waitForCode(email, since) },
+    })
+    expect(verify.status(), 'POST /api/foundation/second-factor/verify').toBe(200)
+  }
   await page.goto(`${baseUrl}/backend/enterprise-demo`)
 }
 
