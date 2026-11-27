@@ -9,9 +9,7 @@ import { z } from 'zod'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
-import { checkRateLimit, RATE_LIMIT_ERROR_FALLBACK } from '@open-mercato/shared/lib/ratelimit/helpers'
-import type { RateLimiterService } from '@open-mercato/shared/lib/ratelimit/service'
-import { errorResponse } from '@/modules/foundation'
+import { enforceFailClosedLimit, errorResponse } from '@/modules/foundation'
 import { publicRequestSchema } from '../../../../../../data/validators'
 import { requestEmailLimit } from '../../../../../../lib/requests'
 import { publicErrorSchema, routeParam, type PublicRouteContext } from '../../../../../public-shared'
@@ -42,19 +40,9 @@ export async function POST(request: Request, context: PublicRouteContext): Promi
       )
     }
     const container = await createRequestContainer()
-    // Fail closed: without the limiter the per-e-mail limit cannot be enforced (V-10).
-    if (!container.hasRegistration('rateLimiterService')) {
-      return Response.json({ error: 'Service temporarily unavailable.' }, { status: 503, headers: NO_STORE })
-    }
-    const limit = requestEmailLimit(parsed.data.contactEmail)
-    const limited = await checkRateLimit(
-      container.resolve<RateLimiterService>('rateLimiterService'),
-      limit.config,
-      limit.key,
-      RATE_LIMIT_ERROR_FALLBACK,
-      limit.options,
-    )
-    if (limited) return noStore(limited)
+    // Fail closed: without the limiter or its store the per-e-mail limit cannot be enforced (V-10).
+    const limited = await enforceFailClosedLimit(container, requestEmailLimit(parsed.data.contactEmail))
+    if (limited) return limited
     // No session: the slugs name the club inside the command (DD-35).
     const ctx: CommandRuntimeContext = {
       container,

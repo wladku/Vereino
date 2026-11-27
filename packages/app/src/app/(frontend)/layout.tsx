@@ -10,6 +10,9 @@ import { resolveTranslations } from '@open-mercato/shared/lib/i18n/server'
 import { AccessDeniedMessage } from '@open-mercato/ui/backend/detail'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import { PlatformA11yRepairs } from '@/components/PlatformA11yRepairs'
+import { StaffSessionActivity } from '@/components/StaffSessionActivity'
+import { getAuthFromCookies } from '@open-mercato/shared/lib/auth/server'
+import { isStaffAccount, readStaffIdleMinutes } from '@vereino/core'
 
 type LayoutProps = {
   children: React.ReactNode
@@ -63,10 +66,15 @@ export default async function FrontendLayout({ children }: LayoutProps) {
   if (!portalMatch) {
     // The member and public pages (`/club/...`) render platform `CrudForm`s too: the accessibility repairs of the backend
     // layout run here as well (E20-S18, #497).
+    // A staff account on the member pages (a coach works there) gets the idle timeout too (S8.5, ENG-Q-12; #737).
+    const memberAuth = pathname === '/club' || pathname.startsWith('/club/') ? await getAuthFromCookies() : null
     return (
       <>
         {children}
         <PlatformA11yRepairs />
+        {memberAuth && !memberAuth.isApiKey && isStaffAccount(memberAuth.roles) ? (
+          <StaffSessionActivity idleMinutes={readStaffIdleMinutes(process.env)} />
+        ) : null}
       </>
     )
   }

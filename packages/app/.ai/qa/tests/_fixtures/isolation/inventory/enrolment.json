@@ -1,0 +1,169 @@
+{
+  "$comment": "Cross-club isolation probes of the enrolment routes (#628, #799). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "routes": {
+    "/api/enrolment/applications": {
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "tab": "new"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "tab": "waiting"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "tab": "closed"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "sectionId": "$B:publicSection"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$B:enrolmentGroup"
+          }
+        }
+      ]
+    },
+    "/api/enrolment/applications/[id]": {
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:application"
+        }
+      }
+    },
+    "/api/enrolment/applications/[id]/reject": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:application"
+        },
+        "body": {
+          "reason": "Probe",
+          "updatedAt": "$B:applicationUpdatedAt"
+        }
+      }
+    },
+    "/api/enrolment/applications/[id]/waiting": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:application"
+          },
+          "body": {
+            "groupId": "$A:enrolmentGroup",
+            "updatedAt": "$B:applicationUpdatedAt"
+          }
+        }
+      ]
+    },
+    "/api/enrolment/overdue": {
+      "GET": {
+        "probe": "read"
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/sections/[sectionSlug]/form": {
+      "GET": {
+        "probe": "public",
+        "params": {
+          "clubSlug": "$A:clubSlug",
+          "sectionSlug": "$B:sectionSlug"
+        },
+        "expect": [404],
+        "why": "Club A's slug with club B's section slug names no section of club A: 404 applications_closed."
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/sections/[sectionSlug]/applications": {
+      "POST": {
+        "probe": "public",
+        "params": {
+          "clubSlug": "$A:clubSlug",
+          "sectionSlug": "$B:sectionSlug"
+        },
+        "body": {
+          "kind": "child",
+          "participantFirstName": "Ola",
+          "participantLastName": "Probe",
+          "participantBirthDate": "2017-03-14",
+          "guardianFirstName": "Anna",
+          "guardianLastName": "Probe",
+          "email": "probe-799@example.test",
+          "phone": "600 100 200",
+          "guardianStatement": true,
+          "groupId": "$B:enrolmentGroup",
+          "rulesAccepted": true,
+          "privacyAcknowledged": true,
+          "website": ""
+        },
+        "expect": [404],
+        "why": "Club A's slug with club B's section: 404 applications_closed before club B's group is read."
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/applications/confirm": {
+      "POST": {
+        "probe": "public",
+        "params": {
+          "clubSlug": "$A:clubSlug"
+        },
+        "body": {
+          "token": "$B:application"
+        },
+        "expect": [410],
+        "why": "The confirmation link is a capability looked up within club A only (DD-J06): a token that is no live link, here club B's application id, answers 410 token_link_expired exactly like any unknown token."
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/applications/status": {
+      "POST": {
+        "probe": "public",
+        "params": {
+          "clubSlug": "$A:clubSlug"
+        },
+        "body": {
+          "token": "$B:application"
+        },
+        "expect": [410],
+        "why": "The status link is looked up within club A only (DD-J07): club B's application id as a token answers 410 like any unknown token."
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/applications/withdraw": {
+      "POST": {
+        "probe": "public",
+        "params": {
+          "clubSlug": "$A:clubSlug"
+        },
+        "body": {
+          "token": "$B:application"
+        },
+        "expect": [410],
+        "why": "As the status route: club B's application id as a token answers 410 token_link_expired."
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/applications/resend-confirmation": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Uniform 202 by design (no enumeration): new links go only to the address's own applications in the slug's club, by its keyed e-mail hash; the request names no record, so it cannot address club B. TEST-J04 checks the uniform answer."
+      }
+    },
+    "/api/enrolment/public/[clubSlug]/applications/resend-link": {
+      "POST": {
+        "probe": "exempt",
+        "why": "Uniform 202 by design (no enumeration): new links go only to the address's own applications in the slug's club, by its keyed e-mail hash; the request names no record, so it cannot address club B. TEST-J04 checks the uniform answer."
+      }
+    }
+  }
+}

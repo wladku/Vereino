@@ -18,9 +18,12 @@ import {
   type StateClub,
   type StateMarker,
 } from '../../lib/identity'
+import { SECOND_FACTOR_USE_GOOGLE_PATH, providerCountsAsSecondFactor } from '../../lib/second-factor'
 import { trustedScopeOf } from '../../services/authorize-scoped'
 import { clearStateCookie, findLinkForSignIn, issueSession, reportIdentityFailure } from '../../services/identity'
 import { commandContextForRequest } from '../../services/route-context'
+import { reportSecondFactor } from '../../services/second-factor/challenge'
+import { holdsSecondFactorRequirement } from '../../services/second-factor/requirement'
 
 /** A 303 to `path`, on the club's address when the round trip started there; the state cookie is cleared. */
 export function finish(request: Request, path: string, club?: StateClub): NextResponse {
@@ -55,6 +58,15 @@ export async function signIn(
   const container = await createRequestContainer()
   const found = await findLinkForSignIn(container, provider, identity.subject)
   const link = found && (!marker.club || found.tenantId === marker.club.tenantId) ? found : null
+  // Staff second factor (DD-2F06; #736): a user holding the requirement signs in only with Google.
+  if (
+    link &&
+    !providerCountsAsSecondFactor(provider) &&
+    (await holdsSecondFactorRequirement(container, link.userId, link))
+  ) {
+    reportSecondFactor('foundation.second_factor.provider_refused', { provider, userId: link.userId })
+    return finish(request, SECOND_FACTOR_USE_GOOGLE_PATH, marker.club)
+  }
   const response = link ? await issueSession(container, request, link, marker.redirect, marker.club?.origin) : null
   if (!response) {
     const reason = link ? 'user_unavailable' : found ? 'other_club' : 'no_link'
