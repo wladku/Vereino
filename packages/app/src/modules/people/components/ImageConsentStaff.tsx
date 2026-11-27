@@ -188,9 +188,7 @@ function HistoryDialog({ personId, onClose }: { personId: string; onClose: () =>
                 data-testid="people-image-history-item"
               >
                 <StatusTag status={item.granted ? 'success' : 'neutral'}>
-                  {t(
-                    item.granted ? 'people.consents.image.history.given' : 'people.consents.image.history.withdrawn',
-                  )}
+                  {t(item.granted ? 'people.consents.image.history.given' : 'people.consents.image.history.withdrawn')}
                 </StatusTag>
                 <span>{item.byName ?? t(`people.consents.image.history.by.${item.byRole}`)}</span>
                 <span className="text-muted-foreground">{item.at.slice(0, 16).replace('T', ' ')}</span>

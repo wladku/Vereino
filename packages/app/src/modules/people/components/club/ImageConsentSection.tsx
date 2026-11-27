@@ -21,8 +21,7 @@ import { MEMBER_PROFILE_QUERY_KEY, formatInstant, type ConsentTexts, type WardCo
 
 /** Where the image consent of this row is saved: the guardian's own guardianship, or the adult's own consents. */
 export type ImageConsentTarget =
-  | { kind: 'guardianship'; guardianshipId: string; lockToken: string | null }
-  | { kind: 'own'; lockToken: string | null }
+  { kind: 'guardianship'; guardianshipId: string; lockToken: string | null } | { kind: 'own'; lockToken: string | null }
 
 type HistoryItem = {
   granted: boolean

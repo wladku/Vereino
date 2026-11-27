@@ -181,26 +181,26 @@ export async function peoplePart(em: EntityManager, subject: PersonDataExportSub
   const personId = subject.personId
   const [roles, guardianships, requests, rowIds, decided, importsCreated, importsCommitted, consentEvents] =
     await Promise.all([
-    em.find(RoleAssignment, { ...live, personId }, { orderBy: { validFrom: 'asc' } }),
-    em.find(
-      Guardianship,
-      { ...live, $or: [{ guardianPersonId: personId }, { wardPersonId: personId }] },
-      { orderBy: { validFrom: 'asc' } },
-    ),
-    findWithDecryption(
-      em,
-      DepartureRequest,
-      { ...live, $or: [{ subjectPersonId: personId }, { requestedByPersonId: personId }] },
-      { orderBy: { createdAt: 'asc' } },
-      scope,
-    ),
-    importRowIds(em, subject),
-    em.count(DepartureRequest, { ...live, decidedByPersonId: personId }),
-    em.count(PersonImport, { ...live, createdByPersonId: personId }),
-    em.count(PersonImport, { ...live, committedByPersonId: personId }),
-    // The subject's consent history (event photos spec REQ-I11, #871); a staff note may name others and stays out.
-    em.find(ConsentEvent, { ...scope, subjectPersonId: personId }, { orderBy: { createdAt: 'asc' } }),
-  ])
+      em.find(RoleAssignment, { ...live, personId }, { orderBy: { validFrom: 'asc' } }),
+      em.find(
+        Guardianship,
+        { ...live, $or: [{ guardianPersonId: personId }, { wardPersonId: personId }] },
+        { orderBy: { validFrom: 'asc' } },
+      ),
+      findWithDecryption(
+        em,
+        DepartureRequest,
+        { ...live, $or: [{ subjectPersonId: personId }, { requestedByPersonId: personId }] },
+        { orderBy: { createdAt: 'asc' } },
+        scope,
+      ),
+      importRowIds(em, subject),
+      em.count(DepartureRequest, { ...live, decidedByPersonId: personId }),
+      em.count(PersonImport, { ...live, createdByPersonId: personId }),
+      em.count(PersonImport, { ...live, committedByPersonId: personId }),
+      // The subject's consent history (event photos spec REQ-I11, #871); a staff note may name others and stays out.
+      em.find(ConsentEvent, { ...scope, subjectPersonId: personId }, { orderBy: { createdAt: 'asc' } }),
+    ])
   const importRows =
     rowIds.length > 0
       ? await findWithDecryption(

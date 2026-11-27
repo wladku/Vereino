@@ -428,7 +428,10 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       await page.getByRole('button', { name: uiText('people.guardianships.add.ward', { exact: true }) }).click()
       const link = page.getByRole('form', { name: uiText('people.guardianships.add.wardTitle') })
       for (const [ward, consents] of [
-        [family.jas, [uiText('people.guardianships.consents.regulations'), /Image|Wizerunek/]],
+        [
+          family.jas,
+          [uiText('people.guardianships.consents.regulations'), uiText('people.guardianships.consents.trips')],
+        ],
         [family.ola, [uiText('people.guardianships.consents.regulations')]],
       ] as const) {
         await lookupPerson(
@@ -451,7 +454,8 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
       expect(stored.status).toBe(200)
       const byWard = new Map(stored.items.map((item) => [item.wardPersonId, item]))
       expect(stored.items).toHaveLength(2)
-      for (const [ward, image] of [
+      // Staff never give the image consent (#871): the add form offers regulations and trips only.
+      for (const [ward, trips] of [
         [family.jas, true],
         [family.ola, false],
       ] as const) {
@@ -462,8 +466,8 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
           validTo: null,
           consents: {
             regulations: { granted: true },
-            image: { granted: image },
-            trips: { granted: false },
+            image: { granted: false },
+            trips: { granted: trips },
           },
         })
       }
@@ -542,7 +546,7 @@ test('J-001 club structure and a family on a fresh tenant: settings, sections wi
           ward.firstName,
           ward.guardianship.isPrimaryPayer,
           ward.guardianship.consents.regulations.granted,
-          ward.guardianship.consents.image.granted,
+          ward.guardianship.consents.trips.granted,
         ]),
       ).toEqual([
         ['Jaś', true, true, true],

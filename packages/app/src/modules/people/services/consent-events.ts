@@ -35,7 +35,8 @@ export function sha256(text: string): string {
 
 /** The text a decision of `kind` is given to: the club's own text, else the built-in text from `dict`. */
 export function wordingText(kind: ConsentKind, texts: ClubConsentTexts, dict: Record<string, string>): string {
-  return texts[kind]?.text ?? dict[builtInWordingKey(kind)] ?? builtInWordingKey(kind)
+  const key = builtInWordingKey(kind)
+  return texts[kind]?.text ?? (key in dict ? dict[key] : key)
 }
 
 /**
@@ -65,7 +66,7 @@ export async function recordConsentEvents(
       note: staffWithdrawal ? (input.note?.trim() ?? null) : null,
       wordingChangedAt: own?.changedAt ? new Date(own.changedAt) : null,
       wordingSha256: sha256(wordingText(decision.kind, texts, dict)),
-      locale: String(locale).slice(0, 8),
+      locale: locale.slice(0, 8),
       createdAt: now,
     })
     em.persist(row)

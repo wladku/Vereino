@@ -66,11 +66,11 @@ test('E20-S12 every touch target on the member pages is at least 44 × 44 px', a
       '/club/payments',
     ])
 
-    // A consent row is one target: its description text and the space beside the 32 px switch toggle the switch.
+    // A consent row is one target (the trips row of the form; the image row saves at once, #871): its description text and the space beside the 32 px switch toggle the switch.
     await page.goto(ward)
-    const image = page.locator('#club-ward-consent-image')
+    const image = page.locator('#club-ward-consent-trips')
     await expect(image).toHaveAttribute('aria-checked', 'false')
-    await page.locator('#club-ward-consent-image-description').click()
+    await page.locator('#club-ward-consent-trips-description').click()
     await expect(image).toHaveAttribute('aria-checked', 'true')
     const imageBox = await image.boundingBox()
     expect(imageBox?.width).toBeGreaterThanOrEqual(MIN_TARGET_PX - 0.5)
@@ -78,7 +78,7 @@ test('E20-S12 every touch target on the member pages is at least 44 × 44 px', a
     // Just left of the switch's visible track: inside the 44 px (round) button, outside the 32 px track.
     await image.click({ position: { x: 4, y: 22 } })
     await expect(image).toHaveAttribute('aria-checked', 'false')
-    await page.locator('label[for="club-ward-consent-image"]').click({ position: { x: 1, y: 1 } })
+    await page.locator('label[for="club-ward-consent-trips"]').click({ position: { x: 1, y: 1 } })
     await expect(image).toHaveAttribute('aria-checked', 'true')
 
     // The toast after saving: its "Dismiss" is 44 × 44 px and closes it.

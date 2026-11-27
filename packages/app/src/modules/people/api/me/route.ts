@@ -125,7 +125,7 @@ const memberProfileSchema = z.object({
       imagePublishable: z
         .boolean()
         .optional()
-        .describe('The ward\'s image may be published now: a guardian gave the image consent, none withdrew it (#871)'),
+        .describe("The ward's image may be published now: a guardian gave the image consent, none withdrew it (#871)"),
       notices: z
         .array(
           z.discriminatedUnion('kind', [

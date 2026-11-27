@@ -2,7 +2,6 @@
 // administrator reads any person's image consent history on B-10 (the `club_admin` grant through `assertInScope`; a
 // person of another club, an unknown id, and a coordinator's read answer 404 or 403 as every person route does).
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import {
   assertInScope,
@@ -11,8 +10,7 @@ import {
   scopeContract,
   trustedScopeOf,
 } from '@/modules/foundation'
-import { clubToday } from '../../../../../services/club-clock'
-import { imageHistory } from '../../../../../services/image-history'
+import { readStaffImageHistory } from '../../../../../services/image-history'
 import { findPerson } from '../../../../../services/people-read'
 import { errorSchema, imageHistoryQuerySchema, imageHistorySchema } from '../../../../shared'
 
@@ -37,9 +35,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
       organizationId: person.organizationId,
       personId: person.id,
     })
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const today = await clubToday(ctx.container, scope, undefined, em)
-    const history = await imageHistory(em, ctx.container, scope, person.id, query.page, query.pageSize, today)
+    const history = await readStaffImageHistory(ctx.container, scope, person.id, query)
     return Response.json(history, { headers: { 'cache-control': 'private, no-store' } })
   } catch (error: unknown) {
     return errorResponse(error, 'people.persons.image_history')

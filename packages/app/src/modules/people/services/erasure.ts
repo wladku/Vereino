@@ -10,7 +10,14 @@ import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { CalendarDate } from '@vereino/core'
 import { eraseRecipientDeliveries } from '@/modules/foundation'
-import { ConsentEvent, DepartureRequest, Guardianship, PersonImportRow, RoleAssignment, type Person } from '../data/entities'
+import {
+  ConsentEvent,
+  DepartureRequest,
+  Guardianship,
+  PersonImportRow,
+  RoleAssignment,
+  type Person,
+} from '../data/entities'
 import type { ContributorNotice, ErasurePart, OwnHistory, PeopleErasureCounts } from '../lib/erasure-rules'
 import { PERSON_PHOTO_OWNER_ENTITY, PERSON_PHOTO_PARTITION } from '../lib/person-photo'
 import { departureContributors } from './departure'

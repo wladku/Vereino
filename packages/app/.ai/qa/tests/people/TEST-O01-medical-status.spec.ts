@@ -51,14 +51,15 @@ test('TEST-O01 medical certificate date: who writes, consent first, and who read
     const staffConsent = await setGuardianshipMedicalConsent(request, admin, otherWard.guardianship, true)
     expect(staffConsent.status, JSON.stringify(staffConsent.body)).toBe(403)
     expect(staffConsent.body?.code).toBe('medical_consent_subject_only')
-    // A guardianship consent change without `medical` still works for the administrator.
+    // A guardianship consent change without `medical` still works for the administrator (staff never grant `image`,
+    // #871, so the change is `trips`).
     const imageOnly = await call(
       request,
       'POST',
       `/api/people/guardianships/${otherWard.guardianship.id}/consents`,
       admin,
       {
-        data: { consents: { image: true, medical: false } },
+        data: { consents: { trips: true, medical: false } },
         headers: { [OPTIMISTIC_LOCK_HEADER]: String(otherWard.guardianship.updatedAt) },
       },
     )

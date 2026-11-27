@@ -181,7 +181,10 @@ describe('peopleErasurePart', () => {
   })
 
   it('keeps the name with its basis while the retention hold lasts', () => {
-    const part = peopleErasurePart({ guardianships: 0, departureRequests: 0, importRows: 3, consentEvents: 2 }, '2031-12-31')
+    const part = peopleErasurePart(
+      { guardianships: 0, departureRequests: 0, importRows: 3, consentEvents: 2 },
+      '2031-12-31',
+    )
     expect(part.touched).toEqual([
       { table: 'people_persons', rows: 1 },
       { table: 'people_import_rows', rows: 3 },
@@ -192,7 +195,11 @@ describe('peopleErasurePart', () => {
   })
 
   it('keeps no request for an anonymisation by the retention sweep (#471)', () => {
-    const part = peopleErasurePart({ guardianships: 0, departureRequests: 0, importRows: 0, consentEvents: 0 }, null, false)
+    const part = peopleErasurePart(
+      { guardianships: 0, departureRequests: 0, importRows: 0, consentEvents: 0 },
+      null,
+      false,
+    )
     expect(part).toEqual({ touched: [{ table: 'people_persons', rows: 1 }], kept: [] })
   })
 })

@@ -3,12 +3,9 @@
 // that show the person now (`publicPhotos`, from phase 2's optional contract; none before). The caller comes only from
 // the session; any other person — another family's child, a former ward, another club's id — answers 404.
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, trustedScopeOf } from '@/modules/foundation'
-import { Person } from '../../../../../data/entities'
-import { clubToday } from '../../../../../services/club-clock'
-import { imageHistory, memberMayReadHistory, publicPhotosOf } from '../../../../../services/image-history'
+import { readMemberImageHistory } from '../../../../../services/image-history'
 import { errorSchema, imageHistoryQuerySchema, imageHistorySchema } from '../../../../shared'
 
 export const metadata = {
@@ -24,17 +21,9 @@ export async function GET(request: Request, context: { params: Promise<{ personI
     const ctx = await commandContextForRequest(request)
     const scope = ctx ? trustedScopeOf(ctx) : null
     if (!ctx?.auth || !scope) return Response.json({ error: 'Unauthorized' }, { status: 401 })
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const caller = await em.findOne(Person, { ...scope, userId: ctx.auth.sub, deletedAt: null }, { fields: ['id'] })
-    const today = await clubToday(ctx.container, scope, undefined, em)
-    if (!caller || !(await memberMayReadHistory(em, scope, caller.id, personId, today))) {
-      return Response.json({ error: 'Not found' }, { status: 404 })
-    }
-    const [history, publicPhotos] = await Promise.all([
-      imageHistory(em, ctx.container, scope, personId, query.page, query.pageSize, today),
-      publicPhotosOf(ctx.container, scope, personId),
-    ])
-    return Response.json({ ...history, publicPhotos }, { headers: { 'cache-control': 'private, no-store' } })
+    const history = await readMemberImageHistory(ctx.container, scope, ctx.auth.sub, personId, query)
+    if (!history) return Response.json({ error: 'Not found' }, { status: 404 })
+    return Response.json(history, { headers: { 'cache-control': 'private, no-store' } })
   } catch (error: unknown) {
     return errorResponse(error, 'people.me.image_history')
   }

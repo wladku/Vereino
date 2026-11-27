@@ -8,7 +8,7 @@ import type { AwilixContainer } from 'awilix'
 import type { CalendarDate } from '@vereino/core'
 import { ConsentEvent, Guardianship, Person } from '../data/entities'
 import { holdsOwnConsents, parseStoredConsents } from '../lib/people-rules'
-import type { ClubScope } from './club-clock'
+import { clubToday, type ClubScope } from './club-clock'
 import { currentWordingHashes } from './consent-events'
 import { findPersons } from './person-directory'
 
@@ -70,7 +70,7 @@ export async function imageHistory(
     'image',
     rows.map((row) => row.locale),
   )
-  const familyIds = rows.filter((row) => row.byRole !== 'club_admin' && row.byPersonId).map((row) => row.byPersonId!)
+  const familyIds = rows.flatMap((row) => (row.byRole !== 'club_admin' && row.byPersonId ? [row.byPersonId] : []))
   const names = await findPersons(em, scope, familyIds)
   const items = rows.map((row) => {
     const person = row.byRole !== 'club_admin' && row.byPersonId ? names.get(row.byPersonId) : undefined
@@ -146,4 +146,38 @@ export async function memberMayReadHistory(
     $or: [{ validTo: null }, { validTo: { $gte: today } }],
   })
   return active > 0
+}
+
+/**
+ * `GET /api/people/me/consents/{personId}/image-history`: the history and the public photos for the person linked to
+ * `userId` (themself or an active ward); null when the caller has no person or may not read that history (404).
+ */
+export async function readMemberImageHistory(
+  container: AwilixContainer,
+  scope: ClubScope,
+  userId: string,
+  personId: string,
+  page: { page: number; pageSize: number },
+): Promise<(ImageHistory & { publicPhotos: PublicPhotos }) | null> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const caller = await em.findOne(Person, { ...scope, userId, deletedAt: null }, { fields: ['id'] })
+  const today = await clubToday(container, scope, undefined, em)
+  if (!caller || !(await memberMayReadHistory(em, scope, caller.id, personId, today))) return null
+  const [history, publicPhotos] = await Promise.all([
+    imageHistory(em, container, scope, personId, page.page, page.pageSize, today),
+    publicPhotosOf(container, scope, personId),
+  ])
+  return { ...history, publicPhotos }
+}
+
+/** `GET /api/people/persons/{id}/consents/image-history`: the history for a caller the route authorized. */
+export async function readStaffImageHistory(
+  container: AwilixContainer,
+  scope: ClubScope,
+  personId: string,
+  page: { page: number; pageSize: number },
+): Promise<ImageHistory> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const today = await clubToday(container, scope, undefined, em)
+  return imageHistory(em, container, scope, personId, page.page, page.pageSize, today)
 }

@@ -84,7 +84,7 @@ test('E02-S03 guardian account: the password-setup e-mail, the sign-in lands on 
       guardianPersonId: guardianId,
       wardPersonId: youngerId,
       isPrimaryPayer: true,
-      consents: { regulations: true, image: true },
+      consents: { regulations: true, trips: true },
       validFrom: calendarDate(),
     })
     await createGuardianship(request, club.adminToken, {
@@ -114,10 +114,10 @@ test('E02-S03 guardian account: the password-setup e-mail, the sign-in lands on 
     const younger = me.body?.wards.find((ward) => ward.personId === youngerId)
     expect(younger?.guardianship.isPrimaryPayer).toBe(true)
     expect(younger?.guardianship.consents.regulations.granted).toBe(true)
-    expect(younger?.guardianship.consents.image.granted).toBe(true)
-    expect(younger?.guardianship.consents.trips.granted).toBe(false)
+    expect(younger?.guardianship.consents.trips.granted).toBe(true)
+    expect(younger?.guardianship.consents.image.granted).toBe(false)
     const older = me.body?.wards.find((ward) => ward.personId === olderId)
-    expect(older?.guardianship.consents.image.granted).toBe(false)
+    expect(older?.guardianship.consents.trips.granted).toBe(false)
 
     // The real sign-in form lands on /club with every ward; a ward opens with its consents.
     page.setDefaultTimeout(30_000)
@@ -129,8 +129,8 @@ test('E02-S03 guardian account: the password-setup e-mail, the sign-in lands on 
     await expect(page.getByTestId('club-ward')).toHaveCount(2)
     await page.getByRole('link', { name: new RegExp(`Jaś Dziecko${marker}`) }).click()
     await expect(page).toHaveURL(new RegExp(`/club/wards/${youngerId}$`))
-    await expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).toBeChecked()
-    await expect(page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })).not.toBeChecked()
+    await expect(page.getByRole('switch', { name: /Image|Wizerunek/ })).not.toBeChecked()
+    await expect(page.getByRole('switch', { name: uiText('people.guardianships.consents.trips') })).toBeChecked()
   } finally {
     await club.cleanup()
   }
