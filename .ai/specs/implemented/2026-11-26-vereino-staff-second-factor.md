@@ -1,7 +1,7 @@
 # Vereino staff second factor — Google sign-in or an e-mail code for administrators and treasurers
 
 **Date**: 2026-11-26
-**Status**: Ready for implementation (the owner answered Q-2F01…Q-2F05 and approved the spec on #805, 2026-11-26)
+**Status**: Implemented (approved on #805, 2026-11-26; phase 1 in #736, phase 2 in #841)
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 
@@ -397,13 +397,13 @@ Validation for every phase: `yarn verify` (the single gate) and `yarn test:integ
 
 ## Acceptance Criteria
 
-- [ ] **AC-2F01** — A club administrator, treasurer or the platform super-admin who signs in with a password reaches no staff API, back-office page or session refresh until they enter the e-mailed code. The right code issues a session that reaches `/backend`. A used, expired or sixth code does not. — gap: #736 (phase 1, PR #831 open)
-- [ ] **AC-2F02** — A required user signs in with Google. A non-Google provider is refused. In phase 2, a required user with a Google link is refused password sign-in with the Google pointer and no session. — gap: #736 (Google-only callback, PR #831) and #841 (phase 2: password refused for Google-linked staff)
-- [ ] **AC-2F03** — Coordinators, coaches, guardians, members and payers sign in exactly as before. A user who gains the requirement is signed out. — gap: #736 (PR #831)
-- [ ] **AC-2F04** — An administrator resets another club member's second factor with a note: the links are removed, their sessions end, and the reset is in the command log. Resetting oneself and a person of another club are refused. The operator resets from the shell. — gap: #736 (PR #831)
-- [ ] **AC-2F05** — With the cache, the lock or the e-mail send down, no session is issued (503). Codes are single use, hashed and expire in 10 minutes. They allow 5 attempts and 3 resends per challenge, and 5 challenges per user per hour, counted under a lock. — gap: #736 (PR #831)
-- [ ] Every listed surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states. — gap: #736, #841
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — gap: #736, #841
+- [x] **AC-2F01** — A club administrator, treasurer or the platform super-admin who signs in with a password reaches no staff API, back-office page or session refresh until they enter the e-mailed code. The right code issues a session that reaches `/backend`. A used, expired or sixth code does not. Evidence: `TEST-2F01-staff-email-code`, `TEST-2F02-second-factor-page` (#736).
+- [x] **AC-2F02** — A required user signs in with Google. A non-Google provider is refused. In phase 2, a required user with a Google link is refused password sign-in with the Google pointer and no session. Evidence: `TEST-2F03-google-and-reset` items 1, 2 and 9 (#736, #841).
+- [x] **AC-2F03** — Coordinators, coaches, guardians, members and payers sign in exactly as before. A user who gains the requirement is signed out. Evidence: `TEST-2F01-staff-email-code` items 1 and 8 (#736).
+- [x] **AC-2F04** — An administrator resets another club member's second factor with a note: the links are removed, their sessions end, and the reset is in the command log. Resetting oneself and a person of another club are refused. The operator resets from the shell. Since phase 2 an administrator's plain unlink of a required person's Google link is refused (409 `second_factor_reset_required`) and the record routes it to the reset. Evidence: `TEST-2F03-google-and-reset` items 3–9, `TEST-2F04-reset-dialog` (#736, #841).
+- [x] **AC-2F05** — With the cache, the lock or the e-mail send down, no session is issued (503). Codes are single use, hashed and expire in 10 minutes. They allow 5 attempts and 3 resends per challenge, and 5 challenges per user per hour, counted under a lock. Evidence: `TEST-2F01-staff-email-code`, `foundation/lib/__tests__/second-factor.test.ts` (#736).
+- [x] Every listed surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
 
 ## Final Compliance Report
 

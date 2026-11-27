@@ -7,7 +7,7 @@ import type { AwilixContainer } from 'awilix'
 import type { RbacService } from '@open-mercato/core/modules/auth/services/rbacService'
 import { verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { Person } from '../data/entities'
-import { memberLanding, withNotice } from '../lib/member-rules'
+import { memberLanding, panelPasswordRedirect, withNotice } from '../lib/member-rules'
 import { clubToday } from './club-clock'
 import { membershipContribution } from './membership-contribution'
 import { createPeopleScopeService } from './scope-service'
@@ -75,4 +75,26 @@ export async function memberLandingRedirect(
   })
   if (!landing) return null
   return landing.notice ? withNotice(landing.redirect) : landing.redirect
+}
+
+/**
+ * Where the panel's change-password page sends the signed-in user (#876, Q1; `panelPasswordRedirect`): a member to
+ * `/club/profile/password`, anyone else nowhere (null). The person is looked up in the session's own tenant and
+ * organization; a session without them stays on the panel page.
+ */
+export async function panelPasswordRedirectFor(
+  container: AwilixContainer,
+  auth: { sub: string; tenantId?: string | null; orgId?: string | null },
+): Promise<string | null> {
+  const tenantId = auth.tenantId ?? null
+  const organizationId = auth.orgId ?? null
+  if (!tenantId || !organizationId) return null
+  const scope = { tenantId, organizationId }
+  const em = container.resolve<EntityManager>('em').fork()
+  const person = await em.findOne(Person, { userId: auth.sub, ...scope, deletedAt: null }, { fields: ['id'] })
+  if (!person) return panelPasswordRedirect({ linked: false, selfFeature: false, grants: [] })
+  const rbac = container.resolve<RbacService>('rbacService')
+  const selfFeature = await rbac.userHasAllFeatures(auth.sub, ['people.self'], scope)
+  const grants = await createPeopleScopeService(container).grantsForPerson({ ...scope, personId: person.id })
+  return panelPasswordRedirect({ linked: true, selfFeature, grants: grants.map((grant) => grant.kind) })
 }

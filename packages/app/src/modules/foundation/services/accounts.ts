@@ -337,6 +337,46 @@ export async function sendAccountInvitation(
   return { expiresAt: expiresAt.toISOString() }
 }
 
+export type PasswordSetupLink = {
+  /** The platform's password-setup page (`/reset/{raw}`) with the tenant hint; the raw token is never stored. */
+  url: string
+  /** When the link stops working (the platform's invitation lifetime, 48 hours). */
+  expiresAt: string
+}
+
+/**
+ * A fresh password-setup link of the invited user `userId`, returned instead of mailed (personal invitation link spec
+ * REQ-IL03, Q-IL04; #868): the guardian who opened a club's personal invitation link is sent on to the platform's own
+ * activation page. The same row the platform's invitation and "Resend invite" write — stored only as its hash, tied
+ * to the user row, valid 48 hours — and, as there, every earlier unused link of the user stops working. The caller
+ * checks that the account is still invited; a user outside `scope` answers `scope_denied`. `baseUrl` is the origin
+ * the guardian is on (the club's address), so the page and its cookies stay on it.
+ */
+export async function passwordSetupLink(
+  container: AwilixContainer,
+  scope: AccountScope,
+  userId: string,
+  baseUrl: string,
+): Promise<PasswordSetupLink> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const user = await findOneWithDecryption(
+    em,
+    User,
+    { id: userId, tenantId: scope.tenantId, organizationId: scope.organizationId, deletedAt: null },
+    {},
+    scope,
+  )
+  if (!user) return foundationErrors.throw('scope_denied')
+  const rawToken = generateAuthToken()
+  const expiresAt = new Date(Date.now() + INVITE_TOKEN_TTL_MS)
+  await em.nativeUpdate(PasswordReset, { user: user.id, usedAt: null }, { usedAt: new Date() })
+  await em
+    .persist(em.create(PasswordReset, { user, token: hashAuthToken(rawToken), expiresAt, createdAt: new Date() }))
+    .flush()
+  const base = baseUrl.replace(/\/+$/, '')
+  return { url: withTenantHintUrl(`${base}/reset/${rawToken}`, user.tenantId), expiresAt: expiresAt.toISOString() }
+}
+
 export type UpdateAccountInput = { email?: string; blocked?: boolean }
 
 /**

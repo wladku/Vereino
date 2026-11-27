@@ -89,3 +89,9 @@
 
 - `main` brought #881 (#850: a deleted club's queued one-off jobs end on their own; TEST-M07 asserts cache entries; AC-M06 ticked, key destruction stays with #740), plus #814, #878 and #880 (no conflict).
 - Resolution: AC-M01..M05 and AC-M07 keep this PR's evidence; AC-M06 takes `main`'s tick with this PR's evidence plus PR #881, key destruction still gap #740. The generic coverage criterion lost its last gap (#850 closed) and is ticked with TEST-M01..M11; the leftovers outside the criteria stay with #852.
+
+## Fourth merge of main (2026-11-27, PR #861 conflict and red integration)
+
+- `main` brought #886 (#858: MT-AC-01/04/05 targets amended by the owner, MT-AC-04 and MT-AC-05 met), #895 (#841: staff second factor phase 2; the spec moved to `implemented/` with every criterion ticked), #888, #892 and #881 (no conflict).
+- Resolution: merge throughput keeps this PR's checkboxes and MT-AC-03 evidence and takes `main`'s amended wording: MT-AC-04 and MT-AC-05 ticked, MT-AC-01 open (48 min against 30) until #834's self-hosted runners carry PR CI; the status line goes back to `main`'s text (rule *Spec status line*; its "tracked in #858" pointed at a closed issue). The staff second factor spec takes `main`'s version whole, so this PR no longer changes it and its 2026-11-26 close-out changelog file is removed (15 changelog files remain).
+- Red check on the previous head: `integration (shard 2/6)` hit the job's 45 min limit ("The operation was canceled.") after TEST-W05 failed once at line 69 and passed on retry #1 — runner time and a flake, not this docs-only change; no test is added or edited here, so no integration test was run locally.

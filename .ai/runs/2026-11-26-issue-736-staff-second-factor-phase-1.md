@@ -1,7 +1,7 @@
 # Run: issue #736 — staff second factor, phase 1
 
 - **Goal and trigger:** cezar task fd18ddde (`om-auto-fix-issue 736`, label `cezar`). Build phase 1 of
-  `.ai/specs/2026-11-26-vereino-staff-second-factor.md` (approved by the owner on #805; Q-2F01…Q-2F05 answered
+  `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md` (approved by the owner on #805; Q-2F01…Q-2F05 answered
   2026-11-26): club administrators, treasurers and the platform super-admin sign in with Google or a password plus an
   e-mailed code; Google-only social sign-in for them; reset by an administrator or the operator.
 - **Issue:** #736 (epic #734) · **Branch:** `feat/issue-736-staff-second-factor` · **Spec:** status `Ready for

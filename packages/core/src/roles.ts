@@ -88,6 +88,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       // The medical certificate date of the own sections' members: status and date, and the write (Q-O01; #682).
       'people.medical.view',
       'people.medical.manage',
+      // Personal invitation links of the families of the own sections (personal invitation link spec REQ-IL02, Q-IL05
+      // approved 2026-11-26; #868).
+      'people.invitations.share',
       // The platform does not expand `dependsOn` at check time (`aclDependencies.ts` only reports missing
       // dependencies), so `groups.manage` does not imply `groups.view`: the coordinator gets both (#30).
       'groups.view',
@@ -127,6 +130,9 @@ export const roleCatalogue: Readonly<Record<VereinoRole, RoleDefinition>> = {
       'foundation.identity.self',
       // The medical certificate status and date of the own groups' players, no write (REQ-O02; #682).
       'people.medical.view',
+      // Personal invitation links of the families of the own groups (personal invitation link spec REQ-IL02, Q-IL05
+      // approved 2026-11-26; #868).
+      'people.invitations.share',
       'communication.view',
       'groups.view',
       'activities.coach',

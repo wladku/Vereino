@@ -37,6 +37,7 @@ import {
   type PersonRoleSyncOutcome,
   type RoleSyncCounts,
 } from '../services/role-sync'
+import { invitationLinkService } from '../services/invitation-links'
 import { inWriteTransaction } from './shared'
 
 const logger = createLogger('people').child({ component: 'jobs' })
@@ -252,7 +253,14 @@ const bootstrapAdminCommand: CommandHandler<Record<string, unknown>, BootstrapAd
   },
 }
 
-export type PurgeImportsCounts = { imports: number; rows: number; files: number; failed: number }
+/** `invitationLinks`: the personal invitation links dead for 30 days, purged by the same nightly run (S9.5; #868). */
+export type PurgeImportsCounts = {
+  imports: number
+  rows: number
+  files: number
+  invitationLinks: number
+  failed: number
+}
 
 export type PurgeImportsJobResult = OrganizationTarget & { now: string; counts: PurgeImportsCounts }
 
@@ -346,7 +354,8 @@ async function purgeProcessedRows(ctx: CommandRuntimeContext, scope: ImportScope
  * `people.imports.purge` — the daily `people:purge-import-rows` job (club spec *Events, Jobs* row, REQ-036): the staged
  * rows and the file of every import committed or cancelled 30 days ago (and of a preview left open as long) are
  * deleted, except the rows whose membership still waits for the `groups` hook; the rows of an import purged earlier
- * that a re-run has processed since are deleted too. Idempotent (`purged_at`); one failing import is logged and
+ * that a re-run has processed since are deleted too, and so are the personal invitation links that expired or were
+ * deleted 30 days ago (#868). Idempotent (`purged_at`); one failing import is logged and
  * retried by the next run. Not undoable.
  */
 const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImportsJobResult> = {
@@ -374,7 +383,7 @@ const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImpor
         },
         { fields: ['id'], orderBy: { createdAt: 'asc' } },
       )
-    const counts: PurgeImportsCounts = { imports: 0, rows: 0, files: 0, failed: 0 }
+    const counts: PurgeImportsCounts = { imports: 0, rows: 0, files: 0, invitationLinks: 0, failed: 0 }
     logger.info('Import purge started', { ...scope, due: due.length })
     for (const { id } of due) {
       try {
@@ -394,6 +403,16 @@ const purgeImportsJobCommand: CommandHandler<Record<string, unknown>, PurgeImpor
     } catch (error: unknown) {
       counts.failed += 1
       logger.warn('Purging processed rows of purged imports failed; the next run retries it', { ...scope, err: error })
+      getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.import_purge.failed' })
+    }
+    // The personal invitation links that expired or were deleted 30 days ago (engineering standards S9.5; #868).
+    try {
+      counts.invitationLinks = await inWriteTransaction(ctx, 'people.imports.purge.invitation_links', (em) =>
+        invitationLinkService(ctx.container).purgeDead(em, scope, now),
+      )
+    } catch (error: unknown) {
+      counts.failed += 1
+      logger.warn('Purging dead invitation links failed; the next run retries it', { ...scope, err: error })
       getTelemetryRuntime()?.reportError(error, { module: 'people', code: 'people.import_purge.failed' })
     }
     logger.info('Import purge finished', { ...scope, ...counts })
