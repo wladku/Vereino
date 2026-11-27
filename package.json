@@ -81,7 +81,8 @@
     "handlebars": "4.7.10",
     "happy-dom": "21.0.4",
     "node-forge": "1.4.3",
-    "re2js": "2.8.8"
+    "re2js": "2.8.8",
+    "sanitize-html": "2.18.1"
   },
   "engines": {
     "node": ">=24.0.0"
