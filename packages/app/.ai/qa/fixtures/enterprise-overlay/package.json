@@ -1,0 +1,25 @@
+{
+  "name": "@vereino/enterprise",
+  "version": "0.1.0",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "description": "Public CI fixture of the private Vereino Enterprise package (enterprise package spec DD-E11): one demo module, enterprise_demo. Never shipped.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json",
+    "./modules/*.json": "./src/modules/*.json",
+    "./modules/*": [
+      "./src/modules/*.ts",
+      "./src/modules/*.tsx"
+    ]
+  },
+  "peerDependencies": {
+    "@open-mercato/shared": "0.10.1",
+    "@open-mercato/ui": "0.10.1",
+    "react": "19.2.8",
+    "zod": "^4.6.7"
+  }
+}

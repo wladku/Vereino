@@ -185,6 +185,59 @@ test('checkLicenses accepts AGPL workspaces but still rejects an AGPL dependency
   )
 })
 
+// DD-E10, ENT-TEST-04: the overlaid Enterprise workspace is walked but not listed, and every third-party package
+// its `dependencies` pull in is still held to the allowlist.
+test('checkLicenses checks the third-party dependencies of an overlay workspace packages/enterprise', () => {
+  const overlay = (license) => {
+    const root = makeRepo({
+      'package.json': { name: 'r', private: true, license: 'AGPL-3.0-only', workspaces: ['packages/*'] },
+      'packages/app/package.json': {
+        name: '@vereino/app',
+        license: 'AGPL-3.0-only',
+        dependencies: { '@vereino/enterprise': 'workspace:*' },
+      },
+      'packages/enterprise/package.json': {
+        name: '@vereino/enterprise',
+        license: 'AGPL-3.0-only',
+        dependencies: { 'enterprise-dep': '1.0.0' },
+      },
+      'packages/enterprise/node_modules/enterprise-dep/package.json': {
+        name: 'enterprise-dep',
+        version: '1.0.0',
+        license,
+      },
+    })
+    // Yarn links the workspace into the app's node_modules, as for any other workspace dependency.
+    fs.mkdirSync(path.join(root, 'packages/app/node_modules/@vereino'), { recursive: true })
+    fs.symlinkSync(
+      path.join(root, 'packages/enterprise'),
+      path.join(root, 'packages/app/node_modules/@vereino/enterprise'),
+    )
+    return root
+  }
+  const failing = overlay('SSPL-1.0')
+  const { packages, violations, missing } = checkLicenses(failing)
+  assert.deepEqual(
+    packages.map((pkg) => pkg.name),
+    ['enterprise-dep'],
+  )
+  assert.deepEqual(
+    violations.map((pkg) => `${pkg.name}:${pkg.license}`),
+    ['enterprise-dep:SSPL-1.0'],
+  )
+  assert.deepEqual(missing, [])
+  const { out, sinks } = capture()
+  assert.equal(main(['--root', failing], sinks), 1)
+  assert.match(out.error[0], /enterprise-dep@1\.0\.0 has licence "SSPL-1\.0", which is not allowed/)
+  assert.match(out.error[0], /packages\/enterprise\/node_modules\/enterprise-dep/)
+
+  const passing = overlay('MIT')
+  assert.deepEqual(checkLicenses(passing).violations, [])
+  const ok = capture()
+  assert.equal(main(['--root', passing], ok.sinks), 0)
+  assert.deepEqual(ok.out.log, ['licenses:check: 1 production packages, every licence allowed.'])
+})
+
 test('exceptionFor matches an exact name first, then the longest prefix pattern', () => {
   const exceptions = {
     pkg: { license: 'A', reason: 'exact' },

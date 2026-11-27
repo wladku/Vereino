@@ -10,6 +10,7 @@ import {
 import { stripeContentSecurityPolicy } from '@open-mercato/gateway-stripe/contentSecurityPolicy'
 import { resolveDocumentsCollaborationCspOrigins } from '@open-mercato/documents/contentSecurityPolicy'
 import { openMercatoServerExternalPackages } from '@open-mercato/shared/lib/nextjs/server-external-packages'
+import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
 const allowedDevOrigins = isDevelopment ? resolveAllowedDevOrigins() : []
@@ -134,6 +135,10 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
     '@open-mercato/content',
     '@open-mercato/onboarding',
     '@open-mercato/ai-assistant',
+    // Local patch (enterprise package spec DD-E03, #713): the overlaid private package, only in an Enterprise build.
+    // enterprise-switch:start
+    ...(parseBooleanWithDefault(process.env.NEXT_PUBLIC_VEREINO_ENTERPRISE, false) ? ['@vereino/enterprise'] : []),
+    // enterprise-switch:end
   ],
   serverExternalPackages: [
     'esbuild',

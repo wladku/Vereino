@@ -2,6 +2,7 @@
 // - id: module id (plural snake_case; special cases: 'auth')
 // - from: '@open-mercato/core' | '@app' | custom alias/path in future
 import type { ModuleOverrides } from '@open-mercato/shared/modules/overrides'
+import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 
 export type ModuleEntry = {
   id: string
@@ -98,3 +99,16 @@ enabledModules.push({ id: 'enrolment', from: '@app' })
 // Vereino: the commercially licensed `@open-mercato/enterprise` package is not installed (ADR-023, ENG-Q-10, #466),
 // so its modules (`record_locks`, `system_status_overlays`, `sso`, `security`, `agent_orchestrator`) and the scaffold
 // example `agent_examples` are not registered. `yarn forbidden-packages:check` fails if it comes back.
+
+// Vereino Enterprise (enterprise package spec DD-E03, D-035; #713): the modules of the private package
+// `@vereino/enterprise` are registered only in a build with `NEXT_PUBLIC_VEREINO_ENTERPRISE=true`, which an overlay build
+// sets after `scripts/enterprise-overlay.mjs` installed the package into `packages/enterprise`. The platform generator
+// reads this file statically and evaluates only `process.env` reads and helpers it knows by name, such as
+// `parseBooleanWithDefault` (lesson `modules-ts-is-parsed-statically`); the variable is `NEXT_PUBLIC_` because the
+// browser evaluates this file again. Only the lines between the markers may name the package
+// (`yarn forbidden-packages:check`); Enterprise entries carry no `overrides`.
+// enterprise-switch:start
+if (parseBooleanWithDefault(process.env.NEXT_PUBLIC_VEREINO_ENTERPRISE, false)) {
+  enabledModules.push({ id: 'enterprise_demo', from: '@vereino/enterprise' })
+}
+// enterprise-switch:end
