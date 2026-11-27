@@ -14,7 +14,10 @@
 
 ## Commands and results
 
-See the PR comment of this run for the gate results (`yarn verify`, `yarn guard`, focused jest).
+- `yarn install --immutable`: done.
+- `NODE_OPTIONS=--max-old-space-size=8192 yarn verify` (larger heap per the lesson above, set up front): all 24 steps passed.
+- `yarn guard`: no blocking findings.
+- No integration test is added or edited by this PR (the provider fake overrides every Facebook URL), so none ran locally.
 
 ## Open problems / next steps
 
