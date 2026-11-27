@@ -9,6 +9,7 @@ import type { ClubCoreDirectory } from '../../club_core/services/directory'
 import type { ClubCorePublicSite } from '../../club_core/services/public-site'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import type { ApplicationTarget, ApplicationTargetsService } from '../../groups/services/application-targets'
+import type { GroupDirectory, GroupDirectoryEntry } from '../../groups/services/group-directory'
 import type { DuplicateCandidatesService, DuplicateQuery } from '../../people/services/duplicate-candidates'
 import type { PersonDirectory } from '../../people/services/person-directory'
 import { DEFAULT_REFERENCE_DAY, parseReferenceDay } from '../lib/age'
@@ -19,6 +20,7 @@ const CLUB_CORE_SETTINGS = 'clubCoreSettings'
 const CLUB_CORE_DIRECTORY = 'clubCoreDirectory'
 const CLUB_CORE_PUBLIC_SITE = 'clubCorePublicSite'
 const GROUPS_APPLICATION_TARGETS = 'groups.applicationTargets'
+const GROUPS_DIRECTORY = 'groups.directory'
 const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory'
 const PEOPLE_DUPLICATE_CANDIDATES = 'people.duplicateCandidates'
 
@@ -99,6 +101,30 @@ export async function sectionNames(
     .resolve<ClubCoreDirectory>(CLUB_CORE_DIRECTORY)
     .findSections(scope, ids, em)
   return new Map([...found.values()].map((section) => [section.id, section.name]))
+}
+
+/** A live group of the club with its section, or null (the group sign-up QR code, #869). */
+export async function findGroup(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  groupId: string,
+): Promise<GroupDirectoryEntry | null> {
+  const found = await required(container, GROUPS_DIRECTORY)
+    .resolve<GroupDirectory>(GROUPS_DIRECTORY)
+    .findGroups(scope, [groupId])
+  return found.get(groupId) ?? null
+}
+
+/** The public address part of a live section of the club, or null without one (#869). */
+export async function sectionPublicSlug(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  sectionId: string,
+): Promise<string | null> {
+  const found = await required(container, CLUB_CORE_DIRECTORY)
+    .resolve<ClubCoreDirectory>(CLUB_CORE_DIRECTORY)
+    .findSections(scope, [sectionId])
+  return found.get(sectionId)?.publicSlug ?? null
 }
 
 /** The live active sections of the club, by name. */

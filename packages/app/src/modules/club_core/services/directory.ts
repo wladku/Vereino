@@ -12,7 +12,16 @@ import { placeRelatives } from '../lib/places'
 
 export type ClubDirectoryScope = { tenantId: string; organizationId: string }
 
-export type SectionDirectoryEntry = { id: string; name: string; isActive: boolean }
+export type SectionDirectoryEntry = {
+  id: string
+  name: string
+  isActive: boolean
+  /**
+   * The section's public address part (`public_slug`), null while it has none; set by `findSections` only (the group
+   * sign-up QR code of `enrolment` builds the section form's address from it, #869).
+   */
+  publicSlug?: string | null
+}
 
 export type InstitutionDirectoryEntry = { id: string; name: string }
 
@@ -60,7 +69,7 @@ export type PlaceFamily = { place: PlaceDirectoryEntry; ancestorIds: string[]; d
 export type RentedPlace = { id: string; name: string; isActive: boolean; descendantIds: string[] }
 
 export type ClubCoreDirectory = {
-  /** The live sections of the organization among `ids`, by id; `em` is the caller's when given. */
+  /** The live sections of the organization among `ids`, by id, with their `publicSlug`; `em` is the caller's when given. */
   findSections(
     scope: ClubDirectoryScope,
     ids: readonly string[],
@@ -144,9 +153,14 @@ export async function findSections(
   const rows = await em.find(
     Section,
     { id: { $in: unique }, ...scope, deletedAt: null },
-    { fields: ['id', 'name', 'isActive'] },
+    { fields: ['id', 'name', 'isActive', 'publicSlug'] },
   )
-  return new Map(rows.map((row) => [row.id, { id: row.id, name: row.name, isActive: row.isActive }]))
+  return new Map(
+    rows.map((row) => [
+      row.id,
+      { id: row.id, name: row.name, isActive: row.isActive, publicSlug: row.publicSlug ?? null },
+    ]),
+  )
 }
 
 export async function lockSectionForShare(

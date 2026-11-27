@@ -11,6 +11,9 @@ import {
   applyPath,
   backendApplicationHref,
   clubApplicationHref,
+  groupApplyPath,
+  groupSignUpCodeApi,
+  linkedGroup,
   publicApplicationsApi,
   publicSectionApi,
 } from '../paths'
@@ -62,5 +65,21 @@ describe('paths', () => {
     expect(publicSectionApi('ks', 'pilka')).toBe('/api/enrolment/public/ks/sections/pilka')
     expect(clubApplicationHref('1')).toBe(`${CLUB_APPLICATIONS_HREF}/1`)
     expect(backendApplicationHref('1')).toBe(`${BACKEND_APPLICATIONS_HREF}/1`)
+  })
+})
+
+describe('the group sign-up code (#869)', () => {
+  it('builds the form address with the group and the member API', () => {
+    expect(groupApplyPath('ks orzel', 'pilka', 'g 1')).toBe('/p/ks%20orzel/sections/pilka/apply?group=g%201')
+    expect(groupSignUpCodeApi('g/1')).toBe('/api/enrolment/groups/g%2F1/sign-up-code')
+  })
+
+  it('chooses an offered group, closes for any other and ignores a missing parameter', () => {
+    expect(linkedGroup(undefined, ['g1'])).toEqual({ status: 'none' })
+    expect(linkedGroup('  ', ['g1'])).toEqual({ status: 'none' })
+    expect(linkedGroup([], ['g1'])).toEqual({ status: 'none' })
+    expect(linkedGroup(' g1 ', ['g1'])).toEqual({ status: 'chosen', groupId: 'g1' })
+    expect(linkedGroup(['g1', 'g2'], ['g1'])).toEqual({ status: 'chosen', groupId: 'g1' })
+    expect(linkedGroup('g2', ['g1'])).toEqual({ status: 'closed' })
   })
 })
