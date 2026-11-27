@@ -17,3 +17,11 @@ Close Dependabot alerts #25, #26, #35 and #36 (`sanitize-html` 2.17.5, four medi
 ## Validation
 
 Full gate, integration suite and browser smoke in CI on the pull request. No local install or test run.
+
+## Follow-up run: gate failure after the merge train (om-auto-fix-pr, 2026-11-27)
+
+- **Trigger:** the merge train labelled the PR `merge-train-failed`; the `gate` check of CI run 46063874669 failed.
+- **Cause:** every one of the 24 `yarn verify` steps passed; the job failed in its `yarn guard` step with one blocking finding: `package.json:85` [new-dependency] `sanitize-html` added to `resolutions`. That finding is the intended effect of this PR. Only the owner clears it, by adding the label `guard-approved` (SDLC.md "Validation gate", `scripts/guard.mjs`); the approval quoted above is recorded in the PR body, not as an owner comment or label, so the run did not treat it as clearing the guard.
+- **Base:** `origin/main` was already contained in the branch (0 commits behind), so no merge was needed.
+- **Review of the diff:** the resolution, the `CONTRIBUTING.md` row and the lockfile agree (the `sanitize-html@npm:2.17.5` entry and its now-unused ranges are gone; one 2.18.1 copy remains). No code change was made.
+- **Outcome:** a PR comment asks the owner to add `guard-approved` and rerun the `gate` job. The run did not add or remove the label and did not merge.
