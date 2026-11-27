@@ -10,6 +10,8 @@ import {
   hasDrift,
   heartbeatUrl,
   invariantsReport,
+  sweepAlertFields,
+  sweepFailed,
   numberingDrifts,
   parseDocumentNumber,
   type ChargeLedgerTotal,
@@ -209,5 +211,24 @@ describe('the report and its alert', () => {
     expect(heartbeatUrl(' https://hc.example/abc/ ', true)).toBe('https://hc.example/abc/fail')
     expect(heartbeatUrl(undefined, true)).toBeNull()
     expect(heartbeatUrl('   ', false)).toBeNull()
+  })
+})
+
+describe('the sweep run report (#852)', () => {
+  it('fails when any club failed and logs the counts only', () => {
+    expect(sweepFailed({ clubs: 3, failing: 0, unfinished: 0 })).toBe(false)
+    expect(sweepFailed({ clubs: 3, failing: 1, unfinished: 1 })).toBe(true)
+    expect(sweepAlertFields({ clubs: 3, failing: 0, unfinished: 0 })).toEqual({
+      signal: 'vereino.ops.payments.invariants.verified',
+      clubs: 3,
+      failingClubs: 0,
+      unfinishedClubs: 0,
+    })
+    expect(sweepAlertFields({ clubs: 3, failing: 2, unfinished: 1 })).toEqual({
+      signal: 'vereino.ops.payments.invariants.drift',
+      clubs: 3,
+      failingClubs: 2,
+      unfinishedClubs: 1,
+    })
   })
 })

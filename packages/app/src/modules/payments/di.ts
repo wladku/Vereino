@@ -30,7 +30,8 @@ import { PAYMENTS_PAID_ON_TIME, createPaidOnTime } from './services/paid-on-time
 import { PAYMENTS_PUBLIC_PRICES, createPublicPrices } from './services/public-prices'
 import { PAYMENTS_SEASON_CONTRIBUTOR, seasonContribution } from './services/season-rollover'
 import { TEST_GATEWAY_PROVIDER, readTestGatewaySessionId, testGatewayAdapter } from './services/test-gateway'
-import { PAYMENTS_CLUB_JOBS } from './lib/club-jobs'
+import { INVARIANTS_JOB_KEY, PAYMENTS_CLUB_JOBS } from './lib/club-jobs'
+import { reportInvariantsSweep } from './services/invariants'
 import { PAYMENTS_CLUB_TABLES } from './lib/club-tables'
 
 /**
@@ -71,7 +72,19 @@ const chargeService = createChargeService()
 
 export function register(container: AppContainer) {
   // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
-  declareClubJobs(PAYMENTS_CLUB_JOBS)
+  // `payments:verify-invariants` reports once per sweep run, with the count of failing clubs (#852).
+  declareClubJobs(
+    PAYMENTS_CLUB_JOBS.map((job) =>
+      job.key === INVARIANTS_JOB_KEY
+        ? {
+            ...job,
+            afterSweep: async (outcome) => {
+              await reportInvariantsSweep(outcome)
+            },
+          }
+        : job,
+    ),
+  )
   registerClubDataContributor(container, 'payments', PAYMENTS_CLUB_TABLES)
   registerNotificationTypes(notificationTypes)
   registerEmailTemplate(container, cashReceivedTemplate)

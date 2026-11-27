@@ -4,6 +4,7 @@ import { describe, expect, it } from '@jest/globals'
 import {
   CLUB_JOB_CLAIM_KEY,
   clubJobErrorCode,
+  clubJobProblemCode,
   parseClubJobClaim,
   runClaimedClubJob,
   serializeClubJobClaim,
@@ -122,5 +123,16 @@ describe('runClaimedClubJob', () => {
     const { calls, deps } = recorder({ start: true, fails: true })
     expect(await runClaimedClubJob(deps)).toBe('failed')
     expect(calls).toEqual(['start', 'run', 'fail'])
+  })
+})
+
+describe('clubJobProblemCode (#852)', () => {
+  it('keeps a short identifier, replaces any other string and is null without a problem', () => {
+    expect(clubJobProblemCode({ problem: 'payments.invariants.drift' })).toBe('payments.invariants.drift')
+    expect(clubJobProblemCode({ problem: 'Jan Kowalski paid twice' })).toBe('problem')
+    expect(clubJobProblemCode({ problem: 7 })).toBeNull()
+    expect(clubJobProblemCode({ nextDueAt: new Date() })).toBeNull()
+    expect(clubJobProblemCode(undefined)).toBeNull()
+    expect(clubJobProblemCode('payments.invariants.drift')).toBeNull()
   })
 })

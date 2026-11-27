@@ -218,3 +218,27 @@ export function heartbeatUrl(base: string | undefined, drift: boolean): string |
   if (!target) return null
   return drift ? `${target}/fail` : target
 }
+
+/**
+ * The problem code a claimed run reports to the club job sweep when it found drift (`ClubJobRunResult.problem`,
+ * stored as the club's `last_error` of `payments:verify-invariants`; #852).
+ */
+export const INVARIANTS_DRIFT_PROBLEM = 'payments.invariants.drift'
+
+/** The counts of one sweep run of the check (`ClubJobRoundOutcome` of the foundation). */
+export type InvariantsSweepOutcome = { clubs: number; failing: number; unfinished: number }
+
+/** True when any club of the sweep run drifted, failed or gave no result. */
+export function sweepFailed(outcome: InvariantsSweepOutcome): boolean {
+  return outcome.failing > 0
+}
+
+/** The fields of a sweep run's log line: the signal and the counts only. */
+export function sweepAlertFields(outcome: InvariantsSweepOutcome): Record<string, string | number> {
+  return {
+    signal: sweepFailed(outcome) ? INVARIANTS_DRIFT_SIGNAL : INVARIANTS_VERIFIED_SIGNAL,
+    clubs: outcome.clubs,
+    failingClubs: outcome.failing,
+    unfinishedClubs: outcome.unfinished,
+  }
+}

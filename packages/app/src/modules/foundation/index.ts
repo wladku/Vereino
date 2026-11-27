@@ -101,6 +101,8 @@ export {
   type ClubJobRunResult,
 } from './services/club-jobs'
 export type { ClubJobDeclaration, ClubJobSchedule } from './lib/club-job-due'
+export type { ClubJobRoundOutcome } from './lib/club-job-round'
+export { parseClubJobClaim } from './lib/club-job-run'
 export {
   verifyScheduledJobScope,
   type ScheduledJobRef,
