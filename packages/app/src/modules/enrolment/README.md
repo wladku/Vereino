@@ -1,19 +1,20 @@
 # `enrolment` — section sign-up applications (E26)
 
-Section sign-up form spec `.ai/specs/2026-11-25-vereino-section-sign-up-form.md`, phase 2 (E26-S03, #799). The module
-and its migration were approved by the product owner on 2026-11-26 (#788, Q-J01).
+Section sign-up form spec `.ai/specs/2026-11-25-vereino-section-sign-up-form.md`, phases 2 (E26-S03, #799) and 3
+(E26-S04, #800). The module and its migration were approved by the product owner on 2026-11-26 (#788, Q-J01).
 
 | Area | What |
 | --- | --- |
 | Tables | `enrolment_applications` (one application to one section; the participant and contact encrypted; `applicant_key` and `email_key` keyed lookup hashes; no person id until accepted, phase 3), `enrolment_confirmation_links` (single use, 1 hour, DD-J06), `enrolment_application_links` (status link until expiry, cut to closing + 30 days, DD-J07) |
-| Pure logic | `lib/states.ts` (life cycle), `lib/age.ts` (reference date DD-J03, hard limits BR-J2, age fit), `lib/applications.ts` (contact normalisation, BR-J3 identity, full group, DD-J09 waiting numbers, flags, tabs, retention cut-offs), `lib/access.ts` (BR-J5 sections) |
-| Commands | `enrolment.applications.submit`, `confirm`, `withdraw`, `resend_confirmation`, `resend_link` (sessionless), `reject` and `wait` (undoable decisions), `expire_unconfirmed` and `daily` (club jobs) |
+| Pure logic | `lib/accept.ts` (start day, who becomes which person, reusable duplicates, freed places, season end; phase 3), `lib/data-export.ts` (the export rows), `lib/states.ts` (life cycle), `lib/age.ts` (reference date DD-J03, hard limits BR-J2, age fit), `lib/applications.ts` (contact normalisation, BR-J3 identity, full group, DD-J09 waiting numbers, flags, tabs, retention cut-offs), `lib/access.ts` (BR-J5 sections) |
+| Commands | `enrolment.applications.submit`, `confirm`, `withdraw`, `resend_confirmation`, `resend_link` (sessionless), `reject` and `wait` (undoable decisions), `accept` (phase 3: persons, guardianship and membership through the owners' commands in one transaction, the invitation after commit; not undoable; a club administrator's write), `group_closed` (rollover, DD-J15a), `erase_applicant` (operator), `expire_unconfirmed` and `daily` (club jobs) |
 | Public routes | `GET /api/enrolment/public/{club}/sections/{section}/form`, `POST …/sections/{section}/applications`, `POST /api/enrolment/public/{club}/applications/confirm|status|withdraw|resend-confirmation|resend-link` — every token lookup scoped to the club of the slug |
-| Member routes | `GET /api/enrolment/applications` (tabs, filters, flags), `GET …/{id}`, `POST …/{id}/reject`, `POST …/{id}/waiting`, `GET /api/enrolment/overdue` |
+| Member routes | `GET /api/enrolment/applications` (tabs, filters, flags), `GET …/{id}` (refreshes the duplicates; fees of the groups), `POST …/{id}/reject`, `POST …/{id}/waiting`, `POST …/{id}/accept`, `GET /api/enrolment/overdue` |
 | Pages | P-J2 `/p/[club]/sections/[section]/apply`, P-J3 `/p/[club]/applications/confirm/[token]`, P-J4 `/p/[club]/applications/status/[token]`; M-J2 `/club/applications`, M-J3 `/club/applications/[id]`; B-J1 `/backend/enrolment/applications` |
 | Widgets | P-J1 "Apply" on `vereino:public:section:actions`; M-J1 Today tile on `vereino:club:today:sections`; the dashboard widget "Applications past the answer time" |
-| DI | `enrolment.confirmationLinks`, `enrolment.applicationLinks`; reads `clubCorePublicSite`, `clubCoreSettings`, `clubCoreDirectory`, `groups.applicationTargets`, `people.personDirectory`, `people.duplicateCandidates` |
-| Jobs | `enrolment:expire-unconfirmed` (hourly, R22), `enrolment:daily` (06:30: R22, R23, dead links); CLI `yarn mercato enrolment expire-unconfirmed|daily --tenant --org [--now]` |
+| DI | `enrolment.confirmationLinks`, `enrolment.applicationLinks`, `people.dataExport.enrolment`, `people.departure.enrolment` (erase); reads `clubCorePublicSite`, `clubCoreSettings`, `clubCoreDirectory`, `groups.applicationTargets`, `groups.membershipImporter`, `people.personDirectory`, `people.duplicateCandidates`, `payments.publicPrices` (the fee line) |
+| Subscribers | `groups.membership.updated|deleted` → freed-place notice (DD-J15); `groups.season.rolled_over` → open applications of closed groups back to New (DD-J15a) |
+| Jobs | `enrolment:expire-unconfirmed` (hourly, R22), `enrolment:daily` (06:30: R22, season end R24, R23, dead links, freed places); CLI `yarn mercato enrolment expire-unconfirmed|daily --tenant --org [--now]` and `applicant-data --tenant --org --email [--erase]` |
 | ACL | `enrolment.applications.view`, `enrolment.applications.decide` (coordinator), `enrolment.trials.mark` (coach, phase 4), `enrolment.manage` (club administrator) |
 
 Rules:
@@ -22,8 +23,9 @@ Rules:
 - **No enumeration.** The form answers 202 for a repeated application (a new link instead of a second row) and the resend routes answer 202 for any address.
 - **Waiting numbers are computed** from `waiting_since` per group (ties by id), never stored.
 - **Scope (BR-J5).** A coordinator decides the applications of their sections; an application of another section answers 404. Applications of a section without a coordinator reach the club administrators.
-- **Release rule.** The section's "Accepts online applications" field stays hidden until phase 3 (#800); tests set it through the section's public route.
+- **Accepting is a club administrator's write.** It creates club persons through `people.persons.create`, `people.guardianships.create` and `people.persons.create_account`, which only a club administrator may run; a coordinator gets 403 `accept_requires_admin` and the sheet is not offered.
+- **Only a found duplicate is reused.** The accept sheet offers a new person or a possible duplicate of that role (DD-J11); any other person id answers 422.
 
-Not in phase 2: accepting, freed places, season rollover and season end, export and erasure, the applicant CLI (phase 3); trial sessions (phase 4).
+Not yet built: trial sessions (phase 4).
 
-Tests: `lib/__tests__/*` (100 % coverage); integration TEST-J02…TEST-J06, TEST-J11 (retention part); cross-club probes `.ai/qa/tests/_fixtures/isolation/inventory/enrolment.json`.
+Tests: `lib/__tests__/*` (100 % coverage); integration TEST-J02…TEST-J09, TEST-J11; cross-club probes `.ai/qa/tests/_fixtures/isolation/inventory/enrolment.json`.

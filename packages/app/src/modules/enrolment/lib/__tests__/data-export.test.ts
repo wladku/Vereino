@@ -33,7 +33,12 @@ describe('the enrolment part of the data export (REQ-J18, DD-X03)', () => {
     expect(ENROLMENT_APPLICATIONS_ACTIVITY).toBe('A17')
     expect(row.role).toBe('guardian')
     expect(row.participant).toEqual({ relation: 'ward', name: 'Ola Nowak' })
-    expect(row.contact).toEqual({ firstName: 'Anna', lastName: 'Nowak', email: 'anna@example.test', phone: '+48600100200' })
+    expect(row.contact).toEqual({
+      firstName: 'Anna',
+      lastName: 'Nowak',
+      email: 'anna@example.test',
+      phone: '+48600100200',
+    })
     expect(row.guardian).toBeNull()
     expect(row.closedAt).toBe('2026-11-03T10:00:00.000Z')
   })
@@ -61,7 +66,12 @@ describe('the enrolment part of the data export (REQ-J18, DD-X03)', () => {
       },
       'adam',
     )
-    expect(row.contact).toEqual({ firstName: 'Ola', lastName: 'Nowak', email: 'anna@example.test', phone: '+48600100200' })
+    expect(row.contact).toEqual({
+      firstName: 'Ola',
+      lastName: 'Nowak',
+      email: 'anna@example.test',
+      phone: '+48600100200',
+    })
     expect(row.guardian).toBeNull()
     expect(row.confirmedAt).toBeNull()
     const nameless = applicationExportRow({ ...child, guardianFirstName: null, guardianLastName: null }, 'ola')

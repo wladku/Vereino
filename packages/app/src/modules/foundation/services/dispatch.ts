@@ -431,11 +431,7 @@ export async function eraseRecipientDeliveries(
  * version) — the counterpart of `eraseRecipientDeliveries`, which finds by person id. In the caller's transaction; only
  * deliveries without a person are touched. Returns how many deliveries changed.
  */
-export async function eraseAddressDeliveries(
-  em: EntityManager,
-  scope: DispatchScope,
-  email: string,
-): Promise<number> {
+export async function eraseAddressDeliveries(em: EntityManager, scope: DispatchScope, email: string): Promise<number> {
   const trimmed = email.trim()
   if (!trimmed) return 0
   const hashes = [...new Set([...deliveryEmail.lookup(trimmed), ...deliveryEmail.lookup(trimmed.toLowerCase())])]

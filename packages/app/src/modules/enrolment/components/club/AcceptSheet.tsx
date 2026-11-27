@@ -244,7 +244,10 @@ export function AcceptSheet({ application, open, side, onOpenChange, onOutcome }
                       <span className="text-muted-foreground tabular-nums">
                         {entry.placesLimit === null
                           ? t('enrolment.club.waiting.places', { occupied: entry.occupied })
-                          : t('enrolment.club.waiting.placesOf', { occupied: entry.occupied, limit: entry.placesLimit })}
+                          : t('enrolment.club.waiting.placesOf', {
+                              occupied: entry.occupied,
+                              limit: entry.placesLimit,
+                            })}
                       </span>
                       {entry.full ? <StatusTag status="warning">{t('enrolment.club.waiting.full')}</StatusTag> : null}
                       {entry.ageFit === 'outside' ? (

@@ -18,7 +18,12 @@
 // Creating persons is a club administrator's write in `people`; a coordinator gets 403 `accept_requires_admin`.
 // Not undoable: a mistake is corrected with the roster's End/Remove and the person screens (DD-J10).
 import type { EntityManager } from '@mikro-orm/postgresql'
-import { registerCommand, type CommandBus, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import {
+  registerCommand,
+  type CommandBus,
+  type CommandHandler,
+  type CommandRuntimeContext,
+} from '@open-mercato/shared/lib/commands'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { assertTransition } from '@/modules/foundation'
@@ -30,7 +35,13 @@ import { acceptSchema } from '../data/validators'
 import { acceptPlan, needsOverLimit, startDayValid } from '../lib/accept'
 import { ageFitOf } from '../lib/age'
 import { applicationTransitions, isDecidableState } from '../lib/states'
-import { applicationTargets, clubDay, enrolmentSettings, sectionNames, type EnrolmentScope } from '../services/directory'
+import {
+  applicationTargets,
+  clubDay,
+  enrolmentSettings,
+  sectionNames,
+  type EnrolmentScope,
+} from '../services/directory'
 import { cutStatusLinks } from '../services/links'
 import { applicantLocale, enqueueApplicantMail, publishDispatches } from '../services/mail'
 import { emitGuardianshipCreated, emitPersonCreated } from '../services/owner-events'
@@ -111,7 +122,9 @@ async function createPerson(
 
 function present(values: Record<string, string | null | undefined>): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(values).filter((entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== ''),
+    Object.entries(values).filter(
+      (entry): entry is [string, string] => typeof entry[1] === 'string' && entry[1] !== '',
+    ),
   )
 }
 
@@ -161,7 +174,11 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
         return enrolmentErrors.throw('group_full', { occupied: locked.occupied, limit: locked.placesLimit })
       }
 
-      const planned = acceptPlan(row.kind, { child: input.child, guardian: input.guardian }, row.duplicateCandidates ?? [])
+      const planned = acceptPlan(
+        row.kind,
+        { child: input.child, guardian: input.guardian },
+        row.duplicateCandidates ?? [],
+      )
       if ('issue' in planned) return throwFieldError('accept_person_invalid', planned.field)
       const { plan } = planned
       const app = await findOneWithDecryption(em.fork(), Application, { id: row.id, ...scope }, {}, scope)
@@ -183,7 +200,7 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
       const inviteeReuse = plan.invitee === 'guardian' ? (plan.guardian?.reuse ?? null) : plan.participant.reuse
       const inviteeBirthDate =
         plan.invitee === 'participant'
-          ? (inviteeReuse ? existing.get(inviteeReuse)?.birthDate : app.participantBirthDate) ?? null
+          ? ((inviteeReuse ? existing.get(inviteeReuse)?.birthDate : app.participantBirthDate) ?? null)
           : inviteeReuse
             ? (existing.get(inviteeReuse)?.birthDate ?? null)
             : (input.guardian?.birthDate ?? null)
@@ -267,7 +284,8 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
       await assertTransition(applicationTransitions, row.state, 'accepted')
       row.state = 'accepted'
       row.groupId = input.groupId
-      if (row.participantBirthDate) row.ageFit = ageFitOf(row.participantBirthDate, row.referenceDate, reference.fitRule)
+      if (row.participantBirthDate)
+        row.ageFit = ageFitOf(row.participantBirthDate, row.referenceDate, reference.fitRule)
       row.waitingSince = null
       row.note = null
       row.decidedAt = now

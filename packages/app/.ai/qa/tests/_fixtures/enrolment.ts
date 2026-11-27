@@ -1,4 +1,4 @@
-// Fixtures of the section sign-up form (sign-up form spec phase 2, #799): a published club with a public section that
+// Fixtures of the section sign-up form (sign-up form spec phases 2 and 3, #799, #800): a published club with a public section that
 // accepts applications, the public calls of the form, the e-mailed links, the coordinator's list and decisions, and
 // the retention jobs through the CLI.
 import { expect, type APIRequestContext } from '@playwright/test'
@@ -143,10 +143,58 @@ export function decideApplication(
   request: APIRequestContext,
   token: string,
   id: string,
-  action: 'reject' | 'waiting',
+  action: 'reject' | 'waiting' | 'accept',
   data: Record<string, unknown>,
 ) {
   return call(request, 'POST', `/api/enrolment/applications/${id}/${action}`, token, { data })
+}
+
+export type AcceptAnswer = {
+  ok?: boolean
+  state?: string
+  updatedAt?: string
+  membershipId?: string
+  participantPersonId?: string
+  guardianPersonId?: string | null
+  invitation?: 'sent' | 'skipped' | 'failed'
+  code?: string
+}
+
+/** Accepts an application (phase 3, #800): `POST /api/enrolment/applications/{id}/accept`. */
+export function acceptApplication(
+  request: APIRequestContext,
+  token: string,
+  id: string,
+  data: Record<string, unknown>,
+) {
+  return call<AcceptAnswer>(request, 'POST', `/api/enrolment/applications/${id}/accept`, token, { data })
+}
+
+/** The stored person and membership ids and state of an application (phase 3). */
+export function acceptedRow(
+  club: Club,
+  id: string,
+): Promise<{
+  state: string
+  note: string | null
+  accepted_child_person_id: string | null
+  accepted_guardian_person_id: string | null
+  accepted_membership_id: string | null
+}> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{
+      state: string
+      note: string | null
+      accepted_child_person_id: string | null
+      accepted_guardian_person_id: string | null
+      accepted_membership_id: string | null
+    }>(
+      `select state, note, accepted_child_person_id, accepted_guardian_person_id, accepted_membership_id
+         from enrolment_applications where organization_id = $1 and id = $2`,
+      [club.tenant.organizationId, id],
+    )
+    return rows[0]
+  })
 }
 
 /** Publishes the club page and switches a section and its groups to applications (the phase 2 fixture switch). */
@@ -182,7 +230,7 @@ export function runEnrolmentJob(
   club: Club,
   job: 'expire-unconfirmed' | 'daily',
   nowIso?: string,
-): { now: string; deleted: number; anonymised: number; linksPurged: number } {
+): { now: string; deleted: number; anonymised: number; linksPurged: number; expired?: number; placesFreed?: number } {
   const result = mercato([
     'enrolment',
     job,
@@ -191,7 +239,14 @@ export function runEnrolmentJob(
     '--org',
     club.tenant.organizationId,
     ...(nowIso ? ['--now', nowIso] : []),
-  ]) as { now: string; deleted: number; anonymised: number; linksPurged: number } | null
+  ]) as {
+    now: string
+    deleted: number
+    anonymised: number
+    linksPurged: number
+    expired?: number
+    placesFreed?: number
+  } | null
   if (!result) throw new Error(`[internal] enrolment ${job} printed no result`)
   return result
 }
@@ -258,5 +313,17 @@ export function linkCounts(club: Club, id: string): Promise<{ confirmation: numb
       [club.tenant.organizationId, id],
     )
     return { confirmation: Number(confirmation.rows[0].count), status: Number(status.rows[0].count) }
+  })
+}
+
+/** The club's in-app notifications of one type (phase 3, #800): the group key and the stored body variables. */
+export function notificationRows(club: Club, type: string): Promise<Array<{ group_key: string | null; body: string }>> {
+  return withClient(async (client) => {
+    const { rows } = await client.query<{ group_key: string | null; body: string }>(
+      `select group_key, coalesce(body_variables::text, '') || ' ' || coalesce(body, '') as body
+         from notifications where organization_id = $1 and type = $2 order by created_at asc`,
+      [club.tenant.organizationId, type],
+    )
+    return rows
   })
 }

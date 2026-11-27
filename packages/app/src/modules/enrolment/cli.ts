@@ -79,7 +79,7 @@ const applicantDataCli: ModuleCli = {
       return
     }
     const applications = await applicantApplications(container, scope, email)
-    process.stdout.write(`${JSON.stringify({ applications }, null, 2)}\n`)
+    process.stdout.write(`${JSON.stringify({ applications })}\n`)
   },
 }
 

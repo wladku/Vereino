@@ -390,9 +390,7 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
       ) : null}
       {notice?.kind === 'accepted' ? (
         <Alert style="light" status="success" data-testid="enrolment-decision-done">
-          <AlertDescription>
-            {t(`enrolment.club.accept.done.${notice.invitation}`)}
-          </AlertDescription>
+          <AlertDescription>{t(`enrolment.club.accept.done.${notice.invitation}`)}</AlertDescription>
         </Alert>
       ) : null}
       {notice?.kind === 'rejected' ? (

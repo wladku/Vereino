@@ -81,7 +81,12 @@ export async function memberContext(request: Request): Promise<MemberContext> {
 
 export const flagSchema = z.enum([
   'group_closed',
-  'outside_age', 'group_full', 'wants_trial', 'possible_duplicate', 'overdue'])
+  'outside_age',
+  'group_full',
+  'wants_trial',
+  'possible_duplicate',
+  'overdue',
+])
 
 export const listItemSchema = z.object({
   id: z.uuid(),

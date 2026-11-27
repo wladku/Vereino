@@ -36,9 +36,9 @@ describe('accept plan (DD-J10, DD-J11)', () => {
     expect(acceptPlan('child', {}, candidates)).toEqual({
       plan: { participant: { reuse: null }, guardian: { reuse: null }, invitee: 'guardian' },
     })
-    expect(acceptPlan('child', { child: { personId: 'child-1' }, guardian: { personId: 'mum-1' } }, candidates)).toEqual(
-      { plan: { participant: { reuse: 'child-1' }, guardian: { reuse: 'mum-1' }, invitee: 'guardian' } },
-    )
+    expect(
+      acceptPlan('child', { child: { personId: 'child-1' }, guardian: { personId: 'mum-1' } }, candidates),
+    ).toEqual({ plan: { participant: { reuse: 'child-1' }, guardian: { reuse: 'mum-1' }, invitee: 'guardian' } })
   })
 
   it('gives an adult no guardian and invites the adult', () => {

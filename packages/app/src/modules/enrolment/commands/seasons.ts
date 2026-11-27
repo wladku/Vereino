@@ -73,7 +73,12 @@ const groupClosedCommand: CommandHandler<Record<string, unknown>, GroupClosedRes
           const target = (
             await applicationTargets(ctx.container, trusted, { sectionId, date: today, groupIds: [groupId] })
           ).at(0)
-          await announceClosedGroup(ctx.container, trusted, { sectionId, groupId, groupName: target?.name ?? '—', today })
+          await announceClosedGroup(ctx.container, trusted, {
+            sectionId,
+            groupId,
+            groupName: target?.name ?? '—',
+            today,
+          })
         } catch {
           // The list shows the flag anyway; the notice is a convenience.
         }
