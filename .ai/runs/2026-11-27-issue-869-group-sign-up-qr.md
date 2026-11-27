@@ -32,7 +32,8 @@
 - `yarn typecheck`: pass. `@vereino/ui` tests: 298 pass, 100 % coverage. `enrolment` lib jest: 28 pass, 100 %.
 - ESLint on the changed files: one error in the new test (`no-unnecessary-type-conversion`), fixed; one pre-existing warning in `ClubGroupPage.tsx:210`, not from this change.
 - `yarn verify`: all steps pass (one run up to `format:check`, then `--from format:check` after formatting the new test).
-- Integration `E29-S02`: 1 passed (59.5 s) locally. `ISSUE-628` (cross-club isolation, inventory changed): see the PR body.
+- Integration `E29-S02`: 1 passed (59.5 s) locally. `ISSUE-628` (cross-club isolation, inventory changed): 1 passed (2.6 min) locally.
+- `yarn guard`: 9 blocking findings, all from #888 (the `qrcode` dependency approved as Q-IL01 and its lockfile packages), because guard compares with `main`; this change adds no dependency.
 
 ## Open problems / next steps
 
