@@ -15,6 +15,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { fetchCrudList } from '@open-mercato/ui/backend/utils/crud'
@@ -363,6 +364,8 @@ function Roster({ group }: { group: GroupDetail }) {
             {t('groups.club.inviteFamilies')}
           </Link>
         ) : null}
+        {/* Actions other modules add to the group, e.g. the sign-up QR code of `enrolment` (#869). */}
+        <InjectionSpot spotId="vereino:club:group:actions" context={{ groupId: group.id }} />
         {canManage ? null : (
           <p className="text-muted-foreground text-sm" data-testid="club-roster-read-only">
             {t('groups.club.roster.readOnly')}
