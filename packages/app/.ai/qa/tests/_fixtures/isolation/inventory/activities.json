@@ -3,10 +3,27 @@
   "routes": {
     "/api/activities/activities": {
       "GET": [
-        { "probe": "read" },
-        { "probe": "read", "query": { "groupId": "$B:group" } },
-        { "probe": "read", "query": { "sectionId": "$B:section" } },
-        { "probe": "read", "query": { "ids": "$B:activity" } }
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$B:group"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "sectionId": "$B:section"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "ids": "$B:activity"
+          }
+        }
       ],
       "POST": [
         {
@@ -66,7 +83,9 @@
             "name": "Probe",
             "type": "tournament",
             "placeId": "$A:place",
-            "invitedExternalTeamIds": ["$B:opponentTeam"],
+            "invitedExternalTeamIds": [
+              "$B:opponentTeam"
+            ],
             "startsOn": "$A:probeDay",
             "startTime": "06:00",
             "endTime": "07:00"
@@ -76,28 +95,52 @@
       "PUT": [
         {
           "probe": "foreign-id",
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "id": "$B:activity", "name": "Probe" }
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "id": "$B:activity",
+            "name": "Probe"
+          }
         },
         {
           "probe": "foreign-ref",
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activityUpdatedAt" },
-          "body": { "id": "$A:activity", "placeId": "$B:place" }
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:activityUpdatedAt"
+          },
+          "body": {
+            "id": "$A:activity",
+            "placeId": "$B:place"
+          }
         },
         {
           "probe": "foreign-ref",
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activityUpdatedAt" },
-          "body": { "id": "$A:activity", "coachPersonId": "$B:coachPerson" }
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:activityUpdatedAt"
+          },
+          "body": {
+            "id": "$A:activity",
+            "coachPersonId": "$B:coachPerson"
+          }
         }
       ],
       "DELETE": {
         "probe": "foreign-id",
-        "query": { "id": "$B:activity" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        "query": {
+          "id": "$B:activity"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
       }
     },
     "/api/activities/activities/[id]": {
-      "GET": { "probe": "foreign-id", "params": { "id": "$B:activity" } }
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:activity"
+        }
+      }
     },
     "/api/activities/activities/preview": {
       "POST": [
@@ -155,131 +198,481 @@
     },
     "/api/activities/attendance-policies": {
       "GET": [
-        { "probe": "read" },
-        { "probe": "read", "query": { "groupId": "$B:group" } },
-        { "probe": "read", "query": { "ids": "$B:attendancePolicy" } }
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$B:group"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "ids": "$B:attendancePolicy"
+          }
+        }
       ],
       "POST": {
         "probe": "foreign-ref",
-        "body": { "scope": "group", "groupId": "$B:group2", "minorDeclarationMode": "immediate" }
+        "body": {
+          "scope": "group",
+          "groupId": "$B:group2",
+          "minorDeclarationMode": "immediate"
+        }
       },
       "PUT": {
         "probe": "foreign-id",
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "id": "$B:attendancePolicy", "minorDeclarationMode": "immediate" }
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "id": "$B:attendancePolicy",
+          "minorDeclarationMode": "immediate"
+        }
       },
       "DELETE": {
         "probe": "foreign-id",
-        "query": { "id": "$B:attendancePolicy" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+        "query": {
+          "id": "$B:attendancePolicy"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        }
       }
     },
     "/api/activities/attendance/[id]/guardian-decision": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:attendance" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "approve": true }
+        "params": {
+          "id": "$B:attendance"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "approve": true
+        }
       }
     },
     "/api/activities/attendance/declare": {
       "POST": [
         {
           "probe": "foreign-ref",
-          "body": { "occurrenceId": "$B:occurrence", "personId": "$A:memberPerson", "declared": "no" }
+          "body": {
+            "occurrenceId": "$B:occurrence",
+            "personId": "$A:memberPerson",
+            "declared": "no"
+          }
         },
         {
           "probe": "foreign-ref",
-          "body": { "occurrenceId": "$A:occurrence", "personId": "$B:memberPerson", "declared": "no" }
+          "body": {
+            "occurrenceId": "$A:occurrence",
+            "personId": "$B:memberPerson",
+            "declared": "no"
+          }
         }
       ]
     },
     "/api/activities/calendar": {
       "GET": [
-        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "self" } },
-        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "guardian" } },
-        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "coach" } },
-        { "probe": "read", "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "coordinator" } },
         {
           "probe": "read",
-          "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "guardian", "personId": "$B:childPerson" }
+          "query": {
+            "from": "$A:today",
+            "to": "$A:calendarTo",
+            "as": "self"
+          }
         },
         {
           "probe": "read",
-          "query": { "from": "$A:today", "to": "$A:calendarTo", "as": "coordinator", "sectionId": "$B:section" }
+          "query": {
+            "from": "$A:today",
+            "to": "$A:calendarTo",
+            "as": "guardian"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "from": "$A:today",
+            "to": "$A:calendarTo",
+            "as": "coach"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "from": "$A:today",
+            "to": "$A:calendarTo",
+            "as": "coordinator"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "from": "$A:today",
+            "to": "$A:calendarTo",
+            "as": "guardian",
+            "personId": "$B:childPerson"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "from": "$A:today",
+            "to": "$A:calendarTo",
+            "as": "coordinator",
+            "sectionId": "$B:section"
+          }
         }
       ]
     },
     "/api/activities/calendar/[id]": {
       "GET": [
-        { "probe": "foreign-id", "params": { "id": "$B:occurrence" }, "query": { "as": "self" } },
-        { "probe": "foreign-id", "params": { "id": "$B:occurrence" }, "query": { "as": "coach" } },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:occurrence"
+          },
+          "query": {
+            "as": "self"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:occurrence"
+          },
+          "query": {
+            "as": "coach"
+          }
+        },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:occurrence" },
-          "query": { "as": "guardian", "personId": "$B:childPerson" },
-          "expect": [403],
+          "params": {
+            "id": "$A:occurrence"
+          },
+          "query": {
+            "as": "guardian",
+            "personId": "$B:childPerson"
+          },
+          "expect": [
+            403
+          ],
           "why": "A personId that is not one of the caller's wards answers 403 scope_denied (calendar.ts memberPersons), a club B person and an unknown id alike."
         }
       ]
     },
     "/api/activities/club-events": {
       "GET": [
-        { "probe": "read" },
-        { "probe": "read", "query": { "sectionId": "$B:section" } },
-        { "probe": "read", "query": { "ids": "$B:activitiesClubEvent" } }
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "sectionId": "$B:section"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "ids": "$B:activitiesClubEvent"
+          }
+        }
       ],
       "POST": [
-        { "probe": "foreign-ref", "body": { "name": "Probe event", "sectionId": "$B:section", "placeId": "$A:place" } },
-        { "probe": "foreign-ref", "body": { "name": "Probe event", "sectionId": "$A:section", "placeId": "$B:place" } }
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "name": "Probe event",
+            "sectionId": "$B:section",
+            "placeId": "$A:place"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "body": {
+            "name": "Probe event",
+            "sectionId": "$A:section",
+            "placeId": "$B:place"
+          }
+        }
       ],
       "PUT": [
         {
           "probe": "foreign-id",
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "id": "$B:activitiesClubEvent", "name": "Probe event" }
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "id": "$B:activitiesClubEvent",
+            "name": "Probe event"
+          }
         },
         {
           "probe": "foreign-ref",
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventUpdatedAt" },
-          "body": { "id": "$A:activitiesClubEvent", "placeId": "$B:place" }
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventUpdatedAt"
+          },
+          "body": {
+            "id": "$A:activitiesClubEvent",
+            "placeId": "$B:place"
+          }
         },
         {
           "probe": "foreign-ref",
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventUpdatedAt" },
-          "body": { "id": "$A:activitiesClubEvent", "sectionId": "$B:section" }
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventUpdatedAt"
+          },
+          "body": {
+            "id": "$A:activitiesClubEvent",
+            "sectionId": "$B:section"
+          }
         }
       ]
     },
     "/api/activities/club-events/[id]": {
-      "GET": { "probe": "foreign-id", "params": { "id": "$B:activitiesClubEvent" } }
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:activitiesClubEvent"
+        }
+      }
     },
     "/api/activities/club-events/[id]/cancel": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:activitiesClubEvent" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "reason": "Probe reason" }
+        "params": {
+          "id": "$B:activitiesClubEvent"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "Probe reason"
+        }
+      }
+    },
+    "/api/activities/club-events/[id]/people-options": {
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:activitiesClubEvent"
+        },
+        "query": {
+          "q": "Probe"
+        }
       }
     },
     "/api/activities/club-events/[id]/files": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent"
+          },
+          "body": {
+            "$multipart": {
+              "file": {
+                "$file": "png"
+              },
+              "kind": "poster"
+            }
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent"
+          },
+          "body": {
+            "$multipart": {
+              "file": {
+                "$file": "png"
+              },
+              "kind": "photo",
+              "description": "Probe picture"
+            }
+          }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/publish-all": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:activitiesClubEvent" },
-        "body": { "$multipart": { "file": { "$file": "png" }, "kind": "poster" } }
+        "params": {
+          "id": "$B:activitiesClubEvent"
+        },
+        "body": {}
       }
     },
     "/api/activities/club-events/[id]/files/[fileId]": {
       "DELETE": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:activitiesClubEvent", "fileId": "$B:activitiesClubEventFile" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventFile"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
         },
         {
           "probe": "foreign-id",
-          "params": { "id": "$A:activitiesClubEvent", "fileId": "$B:activitiesClubEventFile" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventFile"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
+        }
+      ],
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "description": "Probe description"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "description": "Probe description"
+          }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/content": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/people": {
+      "PUT": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "personIds": [],
+            "confirmed": false
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "personIds": [],
+            "confirmed": false
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$A:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventPictureUpdatedAt"
+          },
+          "body": {
+            "personIds": [
+              "$B:memberPerson"
+            ],
+            "confirmed": true
+          }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/publish": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
+        }
+      ]
+    },
+    "/api/activities/club-events/[id]/files/[fileId]/unpublish": {
+      "POST": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
+        },
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "fileId": "$B:activitiesClubEventPicture"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
         }
       ]
     },
@@ -287,7 +680,9 @@
       "POST": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:activitiesClubEvent" },
+          "params": {
+            "id": "$B:activitiesClubEvent"
+          },
           "body": {
             "title": "Probe part",
             "groupId": "$A:group",
@@ -297,7 +692,9 @@
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:activitiesClubEvent" },
+          "params": {
+            "id": "$A:activitiesClubEvent"
+          },
           "body": {
             "title": "Probe part",
             "groupId": "$B:group",
@@ -307,7 +704,9 @@
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:activitiesClubEvent" },
+          "params": {
+            "id": "$A:activitiesClubEvent"
+          },
           "body": {
             "title": "Probe part",
             "groupId": "$A:group",
@@ -318,11 +717,15 @@
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:activitiesClubEvent" },
+          "params": {
+            "id": "$A:activitiesClubEvent"
+          },
           "body": {
             "title": "Probe part",
             "groupId": "$A:group",
-            "visitingTeamIds": ["$B:opponentTeam"],
+            "visitingTeamIds": [
+              "$B:opponentTeam"
+            ],
             "startsAt": "$A:probeStartsAt",
             "endsAt": "$A:probeEndsAt"
           }
@@ -333,27 +736,51 @@
       "PUT": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "title": "Probe part" }
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "partId": "$B:activitiesClubEventPart"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "title": "Probe part"
+          }
         },
         {
           "probe": "foreign-id",
-          "params": { "id": "$A:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "title": "Probe part" }
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "partId": "$B:activitiesClubEventPart"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "title": "Probe part"
+          }
         }
       ],
       "DELETE": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "partId": "$B:activitiesClubEventPart"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
         },
         {
           "probe": "foreign-id",
-          "params": { "id": "$A:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" }
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "partId": "$B:activitiesClubEventPart"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          }
         }
       ]
     },
@@ -361,26 +788,44 @@
       "POST": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "reason": "Probe reason" }
+          "params": {
+            "id": "$B:activitiesClubEvent",
+            "partId": "$B:activitiesClubEventPart"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "reason": "Probe reason"
+          }
         },
         {
           "probe": "foreign-id",
-          "params": { "id": "$A:activitiesClubEvent", "partId": "$B:activitiesClubEventPart" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "reason": "Probe reason" }
+          "params": {
+            "id": "$A:activitiesClubEvent",
+            "partId": "$B:activitiesClubEventPart"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "reason": "Probe reason"
+          }
         }
       ]
     },
     "/api/activities/club-events/options": {
-      "GET": { "probe": "read" }
+      "GET": {
+        "probe": "read"
+      }
     },
     "/api/activities/declaration-links": {
       "POST": [
         {
           "probe": "read",
-          "roles": ["anonymous"],
+          "roles": [
+            "anonymous"
+          ],
           "why": "The link request always answers 202 with the same body (no enumeration, REQ-017); a read proves the answer holds nothing of club B for club A's slug with club B's session.",
           "body": {
             "email": "probe-628@example.org",
@@ -390,7 +835,9 @@
         },
         {
           "probe": "read",
-          "roles": ["anonymous"],
+          "roles": [
+            "anonymous"
+          ],
           "why": "The same with club B's slug and club A's session.",
           "body": {
             "email": "probe-628@example.org",
@@ -401,20 +848,42 @@
       ]
     },
     "/api/activities/declaration-links/[token]": {
-      "GET": { "probe": "read", "roles": ["anonymous"], "params": { "token": "$A:declarationToken" } },
+      "GET": {
+        "probe": "read",
+        "roles": [
+          "anonymous"
+        ],
+        "params": {
+          "token": "$A:declarationToken"
+        }
+      },
       "POST": [
         {
           "probe": "public",
-          "params": { "token": "$A:declarationToken" },
-          "body": { "personId": "$B:childPerson", "declared": "no" },
-          "expect": [403],
+          "params": {
+            "token": "$A:declarationToken"
+          },
+          "body": {
+            "personId": "$B:childPerson",
+            "declared": "no"
+          },
+          "expect": [
+            403
+          ],
           "why": "The link declares only for the link holder's own children (TEST-017): any other person answers 403 scope_denied, a club B person and an unknown id alike."
         },
         {
           "probe": "public",
-          "params": { "token": "$A:declarationToken" },
-          "body": { "personId": "$B:memberPerson", "declared": "no" },
-          "expect": [403],
+          "params": {
+            "token": "$A:declarationToken"
+          },
+          "body": {
+            "personId": "$B:memberPerson",
+            "declared": "no"
+          },
+          "expect": [
+            403
+          ],
           "why": "The link declares only for the link holder's own children (TEST-017): any other person answers 403 scope_denied, a club B person and an unknown id alike."
         }
       ]
@@ -470,156 +939,382 @@
       ]
     },
     "/api/activities/events/options": {
-      "GET": { "probe": "read" }
+      "GET": {
+        "probe": "read"
+      }
     },
     "/api/activities/occurrences": {
       "GET": [
-        { "probe": "read" },
-        { "probe": "read", "query": { "groupId": "$B:group" } },
-        { "probe": "read", "query": { "sectionId": "$B:section" } },
-        { "probe": "read", "query": { "activityId": "$B:activity" } },
-        { "probe": "read", "query": { "ids": "$B:occurrence" } }
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$B:group"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "sectionId": "$B:section"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "activityId": "$B:activity"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "ids": "$B:occurrence"
+          }
+        }
       ]
     },
     "/api/activities/occurrences/[id]": {
-      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } },
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:occurrence"
+        }
+      },
       "PATCH": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:occurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "coachPersonId": "$A:coachPerson" }
+          "params": {
+            "id": "$B:occurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "coachPersonId": "$A:coachPerson"
+          }
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:occurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt" },
-          "body": { "placeId": "$B:place" }
+          "params": {
+            "id": "$A:occurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt"
+          },
+          "body": {
+            "placeId": "$B:place"
+          }
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:occurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt" },
-          "body": { "coachPersonId": "$B:coachPerson" }
+          "params": {
+            "id": "$A:occurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt"
+          },
+          "body": {
+            "coachPersonId": "$B:coachPerson"
+          }
         }
       ]
     },
     "/api/activities/occurrences/[id]/absence": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:occurrence" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
+        "params": {
+          "id": "$B:occurrence"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
         "body": {}
       }
     },
     "/api/activities/occurrences/[id]/attendance": {
-      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } },
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:occurrence"
+        }
+      },
       "PUT": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:startedOccurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "entries": [{ "personId": "$A:memberPerson", "actual": "present" }] }
+          "params": {
+            "id": "$B:startedOccurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "entries": [
+              {
+                "personId": "$A:memberPerson",
+                "actual": "present"
+              }
+            ]
+          }
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:startedOccurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:startedOccurrenceUpdatedAt" },
-          "body": { "entries": [{ "personId": "$B:memberPerson", "actual": "present" }] }
+          "params": {
+            "id": "$A:startedOccurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:startedOccurrenceUpdatedAt"
+          },
+          "body": {
+            "entries": [
+              {
+                "personId": "$B:memberPerson",
+                "actual": "present"
+              }
+            ]
+          }
         }
       ]
     },
     "/api/activities/occurrences/[id]/cancel": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:occurrence" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "reason": "Probe reason" }
+        "params": {
+          "id": "$B:occurrence"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "Probe reason"
+        }
       }
     },
     "/api/activities/occurrences/[id]/coach": {
-      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } },
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:occurrence"
+        }
+      },
       "POST": [
         {
           "probe": "foreign-id",
-          "params": { "id": "$B:occurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-          "body": { "coachPersonId": "$A:coordinatorPerson" }
+          "params": {
+            "id": "$B:occurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+          },
+          "body": {
+            "coachPersonId": "$A:coordinatorPerson"
+          }
         },
         {
           "probe": "foreign-ref",
-          "params": { "id": "$A:occurrence" },
-          "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt" },
-          "body": { "coachPersonId": "$B:coordinatorPerson" }
+          "params": {
+            "id": "$A:occurrence"
+          },
+          "headers": {
+            "x-om-ext-optimistic-lock-expected-updated-at": "$A:occurrenceUpdatedAt"
+          },
+          "body": {
+            "coachPersonId": "$B:coordinatorPerson"
+          }
         }
       ]
     },
     "/api/activities/occurrences/[id]/guardian-contacts": {
-      "GET": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } }
+      "GET": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:occurrence"
+        }
+      }
     },
     "/api/activities/occurrences/[id]/reopen": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:occurrence" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "reason": "Probe reason" }
+        "params": {
+          "id": "$B:occurrence"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "Probe reason"
+        }
       }
     },
     "/api/activities/occurrences/[id]/restore": {
       "POST": {
         "probe": "foreign-id",
-        "params": { "id": "$B:occurrence" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "reason": "Probe reason" }
+        "params": {
+          "id": "$B:occurrence"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "reason": "Probe reason"
+        }
       }
     },
     "/api/activities/occurrences/[id]/score": {
       "PUT": {
         "probe": "foreign-id",
-        "params": { "id": "$B:startedOccurrence" },
-        "headers": { "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z" },
-        "body": { "scoreHome": 1, "scoreAway": 0 }
+        "params": {
+          "id": "$B:startedOccurrence"
+        },
+        "headers": {
+          "x-om-ext-optimistic-lock-expected-updated-at": "2020-01-01T00:00:00.000Z"
+        },
+        "body": {
+          "scoreHome": 1,
+          "scoreAway": 0
+        }
       }
     },
     "/api/activities/occurrences/[id]/take-over": {
-      "POST": { "probe": "foreign-id", "params": { "id": "$B:occurrence" } }
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:occurrence"
+        }
+      }
     },
     "/api/activities/options/coaches": {
-      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "search": "Trener" } }]
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "search": "Trener"
+          }
+        }
+      ]
     },
     "/api/activities/public/[clubSlug]/sessions/[occurrenceId]": {
       "GET": [
         {
           "probe": "read",
-          "roles": ["anonymous"],
-          "params": { "clubSlug": "$A:clubSlug", "occurrenceId": "$A:occurrence" }
+          "roles": [
+            "anonymous"
+          ],
+          "params": {
+            "clubSlug": "$A:clubSlug",
+            "occurrenceId": "$A:occurrence"
+          }
         },
-        { "probe": "public", "params": { "clubSlug": "$A:clubSlug", "occurrenceId": "$B:occurrence" } },
-        { "probe": "public", "params": { "clubSlug": "$B:clubSlug", "occurrenceId": "$A:occurrence" } }
+        {
+          "probe": "public",
+          "params": {
+            "clubSlug": "$A:clubSlug",
+            "occurrenceId": "$B:occurrence"
+          }
+        },
+        {
+          "probe": "public",
+          "params": {
+            "clubSlug": "$B:clubSlug",
+            "occurrenceId": "$A:occurrence"
+          }
+        }
       ]
     },
     "/api/activities/reports/coach-units": {
       "GET": [
-        { "probe": "read", "query": { "month": "$A:period" } },
-        { "probe": "read", "query": { "month": "$A:period", "mine": "1" } },
-        { "probe": "read", "query": { "month": "$A:period", "format": "csv" } },
-        { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section" } },
-        { "probe": "read", "query": { "month": "$A:period", "sectionId": "$B:section", "format": "csv" } }
+        {
+          "probe": "read",
+          "query": {
+            "month": "$A:period"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "month": "$A:period",
+            "mine": "1"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "month": "$A:period",
+            "format": "csv"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "month": "$A:period",
+            "sectionId": "$B:section"
+          }
+        },
+        {
+          "probe": "read",
+          "query": {
+            "month": "$A:period",
+            "sectionId": "$B:section",
+            "format": "csv"
+          }
+        }
       ]
     },
     "/api/activities/reports/declaration-share": {
-      "GET": [{ "probe": "read" }, { "probe": "read", "query": { "from": "$A:lastWeek", "to": "$A:nextWeek" } }]
+      "GET": [
+        {
+          "probe": "read"
+        },
+        {
+          "probe": "read",
+          "query": {
+            "from": "$A:lastWeek",
+            "to": "$A:nextWeek"
+          }
+        }
+      ]
     },
     "/api/activities/reports/pzpn-schedule": {
       "GET": [
-        { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
-        { "probe": "foreign-ref", "query": { "groupId": "$B:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } }
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$A:group",
+            "from": "$A:lastWeek",
+            "to": "$A:nextWeek"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "query": {
+            "groupId": "$B:group",
+            "from": "$A:lastWeek",
+            "to": "$A:nextWeek"
+          }
+        }
       ]
     },
     "/api/activities/reports/pzpn-attendance": {
       "GET": [
-        { "probe": "read", "query": { "groupId": "$A:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } },
-        { "probe": "foreign-ref", "query": { "groupId": "$B:group", "from": "$A:lastWeek", "to": "$A:nextWeek" } }
+        {
+          "probe": "read",
+          "query": {
+            "groupId": "$A:group",
+            "from": "$A:lastWeek",
+            "to": "$A:nextWeek"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "query": {
+            "groupId": "$B:group",
+            "from": "$A:lastWeek",
+            "to": "$A:nextWeek"
+          }
+        }
       ]
     }
   }
