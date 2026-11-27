@@ -127,9 +127,15 @@ jobs:
       - name: Install Playwright browser
         working-directory: packages/app
         # A self-hosted runner has no sudo: its system libraries come from `scripts/ci-runner-setup.sh`.
+        # On a hosted runner `--with-deps` runs `apt-get update`, which exits 100 when the image's Microsoft apt source
+        # answers 403 (#889); Playwright needs only Ubuntu packages, so drop that source first and retry once.
         env:
           WITH_DEPS: ${{ runner.environment == 'github-hosted' && '--with-deps' || '' }}
-        run: npx playwright install $WITH_DEPS chromium
+        run: |
+          if [ -n "$WITH_DEPS" ]; then
+            { grep -rlF packages.microsoft.com /etc/apt/sources.list.d || true; } | xargs -r sudo rm -f
+          fi
+          npx playwright install $WITH_DEPS chromium || (sleep 20 && npx playwright install $WITH_DEPS chromium)
       # Vereino runner: Testcontainers PostgreSQL 17 (pgvector), yarn initialize, production build, Playwright.
       - run: yarn test:integration:vereino --shard ${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Upload Playwright report
@@ -205,7 +211,11 @@ jobs:
           echo "$AGENT_BROWSER_SHA256  $BIN" | sha256sum --check
           chmod 755 "$BIN"
           "$BIN" install
-          "$BIN" doctor --json > /dev/null || sudo -n "$BIN" install --with-deps
+          # `--with-deps` runs `apt-get update`; drop the image's Microsoft apt source, which may answer 403 (#889).
+          if ! "$BIN" doctor --json > /dev/null; then
+            { grep -rlF packages.microsoft.com /etc/apt/sources.list.d 2> /dev/null || true; } | xargs -r sudo -n rm -f
+            sudo -n "$BIN" install --with-deps
+          fi
           "$BIN" doctor --json > /dev/null
           echo "AGENT_BROWSER_BIN=$BIN" >> "$GITHUB_ENV"
       - name: Start the ephemeral app (Testcontainers PostgreSQL)
@@ -291,7 +301,10 @@ jobs:
           yarn i18n:check-hardcoded --strict --modules-root ../enterprise/src/modules
       - name: Install Playwright browser
         working-directory: packages/app
-        run: npx playwright install --with-deps chromium
+        # As in `integration-shard`: the image's Microsoft apt source may answer 403 and fail `apt-get update` (#889).
+        run: |
+          { grep -rlF packages.microsoft.com /etc/apt/sources.list.d || true; } | xargs -r sudo rm -f
+          npx playwright install --with-deps chromium || (sleep 20 && npx playwright install --with-deps chromium)
       # The production build of the overlay shape, then ENT-TEST-03 (skipped by every public run).
       - run: yarn test:integration:vereino --filter ENT-TEST-03
       - name: Upload Playwright report
