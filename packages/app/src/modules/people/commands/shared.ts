@@ -6,7 +6,7 @@ import type { CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { withAtomicFlush } from '@open-mercato/shared/lib/commands/flush'
 import type { CrudEventsConfig, CrudIndexerConfig } from '@open-mercato/shared/lib/crud/types'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
-import type { Scope, ScopeTarget } from '@vereino/core'
+import type { GrantKind, Scope, ScopeTarget } from '@vereino/core'
 import { trustedScopeOf, type TargetLock } from '@/modules/foundation'
 import { peopleErrors } from '../api/errors'
 import { Guardianship, Person, RoleAssignment } from '../data/entities'
@@ -55,6 +55,26 @@ export async function assertPhoneAllowed(
 export function isUniqueViolation(error: unknown): boolean {
   if (error instanceof UniqueConstraintViolationException) return true
   return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === '23505'
+}
+
+/**
+ * True for a server-only job context (`jobCommandContext`: no session, the system-actor flag). No route builds one;
+ * a context that carries a session never counts as a job.
+ */
+export function isJobContext(ctx: CommandRuntimeContext): boolean {
+  return !ctx.auth && ctx.systemActor === true
+}
+
+/**
+ * The grants a write accepts: `kinds` from the session, or the one `system_job` grant of a job context. A module that
+ * has already authorized its own user for the write (the accept of an application, sign-up form spec BR-J5, #800)
+ * runs these commands in a job context, so no user gains the right outside that flow.
+ */
+export function sessionOrJob<K extends GrantKind>(
+  ctx: CommandRuntimeContext,
+  kinds: readonly K[],
+): { allowedKinds: readonly (K | 'system_job')[]; scopeSource?: { job: true } } {
+  return isJobContext(ctx) ? { allowedKinds: ['system_job'], scopeSource: { job: true } } : { allowedKinds: kinds }
 }
 
 /** The tenant a command may load targets from (the session's or the job's); null fails closed later. */

@@ -101,8 +101,15 @@ describe('overdue and flags (REQ-J11, *Answer time*)', () => {
 
   it('lists the flags in display order', () => {
     expect(
-      applicationFlags({ ageFit: 'outside', groupFull: true, wantsTrial: true, duplicates: 1, overdue: true }),
-    ).toEqual(['outside_age', 'group_full', 'wants_trial', 'possible_duplicate', 'overdue'])
+      applicationFlags({
+        groupClosed: true,
+        ageFit: 'outside',
+        groupFull: true,
+        wantsTrial: true,
+        duplicates: 1,
+        overdue: true,
+      }),
+    ).toEqual(['group_closed', 'outside_age', 'group_full', 'wants_trial', 'possible_duplicate', 'overdue'])
     expect(
       applicationFlags({ ageFit: 'fits', groupFull: false, wantsTrial: false, duplicates: 0, overdue: false }),
     ).toEqual([])

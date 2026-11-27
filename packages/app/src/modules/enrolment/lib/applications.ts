@@ -114,11 +114,20 @@ export function isOverdue(
   return now.getTime() - app.confirmedAt.getTime() > answerDays * DAY_MS
 }
 
-export const APPLICATION_FLAGS = ['outside_age', 'group_full', 'wants_trial', 'possible_duplicate', 'overdue'] as const
+export const APPLICATION_FLAGS = [
+  'group_closed',
+  'outside_age',
+  'group_full',
+  'wants_trial',
+  'possible_duplicate',
+  'overdue',
+] as const
 
 export type ApplicationFlag = (typeof APPLICATION_FLAGS)[number]
 
 export type FlagFacts = {
+  /** The chosen group was closed by a season rollover (DD-J15a, phase 3): the coordinator picks another. */
+  groupClosed?: boolean
   ageFit: string
   groupFull: boolean
   wantsTrial: boolean
@@ -129,6 +138,7 @@ export type FlagFacts = {
 /** REQ-J11: the flags of an application, in display order. */
 export function applicationFlags(facts: FlagFacts): ApplicationFlag[] {
   const flags: ApplicationFlag[] = []
+  if (facts.groupClosed === true) flags.push('group_closed')
   if (facts.ageFit === 'outside') flags.push('outside_age')
   if (facts.groupFull) flags.push('group_full')
   if (facts.wantsTrial) flags.push('wants_trial')

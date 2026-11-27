@@ -50,6 +50,8 @@ export const DATA_EXPORT_CONTRIBUTOR_MODULES = [
   'payments',
   'facilities',
   'club_core',
+  // The applications that became this person (sign-up form spec phase 3, Ask First approved on #788; #800).
+  'enrolment',
 ] as const
 export type DataExportContributorModule = (typeof DATA_EXPORT_CONTRIBUTOR_MODULES)[number]
 
