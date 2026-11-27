@@ -19,8 +19,9 @@ export const RADIX_SELECT_VIEWPORT_STYLE_HASH = "'sha256-441zG27rExd4/il+NvIqyL8
 export function withStyleHashes(policy: string, hashes: readonly string[]): string {
   const directives = policy.split(';').map((directive) => directive.trim())
   const index = directives.findIndex((directive) => directive.split(/\s+/)[0] === 'style-src')
-  if (index < 0) return policy
-  const sources = directives[index].split(/\s+/)
+  const styleSrc = directives[index]
+  if (styleSrc === undefined) return policy
+  const sources = styleSrc.split(/\s+/)
   if (sources.includes("'unsafe-inline'")) return policy
   directives[index] = [...new Set([...sources, ...hashes])].join(' ')
   return directives.join('; ')

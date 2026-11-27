@@ -8,6 +8,7 @@ import type { EventGroupOption } from '../../../activities/lib/member-event'
 import type { ScheduleConflict } from '../../../activities/components/client-helpers'
 import { slotKinds, type SlotKind } from '../../lib/slot'
 import type { RenterType } from '../../lib/rentals'
+import { RENTER_SEARCH_MIN } from '../../lib/renters'
 import {
   EVENT_OPTIONS_URL,
   entryLabel,
@@ -93,6 +94,8 @@ export async function searchRenters(
   query: string,
   placeId: string | null,
 ): Promise<{ items: LookupSelectItem[]; found: RenterOption[] }> {
+  // `LookupSelect` (0.10.1) also searches with an empty query once a renter is chosen; the API refuses a short one.
+  if (query.trim().length < RENTER_SEARCH_MIN) return { items: [], found: [] }
   const params = new URLSearchParams({ search: query.trim() })
   if (placeId) params.set('placeId', placeId)
   const data = await readApiResultOrThrow<{ items?: RenterOption[] }>(`${RENTERS_URL}?${params.toString()}`)

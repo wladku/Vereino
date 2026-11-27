@@ -1,16 +1,18 @@
 // Accessibility repairs for platform-owned markup (`@open-mercato/ui`, written for 0.9.0) that Vereino cannot fix through
 // props (E20-S18, #497; owner decision 7 of epic #479: work around on the Vereino side, report upstream, no ejection).
-// Each repair adds or corrects one ARIA attribute on a rendered element; none removes or moves a node, so React's own
-// rendering is left intact. They are idempotent: a second pass over a repaired page changes nothing, so the mutation
-// observer that re-runs them after every render settles at once. Remove a repair when an upgrade of `@open-mercato/ui`
-// fixes its gap (the upstream reports are linked from #497). The `LookupSelect` selection name repair is new with 0.10.1. The `CrudForm` label repair went with 0.10.1 (#498):
-// `CrudForm` now ties each label to its control (`htmlFor`), and E20-S18 finds no `label` or `button-name` violation.
+// Each repair adds, corrects or removes one ARIA attribute on a rendered element; none removes or moves a node, so
+// React's own rendering is left intact. They are idempotent: a second pass over a repaired page changes nothing, so the
+// mutation observer that re-runs them after every render settles at once. Remove a repair when an upgrade of
+// `@open-mercato/ui` fixes its gap (the upstream reports are linked from #497). The `CrudForm` label repair went with
+// 0.10.1 (#498): `CrudForm` now ties each label to its control (`htmlFor`), and E20-S18 finds no `label` or
+// `button-name` violation. The `LookupSelect` selection repair came with 0.10.1 (#498).
 
 /** The part of a DOM element the repairs read and write (a real `Element` satisfies it). */
 export type RepairElement = {
   readonly textContent: string | null
   getAttribute(name: string): string | null
   setAttribute(name: string, value: string): void
+  removeAttribute(name: string): void
   closest(selector: string): RepairElement | null
 }
 
@@ -28,8 +30,6 @@ export const SHELL_LINK_SELECTOR = 'a[href="/backend"][aria-label], a[data-testi
  * "Change" while its visible text is the item (the clear button next to it shows no text).
  */
 export const LOOKUP_SELECTION_SELECTOR = '[data-testid="lookup-select-selected"] > button[aria-label]'
-/** Where `matchSelectionName` keeps the platform's own label, so a new selection does not stack names. */
-export const PLATFORM_LABEL_ATTRIBUTE = 'data-vereino-platform-label'
 
 const collapse = (text: string | null | undefined): string => (text ?? '').replace(/\s+/g, ' ').trim()
 
@@ -72,20 +72,14 @@ export function matchLinkName(link: RepairElement): boolean {
 }
 
 /**
- * Starts the name of a `LookupSelect` selection button with the item it shows (axe `label-content-name-mismatch`,
- * WCAG 2.5.3): "Żaki – Change". The item changes while the platform label stays, so the name is rebuilt from the
- * platform label kept in {@link PLATFORM_LABEL_ATTRIBUTE}; a label React wrote again (a new locale) replaces it.
+ * Names a `LookupSelect` selection button by the item it shows (axe `label-content-name-mismatch`, WCAG 2.5.3): drops
+ * the "Change" `aria-label`, so the name comes from the content, and keeps the platform `title` as the description.
+ * A fixed label cannot do it: the subtitle span shows from `sm` up and is hidden on a phone, and the name from the
+ * content follows that. A label React writes again (a new locale) is dropped on the next pass.
  */
-export function matchSelectionName(button: RepairElement): boolean {
-  const visible = collapse(button.textContent)
-  const current = collapse(button.getAttribute('aria-label'))
-  const kept = collapse(button.getAttribute(PLATFORM_LABEL_ATTRIBUTE))
-  const platform = kept !== '' && (current === kept || current.endsWith(` – ${kept}`)) ? kept : current
-  if (visible === '' || platform === '') return false
-  const name = platform.toLowerCase().includes(visible.toLowerCase()) ? platform : `${visible} – ${platform}`
-  if (kept === platform && current === name) return false
-  button.setAttribute(PLATFORM_LABEL_ATTRIBUTE, platform)
-  button.setAttribute('aria-label', name)
+export function nameSelectionByContent(button: RepairElement): boolean {
+  if (collapse(button.textContent) === '' || button.getAttribute('aria-label') === null) return false
+  button.removeAttribute('aria-label')
   return true
 }
 
@@ -98,7 +92,7 @@ export function repairPlatformA11y(root: RepairRoot): number {
   each(SEARCH_INPUT_SELECTOR, labelSearchInput)
   each(BREADCRUMB_PAGE_SELECTOR, roleBreadcrumbPage)
   each(SHELL_LINK_SELECTOR, matchLinkName)
-  each(LOOKUP_SELECTION_SELECTOR, matchSelectionName)
+  each(LOOKUP_SELECTION_SELECTOR, nameSelectionByContent)
   return changed
 }
 
@@ -128,14 +122,7 @@ export function watchPlatformA11y(
       if (active) repairPlatformA11y(root)
     })
   })
-  // `characterData`: a new selection changes only the text of a `LookupSelect` button.
-  observer.observe(root, {
-    childList: true,
-    subtree: true,
-    characterData: true,
-    attributes: true,
-    attributeFilter: WATCHED_ATTRIBUTES,
-  })
+  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: WATCHED_ATTRIBUTES })
   return () => {
     active = false
     observer.disconnect()
