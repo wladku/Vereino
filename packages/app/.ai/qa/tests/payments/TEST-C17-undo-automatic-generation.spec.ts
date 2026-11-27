@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { zoneInstant } from '../_fixtures/activities'
 import {

@@ -18,6 +18,7 @@ import {
 } from '../_fixtures/facilities'
 import { getCharge, recordPayment, reversePayment } from '../_fixtures/payments'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #285 (E11-S11), facilities parity spec phase 11: TEST-R08 (REQ-R06, REQ-R11, AC-R04; DD-R09, DD-19). With
 // `payments`, a staff rental of a registered renter, one of an unregistered renter and an approved request each carry
@@ -320,10 +321,7 @@ test('TEST-R08 a rental carries a charge payable to the owner and is confirmed w
     expect(mixed.body?.payments).toEqual({ amount: 50_000, count: 2, source: 'mixed', partiallyPaidCount: 1 })
 
     // --- B-24: "Confirm payment" of an unpaid rental opens its charge; without a charge, "rental register" ---
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await page.goto('/backend/facilities/rentals?status=all')
     const confirmLink = page.getByTestId(`facilities-rental-confirm-${String(partly.body?.id)}`)
     await expect(confirmLink).toHaveAttribute('href', `/backend/payments/charges/${String(partly.body?.chargeId)}`)

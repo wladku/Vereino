@@ -15,10 +15,21 @@ import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useOrganizationScopeVersion } from '@open-mercato/shared/lib/frontend/useOrganizationScope'
 import { monthRange } from '../lib/coach-units'
 import { defaultSharePeriod, resolveSharePeriod, type SharePeriod } from '../lib/declaration-share'
+import { showsPaidOnTime } from '../lib/pilot-indicators'
 import type { TableColumns } from './client-helpers'
 import { TableLoadError, monthOf, useClubToday } from '@vereino/ui'
 
 type Counts = { declared: number; total: number; percent: number | null }
+
+type Indicator = { count: number; total: number; percent: number | null }
+
+/** The pilot's leading indicators of a section (E27-S03, #820); `paidOnTime` is null without `payments`. */
+export type PilotIndicators = {
+  accounts: Indicator
+  attendanceWithinDay: Indicator
+  paidOnTime: Indicator | null
+  coverBeforeStart: Indicator
+}
 
 export type DeclarationShareRow = {
   sectionId: string
@@ -27,9 +38,16 @@ export type DeclarationShareRow = {
   confirm: Counts
   absence: Counts
   headline: Counts
+  indicators?: PilotIndicators | null
 }
 
-export type DeclarationShareData = { from: string; to: string; timeZone: string; items: DeclarationShareRow[] }
+export type DeclarationShareData = {
+  from: string
+  to: string
+  timeZone: string
+  paymentsEnabled?: boolean
+  items: DeclarationShareRow[]
+}
 
 type PeriodMode = 'last28' | 'month' | 'range'
 
@@ -45,16 +63,35 @@ function countsText(t: Translate, key: string, counts: Counts): string {
   return t(key, { declared: counts.declared, total: counts.total, percent: counts.percent ?? 0 })
 }
 
+export type DeclarationShareKind = 'confirm' | 'absence' | 'headline'
+
+/**
+ * The text of one share of a section row, the same on the panel table and the coordinator's phone page (E27-S02, #819):
+ * a section without a completed session reads "No completed sessions", never 0 %.
+ */
+export function declarationShareText(t: Translate, kind: DeclarationShareKind, row: DeclarationShareRow): string {
+  const prefix = 'activities.reports.declarationShare'
+  if (kind === 'confirm') {
+    if (row.sessions === 0) return t(`${prefix}.noSessions`)
+    if (row.confirm.total === 0) return t(`${prefix}.noConfirm`)
+    return countsText(t, `${prefix}.confirmValue`, row.confirm)
+  }
+  if (kind === 'absence') {
+    if (row.sessions === 0) return '—'
+    if (row.absence.total === 0) return t(`${prefix}.noAbsences`)
+    return countsText(t, `${prefix}.absenceValue`, row.absence)
+  }
+  if (row.headline.total === 0) return '—'
+  return countsText(t, `${prefix}.headlineValue`, row.headline)
+}
+
 function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
   const prefix = 'activities.reports.declarationShare'
-  const cell = (
-    kind: 'confirm' | 'absence' | 'headline',
-    text: (row: DeclarationShareRow) => string,
-  ): TableColumns<DeclarationShareRow>[number]['cell'] =>
+  const cell = (kind: DeclarationShareKind): TableColumns<DeclarationShareRow>[number]['cell'] =>
     function ShareCell({ row }) {
       return (
         <span className="tabular-nums" data-testid={`declaration-share-${kind}-${row.original.sectionId}`}>
-          {text(row.original)}
+          {declarationShareText(t, kind, row.original)}
         </span>
       )
     }
@@ -64,35 +101,47 @@ function buildColumns(t: Translate): TableColumns<DeclarationShareRow> {
       header: t(`${prefix}.columns.section`),
       cell: ({ row }) => <span className="font-medium">{row.original.sectionName}</span>,
     },
-    {
-      id: 'confirm',
-      meta: { truncate: false },
-      header: t(`${prefix}.columns.confirm`),
-      cell: cell('confirm', (row) => {
-        if (row.sessions === 0) return t(`${prefix}.noSessions`)
-        if (row.confirm.total === 0) return t(`${prefix}.noConfirm`)
-        return countsText(t, `${prefix}.confirmValue`, row.confirm)
-      }),
+    { id: 'confirm', meta: { truncate: false }, header: t(`${prefix}.columns.confirm`), cell: cell('confirm') },
+    { id: 'absence', meta: { truncate: false }, header: t(`${prefix}.columns.absence`), cell: cell('absence') },
+    { id: 'headline', meta: { truncate: false }, header: t(`${prefix}.columns.headline`), cell: cell('headline') },
+  ]
+}
+
+type IndicatorKey = keyof PilotIndicators
+
+function indicatorText(t: Translate, indicator: Indicator | null | undefined, emptyKey: string): string {
+  if (!indicator || indicator.total === 0) return t(emptyKey)
+  return t('activities.reports.pilotIndicators.value', {
+    count: indicator.count,
+    total: indicator.total,
+    percent: indicator.percent ?? 0,
+  })
+}
+
+function buildIndicatorColumns(t: Translate, withPayments: boolean): TableColumns<DeclarationShareRow> {
+  const prefix = 'activities.reports.pilotIndicators'
+  const column = (key: IndicatorKey, emptyKey: string): TableColumns<DeclarationShareRow>[number] => ({
+    id: key,
+    meta: { truncate: false },
+    header: t(`${prefix}.columns.${key}`),
+    cell: function IndicatorCell({ row }) {
+      return (
+        <span className="tabular-nums" data-testid={`pilot-indicator-${key}-${row.original.sectionId}`}>
+          {indicatorText(t, row.original.indicators?.[key], `${prefix}.${emptyKey}`)}
+        </span>
+      )
     },
+  })
+  return [
     {
-      id: 'absence',
-      meta: { truncate: false },
-      header: t(`${prefix}.columns.absence`),
-      cell: cell('absence', (row) => {
-        if (row.sessions === 0) return '—'
-        if (row.absence.total === 0) return t(`${prefix}.noAbsences`)
-        return countsText(t, `${prefix}.absenceValue`, row.absence)
-      }),
+      accessorKey: 'sectionName',
+      header: t('activities.reports.declarationShare.columns.section'),
+      cell: ({ row }) => <span className="font-medium">{row.original.sectionName}</span>,
     },
-    {
-      id: 'headline',
-      meta: { truncate: false },
-      header: t(`${prefix}.columns.headline`),
-      cell: cell('headline', (row) => {
-        if (row.headline.total === 0) return '—'
-        return countsText(t, `${prefix}.headlineValue`, row.headline)
-      }),
-    },
+    column('accounts', 'noGuardians'),
+    column('attendanceWithinDay', 'noEndedSessions'),
+    ...(withPayments ? [column('paidOnTime', 'noCharges')] : []),
+    column('coverBeforeStart', 'noneNeeded'),
   ]
 }
 
@@ -122,6 +171,8 @@ export function DeclarationShareReport() {
     enabled: !periodInvalid,
   })
   const columns = React.useMemo(() => buildColumns(t), [t])
+  const withPayments = showsPaidOnTime(data)
+  const indicatorColumns = React.useMemo(() => buildIndicatorColumns(t, withPayments), [t, withPayments])
 
   const toolbar = (
     <div className="flex flex-wrap items-end gap-3">
@@ -225,6 +276,17 @@ export function DeclarationShareReport() {
         }
         disableRowClick
       />
+      {!periodInvalid && data && data.items.length > 0 ? (
+        <div className="flex flex-col gap-2" data-testid="pilot-indicators">
+          <p className="text-muted-foreground text-sm">{t('activities.reports.pilotIndicators.description')}</p>
+          <DataTable<DeclarationShareRow>
+            title={t('activities.reports.pilotIndicators.title')}
+            columns={indicatorColumns}
+            data={data.items}
+            disableRowClick
+          />
+        </div>
+      ) : null}
     </div>
   )
 }

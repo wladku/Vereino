@@ -198,6 +198,16 @@ E10-S08 (groups and activities parity spec phase 8, REQ-A10, TEST-A16, AC-A12; J
 - `confirm` kinds: participants (the group's roster on the date plus anyone with a row) who answered themselves — `source` `app` or `link`, `declaration_status` `final`, `declared` `yes`/`no`, `declared_at` before `start_at` — over all participants. `absence_only` kinds: actual absences reported as `no` the same way over all actual absences. The headline adds numerators and denominators; staff entries never count. A section without a `done` session has `sessions: 0` ("No completed sessions").
 - Reach: `activities.reports.view` — the administrator every live section, a coordinator their sections; anyone else 403. Counts only, no names. The same read serves the coordinator's phone view (E27-S02).
 - `/backend/activities/reports/declaration-share` ("Declarations in Vereino", Classes group).
+- `/club/reports/declaration-share` (E27-S02, #819; D29): the same read on the phone, one card per section of the caller's reach, with the panel's texts (`declarationShareText`). More → Declarations in Vereino for holders of `activities.reports.view` (a coordinator, the administrator); a coach has no entry, and the page answers the route's 403 with its own refusal naming who sees the report (E20-S10). The query takes `from`/`to` only: a `sectionId` in the URL is ignored and never widens the reach.
+
+## Pilot leading indicators (E27-S03, #820)
+
+- The same `GET /api/activities/reports/declaration-share` answers, per section, `indicators` for the same period (`services/pilot-indicators.ts`, rules in `lib/pilot-indicators.ts`), and `paymentsEnabled`. Counts and shares only, no colours or targets; the permission and reach of E27-S01.
+- `accounts`: the distinct guardians (`people.personDirectory.activeGuardians`) of the participants of the section's live active groups on the last day of the period (today while it runs), and how many have an `active` account created before the end of that day (`activeAccountUserIds` in `foundation`; the state is read from the platform user, so a past period sees today's state).
+- `attendanceWithinDay`: the sessions dated in the period that have ended and are not cancelled; a list closed at most 24 h after the end is on time, a list still open after 24 h is late (an open list within its 24 h is not counted yet). No closing time is stored on the session: a `done` session whose version (`updated_at`) is by the deadline was closed by then; one changed later reads its first closing from the action log (the check-off entry whose context says `completed`, `actionLogService.list`), else its version.
+- `paidOnTime`: the optional `payments.paidOnTime` service (`payments/services/paid-on-time.ts`); null and hidden when `payments` is disabled, never 0.
+- `coverBeforeStart`: the started, not cancelled sessions with an `absence_reported` substitution entry before the start; covered when the last entry before the start is `substitute_assigned` or `coach_restored`. Total 0 reads "None needed".
+- The page shows them in a second table, "Leading indicators", under the declaration share.
 
 ## PZPN exports (E24-S04, #684)
 

@@ -113,10 +113,10 @@ async function authorizeGroupChild<TSchema extends typeof groupCashSchema | type
   const parsed = authorized.parsed as z.output<TSchema>
   const scope = { tenantId: authorized.tenantId, organizationId: authorized.organizationId }
   const prefetched = facts && authorized.scope === facts.sessionScope.scope ? facts : null
-  const today = prefetched ? prefetched.today : (await clubClock(ctx.container, scope)).today
+  const today = prefetched ? prefetched.today : (await clubClock(ctx.container, scope, undefined, em)).today
   const children = await groupParticipants(ctx.container, scope, parsed.groupId, today, em)
   if (!children.includes(parsed.participantPersonId)) await paymentsErrors.throw('charge_out_of_scope')
-  const { access } = prefetched ?? (await feeAccessFor(ctx.container, scope, authorized.scope))
+  const { access } = prefetched ?? (await feeAccessFor(ctx.container, scope, authorized.scope, em))
   const charges = await childGroupCharges(ctx.container, em, scope, {
     groupId: parsed.groupId,
     personId: parsed.participantPersonId,
@@ -399,7 +399,7 @@ const handOverOrderCommand: CommandHandler<Record<string, unknown>, OrderHandOve
       const { order, campaign } = authorized.entity as HandOverTarget
       const { parsed } = authorized
       const scope = { tenantId: order.tenantId, organizationId: order.organizationId }
-      const { today } = await clubClock(ctx.container, scope)
+      const { today } = await clubClock(ctx.container, scope, undefined, em)
       if (
         !campaign.groupIds.includes(parsed.groupId) ||
         !(await groupParticipants(ctx.container, scope, parsed.groupId, today, em)).includes(order.participantPersonId)

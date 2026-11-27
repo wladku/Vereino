@@ -24,6 +24,7 @@ export {
 export {
   accountEmail,
   accountView,
+  activeAccountUserIds,
   closeAccount,
   createAccount,
   resendInvitation,
@@ -116,12 +117,15 @@ export {
   SIGN_IN_EMAIL_LIMIT,
   accountEmailLimit,
   emailFromBody,
+  emailSubjectLimit,
   linkRequestEmailLimit,
   tokenLimit,
+  type FailClosedSessionlessLimit,
   type SessionlessLimit,
   type SessionlessLimitConfig,
 } from './lib/sessionless-limits'
 export {
+  enforceFailClosedLimit,
   enforceSessionlessLimits,
   noteClientAddress,
   sessionlessRateLimiter,

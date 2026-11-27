@@ -111,12 +111,16 @@ export async function readConfirmations(
   ctx: CommandRuntimeContext,
   scope: { tenantId: string; organizationId: string },
   subject: ConfirmationSubject,
+  em?: EntityManager,
 ): Promise<ConfirmationReads> {
-  const resolverCtx = { container: ctx.container, ...scope, scope: subject.grants }
+  // Inside the write transaction (`em`, the fallback of `enqueueConfirmation`) every read runs on its connection, on a
+  // fork with its own identity map so decrypted rows never reach the transaction's (#554, #836).
+  const reader = em?.fork({ keepTransactionContext: true })
+  const resolverCtx = { container: ctx.container, ...scope, scope: subject.grants, em: reader }
   const [contacts, descriptions, collectors] = await Promise.all([
     contactResolver(ctx.container).contacts(subject.payerPersonIds, resolverCtx),
-    chargeDescriptions(ctx.container, scope, subject.chargeIds),
-    findPersons(ctx.container, scope, subject.collectorPersonId ? [subject.collectorPersonId] : []),
+    chargeDescriptions(ctx.container, scope, subject.chargeIds, em),
+    findPersons(ctx.container, scope, subject.collectorPersonId ? [subject.collectorPersonId] : [], reader),
   ])
   const collector = subject.collectorPersonId ? collectors.get(subject.collectorPersonId) : undefined
   return {
@@ -163,18 +167,23 @@ type ConfirmationInput = {
 /**
  * Enqueues the payer's confirmation in the write transaction; null when the payer has no e-mail address. With
  * matching `reads` it queries only through the transaction's `em` (the dispatch). Without them (a payer the
- * prefetch could not foresee) it reads them here, on other pooled connections, as before #554.
+ * prefetch could not foresee) it reads them here, on the transaction's connection (#836).
  */
 export async function enqueueConfirmation(input: ConfirmationInput): Promise<string | null> {
   const { ctx, em, scope } = input
   const reads = readsCover(input.reads, input)
     ? input.reads
-    : await readConfirmations(ctx, scope, {
-        grants: input.grants,
-        payerPersonIds: [input.payerPersonId],
-        chargeIds: input.lines.map((line) => line.chargeId),
-        collectorPersonId: input.collectorPersonId,
-      })
+    : await readConfirmations(
+        ctx,
+        scope,
+        {
+          grants: input.grants,
+          payerPersonIds: [input.payerPersonId],
+          chargeIds: input.lines.map((line) => line.chargeId),
+          collectorPersonId: input.collectorPersonId,
+        },
+        em,
+      )
   const contact = reads.contacts.get(input.payerPersonId)
   if (!contact?.email) return null
   const descriptions = reads.descriptions

@@ -24,6 +24,8 @@ export const CLUB_CASH_HREF = '/club/cash'
 export const CLUB_CLUB_EVENTS_HREF = '/club/club-events'
 /** A coach's training outlines in the PZPN template (training outlines spec M-O5, #683). */
 export const CLUB_OUTLINES_HREF = '/club/training/outlines'
+/** A coordinator's "Declarations in Vereino" for their own sections (product brief Goals, D21, D29; E27-S02, #819). */
+export const CLUB_DECLARATION_SHARE_HREF = '/club/reports/declaration-share'
 export const BACKEND_HREF = '/backend'
 /** The installed `auth` logout route: it revokes the session, clears the cookies and redirects to `/login`. */
 export const SIGN_OUT_ACTION = '/api/auth/logout'
@@ -51,6 +53,7 @@ export type MemberShellLabels = {
   groups: string
   clubEvents: string
   outlines: string
+  declarationShare: string
   backend: string
   signOut: string
   context: string
@@ -80,6 +83,7 @@ export const MEMBER_SHELL_LABEL_KEYS: readonly (keyof MemberShellLabels)[] = [
   'groups',
   'clubEvents',
   'outlines',
+  'declarationShare',
   'backend',
   'signOut',
   'context',
@@ -142,6 +146,14 @@ export const MEMBER_MORE_DESTINATIONS: readonly MemberDestination[] = [
   { href: CLUB_CLUB_EVENTS_HREF, label: 'clubEvents', features: ['activities.manage'], available: true },
   // Training outlines of a coach, a coordinator or the administrator (training outlines spec M-O5, #683).
   { href: CLUB_OUTLINES_HREF, label: 'outlines', features: ['training.outlines.write'], available: true },
+  // The share of declarations made in Vereino for a coordinator's sections, every section for the administrator
+  // (product brief Goals, D21, D29; E27-S02, #819). A coach holds `activities.reports.view_own` only: no entry.
+  {
+    href: CLUB_DECLARATION_SHARE_HREF,
+    label: 'declarationShare',
+    features: ['activities.reports.view'],
+    available: true,
+  },
 ]
 
 /** The fixed feature list the frames check once per session (`useMemberNavFeatures`). */

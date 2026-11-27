@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { createActivity } from '../_fixtures/activities'
 import { prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
@@ -167,6 +167,8 @@ test('E27-S01 the administrator sees, per section, the share of declarations mad
       confirm: { declared: 14, total: 20, percent: 70 },
       absence: { declared: 4, total: 6, percent: 67 },
       headline: { declared: 18, total: 26, percent: 69 },
+      // The leading indicators of E27-S03 (#820) ride along; their own test checks them.
+      indicators: expect.any(Object),
     })
     expect(rowOf(full.body, family.pool)).toMatchObject({
       sessions: 0,

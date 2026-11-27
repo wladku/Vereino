@@ -1,16 +1,16 @@
 ---
-title: "A lint heap OOM in yarn verify is the environment: resume with a larger Node heap"
+title: "When `yarn verify` fails at lint with a heap out-of-memory crash, resume with a larger Node heap"
 modules: ["platform"]
-areas: ["testing"]
-topics: ["verify", "lint", "eslint", "memory"]
+areas: ["testing", "debugging"]
+topics: ["lint", "eslint", "out-of-memory", "verify"]
 ---
 
-# A lint heap OOM in yarn verify is the environment: resume with a larger Node heap
+# When `yarn verify` fails at lint with a heap out-of-memory crash, resume with a larger Node heap
 
-**Context**: On #832 (2026-11-26) `yarn verify` failed at `lint` with `FATAL ERROR: Ineffective mark-compacts near heap limit ... JavaScript heap out of memory` in `@vereino/app` (`eslint .`, exit 129); the change touched one constant. The machine had over 100 GB free.
+**Context**: On 2026-11-26 (run for #870, a docs-only change) `yarn verify` failed at `lint` after 102 s with `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory` in the `@vereino/app` workspace (exit code 129), on a server with plenty of free RAM. The lint step itself reported no errors before the crash. The run for #832 (a one-constant change, same day) hit the same crash at the same step.
 
-**Problem**: The step reports FAIL like a real lint finding, so a run can mistake it for a code problem or stop. ESLint over the whole app outgrows Node's default heap limit, not the machine's memory.
+**Problem**: The crash looks like a lint failure, but it is Node's default heap limit being reached by ESLint over the whole app workspace; nothing in the change causes it, and retrying with the same settings can fail again.
 
-**Rule**: When `lint` fails with a heap OOM and no lint errors, resume with `NODE_OPTIONS=--max-old-space-size=8192 yarn verify --from lint` and report the retry in the PR. Treat it as a code failure only when ESLint prints errors.
+**Rule**: When `lint` dies with `JavaScript heap out of memory`, resume the gate with a larger heap: `NODE_OPTIONS=--max-old-space-size=8192 yarn verify --from lint`, and report the crash and the rerun in the run log. Treat any ESLint error or warning count printed before the crash as real findings; do not raise the heap to hide them.
 
-**Applies to**: `yarn verify` step `lint` (`packages/app` `eslint .`), local runs on the shared server.
+**Applies to**: `yarn verify` (`lint` step), `yarn lint`, local and Cezar runs on the shared server.

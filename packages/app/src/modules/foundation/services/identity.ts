@@ -9,10 +9,7 @@ import type { AwilixContainer } from 'awilix'
 import { NextResponse } from 'next/server'
 import { runWithCacheTenant, type CacheStrategy } from '@open-mercato/cache'
 import { User } from '@open-mercato/core/modules/auth/data/entities'
-import { emitAuthEvent } from '@open-mercato/core/modules/auth/events'
 import { buildSafeRedirectResponse } from '@open-mercato/core/modules/auth/lib/requestRedirect'
-import type { AuthService } from '@open-mercato/core/modules/auth/services/authService'
-import { signJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { findOneWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
@@ -20,6 +17,7 @@ import { foundationErrors } from '../api/errors'
 import { IdentityLink } from '../data/entities'
 import { emitFoundationEvent } from '../events'
 import { identityEventPayload } from './identity-links'
+import { issueUserSession, setSessionCookies } from './session-issuer'
 import {
   HANDOFF_TTL_MS,
   STATE_COOKIE,
@@ -260,12 +258,10 @@ async function signInUser(em: EntityManager, link: SignInLink): Promise<User | n
   return user
 }
 
-const ACCESS_TOKEN_MAX_AGE_SECONDS = 60 * 60 * 8
-
 /**
- * Signs the link's user in the way the platform's `login.ts` does without "remember me" (V-S01): a session through
- * `AuthService.createSession`, the JWT through `signJwt`, the `auth_token` and `session_token` cookies on the
- * redirect, `last_login_at` and the platform's `auth.login.success` event. Then `last_signed_in_at` and
+ * Signs the link's user in through the link-free issuer (`session-issuer.ts`, the platform's `login.ts` without
+ * "remember me"; V-S01): a session, the JWT, the `auth_token` and `session_token` cookies on the redirect,
+ * `last_login_at` and the platform's `auth.login.success` event. Then `last_signed_in_at` and
  * `foundation.identity.signed_in`. Null when the user is gone or blocked — the callback answers `identity=unlinked`.
  */
 export async function issueSession(
@@ -279,45 +275,17 @@ export async function issueSession(
   const em = container.resolve<EntityManager>('em').fork()
   const user = await signInUser(em, link)
   if (!user) return null
-  const auth = container.resolve<AuthService>('authService')
-  const roles = await auth.getUserRoles(user, link.tenantId)
-  await auth.updateLastLoginAt(user)
-  const { session, token: refreshToken } = await auth.createSession(
-    user,
-    new Date(Date.now() + ACCESS_TOKEN_MAX_AGE_SECONDS * 1000),
-  )
-  const token = signJwt({
-    sub: user.id,
-    sid: session.id,
-    tenantId: link.tenantId,
-    orgId: link.organizationId,
-    email: user.email,
-    roles,
-  })
+  const issued = await issueUserSession(container, user, link, { remember: false })
   await em.nativeUpdate(
     IdentityLink,
     { id: link.id, tenantId: link.tenantId, organizationId: link.organizationId },
     { lastSignedInAt: new Date() },
   )
-  void emitAuthEvent('auth.login.success', {
-    id: user.id,
-    email: user.email,
-    tenantId: link.tenantId,
-    organizationId: link.organizationId,
-  }).catch(() => undefined)
   void emitFoundationEvent('foundation.identity.signed_in', identityEventPayload(link)).catch(() => undefined)
 
   const response = clubOrigin
     ? new NextResponse(null, { status: 303, headers: { Location: `${clubOrigin}${redirect}` } })
     : buildSafeRedirectResponse(request, redirect, 303)
-  const cookie = {
-    httpOnly: true,
-    path: '/',
-    sameSite: 'lax' as const,
-    secure: secureCookies(),
-    maxAge: ACCESS_TOKEN_MAX_AGE_SECONDS,
-  }
-  response.cookies.set('auth_token', token, cookie)
-  response.cookies.set('session_token', refreshToken, cookie)
+  setSessionCookies(response, issued)
   return response
 }

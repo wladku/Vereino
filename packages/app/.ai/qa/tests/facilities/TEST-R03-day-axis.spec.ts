@@ -14,6 +14,7 @@ import {
 } from '../_fixtures/facilities'
 import { postMaintenance } from '../_fixtures/maintenance'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #276 (E11-S02), facilities parity spec phase 2, TEST-R03 and AC-R01 (REQ-R01, REQ-R03; DD-R01–DD-R03): the
 // facility calendar B-23 shows one place's whole day on the hour axis. Opened without parameters it writes the first
@@ -115,10 +116,7 @@ test('TEST-R03 the facility calendar draws one place day on the hour axis and ke
     expect(works.status, JSON.stringify(works.body)).toBe(201)
     expect(works.body?.flagged?.sessions).toBe(1)
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())

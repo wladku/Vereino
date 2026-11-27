@@ -72,8 +72,15 @@ export type PaymentsChargeService = {
     input: SourceChargeReschedule,
     ctx: CommandRuntimeContext,
   ): Promise<{ warning?: 'charge_paid' }>
-  /** The stored status of each of the given charges of the caller's organization; unknown or foreign ids are absent. */
-  statusOf(chargeIds: readonly string[], ctx: CommandRuntimeContext): Promise<Map<string, ChargeStatus>>
+  /**
+   * The stored status of each of the given charges of the caller's organization; unknown or foreign ids are absent.
+   * Read with `em` when given — the caller's write transaction, so no second pooled connection (#836).
+   */
+  statusOf(
+    chargeIds: readonly string[],
+    ctx: CommandRuntimeContext,
+    em?: EntityManager,
+  ): Promise<Map<string, ChargeStatus>>
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -195,11 +202,11 @@ export function createChargeService(): PaymentsChargeService {
       return {}
     },
 
-    async statusOf(chargeIds, ctx) {
+    async statusOf(chargeIds, ctx, txEm) {
       const scope = scopeOf(ctx)
       const ids = [...new Set(chargeIds)].filter((id) => UUID.test(id))
       if (ids.length === 0) return new Map()
-      const em = ctx.container.resolve<EntityManager>('em').fork()
+      const em = txEm ? txEm.fork({ keepTransactionContext: true }) : ctx.container.resolve<EntityManager>('em').fork()
       const rows = await em.find(Charge, { id: { $in: ids }, ...scope, deletedAt: null }, { fields: ['id', 'status'] })
       return new Map(rows.map((row) => [row.id, row.status]))
     },

@@ -786,7 +786,7 @@ const recordCancellationCommand: CommandHandler<Record<string, unknown>, Cancell
       const occurrence = (await directory.findOccurrences(scope, [parsed.occurrenceId], em)).get(parsed.occurrenceId)
       if (!occurrence || occurrence.status !== 'cancelled') return null
       await lockOccurrenceThread(em, organizationId, occurrence.id)
-      const { timeZone } = await clubFacts(ctx.container, scope)
+      const { timeZone } = await clubFacts(ctx.container, scope, em)
       let thread = await em.findOne(Thread, {
         ...scope,
         scopeType: 'occurrence',
@@ -1050,7 +1050,7 @@ const recordRescheduleCommand: CommandHandler<Record<string, unknown>, Cancellat
       )
       const { parsed, tenantId, organizationId } = authorized
       const scope = { tenantId, organizationId }
-      const { timeZone, defaultLocale } = await clubFacts(ctx.container, scope)
+      const { timeZone, defaultLocale } = await clubFacts(ctx.container, scope, em)
       const target = await rescheduleSubject(ctx, em, scope, parsed, timeZone)
       if (!target) return null
       await lockOccurrenceThread(em, organizationId, target.scopeId)
