@@ -30,6 +30,27 @@ export type MembershipContribution = {
     scope: { tenantId: string; organizationId: string },
     today: CalendarDate,
   ): Promise<AudienceMember[]>
+  /**
+   * The live groups whose `participant` memberships are active on `today`, one entry per person and group, narrowed
+   * by `filter` (personal invitation link spec IL-D03, #868: which families a coach or coordinator may invite). An
+   * empty id list in the filter matches nothing.
+   */
+  participantGroups(
+    em: EntityManager,
+    scope: { tenantId: string; organizationId: string },
+    filter: ParticipantGroupFilter,
+    today: CalendarDate,
+  ): Promise<ParticipantGroup[]>
+}
+
+/** A live group a person is a participant of on a date, with its section (personal invitation link spec IL-D03). */
+export type ParticipantGroup = { personId: string; groupId: string; groupName: string; sectionId: string }
+
+/** Which participants to read: the persons among `personIds`, in `groupIds`, in `sectionIds` (each optional, ANDed). */
+export type ParticipantGroupFilter = {
+  personIds?: readonly string[]
+  groupIds?: readonly string[]
+  sectionIds?: readonly string[]
 }
 
 /** The registered contribution, or null when `groups` is not enabled. */

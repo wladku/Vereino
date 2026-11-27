@@ -26,6 +26,8 @@ export const CLUB_CLUB_EVENTS_HREF = '/club/club-events'
 export const CLUB_OUTLINES_HREF = '/club/training/outlines'
 /** A coordinator's "Declarations in Vereino" for their own sections (product brief Goals, D21, D29; E27-S02, #819). */
 export const CLUB_DECLARATION_SHARE_HREF = '/club/reports/declaration-share'
+/** The families with a pending account invitation a coach or coordinator shares links with (#868). */
+export const CLUB_INVITATIONS_HREF = '/club/invitations'
 export const BACKEND_HREF = '/backend'
 /** The installed `auth` logout route: it revokes the session, clears the cookies and redirects to `/login`. */
 export const SIGN_OUT_ACTION = '/api/auth/logout'
@@ -54,6 +56,7 @@ export type MemberShellLabels = {
   clubEvents: string
   outlines: string
   declarationShare: string
+  invitations: string
   backend: string
   signOut: string
   context: string
@@ -84,6 +87,7 @@ export const MEMBER_SHELL_LABEL_KEYS: readonly (keyof MemberShellLabels)[] = [
   'clubEvents',
   'outlines',
   'declarationShare',
+  'invitations',
   'backend',
   'signOut',
   'context',
@@ -154,6 +158,8 @@ export const MEMBER_MORE_DESTINATIONS: readonly MemberDestination[] = [
     features: ['activities.reports.view'],
     available: true,
   },
+  // The families to invite with a personal link or QR code (personal invitation link spec REQ-IL02, #868).
+  { href: CLUB_INVITATIONS_HREF, label: 'invitations', features: ['people.invitations.share'], available: true },
 ]
 
 /** The fixed feature list the frames check once per session (`useMemberNavFeatures`). */

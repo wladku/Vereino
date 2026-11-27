@@ -10,4 +10,5 @@ export const PEOPLE_CLUB_TABLES: readonly string[] = [
   'people_import_rows',
   'people_data_export_log',
   'people_consent_events',
+  'people_invitation_links',
 ]

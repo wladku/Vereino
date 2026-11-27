@@ -7,6 +7,7 @@ import {
   decorateAppendOnlyEntityBase,
   decorateScopedEntityBase,
   type AppendOnlyEntityOptionalProps,
+  tokenLinkColumns,
   validFromColumn,
   validToColumn,
   type ScopedEntityOptionalProps,
@@ -592,4 +593,48 @@ export class ConsentEvent extends AppendOnlyEntityBase {
 
   @Property({ name: 'locale', type: 'string', length: 8 })
   locale!: string
+}
+
+const invitationLinkColumns = tokenLinkColumns({ use: 'until_expiry' })
+
+/**
+ * A personal invitation link (personal invitation link spec *Data Models* → `people_invitation_links`, REQ-IL03,
+ * REQ-IL05; foundation P-10; #868): the hash of the raw token a staff member took for a person whose account is still
+ * invited (the raw token exists only in the issuing response and the guardian's URL), the person, its platform user
+ * (id only) and who issued it. Valid for 7 days while the account stays invited; issuing a new link revokes the
+ * earlier ones (`revoked_at`), so only the newest works. `used_count` counts the starts of the activation. Rows are
+ * purged 30 days after they expire (S9.5).
+ */
+@Entity({ tableName: 'people_invitation_links' })
+@Index({ name: 'people_invitation_links_org_person_idx', properties: ['tenantId', 'organizationId', 'personId'] })
+export class InvitationLink extends ScopedEntityBase {
+  [OptionalProps]?: ScopedEntityOptionalProps | 'usedCount' | 'lastUsedAt' | 'revokedAt'
+
+  @Property(invitationLinkColumns.tokenHash)
+  tokenHash!: string
+
+  @Property(invitationLinkColumns.expiresAt)
+  expiresAt!: Date
+
+  @Property(invitationLinkColumns.usedCount)
+  usedCount: number = 0
+
+  @Property(invitationLinkColumns.lastUsedAt)
+  lastUsedAt?: Date | null
+
+  /** The person whose account the link activates (`people_persons`). */
+  @Property({ name: 'person_id', type: 'uuid' })
+  personId!: string
+
+  /** The person's platform user (id only, no relation). */
+  @Property({ name: 'user_id', type: 'uuid' })
+  userId!: string
+
+  /** The staff member who took the link (also in the audit entry). */
+  @Property({ name: 'created_by_user_id', type: 'uuid' })
+  createdByUserId!: string
+
+  /** Set when a newer link of the person is issued, or the person departs or is anonymized. */
+  @Property({ name: 'revoked_at', type: Date, nullable: true })
+  revokedAt?: Date | null
 }

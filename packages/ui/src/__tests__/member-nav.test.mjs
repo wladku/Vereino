@@ -9,6 +9,7 @@ import {
   CLUB_CLUB_EVENTS_HREF,
   CLUB_OUTLINES_HREF,
   CLUB_DECLARATION_SHARE_HREF,
+  CLUB_INVITATIONS_HREF,
   CLUB_FACILITY_TODAY_HREF,
   CLUB_GROUP_PAYMENTS_HREF,
   CLUB_GROUPS_HREF,
@@ -43,7 +44,7 @@ const currentOf = (pathname, overrides = {}) => {
 }
 
 test('reads every label from the module prefix, `label` for the navigation name', () => {
-  assert.equal(MEMBER_SHELL_LABEL_KEYS.length, 27)
+  assert.equal(MEMBER_SHELL_LABEL_KEYS.length, 28)
   assert.equal(labels.nav, 't:people.club.nav.label')
   assert.equal(labels.signOut, 't:people.club.nav.signOut')
   assert.equal(labels.acceptCash, 't:people.club.nav.acceptCash')
@@ -64,6 +65,7 @@ test('checks one fixed feature list: the Facilities tab and every built More ent
     'activities.manage',
     'training.outlines.write',
     'activities.reports.view',
+    'people.invitations.share',
   ])
   assert.deepEqual(
     MEMBER_MORE_DESTINATIONS.map((entry) => entry.href),
@@ -78,6 +80,7 @@ test('checks one fixed feature list: the Facilities tab and every built More ent
       CLUB_CLUB_EVENTS_HREF,
       CLUB_OUTLINES_HREF,
       CLUB_DECLARATION_SHARE_HREF,
+      CLUB_INVITATIONS_HREF,
     ],
   )
 })
@@ -173,7 +176,7 @@ test('a maintenance planner without `facilities.view` reaches the places from Mo
   assert.deepEqual(moreOf(result), [CLUB_PROFILE_HREF, CLUB_PLACES_HREF])
 })
 
-test('the administrator gets every built entry in the table order, Declarations in Vereino and the admin panel last', () => {
+test('the administrator gets every built entry in the table order, Declarations in Vereino, Invitations and the admin panel last', () => {
   const result = nav({ contexts: ['self', 'club_admin'], paymentsVisible: true, features: ADMIN })
   assert.deepEqual(moreOf(result), [
     CLUB_PROFILE_HREF,
@@ -187,12 +190,14 @@ test('the administrator gets every built entry in the table order, Declarations 
     CLUB_CLUB_EVENTS_HREF,
     CLUB_OUTLINES_HREF,
     CLUB_DECLARATION_SHARE_HREF,
+    CLUB_INVITATIONS_HREF,
     BACKEND_HREF,
   ])
-  assert.equal(result.more.items.at(-2).label, 't:people.club.nav.declarationShare')
-  assert.equal(result.more.items.at(-3).label, 't:people.club.nav.outlines')
-  assert.equal(result.more.items.at(-4).label, 't:people.club.nav.clubEvents')
-  assert.equal(result.more.items.at(-5).label, 't:people.club.nav.acceptCash')
+  assert.equal(result.more.items.at(-2).label, 't:people.club.nav.invitations')
+  assert.equal(result.more.items.at(-3).label, 't:people.club.nav.declarationShare')
+  assert.equal(result.more.items.at(-4).label, 't:people.club.nav.outlines')
+  assert.equal(result.more.items.at(-5).label, 't:people.club.nav.clubEvents')
+  assert.equal(result.more.items.at(-6).label, 't:people.club.nav.acceptCash')
 })
 
 test('Training outlines is behind More for `training.outlines.write` (a coach) and current on its pages (M-O5, #683)', () => {
@@ -208,6 +213,16 @@ test('Declarations in Vereino is behind More for `activities.reports.view` (a co
   assert.deepEqual(currentOf(CLUB_DECLARATION_SHARE_HREF, { features: ['activities.reports.view'] }), ['more'])
   assert.equal(
     moreOf(nav({ contexts: ['self', 'coach'], features: COACH })).includes(CLUB_DECLARATION_SHARE_HREF),
+    false,
+  )
+})
+
+test('Invitations is behind More for `people.invitations.share` (a coach or coordinator) and current on its page (#868)', () => {
+  const coach = nav({ contexts: ['self', 'coach'], features: ['people.invitations.share'] })
+  assert.deepEqual(moreOf(coach), [CLUB_PROFILE_HREF, CLUB_INVITATIONS_HREF])
+  assert.deepEqual(currentOf('/club/invitations', { features: ['people.invitations.share'] }), ['more'])
+  assert.equal(
+    moreOf(nav({ contexts: ['self', 'guardian'], features: GUARDIAN })).includes(CLUB_INVITATIONS_HREF),
     false,
   )
 })
