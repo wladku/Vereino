@@ -217,3 +217,6 @@ export {
 } from './services/token-link'
 // The Vereino password check (#779): the reset-confirm route in front of the platform handler uses it.
 export { passwordRefusalError, refuseNewPassword } from './services/password-check'
+// The session of the device that changed its own password (#876): the app's `PUT /api/auth/profile` renews it.
+export { renewOwnSession } from './services/own-password'
+export { setSessionCookies } from './services/session-issuer'
