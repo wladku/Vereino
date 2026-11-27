@@ -3,16 +3,11 @@
 // manage the event (DD-T06) gets the same 404 as for an unknown id, so nothing tells them a picture exists. Served
 // `private, no-store` with `nosniff`; the platform image route never sees a picture's attachment id.
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
-import { ClubEventFile } from '../../../../../../data/entities'
-import {
-  CLUB_EVENT_FILE_PARTITION,
-  CLUB_EVENT_PICTURE_KINDS,
-  CLUB_EVENT_PICTURE_OWNER_ENTITY,
-} from '../../../../../../lib/club-event-files'
+import { CLUB_EVENT_FILE_PARTITION, CLUB_EVENT_PICTURE_OWNER_ENTITY } from '../../../../../../lib/club-event-files'
+import { findLivePicture } from '../../../../../../services/club-event-pictures'
 import { clubEventRecordManagerRole } from '../../../../../../services/club-event-scope'
 import { findClubEvent } from '../../../../../../services/club-events'
 import { errorSchema } from '../../../../../shared'
@@ -37,16 +32,7 @@ export async function GET(
     if (!ctx || !scope || !ctx.auth) return Response.json({ error: 'Unauthorized' }, { status: 401 })
     const event = await findClubEvent(ctx.container, scope, params.data.id)
     if (!event || !clubEventRecordManagerRole(await scopeContract.resolve(ctx), event)) return notFound()
-    const picture = await ctx.container
-      .resolve<EntityManager>('em')
-      .fork()
-      .findOne(ClubEventFile, {
-        ...scope,
-        id: params.data.fileId,
-        clubEventId: event.id,
-        kind: { $in: [...CLUB_EVENT_PICTURE_KINDS] },
-        deletedAt: null,
-      })
+    const picture = await findLivePicture(ctx.container, scope, event.id, params.data.fileId)
     if (!picture || !ctx.container.hasRegistration('attachmentService')) return notFound()
     const file = await ctx.container.resolve<AttachmentService>('attachmentService').readScoped({
       attachmentId: picture.attachmentId,

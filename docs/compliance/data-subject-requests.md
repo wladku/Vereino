@@ -31,7 +31,9 @@ The club administrator exports one person's data in one file: the person record 
 **Export personal data** (`GET /api/people/persons/{id}/data-export`, feature `people.persons.export`; person data
 export spec, #527). The file is a JSON document (`vereino.person-data-export`, version 1) with the person's rows from
 every table of [`ropa.md`](ropa.md) that refers to them, encrypted values decrypted — including the medical certificate
-date (`medicalValidUntil` in the people subject record) and the `medical` consent (A15, #682). Every export is recorded in
+date (`medicalValidUntil` in the people subject record) and the `medical` consent (A15, #682), the history of the
+image consent (`people_consent_events`, A2, #871) and the event pictures the person is marked on
+(`activities_club_event_file_people`, A18, #872). Every export is recorded in
 `people_data_export_log` (who, when, which person, why) before any data is read.
 
 1. Check the requester's identity (§1), then download the export from the person record.
@@ -73,7 +75,11 @@ date (`medicalValidUntil` in the people subject record) and the `medical` consen
    placed and the print name and notes of orders for them (`payments_orders`), a typed payer label on charges naming
    them (`payments_charges.payer_label`), the person and account ids, address hash and secret parameters of their
    deliveries (`foundation_deliveries`) and the contact snapshots of their rentals (`facilities_rentals`; the renter's
-   display name follows after the commit through the `facilities` subscriber of `people.person.anonymized`).
+   display name follows after the commit through the `facilities` subscriber of `people.person.anonymized`). It also
+   deletes every event picture the person is marked on, live or soft-deleted, with its marks, and the person's image
+   consent events (`people.departure.activities` `erase`, #872); the picture files are released after the commit and
+   the picture ids are listed on the audit entry. This is final: no undo brings a picture back
+   ([`retention.md`](retention.md) R25).
 4. **What it keeps, and why.** Accounting rows stay linked through the payer reference code (art. 17(3)(b), art.
    6(1)(c)); the **name** stays until `erasure_hold_until` (5 years after the year of the latest payment, then cleared by
    the `people:life-cycle` job — see [`retention.md`](retention.md) R2 and open item R-A).
@@ -98,8 +104,10 @@ processing under art. 6(1)(f) — safety logs, contact access log, published con
 ### Withdrawing consent (art. 7(3))
 
 As easy as giving it: the person switches off the three profile consents in the member area (`PUT /api/people/me`);
-a guardian changes a ward's image and trip consents (`people_guardianships.consents`). Only the current state is
-stored, history is in the audit log; the club removes any published name or image the same day. Withdrawing the
+a guardian changes a ward's image and trip consents (`people_guardianships.consents`). Every image consent decision
+is also kept in `people_consent_events` (#871). A withdrawn image consent hides every event photo of the person on the
+next public read, within 60 seconds (BR-I01, #872); the club removes any other published name or image the same day.
+Withdrawing the
 `medical` consent (the adult, or any guardian of a ward) clears the medical certificate date at once
 ([`retention.md`](retention.md) R20, #682).
 

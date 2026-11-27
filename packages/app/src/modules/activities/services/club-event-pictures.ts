@@ -15,7 +15,7 @@ import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
 import { calendarDateInZone, type CalendarDate } from '@vereino/core'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
-import { ClubEvent, ClubEventFile, ClubEventFilePerson, ClubEventPart } from '../data/entities'
+import { Attendance, ClubEvent, ClubEventFile, ClubEventFilePerson, ClubEventPart, Occurrence } from '../data/entities'
 import {
   CLUB_EVENT_FILE_PARTITION,
   CLUB_EVENT_PICTURE_KINDS,
@@ -336,4 +336,41 @@ export async function clubEventPictureView(
     .findOne(ClubEvent, { ...scope, id: clubEventId, deletedAt: null }, { fields: ['id', 'isPublic', 'publicSlug'] })
   if (!event) return null
   return (await clubEventPictureViews(container, scope, event)).find((picture) => picture.id === fileId) ?? null
+}
+
+/** A live picture of a live club event (the manager's content route), or null. */
+export function findLivePicture(
+  container: AwilixContainer,
+  scope: Scope,
+  clubEventId: string,
+  fileId: string,
+): Promise<ClubEventFile | null> {
+  return container
+    .resolve<EntityManager>('em')
+    .fork()
+    .findOne(ClubEventFile, { ...scope, id: fileId, clubEventId, kind: { $in: PICTURE_KINDS }, deletedAt: null })
+}
+
+/** The persons with an attendance row on a session of the event's parts (the picker lists them first). */
+export async function eventParticipantIds(
+  container: AwilixContainer,
+  scope: Scope,
+  clubEventId: string,
+): Promise<string[]> {
+  const em = container.resolve<EntityManager>('em').fork()
+  const parts = await em.find(ClubEventPart, { ...scope, clubEventId, deletedAt: null }, { fields: ['activityId'] })
+  const activityIds = parts.flatMap((part) => (part.activityId ? [part.activityId] : []))
+  if (activityIds.length === 0) return []
+  const sessions = await em.find(
+    Occurrence,
+    { ...scope, activityId: { $in: activityIds }, deletedAt: null },
+    { fields: ['id'] },
+  )
+  if (sessions.length === 0) return []
+  const rows = await em.find(
+    Attendance,
+    { ...scope, occurrenceId: { $in: sessions.map((row) => row.id) } },
+    { fields: ['personId'] },
+  )
+  return [...new Set(rows.map((row) => row.personId))]
 }

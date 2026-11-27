@@ -85,10 +85,39 @@ export type ClubEventFileItem = {
   updatedAt: string
 }
 
+/** A person marked on a picture (event photos spec REQ-I03). */
+export type ClubEventPictureMark = { id: string; displayName: string }
+
+/** The state of a picture under BR-I01 at the moment of the read (event photos spec REQ-I04). */
+export type ClubEventPictureState = 'draft' | 'unconfirmed' | 'waiting_for_consent' | 'event_not_public' | 'public'
+
+/** A picture of a club event as its managers see it (event photos spec REQ-I04, #872); `url` is the manager route. */
+export type ClubEventPictureItem = {
+  id: string
+  kind: 'photo' | 'graphic'
+  description: string
+  position: number
+  state: ClubEventPictureState
+  marks: ClubEventPictureMark[]
+  missingConsent: ClubEventPictureMark[]
+  missingConsentCount: number
+  peopleConfirmed: boolean
+  peopleConfirmedAt: string | null
+  publishedAt: string | null
+  fileName: string
+  mimeType: string
+  fileSize: number
+  url: string
+  createdAt: string
+  updatedAt: string
+}
+
 export type ClubEventDetail = ClubEventRow & {
   publicPath?: string | null
   parts: ClubEventPart[]
   files?: ClubEventFileItem[]
+  /** Only for the event's managers (event photos spec REQ-I04). */
+  pictures?: ClubEventPictureItem[]
 }
 
 export type ClubEventGroupOption = {

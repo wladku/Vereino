@@ -3,10 +3,9 @@
 // sessions first, then, with a search term (three letters or more of a first or last name), the club's other live
 // persons whose name matches. Ids and display names only; at most 50.
 import { z } from 'zod'
-import type { EntityManager } from '@mikro-orm/postgresql'
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { commandContextForRequest, errorResponse, scopeContract, trustedScopeOf } from '@/modules/foundation'
-import { Activity, Attendance, ClubEventPart, Occurrence } from '../../../../data/entities'
+import { eventParticipantIds } from '../../../../services/club-event-pictures'
 import { clubEventRecordManagerRole } from '../../../../services/club-event-scope'
 import { findClubEvent } from '../../../../services/club-events'
 import { findPersons, searchPersonIds } from '../../../../services/directory'
@@ -30,30 +29,6 @@ const responseSchema = z.object({
   totalPages: z.number().int(),
 })
 
-/** The persons with an attendance row on a session of the event's parts. */
-async function participantIds(em: EntityManager, scope: { tenantId: string; organizationId: string }, eventId: string) {
-  const parts = await em.find(
-    ClubEventPart,
-    { ...scope, clubEventId: eventId, deletedAt: null },
-    { fields: ['activityId'] },
-  )
-  const activityIds = parts.flatMap((part) => (part.activityId ? [part.activityId] : []))
-  if (activityIds.length === 0) return []
-  const activities = await em.find(Activity, { ...scope, id: { $in: activityIds } }, { fields: ['id'] })
-  const sessions = await em.find(
-    Occurrence,
-    { ...scope, activityId: { $in: activities.map((row) => row.id) }, deletedAt: null },
-    { fields: ['id'] },
-  )
-  if (sessions.length === 0) return []
-  const rows = await em.find(
-    Attendance,
-    { ...scope, occurrenceId: { $in: sessions.map((row) => row.id) } },
-    { fields: ['personId'] },
-  )
-  return [...new Set(rows.map((row) => row.personId))]
-}
-
 export async function GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> {
   try {
     const params = paramsSchema.safeParse(await context.params)
@@ -66,8 +41,7 @@ export async function GET(request: Request, context: { params: Promise<{ id: str
     if (!event || !clubEventRecordManagerRole(await scopeContract.resolve(ctx), event)) {
       return Response.json({ error: 'Not found' }, { status: 404 })
     }
-    const em = ctx.container.resolve<EntityManager>('em').fork()
-    const participants = await participantIds(em, scope, event.id)
+    const participants = await eventParticipantIds(ctx.container, scope, event.id)
     const matches = q ? await searchPersonIds(ctx.container, scope, q) : null
     const participantSet = new Set(participants)
     const candidates = [

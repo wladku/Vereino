@@ -252,7 +252,7 @@ describe('erasureAudit', () => {
           { kind: 'activities.club_event_file', ids: ['p2', 'p3'] },
           { kind: 'other', ids: [] },
         ],
-        afterCommit: async () => undefined,
+        afterCommit: () => Promise.resolve(),
       },
     ])
     expect(audit.erasedRecords).toEqual([{ kind: 'activities.club_event_file', ids: ['p1', 'p2', 'p3'] }])

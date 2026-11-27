@@ -71,6 +71,9 @@ export type PublicClubEventPart = {
   visitingTeams: { name: string; clubName: string | null }[]
 }
 
+/** A public picture of a club event (event photos spec REQ-I05; #872); `description` is its alternative text. */
+export type PublicClubEventPicture = { id: string; description: string; kind: 'photo' | 'graphic'; url: string }
+
 /** The tournament page P-T1 (#381). */
 export type PublicClubEventPage = {
   club: {
@@ -92,6 +95,8 @@ export type PublicClubEventPage = {
     place: { name: string; address: string | null; mapUrl: string | null } | null
     poster: { url: string } | null
     funders: { name: string; logoUrl: string }[]
+    /** Optional in the response (event photos spec, API table); absent reads as no pictures. */
+    pictures?: PublicClubEventPicture[]
     days: { date: string; parts: PublicClubEventPart[] }[]
   }
 }
