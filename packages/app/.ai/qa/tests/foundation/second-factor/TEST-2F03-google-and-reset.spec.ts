@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { clearAuthTokenCache, getAuthToken } from '../../_fixtures/auth'
-import { call, createClub, mercato, uniqueSuffix, type Club } from '../../_fixtures/club'
+import { capturedCount, clearAuthTokenCache, getAuthToken, postLogin } from '../../_fixtures/auth'
+import { OPTIMISTIC_LOCK_HEADER, call, createClub, mercato, uniqueSuffix, type Club } from '../../_fixtures/club'
 import { startOAuthFake, type OAuthFake } from '../identity/_fixtures/google-fake'
 import { CookieJar, cleanHttp, probeLink, roundTrip, sessionJar } from '../identity/_fixtures/identity'
 import { challenged, cleanApi, staffAccount } from './_fixtures/second-factor'
@@ -12,7 +12,10 @@ import { challenged, cleanApi, staffAccount } from './_fixtures/second-factor'
 // (7) a user of another club and a user without the requirement answer 404; (8) the operator's shell reset ends the
 // administrator's sessions, and `end-sessions` ends every required user's sessions of the club; (2) the same treasurer
 // may connect Facebook (#567), but a Facebook sign-in ends on `/login?second_factor=use_google` without a session.
-// Item (9) is phase 2.
+// Phase 2 (#841): (9) the treasurer, linked to Google again, is refused the password (403 `second_factor_use_google`,
+// no session) and admitted with Google; `secondFactorRequired` of `me` is true for her and false for the coach; the
+// administrator's plain unlink of her Google link answers 409 `second_factor_reset_required` and keeps the link (the
+// record routes it through the reset), the reset then removes it, and the password is challenged again.
 test.describe.configure({ timeout: 300_000, mode: 'serial' })
 
 const STAFF_API = '/api/foundation/identity/me'
@@ -77,9 +80,18 @@ test('TEST-2F03 Google signs a treasurer in, Facebook does not; the reset remove
       userId: treasurer.userId,
       required: true,
       canReset: true,
+      unlinkGoogleThroughReset: true,
     })
-    expect((await listOf(coach.personId)).body?.secondFactor).toMatchObject({ required: false, canReset: false })
-    expect((await listOf(club.adminPersonId)).body?.secondFactor).toMatchObject({ required: true, canReset: false })
+    expect((await listOf(coach.personId)).body?.secondFactor).toMatchObject({
+      required: false,
+      canReset: false,
+      unlinkGoogleThroughReset: false,
+    })
+    expect((await listOf(club.adminPersonId)).body?.secondFactor).toMatchObject({
+      required: true,
+      canReset: false,
+      unlinkGoogleThroughReset: false,
+    })
 
     // A note is required.
     const noNote = await call(api, 'POST', RESET, club.adminToken, { data: { userId: treasurer.userId, note: '' } })
@@ -159,6 +171,64 @@ test('TEST-2F03 Google signs a treasurer in, Facebook does not; the reset remove
     expect(ended.required).toBeGreaterThanOrEqual(2)
     expect((await call(api, 'GET', STAFF_API, treasurerFull)).status).toBe(401)
     expect((await call(api, 'GET', STAFF_API, coachToken)).status).toBe(200)
+
+    // (9) Phase 2: the treasurer connects Google again; from then on the password is refused and Google admits her.
+    clearAuthTokenCache()
+    const treasurerAgain = await getAuthToken(request, treasurer.email, treasurer.password)
+    const me = (token: string) =>
+      call<{ secondFactorRequired?: boolean; items?: Array<{ id: string; provider: string; updatedAt: string }> }>(
+        api,
+        'GET',
+        STAFF_API,
+        token,
+      )
+    expect((await me(treasurerAgain)).body?.secondFactorRequired).toBe(true)
+    expect((await me(coachToken)).body?.secondFactorRequired).toBe(false)
+    const again = `google-ewa-again-${marker}`
+    fake.next({ sub: again, email: `ewa.again.${marker}@gmail.test` })
+    expect((await roundTrip(http, sessionJar(treasurerAgain))).target).toBe(
+      '/club/profile?identity=linked&provider=google',
+    )
+    const sentBefore = capturedCount(treasurer.email)
+    const refused = await postLogin(api, treasurer.email, treasurer.password)
+    expect(refused.status, JSON.stringify(refused.body)).toBe(403)
+    expect(refused.body?.code).toBe('second_factor_use_google')
+    expect(refused.body?.token).toBeUndefined()
+    expect(refused.body?.secondFactor).toBeUndefined()
+    expect(capturedCount(treasurer.email), 'no code is e-mailed').toBe(sentBefore)
+    fake.next({ sub: again })
+    const googleAgain = new CookieJar()
+    await roundTrip(http, googleAgain)
+    const googleAgainToken = String(googleAgain.get('auth_token'))
+    expect(googleAgainToken).not.toBe('undefined')
+    expect((await call(api, 'GET', STAFF_API, googleAgainToken)).status).toBe(200)
+
+    // The administrator's plain unlink of that Google link is refused; it goes through the reset (negative case).
+    clearAuthTokenCache()
+    const adminAgain = await getAuthToken(request, club.tenant.email, club.tenant.password)
+    const googleLink = (await me(googleAgainToken)).body?.items?.find((item) => item.provider === 'google')
+    expect(googleLink).toBeTruthy()
+    const plain = await call<{ code?: string }>(
+      api,
+      'DELETE',
+      `/api/foundation/identity/${String(googleLink?.id)}`,
+      adminAgain,
+      {
+        headers: { [OPTIMISTIC_LOCK_HEADER]: String(googleLink?.updatedAt) },
+      },
+    )
+    expect(plain.status, JSON.stringify(plain.body)).toBe(409)
+    expect(plain.body?.code).toBe('second_factor_reset_required')
+    expect(probeLink('google', again).count).toBe(1)
+    expect((await call(api, 'GET', STAFF_API, googleAgainToken)).status).toBe(200)
+    const resetAgain = await call<{ unlinked?: number }>(api, 'POST', RESET, adminAgain, {
+      data: { userId: treasurer.userId, note: 'phoned back, Google account lost' },
+    })
+    expect(resetAgain.status, JSON.stringify(resetAgain.body)).toBe(200)
+    expect(resetAgain.body?.unlinked).toBe(1)
+    expect(probeLink('google', again).count).toBe(0)
+    expect((await call(api, 'GET', STAFF_API, googleAgainToken)).status).toBe(401)
+    await challenged(api, treasurer.email, treasurer.password)
   } finally {
     await api.dispose()
     if (other) await other.cleanup()
