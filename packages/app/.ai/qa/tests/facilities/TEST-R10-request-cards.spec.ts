@@ -16,6 +16,7 @@ import {
 import { uniqueAddress } from '../_fixtures/messaging'
 import { PRIVATE_NAMES, publicPitch } from '../_fixtures/public-places'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #280 (E11-S06), facilities parity spec phase 6, REQ-R08, TEST-R10, AC-R06, B-25 (DD-R16): three held requests
 // on a pitch owned by "Gmina Przykładowo" — a clean one sent through the public form, one colliding with the fixture's
@@ -133,10 +134,7 @@ test('TEST-R10 request cards: the facts of REQ-R08, the owner in the approval in
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
     await prepareForAccessibilityScan(page)
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await setLocale(page, 'pl')
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto('/backend/facilities/requests')

@@ -115,10 +115,10 @@ Evidence from 2026-11-20…24 (server outbox, `gh`, Cezar run history):
 
 ## Acceptance
 
-- **ST-AC-01** — Two consecutive decision sessions list every owner-bound item and record the owner's answers on GitHub.
-- **ST-AC-02** — A test push arrives on the owner's phone within 10 min of the alert condition.
-- **ST-AC-03** — Below 5 ready issues one warning is pushed; no second push within 6 h of the same episode.
-- **ST-AC-04** — ST-TEST-01 and ST-TEST-02 pass; on GitHub, a PR stacked on a merged PR targets `main` after the next train run.
+- [ ] **ST-AC-01** — Two consecutive decision sessions list every owner-bound item and record the owner's answers on GitHub. — gap: #859 (no recorded transcripts of two consecutive sessions)
+- [ ] **ST-AC-02** — A test push arrives on the owner's phone within 10 min of the alert condition. — gap: #711 (no ntfy transport yet)
+- [ ] **ST-AC-03** — Below 5 ready issues one warning is pushed; no second push within 6 h of the same episode. — gap: #711
+- [x] **ST-AC-04** — ST-TEST-01 and ST-TEST-02 pass; on GitHub, a PR stacked on a merged PR targets `main` after the next train run. — PR #722: `merge-train-plan.test.mjs` (ST-TEST-01), `merge-train-stacked.test.mjs` (ST-TEST-02); live: PR #750 retargeted to `main` by the train on 2026-11-25 after its base #746 merged (close-out V #842)
 
 ## Rollback
 

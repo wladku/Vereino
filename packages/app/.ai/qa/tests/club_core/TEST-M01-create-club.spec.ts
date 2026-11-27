@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { deleteOrganizationIfExists, deleteUserIfExists } from '@open-mercato/core/helpers/integration/authFixtures'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { APP_ROOT, call, mercato, uniqueSuffix } from '../_fixtures/club'

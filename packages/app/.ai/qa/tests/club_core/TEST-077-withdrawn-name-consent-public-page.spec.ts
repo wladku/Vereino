@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { calendarDate, createClub, uniqueSuffix } from '../_fixtures/club'
 import { create, signInBrowser } from '../_fixtures/club-structure'
 import { addMembership, createGroup, getGroup, signedInStaff, updateGroup } from '../_fixtures/groups'

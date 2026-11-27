@@ -1,4 +1,4 @@
-// Batch train, phase 2 (`.ai/specs/2026-11-18-batch-merge-train.md`, REQ-BT04): the decisions around building a batch
+// Batch train, phase 2 (`.ai/specs/implemented/2026-11-18-batch-merge-train.md`, REQ-BT04): the decisions around building a batch
 // with the Merges API, merging it PR by PR and checking `main`'s tree after every merge. Pure: `scripts/merge-train.mjs`
 // does the API calls and asks these helpers what each answer means.
 import { CONFLICT_LABEL, FAILED_LABEL, linkedIssue } from './merge-train-plan.mjs'

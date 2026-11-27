@@ -101,8 +101,8 @@ The merge train holds every `risk-high` PR with `needs-qa` until the owner tests
 
 ## Acceptance
 
-- **QM-AC-01** — Every PR held for QA has a Polish `qa-instruction` block; QM-TEST-01 and QM-TEST-02 pass.
-- **QM-AC-02** — When a PR is first held, the owner receives one mail with the block, the preview command and the link; no duplicate for the same head.
+- [x] **QM-AC-01** — Every PR held for QA has a Polish `qa-instruction` block; QM-TEST-01 and QM-TEST-02 pass. — PR #780: `merge-train-plan.test.mjs` (QM-TEST-01), `merge-train-holds.test.mjs` (QM-TEST-02) (close-out V #842)
+- [ ] **QM-AC-02** — When a PR is first held, the owner receives one mail with the block, the preview command and the link; no duplicate for the same head. — gap: #859 (PR #793 merged; mails sent for #809, #830, #835; the owner's confirmation is not recorded)
 
 ## Rollback
 

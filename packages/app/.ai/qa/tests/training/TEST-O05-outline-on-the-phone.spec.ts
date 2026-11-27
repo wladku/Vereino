@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { addDays, createActivity } from '../_fixtures/activities'
+import { expectNoPageOverflow, prepareForAccessibilityScan, scanInColorSchemes } from '../_fixtures/axe'
 import { familyFor, sessionsOf } from '../_fixtures/attendance'
 import { call, calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
@@ -21,7 +22,7 @@ type Listed = { items?: { id: string; updatedAt: string | null; sourceOutlineId:
 test('TEST-O05 a coach writes an outline on the phone, attaches it to a session and reads it there; a stale save is 409', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   const club = await createClub(request, 'test-o05')
   try {
     const family = await familyFor(request, club)
@@ -124,15 +125,34 @@ test('TEST-O05 a coach writes an outline on the phone, attaches it to a session 
     expect(second.status, JSON.stringify(second.body)).toBe(409)
     expect(second.body?.code).toBe('outline_exists')
 
-    // --- The same page in the other language: the read view follows the catalog ---
-    for (const locale of ['en', 'pl'] as const) {
-      await page.context().addCookies([{ name: 'locale', value: locale, url: new URL(page.url()).origin }])
-      await page.reload()
+    // --- Both languages, light and dark (AC-O06, D-029): the session card (M-O6) and the outline editor (M-O5) pass
+    // axe and do not overflow a 320 px phone ---
+    await prepareForAccessibilityScan(page)
+    const sessionReady = async () => {
       await expect(widget.getByTestId('training-widget-topic')).toHaveText('Gra 1×1 w obronie')
       await expect(widget.getByText(uiText('training.outline.parts.main', { exact: true }))).toBeVisible()
-      // Nothing overflows the phone's width.
-      const width = await page.evaluate(() => document.documentElement.scrollWidth)
-      expect(width).toBeLessThanOrEqual(375)
+      await expect(widget.getByTestId('training-outline-image')).toBeVisible()
+    }
+    const editorReady = async () => {
+      await expect(page.getByTestId('training-outline-topic')).toHaveValue('Gra 1×1 w obronie')
+      await expect(page.getByTestId('training-part-main').getByTestId('training-exercise-image')).toBeVisible()
+    }
+    for (const locale of ['en', 'pl'] as const) {
+      await page.context().addCookies([{ name: 'locale', value: locale, url: new URL(page.url()).origin }])
+      await page.goto(`/club/occurrences/${session.id}?as=coach`)
+      expect(
+        await scanInColorSchemes(page, testInfo, `/club/occurrences/[id] outline (${locale})`, sessionReady),
+      ).toEqual({})
+      await page.emulateMedia({ colorScheme: 'light' })
+      await expectNoPageOverflow(page)
+      await page.setViewportSize({ width: 375, height: 812 })
+      await page.goto(`/club/training/outlines/${outlineId}`)
+      expect(await scanInColorSchemes(page, testInfo, `/club/training/outlines/[id] (${locale})`, editorReady)).toEqual(
+        {},
+      )
+      await page.emulateMedia({ colorScheme: 'light' })
+      await expectNoPageOverflow(page)
+      await page.setViewportSize({ width: 375, height: 812 })
     }
 
     // --- A stale save answers 409; the editor shows the conflict instead of overwriting ---

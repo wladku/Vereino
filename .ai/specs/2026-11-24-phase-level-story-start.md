@@ -1,7 +1,7 @@
 # Phase-level story start: a story starts when its own phase is decided
 
 **Date**: 2026-11-24
-**Status**: Ready for implementation — direction approved by the owner on 2026-11-24 (ST-Q5); this spec needs its own review before the changes land
+**Status**: In progress — direction approved by the owner on 2026-11-24 (ST-Q5); this spec needs its own review before the changes land
 
 > Related: `.ai/specs/2026-11-24-cezar-stall-prevention.md` (split out of it on review); `.ai/specs/SPEC-000-template.md`; `SDLC.md` → Definition of Ready and "The automation contract"; the picker automations on the build server; the decision session `vereino-sesja-decyzji`. Identifiers: decisions `PS-D01…`, requirements `REQ-PS01…`, tests `PS-TEST-01…`, acceptance `PS-AC-01…`.
 
@@ -63,8 +63,8 @@ Frozen by: none — the picker is a prompt; evidence by run log (PS-AC-02).
 
 ## Acceptance
 
-- **PS-AC-01** — PS-TEST-01 passes; `SDLC.md` states the rule.
-- **PS-AC-02** — A story with `phase-ready` is built while its spec is Draft; a story without it is skipped.
+- [x] **PS-AC-01** — PS-TEST-01 passes; `SDLC.md` states the rule. — PR #792: `packages/app/scripts/__tests__/check-spec-questions.test.mjs` (PS-TEST-01); `SDLC.md` Definition of Ready (close-out V #842)
+- [ ] **PS-AC-02** — A story with `phase-ready` is built while its spec is Draft; a story without it is skipped. — gap: #859 (#798 was built from a Draft spec with `phase-ready`, PR #813, but started by the owner's `cezar` label; no skipped story recorded; the picker prompt lacks the rule)
 
 ## Rollback
 

@@ -3,7 +3,7 @@
 - **Date:** 2026-11-20
 - **Agent / tool:** Claude Code (Opus 5.5), `om-auto-fix-issue` with the repo-local override, Cezar run 6d2dd915
 - **Trigger:** `cezar` label on issue #450 (owner, 2026-11-20)
-- **Spec / issue / branch:** `.ai/specs/2026-11-18-batch-merge-train.md` phase 1; #450 (E16-S02, epic #443); `feat/issue-450-merge-train-batch-planning`
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-18-batch-merge-train.md` phase 1; #450 (E16-S02, epic #443); `feat/issue-450-merge-train-batch-planning`
 - **Status:** completed
 
 ## Goal
@@ -34,7 +34,7 @@ Add the batch train's pure planning (REQ-BT01), judging of the current batch hea
 - `.github/workflows/merge-train.yml`
 - `packages/app/scripts/__tests__/merge-train-batch.test.mjs` (new), `packages/app/scripts/__tests__/merge-train-trailers.test.mjs` (new), `packages/app/scripts/__tests__/coverage-scope.test.mjs`, `packages/app/package.json` (coverage include)
 - `.ai/lessons/new-tooling-script-needs-coverage-scope-entry.md` (new)
-- `.ai/specs/2026-11-18-batch-merge-train.md` (status), `.ai/specs/changelog/2026-11-18-batch-merge-train/2026-11-20-issue-450-phase-1.md`
+- `.ai/specs/implemented/2026-11-18-batch-merge-train.md` (status), `.ai/specs/changelog/2026-11-18-batch-merge-train/2026-11-20-issue-450-phase-1.md`
 - this run log
 
 ## Commands and results

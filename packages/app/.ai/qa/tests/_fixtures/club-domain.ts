@@ -67,8 +67,11 @@ function stopTree(child: ChildProcess): Promise<void> {
   return Promise.race([exited, new Promise<void>((resolve) => setTimeout(resolve, 10_000))])
 }
 
-/** Starts the second app process and waits until its sign-in page answers. */
-export async function startClubDomainApp(): Promise<ClubDomainApp> {
+/**
+ * Starts the second app process and waits until its sign-in page answers. `env` adds or overrides variables of that
+ * process only (TEST-S06 starts it with a cache that cannot write, #848).
+ */
+export async function startClubDomainApp(env: Record<string, string> = {}): Promise<ClubDomainApp> {
   const port = await freePort()
   const domain = `localhost:${String(port)}`
   const appUrl = `http://127.0.0.1:${String(port)}`
@@ -87,6 +90,7 @@ export async function startClubDomainApp(): Promise<ClubDomainApp> {
       QUEUE_BASE_DIR: queueDir,
       AUTO_SPAWN_WORKERS: 'false',
       AUTO_SPAWN_SCHEDULER: 'false',
+      ...env,
     },
     stdio: 'ignore',
     detached: process.platform !== 'win32',

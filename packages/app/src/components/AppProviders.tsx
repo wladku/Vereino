@@ -13,6 +13,7 @@ import { ClientBootstrapProvider, resolveClientBootstrapProfile } from '@/compon
 import { GlobalNoticeBars } from '@/components/GlobalNoticeBars'
 import { ComponentOverridesBootstrap } from '@/components/ComponentOverridesBootstrap'
 import { PlatformFlashTranslator } from '@/components/PlatformFlashTranslator'
+import { WebAppClient } from '@/modules/club_core/components/WebAppClient'
 
 type AppProvidersProps = {
   children: ReactNode
@@ -25,7 +26,8 @@ type AppProvidersProps = {
 }
 
 export function AppProviders({ children, locale, dict, localeLocked, supportedLocales, demoModeEnabled, noticeBarsEnabled }: AppProvidersProps) {
-  const profile = resolveClientBootstrapProfile(usePathname())
+  const pathname = usePathname()
+  const profile = resolveClientBootstrapProfile(pathname)
   return (
     <I18nProvider locale={locale} dict={dict} localeLocked={localeLocked} supportedLocales={supportedLocales}>
       <ClientBootstrapProvider profile={profile}>
@@ -33,7 +35,9 @@ export function AppProviders({ children, locale, dict, localeLocked, supportedLo
           <ThemeProvider>
             <QueryProvider>
               <PlatformFlashTranslator />
-              <FrontendLayout footer={<AuthFooter />}>{children}</FrontendLayout>
+              <WebAppClient pathname={pathname}>
+                <FrontendLayout footer={<AuthFooter />}>{children}</FrontendLayout>
+              </WebAppClient>
               {noticeBarsEnabled ? <GlobalNoticeBars demoModeEnabled={demoModeEnabled} /> : null}
             </QueryProvider>
           </ThemeProvider>

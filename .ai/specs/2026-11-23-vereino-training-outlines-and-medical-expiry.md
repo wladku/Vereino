@@ -1,7 +1,7 @@
 # Training outlines, a shared outline library and the medical certificate expiry date
 
 **Date**: 2026-11-23
-**Status**: Ready for implementation — approved by the product owner on 2026-11-24 ([owner decision on #671](https://github.com/wladku/Vereino/issues/671#issuecomment-7123134361); issue #672, epic E24 #671, decision D-038 in PR #670)
+**Status**: In progress — approved by the product owner on 2026-11-24 ([owner decision on #671](https://github.com/wladku/Vereino/issues/671#issuecomment-7123134361); issue #672, epic E24 #671, decision D-038 in PR #670)
 
 > Use om-spec-writing for the process. This spec is design-only: nothing is built in its PR.
 
@@ -562,26 +562,26 @@ defines for phases 1–4, as specified. Anything beyond the spec still needs a s
 
 Every criterion that names a phone page is checked at 375 px, in English and Polish, in light and dark mode (D-029).
 
-- [ ] **AC-O01** — A guardian, an adult participant, a coordinator and the administrator can set and clear the date per
+- [x] **AC-O01** — A guardian, an adult participant, a coordinator and the administrator can set and clear the date per
   Q-O01 while a consent of the person or a guardian is in force; only the person or a guardian gives the consent; a
-  coach cannot write (TEST-O01).
-- [ ] **AC-O02** — The coach sees red/orange/green with the date for own groups on the roster, the attendance list and
-  the match squad, and nothing for other groups (TEST-O01).
-- [ ] **AC-O03** — Reminders arrive once a month before and once on the day, in-app and by e-mail (TEST-O02).
-- [ ] **AC-O04** — Without consent no date is stored; anonymisation and consent withdrawal clear it; the compliance
-  pack lists the field (TEST-O03).
-- [ ] **AC-O05** — A red player in a match squad produces a warning, not a block (TEST-O04, Q-O05).
-- [ ] **AC-O06** — A coach writes, attaches and reads an outline on the phone (TEST-O05).
-- [ ] **AC-O07** — Every session of a recurring activity has its own copy (TEST-O06).
-- [ ] **AC-O08** — The print page yields a PDF in the PZPN layout (TEST-O07).
-- [ ] **AC-O09** — Schedule and attendance CSVs match the columns above (TEST-O08).
-- [ ] **AC-O10** — Publishing respects the club level; copy keeps credit; rating needs a use; ranking per DD-O13
-  (TEST-O09, TEST-O10).
-- [ ] **AC-O11** — Public entries open without signing in; the author's name shows only with consent (TEST-O11,
-  TEST-O12).
-- [ ] **AC-O12** — Reports from 3 clubs hide an entry; the operator CLI restores or removes it (TEST-O13).
-- [ ] **AC-O13** — The cross-club isolation guard passes with the library routes (TEST-O14).
-- [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green.
+  coach cannot write (TEST-O01). — PR #705, `people/TEST-O01-medical-status.spec.ts`; the adult's own date in TEST-O02/TEST-O03 (close-out V #842)
+- [x] **AC-O02** — The coach sees red/orange/green with the date for own groups on the roster, the attendance list and
+  the match squad, and nothing for other groups (TEST-O01). — PR #705, `people/TEST-O01-medical-status.spec.ts`, `activities/TEST-O04-match-squad-medical.spec.ts` (close-out V #842)
+- [x] **AC-O03** — Reminders arrive once a month before and once on the day, in-app and by e-mail (TEST-O02). — PR #705, `people/TEST-O02-medical-reminders.spec.ts` (close-out V #842)
+- [x] **AC-O04** — Without consent no date is stored; anonymisation and consent withdrawal clear it; the compliance
+  pack lists the field (TEST-O03). — PR #705, `people/TEST-O03-medical-consent-erasure.spec.ts`; `docs/compliance/ropa.md` A15, `dpia.md` D-14, `retention.md` R20 (close-out V #842)
+- [x] **AC-O05** — A red player in a match squad produces a warning, not a block (TEST-O04, Q-O05). — PR #705, `activities/TEST-O04-match-squad-medical.spec.ts` (close-out V #842)
+- [x] **AC-O06** — A coach writes, attaches and reads an outline on the phone (TEST-O05). — PR #706, `training/TEST-O05-outline-on-the-phone.spec.ts` at 375 px in en/pl; axe in light and dark mode and 320 px reflow on the editor and the session card by PR #860 (#846)
+- [x] **AC-O07** — Every session of a recurring activity has its own copy (TEST-O06). — PR #706, `training/TEST-O06-series-outline-copies.spec.ts` (close-out V #842)
+- [x] **AC-O08** — The print page yields a PDF in the PZPN layout (TEST-O07). — PR #706, `training/TEST-O07-outline-print.spec.ts`; V-O2 (a certified club's comparison) stays an owner action on #671 (close-out V #842)
+- [x] **AC-O09** — Schedule and attendance CSVs match the columns above (TEST-O08). — PR #696, `activities/TEST-O08-pzpn-exports.spec.ts`; V-O1 stays an owner action on #671 (close-out V #842)
+- [x] **AC-O10** — Publishing respects the club level; copy keeps credit; rating needs a use; ranking per DD-O13
+  (TEST-O09, TEST-O10). — PR #729, `training/TEST-O09-library-share-copy-rate.spec.ts`, `training/TEST-O10-library-club-level.spec.ts` (close-out V #842)
+- [x] **AC-O11** — Public entries open without signing in; the author's name shows only with consent (TEST-O11,
+  TEST-O12). — PR #729, `training/TEST-O11-library-public-page.spec.ts`, `training/TEST-O12-library-author-name.spec.ts` (close-out V #842)
+- [x] **AC-O12** — Reports from 3 clubs hide an entry; the operator CLI restores or removes it (TEST-O13). — PR #729, `training/TEST-O13-library-reports-moderation.spec.ts` (close-out V #842)
+- [x] **AC-O13** — The cross-club isolation guard passes with the library routes (TEST-O14). — PR #729, `training/TEST-O14-library-isolation-offboarding.spec.ts`, probes in `_fixtures/isolation/inventory/training.json` (close-out V #842)
+- [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green. — gap: the deferred back-office outline pages and part filter of M-O5 wait for the owner on #847
 
 ## Final Compliance Report
 

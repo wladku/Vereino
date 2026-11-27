@@ -177,7 +177,7 @@ export function planMergeTrain(prs, { skipLabels = DEFAULT_SKIP_LABELS } = {}) {
   return { type: 'idle', labels, held }
 }
 
-// Batch train, phase 1 (`.ai/specs/2026-11-18-batch-merge-train.md`): planning and judging only, dark. Nothing below
+// Batch train, phase 1 (`.ai/specs/implemented/2026-11-18-batch-merge-train.md`): planning and judging only, dark. Nothing below
 // builds, merges or labels anything yet; `scripts/merge-train.mjs` prints the batch in a dry run.
 
 /** Commit status the train sets on a PR head whose batch of one failed (REQ-BT03); a new push clears it. */

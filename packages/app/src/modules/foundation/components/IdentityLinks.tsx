@@ -4,9 +4,14 @@
 // sign-in; "Disconnect" with a confirmation, disabled with an explanation while it is the last sign-in method; for the
 // account holder, "Connect …" per enabled provider not yet linked (a link to `start`, which links with the session).
 // Loading, empty, error with retry, 409 (last method, stale version) and the round-trip outcome are announced politely.
+// Staff second factor phase 2 (#841): the account holder who signs in with a second factor sees the profile line
+// (Google or password and e-mail code; turn on 2-Step Verification); on the person record, the Google link of someone
+// else who holds the requirement is removed only through the reset, so "Unlink Google" opens it (`onResetRequest`), or
+// stays disabled with a sentence for an administrator who may not reset.
 import * as React from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
+import { Alert, AlertDescription } from '@open-mercato/ui/primitives/alert'
 import { apiCall, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
 import { Button } from '@open-mercato/ui/primitives/button'
@@ -25,6 +30,8 @@ type Props = {
   own: boolean
   /** The round-trip outcome from the page URL (`linked` / `failed`), own list only. */
   initialOutcome?: Outcome
+  /** The person record: opens "Reset second factor" in place of unlinking a required person's Google link. */
+  onResetRequest?: () => void
 }
 
 function useIdentityList(url: string) {
@@ -48,11 +55,12 @@ function useIdentityList(url: string) {
 
 function unlinkErrorKey(code: string | null): string {
   if (code === 'identity_last_method') return 'foundation.identity.lastMethod'
+  if (code === 'second_factor_reset_required') return 'foundation.errors.second_factor_reset_required'
   if (code === 'optimistic_lock_conflict') return 'foundation.identity.errors.conflict'
   return 'foundation.identity.errors.unlink'
 }
 
-export function IdentityLinks({ url, own, initialOutcome = null }: Props) {
+export function IdentityLinks({ url, own, initialOutcome = null, onResetRequest }: Props) {
   const t = useT()
   const locale = useLocale()
   const { confirm, ConfirmDialogElement } = useConfirmDialog()
@@ -98,8 +106,18 @@ export function IdentityLinks({ url, own, initialOutcome = null }: Props) {
     )
   } else {
     const connectable = own ? data.providers.filter((provider) => provider.enabled && !provider.linked) : []
+    const secondFactor = !own ? data.secondFactor : undefined
+    const throughReset = (link: IdentityLinkRow) =>
+      Boolean(secondFactor?.unlinkGoogleThroughReset) && link.provider === 'google'
+    const resetAvailable = Boolean(secondFactor?.canReset && onResetRequest)
+    const routedGoogle = data.items.some(throughReset)
     body = (
       <div className="flex flex-col gap-3">
+        {own && data.secondFactorRequired ? (
+          <Alert style="light" status="information" data-testid="identity-second-factor-required">
+            <AlertDescription>{t('foundation.secondFactor.profile.required')}</AlertDescription>
+          </Alert>
+        ) : null}
         {data.items.length === 0 ? (
           <p className="text-muted-foreground text-sm" data-testid="identity-links-empty">
             {t('foundation.identity.empty')}
@@ -129,9 +147,20 @@ export function IdentityLinks({ url, own, initialOutcome = null }: Props) {
                   type="button"
                   variant="outline"
                   className="min-h-11"
-                  disabled={!data.canUnlink || busyId !== null}
-                  aria-describedby={data.canUnlink ? undefined : 'identity-last-method'}
-                  onClick={() => void disconnect(link)}
+                  disabled={
+                    throughReset(link) ? !resetAvailable || busyId !== null : !data.canUnlink || busyId !== null
+                  }
+                  aria-describedby={
+                    throughReset(link)
+                      ? 'identity-second-factor-unlink'
+                      : data.canUnlink
+                        ? undefined
+                        : 'identity-last-method'
+                  }
+                  onClick={() => {
+                    if (throughReset(link)) onResetRequest?.()
+                    else void disconnect(link)
+                  }}
                   data-testid={`identity-unlink-${link.provider}`}
                 >
                   {t(own ? 'foundation.identity.disconnect' : 'foundation.identity.unlink', {
@@ -142,6 +171,19 @@ export function IdentityLinks({ url, own, initialOutcome = null }: Props) {
             ))}
           </ul>
         )}
+        {routedGoogle ? (
+          <p
+            id="identity-second-factor-unlink"
+            className="text-muted-foreground text-xs"
+            data-testid="identity-second-factor-unlink"
+          >
+            {t(
+              resetAvailable
+                ? 'foundation.secondFactor.reset.unlinkGoogle'
+                : 'foundation.secondFactor.reset.unlinkGoogleNoReset',
+            )}
+          </p>
+        ) : null}
         {data.items.length > 0 && !data.canUnlink ? (
           <p id="identity-last-method" className="text-muted-foreground text-xs" data-testid="identity-last-method">
             {t(own ? 'foundation.identity.lastMethod' : 'foundation.identity.lastMethodAdmin')}

@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { familyFor } from '../_fixtures/attendance'
 import { createClub } from '../_fixtures/club'
 import { signInBrowser, switchBrowserUser } from '../_fixtures/club-structure'

@@ -4,7 +4,7 @@
 // role; only the ids, e-mail addresses and public slugs differ. Every id a seed step learns goes into `refs` under a
 // stable key the route inventory names (`$A:<key>`, `$B:<key>`).
 import { expect, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../auth'
 import { createOrganizationFixture, createUserFixture } from '@open-mercato/core/helpers/integration/authFixtures'
 import { memberAccount } from '../attendance'
 import { create } from '../club-structure'
@@ -151,6 +151,8 @@ async function seedBase(request: APIRequestContext, club: Club, label: 'A' | 'B'
   refs.treasurerPerson = treasurer.personId
   refs.operatorPerson = operator.personId
   refs.coachUser = coach.userId
+  // The staff second factor reset (#736) addresses a user who holds the requirement.
+  refs.treasurerUser = treasurer.userId
   const since = calendarDate(-30)
   refs.coachMembership = await addMembership(request, admin, {
     groupId: refs.group,

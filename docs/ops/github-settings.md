@@ -29,7 +29,7 @@ The required checks appear in the ruleset picker only after they have run once. 
     - [ ] Require review from Code Owners — turn on only after the second maintainer's handle is in `.github/CODEOWNERS` (a sole owner cannot approve their own pull request).
   - [ ] Require status checks to pass — add `gate`, `integration`, `browser-smoke` with source **GitHub Actions** (checked against the live ruleset 2026-11-24, ruleset 26707580; ENG-AC-02 as amended by the owner on 2026-11-24, #576). The merge train reads this list to decide when a PR or a batch is green, so a check outside it never holds the train. On a docs-only PR `integration` and `browser-smoke` still run and report success while the shards and the browser work are skipped (#777, SDLC.md "Validation gate"), so the list needs no change for them; never add the shard checks `integration (shard N/6)`, which a docs-only PR skips. Do **not** add `perf` (advisory, S7.6), `dependency-review` (S14.3: findings are triaged before merge), `pr-title` (runs on every PR, advisory) or `DCO` (not required: the CLA of D-035, #648, covers outside contributions).
     - **One-PR train** (`MERGE_TRAIN_BATCH_SIZE` unset or `1`): **Require branches to be up to date before merging** — on.
-    - **Batch train** (`MERGE_TRAIN_BATCH_SIZE` `2`–`8`, `.ai/specs/2026-11-18-batch-merge-train.md`): **Require branches to be up to date before merging** — off, and a fourth required check **`merge-train/verified`** with source **any source** (the train sets it as a commit status with `MERGE_TRAIN_TOKEN`, not as a GitHub Actions check). The train ignores `merge-train/verified` when it judges a head and sets it itself right before each merge, in both modes. Switch-on, checks and rollback in their safe order: `docs/ops/batch-train-switch-on.md`.
+    - **Batch train** (`MERGE_TRAIN_BATCH_SIZE` `2`–`8`, `.ai/specs/implemented/2026-11-18-batch-merge-train.md`): **Require branches to be up to date before merging** — off, and a fourth required check **`merge-train/verified`** with source **any source** (the train sets it as a commit status with `MERGE_TRAIN_TOKEN`, not as a GitHub Actions check). The train ignores `merge-train/verified` when it judges a head and sets it itself right before each merge, in both modes. Switch-on, checks and rollback in their safe order: `docs/ops/batch-train-switch-on.md`.
   - [ ] Block force pushes.
 
 Live state, read 2026-11-24 (#576): the ruleset `main: merge only when up to date and green` (id 26707580) holds only the status-check rule above (`gate`, `integration`, `browser-smoke`, strict, empty bypass list). Restrict deletions, linear history, the pull request requirement and the force-push block are not in it; squash-only merging comes from section 1. Applying them is the owner's call.
@@ -70,6 +70,10 @@ DCO is not a required check (ENG-AC-02, owner decision on #576), and the app is 
 - `MERGE_TRAIN_BATCH_SIZE` — unset (or `1`): the one-PR train; `2`–`8`: the batch train (an invalid value means `1`). Set together with the ruleset of section 2 in the order of `docs/ops/batch-train-switch-on.md`.
 - `MERGE_TRAIN_SKIP_LABELS` — optional, comma-separated; replaces the default skip labels.
 - `MERGE_TRAIN_REQUIRED_CHECKS` — leave unset on this repository (the train then reads the ruleset). Only a repository without rulesets, such as the rehearsal repository, sets it.
+
+## 6b. Self-hosted CI runners
+
+- `CI_SELF_HOSTED` — unset by default: every CI job runs on `ubuntu-latest`. `true` sends the heavy jobs of trusted events to the factory server's `vereino-ci` runners; set it only while the runners are online, and delete it to fall back. Setup, token, switch-on and rollback: `docs/ops/ci-runners.md` (#834).
 
 ## 7. Release workflow
 

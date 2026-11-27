@@ -27,6 +27,7 @@ export {
   activeAccountUserIds,
   closeAccount,
   createAccount,
+  passwordSetupLink,
   resendInvitation,
   sendAccountInvitation,
   updateAccount,
@@ -34,6 +35,7 @@ export {
   type AccountView,
   type CreateAccountInput,
   type CreateAccountResult,
+  type PasswordSetupLink,
   type ResendInvitationResult,
   type UpdateAccountInput,
 } from './services/accounts'
@@ -117,12 +119,15 @@ export {
   SIGN_IN_EMAIL_LIMIT,
   accountEmailLimit,
   emailFromBody,
+  emailSubjectLimit,
   linkRequestEmailLimit,
   tokenLimit,
+  type FailClosedSessionlessLimit,
   type SessionlessLimit,
   type SessionlessLimitConfig,
 } from './lib/sessionless-limits'
 export {
+  enforceFailClosedLimit,
   enforceSessionlessLimits,
   noteClientAddress,
   sessionlessRateLimiter,
@@ -214,3 +219,6 @@ export {
 } from './services/token-link'
 // The Vereino password check (#779): the reset-confirm route in front of the platform handler uses it.
 export { passwordRefusalError, refuseNewPassword } from './services/password-check'
+// The session of the device that changed its own password (#876): the app's `PUT /api/auth/profile` renews it.
+export { renewOwnSession } from './services/own-password'
+export { setSessionCookies } from './services/session-issuer'

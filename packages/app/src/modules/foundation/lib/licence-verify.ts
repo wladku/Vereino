@@ -89,6 +89,34 @@ export function readLicenceKeys(
   return { keys: [...new Set(keys)], warnings }
 }
 
+/**
+ * The trust file `scripts/enterprise-overlay.mjs --ci` writes (DD-E11), relative to the app directory: the committed
+ * TEST key pair's kid and public key, which `trustedLicenceKeys` accepts only with `VEREINO_CI=true`. The Dockerfile
+ * never writes it.
+ */
+export const CI_TRUST_FILE = '.mercato/enterprise-ci-trust.json'
+
+/**
+ * The `extra` keys of the CI trust file: kid → SPKI PEM. A missing file is no extra key; an unreadable or malformed one
+ * is a warning and no extra key, so a broken file never trusts anything.
+ */
+export function readCiTrust(
+  path: string,
+  exists: (path: string) => boolean,
+  readFile: (path: string) => string,
+): { extra: Record<string, string>; warnings: string[] } {
+  if (!exists(path)) return { extra: {}, warnings: [] }
+  try {
+    const parsed: unknown = JSON.parse(readFile(path))
+    const entries = parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? Object.entries(parsed) : null
+    if (!entries || entries.some(([, pem]) => typeof pem !== 'string'))
+      throw new Error('[internal] not a kid to PEM object')
+    return { extra: Object.fromEntries(entries as Array<[string, string]>), warnings: [] }
+  } catch {
+    return { extra: {}, warnings: [`ignored ${CI_TRUST_FILE}: it is not a JSON object of kid to public key`] }
+  }
+}
+
 export type RejectedLicenceKey = {
   reason: LicenceRejection | 'wrong_instance'
   lid: string | null

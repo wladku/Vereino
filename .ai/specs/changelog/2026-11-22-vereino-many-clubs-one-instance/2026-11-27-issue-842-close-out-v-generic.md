@@ -1,0 +1,1 @@
+| 2026-11-27 | Close-out V (#842), after #850 landed (PR #881): AC-M06 keeps its tick with the export, deletion and restore evidence (key destruction stays with #740); the generic coverage criterion is ticked with TEST-M01..M11, its last gap #850 closed; leftovers outside the criteria stay with #852. |

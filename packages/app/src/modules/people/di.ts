@@ -5,6 +5,7 @@ import type { AppContainer } from '@open-mercato/shared/lib/di/container'
 import { CONTACT_RESOLVER_TOKEN, audienceProviderToken } from '@vereino/core'
 import {
   SCOPE_PROVIDER_TOKEN,
+  createTokenLinkService,
   declareClubJobs,
   registerEmailTemplate,
   registerClubDataContributor,
@@ -23,9 +24,13 @@ import type { ClubScope } from './services/club-clock'
 import { PEOPLE_PAYMENTS_GATE, createPaymentsGate } from './services/payments-gate'
 import { PEOPLE_MEDICAL_STATUS, createMedicalStatusReader } from './services/medical'
 import { createPersonDirectory } from './services/person-directory'
+import { PEOPLE_DUPLICATE_CANDIDATES, createDuplicateCandidates } from './services/duplicate-candidates'
 import { syncPersonRoles, type PersonRoleSyncOutcome } from './services/role-sync'
 import { createPeopleScopeService } from './services/scope-service'
 import { PEOPLE_CLUB_JOBS } from './lib/club-jobs'
+import { InvitationLink } from './data/entities'
+import { INVITATION_LINK_TTL_MS } from './lib/invitation-links'
+import { PEOPLE_INVITATION_LINKS } from './services/invitation-links'
 import { PEOPLE_CLUB_TABLES } from './lib/club-tables'
 
 /** `people.scopeService` (club spec DD-06): the record-scope provider, also registered as `vereino.scopeProvider`. */
@@ -61,6 +66,16 @@ export type PeopleRoleSync = {
   syncPerson(scope: ClubScope, personId: string): Promise<PersonRoleSyncOutcome>
 }
 
+/**
+ * `people.invitationLinks` (personal invitation link spec REQ-IL03, Q-IL05; #868; foundation P-10): the token-link
+ * service of `people_invitation_links` (`until_expiry`, 7 days) — the single DD-35 lookup of that table.
+ */
+const invitationLinks = createTokenLinkService(InvitationLink, {
+  use: 'until_expiry',
+  ttlMs: INVITATION_LINK_TTL_MS,
+  dedicatedTable: true,
+})
+
 export function register(container: AppContainer) {
   // The module's per-club jobs, run by the foundation's club job sweep (many-clubs spec DD-M04, #629).
   declareClubJobs(PEOPLE_CLUB_JOBS)
@@ -90,8 +105,11 @@ export function register(container: AppContainer) {
     // DD-O03 (#682): the medical certificate status of persons the caller holds in scope, for `groups` and `activities`.
     [PEOPLE_MEDICAL_STATUS]: asFunction(() => createMedicalStatusReader(container)).scoped(),
     [PEOPLE_PAYMENTS_GATE]: asFunction(() => createPaymentsGate(container)).scoped(),
+    // DD-J11, Q-J05 (section sign-up form spec): the possible duplicates of an applicant, for `enrolment`.
+    [PEOPLE_DUPLICATE_CANDIDATES]: asFunction(() => createDuplicateCandidates(container)).scoped(),
     [audienceProviderToken('club')]: asValue(clubAudienceProvider),
     [audienceProviderToken('persons')]: asValue(personsAudienceProvider),
     [CONTACT_RESOLVER_TOKEN]: asValue(createContactResolver()),
+    [PEOPLE_INVITATION_LINKS]: asValue(invitationLinks),
   })
 }

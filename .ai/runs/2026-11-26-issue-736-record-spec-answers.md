@@ -1,7 +1,7 @@
 # Run log — record the owner's answers on the staff second factor spec (#736, PR #805)
 
 - **Goal and trigger:** cezar task at the owner's request: record the owner's answers to Q-2F01…Q-2F05 (PR #805 comment of 2026-11-26) in the spec, set its status to `Ready for implementation`, and mark PR #805 ready for review. Never merge.
-- **Spec / issue / branch:** `.ai/specs/2026-11-26-vereino-staff-second-factor.md`, #736, `docs/issue-736-staff-second-factor-spec` (PR #805).
+- **Spec / issue / branch:** `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`, #736, `docs/issue-736-staff-second-factor-spec` (PR #805).
 
 ## Steps
 
@@ -18,7 +18,7 @@
 
 ## Files changed
 
-- `.ai/specs/2026-11-26-vereino-staff-second-factor.md`
+- `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md`
 - `.ai/specs/changelog/2026-11-26-vereino-staff-second-factor/2026-11-26-issue-736-owner-answers.md`
 - this run log
 

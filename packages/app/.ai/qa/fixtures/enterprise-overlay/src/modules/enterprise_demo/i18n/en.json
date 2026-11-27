@@ -1,0 +1,11 @@
+{
+  "enterprise_demo.page.title": "Enterprise demo",
+  "enterprise_demo.page.loading": "Loading the licence state…",
+  "enterprise_demo.page.error": "The licence state could not be loaded.",
+  "enterprise_demo.page.state": "Licence state of this club: {state}",
+  "enterprise_demo.state.on": "on",
+  "enterprise_demo.state.read_only": "read-only",
+  "enterprise_demo.page.renewal": "The Enterprise licence of this club has expired. Renew it before the grace period ends.",
+  "enterprise_demo.page.readOnly": "The Enterprise licence of this club has expired: this feature is read-only. Your data stays readable and exportable.",
+  "enterprise_demo.page.off": "The Enterprise demo feature is not available for this club."
+}

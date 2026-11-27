@@ -31,3 +31,9 @@
 ## Open problems / next steps
 
 - `ConsentToggle` in `packages/ui/src/member/` is built on #871.
+
+## Merge of `main` (2026-11-27, PR #885, label `merge-train-conflict`)
+
+- Trigger: `om-auto-fix-pr 885`; worked on a detached HEAD at the PR head, merged `origin/main` with a merge commit (no history rewrite).
+- Conflict: the spec's `**Status**` line — `main` (#861, close-out V) only added "on #857" to the `In progress` line; kept this PR's `Implemented` line, which records that decision.
+- `main` added `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md`, whose REQ list linked the foundation spec at its old path; fixed to `implemented/`.

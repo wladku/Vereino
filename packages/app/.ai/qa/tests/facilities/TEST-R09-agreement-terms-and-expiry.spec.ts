@@ -15,6 +15,7 @@ import { awaitEmails, emailsTo } from '../_fixtures/communication'
 import { uniqueAddress } from '../_fixtures/messaging'
 import { getCharge, recordPayment } from '../_fixtures/payments'
 import { uiText, uiTextIn } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #284 (E11-S10), facilities parity spec phase 10: TEST-R09 and the deadline part of TEST-R01 (REQ-R07, DD-R10,
 // DD-R11, AC-R05). A management agreement (`facility_management` contract) with the owner institution of a place
@@ -195,10 +196,7 @@ test('TEST-R09 the agreement sets the payment days; an unpaid rental expires onc
     expect((await readRental(request, admin, overdueId))?.status).toBe('requested')
 
     // The contract form shows the agreement's rental terms; the rental page names the reason of the expiry.
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())

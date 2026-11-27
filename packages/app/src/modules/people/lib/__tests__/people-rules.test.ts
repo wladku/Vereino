@@ -336,6 +336,7 @@ describe('people error codes', () => {
       ['account_exists', 409],
       ['account_not_found', 404],
       ['invitation_not_pending', 409],
+      ['invitation_link_invalid', 410],
       ['last_club_admin', 422],
       ['account_has_purpose', 409],
       ['club_admin_exists', 409],
