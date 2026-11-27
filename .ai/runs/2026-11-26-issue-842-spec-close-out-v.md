@@ -95,3 +95,8 @@
 - `main` brought #886 (#858: MT-AC-01/04/05 targets amended by the owner, MT-AC-04 and MT-AC-05 met), #895 (#841: staff second factor phase 2; the spec moved to `implemented/` with every criterion ticked), #888, #892 and #881 (no conflict).
 - Resolution: merge throughput keeps this PR's checkboxes and MT-AC-03 evidence and takes `main`'s amended wording: MT-AC-04 and MT-AC-05 ticked, MT-AC-01 open (48 min against 30) until #834's self-hosted runners carry PR CI; the status line goes back to `main`'s text (rule *Spec status line*; its "tracked in #858" pointed at a closed issue). The staff second factor spec takes `main`'s version whole, so this PR no longer changes it and its 2026-11-26 close-out changelog file is removed (15 changelog files remain).
 - Red check on the previous head: `integration (shard 2/6)` hit the job's 45 min limit ("The operation was canceled.") after TEST-W05 failed once at line 69 and passed on retry #1 — runner time and a flake, not this docs-only change; no test is added or edited here, so no integration test was run locally.
+
+## Fifth merge of main (2026-11-27, PR #861 conflict)
+
+- CI on b8a43699 went green (all jobs, including the six integration shards); `main` then brought #860 (#846: TEST-O05 axe scans, AC-O06 ticked) and #840 (#832, no conflict).
+- Resolution: training outlines keeps this PR's evidence for AC-O01…O05 and O07…O13, ticks AC-O06 with PR #706 plus PR #860, and the coverage criterion's gap now names only #847 (#846 closed). The 2026-11-26 changelog row stays as that day's record.

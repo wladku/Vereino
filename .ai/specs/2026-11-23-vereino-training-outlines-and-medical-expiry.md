@@ -571,7 +571,7 @@ Every criterion that names a phone page is checked at 375 px, in English and Pol
 - [x] **AC-O04** — Without consent no date is stored; anonymisation and consent withdrawal clear it; the compliance
   pack lists the field (TEST-O03). — PR #705, `people/TEST-O03-medical-consent-erasure.spec.ts`; `docs/compliance/ropa.md` A15, `dpia.md` D-14, `retention.md` R20 (close-out V #842)
 - [x] **AC-O05** — A red player in a match squad produces a warning, not a block (TEST-O04, Q-O05). — PR #705, `activities/TEST-O04-match-squad-medical.spec.ts` (close-out V #842)
-- [ ] **AC-O06** — A coach writes, attaches and reads an outline on the phone (TEST-O05). — gap: #846 (PR #706's TEST-O05 checks 375 px in en/pl; no dark mode and no axe scan of the editor and the session card)
+- [x] **AC-O06** — A coach writes, attaches and reads an outline on the phone (TEST-O05). — PR #706, `training/TEST-O05-outline-on-the-phone.spec.ts` at 375 px in en/pl; axe in light and dark mode and 320 px reflow on the editor and the session card by PR #860 (#846)
 - [x] **AC-O07** — Every session of a recurring activity has its own copy (TEST-O06). — PR #706, `training/TEST-O06-series-outline-copies.spec.ts` (close-out V #842)
 - [x] **AC-O08** — The print page yields a PDF in the PZPN layout (TEST-O07). — PR #706, `training/TEST-O07-outline-print.spec.ts`; V-O2 (a certified club's comparison) stays an owner action on #671 (close-out V #842)
 - [x] **AC-O09** — Schedule and attendance CSVs match the columns above (TEST-O08). — PR #696, `activities/TEST-O08-pzpn-exports.spec.ts`; V-O1 stays an owner action on #671 (close-out V #842)
@@ -581,7 +581,7 @@ Every criterion that names a phone page is checked at 375 px, in English and Pol
   TEST-O12). — PR #729, `training/TEST-O11-library-public-page.spec.ts`, `training/TEST-O12-library-author-name.spec.ts` (close-out V #842)
 - [x] **AC-O12** — Reports from 3 clubs hide an entry; the operator CLI restores or removes it (TEST-O13). — PR #729, `training/TEST-O13-library-reports-moderation.spec.ts` (close-out V #842)
 - [x] **AC-O13** — The cross-club isolation guard passes with the library routes (TEST-O14). — PR #729, `training/TEST-O14-library-isolation-offboarding.spec.ts`, probes in `_fixtures/isolation/inventory/training.json` (close-out V #842)
-- [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green. — gap: #846; the deferred back-office outline pages and part filter of M-O5 wait for the owner on #847
+- [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green. — gap: the deferred back-office outline pages and part filter of M-O5 wait for the owner on #847
 
 ## Final Compliance Report
 
