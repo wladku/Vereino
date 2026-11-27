@@ -6,6 +6,7 @@ import { confirmationToken, requestForm, submitRequest, verifyRequest } from '..
 import { confirmRental, listRentals, postClosure, postRental, readRental, rentalAction } from '../_fixtures/facilities'
 import { publicPitch } from '../_fixtures/public-places'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #279 (E11-S05), facilities parity spec REQ-R04, REQ-R05, AC-R03, TEST-R07: given rentals in every status — one
 // flagged by a closure, one unpaid past its deadline, one pending request — the administrator walks the B-24 tabs and
@@ -85,10 +86,7 @@ test('TEST-R07 B-24 tabs and views in the address, Decide, the rental page with 
     if (!pending) throw new Error('[internal] the confirmed request is not awaiting approval')
     expect((await listRentals(request, admin, '&view=unpaid')).map((row) => row.id)).toEqual([unpaid])
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     const consoleErrors: string[] = []
     page.on('console', (message) => {
       if (message.type() === 'error') consoleErrors.push(message.text())

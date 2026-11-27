@@ -5,6 +5,7 @@ import { calendarDate, createClub } from '../_fixtures/club'
 import { signInBrowser } from '../_fixtures/club-structure'
 import { postInternalBooking, rentalPitch } from '../_fixtures/facilities'
 import { addMembership, signedInStaff } from '../_fixtures/groups'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // TEST-W06 (calendar range switch spec REQ-W05, DD-W05, DD-W06, AC-W04; D-040; #784): the facility calendar B-23 and
 // a place's page M-11 offer Day / Week / Month. On a desktop B-23 opens on Week: seven day axes side by side, the
@@ -36,10 +37,7 @@ test('TEST-W06 B-23 week axes and month list, M-11 week and month lists on a pho
     expect(booking.status, JSON.stringify(booking.body)).toBe(201)
     const bookingId = String(booking.body?.id)
 
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok()).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     page.setDefaultTimeout(30_000)
     await prepareForAccessibilityScan(page)
     const consoleErrors: string[] = []

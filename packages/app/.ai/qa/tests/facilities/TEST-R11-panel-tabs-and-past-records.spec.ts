@@ -6,6 +6,7 @@ import { type CodedError, postInternalBooking, rentalPitch, runRequestProbe } fr
 import { requestRow } from '../_fixtures/facility-requests'
 import { addMembership, signedInStaff } from '../_fixtures/groups'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Issue #281 (E11-S07), facilities parity spec phase 7, TEST-R11 (REQ-R09, REQ-R10, AC-R07): the tabs of B-26 and B-27
 // as the mockup's `screenZones` and `screenLogs`, and the records an administrator adds from the panel. The zones tab
@@ -129,10 +130,7 @@ test('TEST-R11 panel tabs: zones, a past log entry, an incident, a ban from its 
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
     await prepareForAccessibilityScan(page)
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await page.setViewportSize({ width: 1280, height: 900 })
 
     // B-26 Zones: the mockup's columns in its order, the place linking to its calendar, "Set booking availability".

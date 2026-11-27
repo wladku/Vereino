@@ -9,6 +9,7 @@ import { signedInStaff } from '../_fixtures/groups'
 import { actionLogEntries } from '../_fixtures/people'
 import { SVG_AS_PNG, pdf, png, upload, type UploadFile } from '../_fixtures/publication'
 import { uiText } from '../_fixtures/ui-text'
+import { signInBrowserContext } from '../_fixtures/auth'
 
 // Club events spec TEST-T08 and the files steps of TEST-T11 (phase 4, REQ-T08, DD-T10, AC-T08 in part; #379). The
 // administrator uploads a 3 MB JPEG poster, then a second poster: one live poster remains, the second, and the undo of
@@ -248,10 +249,7 @@ test('TEST-T11 files steps: the Files tab shows the poster with Replace, the nam
       if (message.type() === 'error') consoleErrors.push(message.text())
     })
     await prepareForAccessibilityScan(page)
-    const login = await page.request.post('/api/auth/login', {
-      form: { email: club.tenant.email, password: club.tenant.password },
-    })
-    expect(login.ok(), `POST /api/auth/login ${String(login.status())}`).toBe(true)
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
     await setLocale(page, 'en')
     await page.setViewportSize({ width: 1280, height: 900 })
     await page.goto(`/backend/activities/club-events/${eventId}?tab=files`)

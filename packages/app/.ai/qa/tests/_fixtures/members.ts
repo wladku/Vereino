@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
+import { capturedCount, finishSignInOnPage } from './auth'
 import { OPTIMISTIC_LOCK_HEADER, call, mercato, uniqueSuffix, type Club } from './club'
 
 export type SelfConsent = { granted: boolean; at: string | null }
@@ -181,6 +182,8 @@ export async function signInThroughForm(page: Page, email: string, password: str
   await expect(form).toBeVisible()
   await form.locator('input[name="email"]').fill(email)
   await form.locator('input[name="password"]').fill(password)
+  const since = capturedCount(email)
   await form.locator('input[name="password"]').press('Enter')
-  await page.waitForURL((url) => !url.pathname.startsWith('/login'), { timeout: 30_000 })
+  // A staff account continues on `/login/second-factor` with the e-mailed code (#736).
+  await finishSignInOnPage(page, email, since)
 }

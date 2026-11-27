@@ -3,12 +3,12 @@
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AwilixContainer } from 'awilix'
 import { ensureRoles } from '@open-mercato/core/modules/auth/lib/setup-app'
-import { User, UserRole } from '@open-mercato/core/modules/auth/data/entities'
+import { Session, User, UserRole } from '@open-mercato/core/modules/auth/data/entities'
 import type { CommandBus, CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
 import { isCrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import { findOneWithDecryption, findWithDecryption } from '@open-mercato/shared/lib/encryption/find'
 import { getTelemetryRuntime } from '@open-mercato/shared/lib/telemetry/runtime'
-import { catalogueAuthRoles, sameRoleSet } from '@vereino/core'
+import { catalogueAuthRoles, gainsSecondFactorRequirement, sameRoleSet } from '@vereino/core'
 import { lockUserRoleSync } from '../data/queries'
 
 export { desiredRoles, rolesForAssignments } from '@vereino/core'
@@ -51,7 +51,8 @@ export type DesiredRoleList = readonly string[] | ((currentRoles: readonly strin
  * from the user's current roles (set comparison, so a repeat changes nothing). Read and write run under a per-user
  * advisory lock in the caller's transaction. An unknown role name is a catalogue mismatch: reported as
  * `foundation.roles.catalogue_mismatch` and rethrown as an uncoded internal error; any other failure propagates
- * so the subscriber's queue or the next job run retries.
+ * so the subscriber's queue or the next job run retries. A newly granted role holding the second-factor requirement
+ * ends the user's sessions (DD-2F10).
  */
 export async function syncAuthRoles(
   userId: string,
@@ -92,5 +93,8 @@ export async function syncAuthRoles(
     getTelemetryRuntime()?.reportError(error, { module: 'foundation', code: 'foundation.roles.catalogue_mismatch' })
     throw new Error('[internal] a desired role is missing from the tenant', { cause: error })
   }
+  // Staff second factor DD-2F10 (#736): a role that brings `foundation.second_factor.required` ends the user's sessions,
+  // which were never challenged. Deleted in the same transaction, so a rolled-back role change keeps them.
+  if (gainsSecondFactorRequirement(current, roles)) await em.nativeDelete(Session, { user: userId })
   return 'updated'
 }

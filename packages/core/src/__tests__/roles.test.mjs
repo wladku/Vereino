@@ -11,6 +11,8 @@ import {
   roleCatalogue,
   rolesForAssignments,
   sameRoleSet,
+  SECOND_FACTOR_REQUIRED_FEATURE,
+  gainsSecondFactorRequirement,
 } from '../roles.ts'
 
 const TODAY = '2026-10-27'
@@ -62,6 +64,7 @@ test('the treasurer holds the finance features only (payments spec DD-33, #245)'
     'payments.cash.settle',
     'payments.orders.manage',
     'dashboards.view',
+    'foundation.second_factor.required',
   ])
   for (const prefix of ['people.', 'groups.', 'activities.', 'club_core.', 'facilities.', 'communication.']) {
     assert.equal(
@@ -193,4 +196,33 @@ test('sameRoleSet compares as sets', () => {
   assert.equal(sameRoleSet(['a'], ['a', 'b']), false)
   assert.equal(sameRoleSet(['a', 'c'], ['a', 'b']), false)
   assert.equal(sameRoleSet([], []), true)
+})
+
+test('the second-factor requirement is seeded on the administrator and the treasurer only (#736, DD-2F02)', () => {
+  assert.equal(SECOND_FACTOR_REQUIRED_FEATURE, 'foundation.second_factor.required')
+  const features = catalogueRoleFeatures()
+  const holders = Object.entries(features)
+    .filter(([, list]) => list.includes(SECOND_FACTOR_REQUIRED_FEATURE))
+    .map(([role]) => role)
+    .sort()
+  assert.deepEqual(holders, ['vereino_club_admin', 'vereino_treasurer'])
+  assert.ok(features.vereino_club_admin.includes('foundation.second_factor.reset'))
+  // No wildcard grants it by accident: no role holds `foundation.*` or `*`.
+  for (const list of Object.values(features)) {
+    assert.ok(!list.includes('foundation.*') && !list.includes('*'))
+  }
+})
+
+test('no Vereino role holds an API key feature, so a required user cannot skip the sign-in (#736)', () => {
+  for (const [role, list] of Object.entries(catalogueRoleFeatures())) {
+    assert.ok(!list.some((feature) => feature.startsWith('api_keys.')), role)
+  }
+})
+
+test('gainsSecondFactorRequirement: only a new grant of a requiring role counts (#736, DD-2F10)', () => {
+  assert.equal(gainsSecondFactorRequirement(['vereino_coach'], ['vereino_coach', 'vereino_treasurer']), true)
+  assert.equal(gainsSecondFactorRequirement([], ['vereino_club_admin']), true)
+  assert.equal(gainsSecondFactorRequirement(['vereino_treasurer'], ['vereino_treasurer', 'vereino_club_admin']), false)
+  assert.equal(gainsSecondFactorRequirement(['vereino_club_admin'], ['vereino_coach']), false)
+  assert.equal(gainsSecondFactorRequirement(['vereino_coach'], ['vereino_coach', 'superadmin']), false)
 })

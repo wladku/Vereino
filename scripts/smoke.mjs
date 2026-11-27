@@ -10,8 +10,12 @@
 //                     (ENG-TEST-11; HSTS, Permissions-Policy and the CSP decision from E18-S02, #463);
 //   no-store          an authenticated response (GET /api/auth/profile) carries `Cache-Control: no-store`. It needs a
 //                     test account in VEREINO_SMOKE_EMAIL and VEREINO_SMOKE_PASSWORD and is skipped without them.
+//                     An account holding the staff second factor (#736) gets its sign-in code from the app's
+//                     `OM_TEST_MODE` e-mail capture file named in VEREINO_SMOKE_EMAIL_CAPTURE; without it the check
+//                     fails with that hint (use an account without the second factor on a real deployment).
 // Exits 0 when every check passed or was skipped, 1 naming each failed check, 2 on a usage error. Never prints a
 // credential, a token or a response body.
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -102,26 +106,84 @@ export async function checkSignInPage({ baseUrl, fetchImpl }) {
 }
 
 /**
- * @param {{ baseUrl: string, fetchImpl: FetchLike, email?: string, password?: string }} options
+ * The newest sign-in code e-mailed to `email` in an `OM_TEST_MODE` e-mail capture (JSON lines; the code e-mail's
+ * subject ends with `123 456`), or null.
+ * @param {string} text
+ * @param {string} email
+ * @returns {string | null}
+ */
+export function latestSignInCode(text, email) {
+  let code = null
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim().startsWith('{')) continue
+    /** @type {{ to?: unknown, subject?: unknown }} */
+    let entry
+    try {
+      entry = JSON.parse(line)
+    } catch {
+      continue
+    }
+    if (entry.to !== email) continue
+    const match = /(\d{3}) (\d{3})\s*$/.exec(String(entry.subject))
+    if (match) code = `${match[1]}${match[2]}`
+  }
+  return code
+}
+
+/**
+ * @typedef {{ baseUrl: string, fetchImpl: FetchLike, email: string, password: string, readCapture?: () => Promise<string> }} SignInOptions
+ */
+
+/**
+ * Signs in with e-mail and password (form-encoded, as the login page does). A second-factor challenge (#736) is
+ * finished with the newest code of `readCapture`'s e-mail capture. Answers the full token or a failure detail.
+ * @param {SignInOptions} options
+ * @returns {Promise<{ token: string } | { error: string }>}
+ */
+export async function signIn({ baseUrl, fetchImpl, email, password, readCapture }) {
+  const login = await request(fetchImpl, `${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ email, password }).toString(),
+  })
+  const body = login.ok
+    ? /** @type {{ token?: unknown, secondFactor?: unknown }} */ (await login.json().catch(() => ({})))
+    : {}
+  if (typeof body.token !== 'string' || body.token === '') {
+    return { error: `sign-in as the smoke account failed (POST /api/auth/login ${String(login.status)})` }
+  }
+  if (!body.secondFactor) return { token: body.token }
+  if (!readCapture) {
+    return { error: 'the smoke account must finish a second factor: set VEREINO_SMOKE_EMAIL_CAPTURE or use another account' }
+  }
+  const code = latestSignInCode(await readCapture(), email)
+  if (code === null) return { error: 'no sign-in code for the smoke account in the e-mail capture' }
+  const verify = await request(fetchImpl, `${baseUrl}/api/foundation/second-factor/verify`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', authorization: `Bearer ${body.token}` },
+    body: JSON.stringify({ code }),
+  })
+  const verified = verify.ok ? /** @type {{ token?: unknown }} */ (await verify.json().catch(() => ({}))) : {}
+  if (typeof verified.token !== 'string' || verified.token === '') {
+    return { error: `the second factor of the smoke account failed (POST /api/foundation/second-factor/verify ${String(verify.status)})` }
+  }
+  return { token: verified.token }
+}
+
+/**
+ * @param {{ baseUrl: string, fetchImpl: FetchLike, email?: string, password?: string, readCapture?: () => Promise<string> }} options
  * @returns {Promise<CheckResult>}
  */
-export async function checkNoStore({ baseUrl, fetchImpl, email, password }) {
+export async function checkNoStore({ baseUrl, fetchImpl, email, password, readCapture }) {
   const name = 'no-store'
   if (!email || !password) {
     return { name, status: 'skip', detail: 'set VEREINO_SMOKE_EMAIL and VEREINO_SMOKE_PASSWORD to check it' }
   }
   try {
-    const login = await request(fetchImpl, `${baseUrl}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ email, password }).toString(),
-    })
-    const body = login.ok ? /** @type {{ token?: unknown }} */ (await login.json().catch(() => ({}))) : {}
-    if (typeof body.token !== 'string' || body.token === '') {
-      return { name, status: 'fail', detail: `sign-in as the smoke account failed (POST /api/auth/login ${String(login.status)})` }
-    }
+    const signedIn = await signIn({ baseUrl, fetchImpl, email, password, readCapture })
+    if ('error' in signedIn) return { name, status: 'fail', detail: signedIn.error }
     const profile = await request(fetchImpl, `${baseUrl}/api/auth/profile`, {
-      headers: { authorization: `Bearer ${body.token}` },
+      headers: { authorization: `Bearer ${signedIn.token}` },
     })
     const cacheControl = profile.headers.get('cache-control') ?? ''
     if (!profile.ok) return { name, status: 'fail', detail: `GET /api/auth/profile answered ${String(profile.status)}` }
@@ -133,14 +195,26 @@ export async function checkNoStore({ baseUrl, fetchImpl, email, password }) {
 }
 
 /**
- * @param {{ baseUrl: string, fetchImpl: FetchLike, email?: string, password?: string }} options
+ * Reads the e-mail capture file named in `VEREINO_SMOKE_EMAIL_CAPTURE` (empty when the file does not exist yet), or
+ * undefined when the variable is not set.
+ * @param {Record<string, string | undefined>} env
+ * @returns {(() => Promise<string>) | undefined}
+ */
+export function captureReader(env) {
+  const file = env.VEREINO_SMOKE_EMAIL_CAPTURE?.trim()
+  if (!file) return undefined
+  return async () => (fs.existsSync(file) ? fs.promises.readFile(file, 'utf8') : '')
+}
+
+/**
+ * @param {{ baseUrl: string, fetchImpl: FetchLike, email?: string, password?: string, readCapture?: () => Promise<string> }} options
  * @returns {Promise<CheckResult[]>}
  */
-export async function runChecks({ baseUrl, fetchImpl, email, password }) {
+export async function runChecks({ baseUrl, fetchImpl, email, password, readCapture }) {
   return [
     await checkHealth({ baseUrl, fetchImpl }),
     ...(await checkSignInPage({ baseUrl, fetchImpl })),
-    await checkNoStore({ baseUrl, fetchImpl, email, password }),
+    await checkNoStore({ baseUrl, fetchImpl, email, password, readCapture }),
   ]
 }
 
@@ -166,6 +240,7 @@ export async function runCli({
     fetchImpl,
     email: env.VEREINO_SMOKE_EMAIL,
     password: env.VEREINO_SMOKE_PASSWORD,
+    readCapture: captureReader(env),
   })
   for (const { name, status, detail } of results) log(`  ${status.toUpperCase().padEnd(4)} ${name} — ${detail}`)
   const failed = results.filter((result) => result.status === 'fail').map((result) => result.name)
