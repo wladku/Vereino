@@ -41,6 +41,17 @@ export function clubJobErrorCode(error: unknown): string {
   return typeof code === 'string' && ERROR_CODE.test(code) ? code : 'failed'
 }
 
+/**
+ * The problem code a finished run reports (`ClubJobRunResult.problem`): the run ended, but found something wrong (the
+ * payments invariants drift, #852). Stored as `last_error` while the next run follows the schedule. A short identifier
+ * is kept, any other string becomes `problem`, anything else is no problem (null).
+ */
+export function clubJobProblemCode(result: unknown): string | null {
+  const problem = result && typeof result === 'object' ? (result as { problem?: unknown }).problem : undefined
+  if (typeof problem !== 'string') return null
+  return ERROR_CODE.test(problem) ? problem : 'problem'
+}
+
 export type SweepPassDeps<Row> = {
   /** Claims at most `limit` due rows (the DD-M07 (a) statement). */
   claim(limit: number): Promise<readonly Row[]>

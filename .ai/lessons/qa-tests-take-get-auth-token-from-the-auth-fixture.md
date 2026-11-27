@@ -25,7 +25,10 @@ calls. A test that starts its own app server (ENT-TEST-03 of #814 runs a second 
 use the fixture's sign-in helpers, which post to the runner's `BASE_URL`: post the login and
 `/api/foundation/second-factor/verify` to that server's URL, with `capturedCount`, `isChallenge` and `waitForCode` from
 `_fixtures/auth`. A raw `page.request.post('/api/auth/login')` answers 200 with only the provisional token, so the next
-page opens `/login` (#814, 2026-11-27).
+page opens `/login` (#814, 2026-11-27). It happened again on #883 (2026-11-27): its new spec
+`ISSUE-847-backend-outlines-and-part-filter` was written before #831 landed, the PR's CI stayed green, and the train's
+batch failed with 401 on the administrator's first API call after `signInBrowser`; nothing but review catches the
+platform import yet, so a branch older than #831 must grep its own new specs too.
 
 **Applies to**: every integration test and fixture under `packages/app/.ai/qa/tests/`; PRs that change the sign-in
 flow and merge `main`.
