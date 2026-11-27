@@ -1,4 +1,5 @@
 import { expect, test, type Browser, type BrowserContextOptions, type Page } from '@playwright/test'
+import { capturedCount, finishSignInOnPage } from '../_fixtures/auth'
 import { createClub, uniqueSuffix, type Club } from '../_fixtures/club'
 import { startClubDomainApp, type ClubDomainApp } from '../_fixtures/club-domain'
 import { getSettings, png, publish, publicGet, putSettings, upload } from '../_fixtures/publication'
@@ -62,9 +63,12 @@ async function signInAtClub(page: Page): Promise<void> {
   await expect(form).toBeVisible()
   await form.locator('input[name="email"]').fill(club.tenant.email)
   await form.locator('input[name="password"]').fill(club.tenant.password)
+  const since = capturedCount(club.tenant.email)
   const answer = page.waitForResponse((response) => response.url().endsWith('/api/auth/login'))
   await form.locator('input[name="password"]').press('Enter')
   expect((await answer).ok()).toBe(true)
+  // The club administrator is staff: the sign-in continues on `/login/second-factor` with the e-mailed code (#736).
+  await finishSignInOnPage(page, club.tenant.email, since)
   await page.goto(`${origin}/club`)
   // The bar appears once the member's profile has loaded (the header shows the club's short name, unset here).
   await expect(page.getByTestId('club-bottom-bar')).toBeVisible()
