@@ -79,7 +79,14 @@ export async function memberContext(request: Request): Promise<MemberContext> {
   return { ok: true, ctx: ctx as CommandRuntimeContext & { auth: { sub: string } }, scope, grants }
 }
 
-export const flagSchema = z.enum(['outside_age', 'group_full', 'wants_trial', 'possible_duplicate', 'overdue'])
+export const flagSchema = z.enum([
+  'group_closed',
+  'outside_age',
+  'group_full',
+  'wants_trial',
+  'possible_duplicate',
+  'overdue',
+])
 
 export const listItemSchema = z.object({
   id: z.uuid(),

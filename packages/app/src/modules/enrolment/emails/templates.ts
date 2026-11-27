@@ -9,7 +9,7 @@ import * as React from 'react'
 import { z } from 'zod'
 import type { TranslateWithFallbackFn } from '@open-mercato/shared/lib/i18n/translate'
 import { defineEmailTemplate, type EmailRenderContext } from '@/modules/foundation'
-import { applicationConfirmPath, applicationStatusPath } from '../lib/paths'
+import { applicationConfirmPath, applicationStatusPath, clubPagePath } from '../lib/paths'
 
 const h = React.createElement
 
@@ -240,6 +240,71 @@ export const newLinkTemplate = template<NewLinkParams>({
   },
 })
 
+// --- Accepted (M-J3, phase 3) ---
+
+const acceptedParams = z
+  .object({
+    ...base,
+    groupName: z.string().min(1).max(200),
+    startDay: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    invitation: z.boolean(),
+  })
+  .strict()
+export type AcceptedParams = z.output<typeof acceptedParams>
+
+/** `enrolment.accepted`: the group and the start day; the account invitation comes in its own e-mail (Q-J08). */
+export const acceptedTemplate = template<AcceptedParams>({
+  id: 'enrolment.accepted',
+  params: acceptedParams,
+  copy: (t, params) => {
+    const values = { section: params.sectionName, group: params.groupName, date: params.startDay }
+    return {
+      subject: t('enrolment.email.accepted.subject', 'Welcome to {section}', values),
+      lead: t(
+        'enrolment.email.accepted.lead',
+        'Your application to {section} is accepted: the group is {group}, from {date}.',
+        values,
+      ),
+      lines: [
+        params.invitation
+          ? t(
+              'enrolment.email.accepted.invitation',
+              'You will receive a separate e-mail with an invitation to your account in the club’s app.',
+            )
+          : null,
+        t('enrolment.email.accepted.next', 'The coordinator will tell you about the first training and the fees.'),
+      ],
+    }
+  },
+})
+
+// --- The season ended (DD-J14, R24, phase 3) ---
+
+const seasonClosedParams = z.object(base).strict()
+export type SeasonClosedParams = z.output<typeof seasonClosedParams>
+
+/** `enrolment.season_closed`: an open application whose season ended is closed; the applicant may apply again. */
+export const seasonClosedTemplate = template<SeasonClosedParams>({
+  id: 'enrolment.season_closed',
+  params: seasonClosedParams,
+  copy: (t, params) => ({
+    subject: t('enrolment.email.seasonClosed.subject', 'Your application: {section}', { section: params.sectionName }),
+    lead: t(
+      'enrolment.email.seasonClosed.lead',
+      'The season your application to {section} was for has ended, so the application is closed.',
+      { section: params.sectionName },
+    ),
+    lines: [
+      t('enrolment.email.seasonClosed.again', 'You are welcome to apply again for the new season on the club’s page.'),
+    ],
+  }),
+  action: {
+    key: 'enrolment.email.seasonClosed.action',
+    fallback: 'Go to the club’s page',
+    path: (params) => clubPagePath(params.clubSlug),
+  },
+})
+
 export const ENROLMENT_EMAIL_TEMPLATES = [
   confirmEmailTemplate,
   receivedTemplate,
@@ -247,4 +312,6 @@ export const ENROLMENT_EMAIL_TEMPLATES = [
   rejectedTemplate,
   withdrawnTemplate,
   newLinkTemplate,
+  acceptedTemplate,
+  seasonClosedTemplate,
 ] as const

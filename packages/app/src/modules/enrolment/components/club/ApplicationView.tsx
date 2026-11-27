@@ -4,8 +4,9 @@
 // participant with the age on the reference date, the kind, the guardian with tap-to-mail and tap-to-call, the trial
 // wish, the experience, the note behind "Show", the flags, the possible duplicates (role and reason; a link to the person
 // where the shell has a person page), the history and the reject reason. A sticky bar offers the phase-2 decisions
-// **Waiting list** and **Reject** while the application is open and the caller may decide (Accept and Trial session come
-// with phases 3 and 4). States: loading, not found (404, also another section's application), error with retry, and
+// **Waiting list** and **Reject** while the application is open and the caller may decide, and **Accept** for a club
+// administrator (phase 3, #800; Trial session comes with phase 4); an accepted application links to its person where
+// the shell has a person page. States: loading, not found (404, also another section's application), error with retry, and
 // "changed by someone else — reload" after a 409.
 import * as React from 'react'
 import Link from 'next/link'
@@ -17,6 +18,7 @@ import { Button } from '@open-mercato/ui/primitives/button'
 import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton, browserTimeZone, useClubTimeZone, useGrantedFeatures } from '@vereino/ui'
 import { FlagTags, StateTag, ageLabel, groupLabel } from './ApplicationParts'
+import { AcceptSheet } from './AcceptSheet'
 import { RejectSheet, WaitingSheet, type SheetSide } from './DecisionSheets'
 import {
   APPLICATIONS_QUERY_KEY,
@@ -24,6 +26,7 @@ import {
   calendarDateLabel,
   instantDateTimeLabel,
   useApplication,
+  type AcceptOutcome,
   type ApplicationDetail,
   type DecisionOutcome,
 } from './applications-client'
@@ -40,7 +43,12 @@ export type ApplicationViewProps = {
   shell: 'member' | 'backend'
 }
 
-type Notice = { kind: 'waiting'; number: number | null } | { kind: 'rejected' } | { kind: 'conflict' } | null
+type Notice =
+  | { kind: 'waiting'; number: number | null }
+  | { kind: 'rejected' }
+  | { kind: 'accepted'; invitation: 'sent' | 'skipped' | 'failed' }
+  | { kind: 'conflict' }
+  | null
 
 function Fact({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -204,6 +212,14 @@ function Details({
         </section>
       ) : null}
 
+      {application.state === 'accepted' && application.acceptedChildPersonId && personHref ? (
+        <p className="text-sm" data-testid="enrolment-accepted-person">
+          <Link href={personHref(application.acceptedChildPersonId)} className={LINK_CLASS}>
+            {t('enrolment.club.detail.acceptedPerson')}
+          </Link>
+        </p>
+      ) : null}
+
       <section aria-labelledby={`${noteId}-history`} className="flex flex-col gap-2">
         <h2 id={`${noteId}-history`} className="text-lg font-semibold">
           {t('enrolment.club.detail.history')}
@@ -232,7 +248,7 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
   const queryClient = useQueryClient()
   const query = useApplication(id)
   const grants = useGrantedFeatures(DECIDE_FEATURES, apiCall)
-  const [sheet, setSheet] = React.useState<'waiting' | 'reject' | null>(null)
+  const [sheet, setSheet] = React.useState<'accept' | 'waiting' | 'reject' | null>(null)
   const [notice, setNotice] = React.useState<Notice>(null)
   const side: SheetSide = shell === 'member' ? 'bottom' : 'right'
 
@@ -282,6 +298,8 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
 
   const application = query.data.application
   const canDecide = application.canDecide && grants['enrolment.applications.decide']
+  // Everyone who decides the section may accept (delegated acceptance, #800).
+  const canAccept = canDecide
 
   const onOutcome = (outcome: DecisionOutcome) => {
     const decided = sheet
@@ -300,6 +318,24 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
     } else {
       setNotice({ kind: 'rejected' })
     }
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: [APPLICATION_QUERY_KEY, id] }),
+      queryClient.invalidateQueries({ queryKey: [APPLICATIONS_QUERY_KEY] }),
+    ])
+  }
+
+  const onAccepted = (outcome: AcceptOutcome) => {
+    setSheet(null)
+    if (outcome.status === 'conflict') {
+      setNotice({ kind: 'conflict' })
+      return
+    }
+    if (outcome.status === 'not_found') {
+      void reload()
+      return
+    }
+    if (outcome.status !== 'ok') return
+    setNotice({ kind: 'accepted', invitation: outcome.invitation })
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: [APPLICATION_QUERY_KEY, id] }),
       queryClient.invalidateQueries({ queryKey: [APPLICATIONS_QUERY_KEY] }),
@@ -352,6 +388,11 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
           </AlertDescription>
         </Alert>
       ) : null}
+      {notice?.kind === 'accepted' ? (
+        <Alert style="light" status="success" data-testid="enrolment-decision-done">
+          <AlertDescription>{t(`enrolment.club.accept.done.${notice.invitation}`)}</AlertDescription>
+        </Alert>
+      ) : null}
       {notice?.kind === 'rejected' ? (
         <Alert style="light" status="success" data-testid="enrolment-decision-done">
           <AlertDescription>{t('enrolment.club.reject.done')}</AlertDescription>
@@ -362,6 +403,19 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
 
       {canDecide ? (
         <div className={barClass} role="group" aria-label={t('enrolment.club.detail.actions')}>
+          {canAccept ? (
+            <Button
+              type="button"
+              className="min-h-11 flex-1 sm:flex-none"
+              data-testid="enrolment-action-accept"
+              onClick={() => {
+                setNotice(null)
+                setSheet('accept')
+              }}
+            >
+              {t('enrolment.club.actions.accept')}
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="outline"
@@ -389,6 +443,18 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
         </div>
       ) : null}
 
+      {sheet === 'accept' ? (
+        <AcceptSheet
+          key={`accept-${application.updatedAt}`}
+          application={application}
+          open
+          side={side}
+          onOpenChange={(open) => {
+            if (!open) setSheet(null)
+          }}
+          onOutcome={onAccepted}
+        />
+      ) : null}
       {sheet === 'waiting' ? (
         <WaitingSheet
           key={`waiting-${application.updatedAt}`}

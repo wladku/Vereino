@@ -5,15 +5,14 @@
 // section's lock token (`initialValues.updatedAt`). The contact is business contact data for publication, never read
 // from the people records. A link opens the public page when the section is public. The short description (at most
 // 160 characters) is the section's tile text on the public club page (UX parity spec REQ-U02, Q-U10). "Accepts online
-// applications" (sign-up form spec REQ-J01, B-J2) is rendered only once `SECTION_APPLICATIONS_SWITCH_SHOWN` is on
-// (phase 3); until then the form never sends it, so the stored value is kept.
+// applications" (sign-up form spec REQ-J01, B-J2) turns the section's sign-up form on; it is shown since phase 3
+// (#800), when an application can be accepted.
 import * as React from 'react'
 import Link from 'next/link'
 import { CrudForm, type CrudField, type CrudFormGroup } from '@open-mercato/ui/backend/CrudForm'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
 import { apiCallOrThrow } from '@open-mercato/ui/backend/utils/apiCall'
 import { useT } from '@open-mercato/shared/lib/i18n/context'
-import { SECTION_APPLICATIONS_SWITCH_SHOWN } from '../lib/publication'
 import { textOrNull } from './client-helpers'
 import type { SectionRow } from './sections-shared'
 
@@ -62,16 +61,12 @@ export function SectionPublicPanel({
         maxLength: 160,
         description: t('club_core.sections.public.fields.shortDescription.help'),
       },
-      ...(SECTION_APPLICATIONS_SWITCH_SHOWN
-        ? [
-            {
-              id: 'acceptsApplications',
-              label: t('club_core.sections.public.fields.acceptsApplications'),
-              type: 'checkbox',
-              description: t('club_core.sections.public.fields.acceptsApplications.help'),
-            } satisfies CrudField,
-          ]
-        : []),
+      {
+        id: 'acceptsApplications',
+        label: t('club_core.sections.public.fields.acceptsApplications'),
+        type: 'checkbox',
+        description: t('club_core.sections.public.fields.acceptsApplications.help'),
+      },
       {
         id: 'publicDescription',
         label: t('club_core.sections.public.fields.publicDescription'),
@@ -102,7 +97,7 @@ export function SectionPublicPanel({
           'shortDescription',
           'publicDescription',
           'publicConditions',
-          ...(SECTION_APPLICATIONS_SWITCH_SHOWN ? ['acceptsApplications'] : []),
+          'acceptsApplications',
         ],
       },
       {
@@ -148,9 +143,7 @@ export function SectionPublicPanel({
               headers: { 'content-type': 'application/json' },
               body: JSON.stringify({
                 isPublic: values.isPublic,
-                ...(SECTION_APPLICATIONS_SWITCH_SHOWN
-                  ? { acceptsApplications: values.acceptsApplications === true }
-                  : {}),
+                acceptsApplications: values.acceptsApplications === true,
                 publicSlug: textOrNull(values.publicSlug),
                 shortDescription: textOrNull(values.shortDescription),
                 publicDescription: textOrNull(values.publicDescription),

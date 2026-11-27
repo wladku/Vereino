@@ -5,6 +5,8 @@ import type { CommandBus } from '@open-mercato/shared/lib/commands'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { jobCommandContext } from '@/modules/foundation'
 import type { RetentionJobResult } from './commands/applications'
+import type { EraseApplicantResult } from './commands/seasons'
+import { applicantApplications } from './services/applicant-data'
 
 function readOptions(argv: string[], names: readonly string[]): Record<string, string | undefined> {
   const options = Object.fromEntries(names.map((name) => [name, { type: 'string' as const }]))
@@ -40,9 +42,51 @@ function jobCli(command: 'expire-unconfirmed' | 'daily', commandId: string): Mod
   }
 }
 
+/**
+ * `enrolment applicant-data --tenant <id> --org <id> --email <address> [--erase]` (sign-up form spec *API* → applicant
+ * CLI, REQ-J18; phase 3, #800): a data subject request of an applicant who is not a member. Prints the address's
+ * applications in that club (found by the keyed `email_key`, decrypted) as JSON; with `--erase` runs
+ * `enrolment.applications.erase_applicant` (delete the unconfirmed, withdraw the open, anonymise all, erase the
+ * address's deliveries) and prints its counts.
+ */
+const applicantDataCli: ModuleCli = {
+  command: 'applicant-data',
+  async run(argv) {
+    const { tenant, org, email } = readOptions(argv, ['tenant', 'org', 'email'])
+    const erase = argv.includes('--erase')
+    if (!tenant || !org || !email) {
+      process.stderr.write(
+        'Usage: mercato enrolment applicant-data --tenant <tenantId> --org <organizationId> --email <address> [--erase]\n',
+      )
+      throw new Error('[internal] enrolment applicant-data: invalid options')
+    }
+    const container = await createRequestContainer()
+    const scope = { tenantId: tenant, organizationId: org }
+    if (erase) {
+      const { result } = await container
+        .resolve<CommandBus>('commandBus')
+        .execute<unknown, EraseApplicantResult>('enrolment.applications.erase_applicant', {
+          input: { email },
+          ctx: jobCommandContext(container, scope),
+        })
+      const counts = {
+        deleted: result.deleted,
+        withdrawn: result.withdrawn,
+        anonymised: result.anonymised,
+        deliveries: result.deliveries,
+      }
+      process.stdout.write(`${JSON.stringify(counts)}\n`)
+      return
+    }
+    const applications = await applicantApplications(container, scope, email)
+    process.stdout.write(`${JSON.stringify({ applications })}\n`)
+  },
+}
+
 const cli: ModuleCli[] = [
   jobCli('expire-unconfirmed', 'enrolment.applications.expire_unconfirmed'),
   jobCli('daily', 'enrolment.applications.daily'),
+  applicantDataCli,
 ]
 
 export default cli

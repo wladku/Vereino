@@ -30,7 +30,10 @@ import {
 import { isDecidableState } from '../lib/states'
 import {
   applicationTargets,
+  candidatePersons,
   clubDay,
+  groupFees,
+  type GroupFee,
   enrolmentSettings,
   isOfferedGroup,
   publicSite,
@@ -304,6 +307,7 @@ function listItem(
     closedAt: row.closedAt?.toISOString() ?? null,
     waitingNumber: facts.numbers.get(row.id) ?? null,
     flags: applicationFlags({
+      groupClosed: Boolean(target && !target.isActive) && isDecidableState(row.state),
       ageFit: row.ageFit,
       groupFull: Boolean(target && isGroupFull(target)) && isDecidableState(row.state),
       wantsTrial: row.wantsTrial,
@@ -398,8 +402,33 @@ export type ApplicationDetail = ApplicationListItem & {
   decidedAt: string | null
   createdAt: string
   anonymized: boolean
-  duplicates: { personId: string; role: string; reason: string }[]
-  groups: { id: string; name: string; full: boolean; placesLimit: number | null; occupied: number; ageFit: string }[]
+  duplicates: {
+    personId: string
+    role: string
+    reason: string
+    /** The existing person's name and birth date (null when the person is gone), for the accept sheet (DD-J11). */
+    name: string | null
+    birthDate: string | null
+    hasAccount: boolean
+  }[]
+  groups: {
+    id: string
+    name: string
+    full: boolean
+    placesLimit: number | null
+    occupied: number
+    ageFit: string
+    /** The group's fees valid today (Q-J06); empty when the group is not public or has none. */
+    fees: GroupFee[]
+  }[]
+  /** The club's today: the earliest start day of an acceptance (BR-J6). */
+  today: string
+  /** The last day of the season the application counts for (DD-J03); null without a season. */
+  seasonEndsOn: string | null
+  /** The person and membership an accepted application became (phase 3). */
+  acceptedMembershipId: string | null
+  acceptedChildPersonId: string | null
+  acceptedGuardianPersonId: string | null
   canDecide: boolean
 }
 
@@ -427,6 +456,12 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
     date: row.referenceDate,
   })
   const birthDate = row.anonymizedAt ? null : (row.participantBirthDate ?? null)
+  const stored = row.duplicateCandidates ?? []
+  const [fees, candidates] = await Promise.all([
+    groupFees(ctx.container, ctx.scope, row.sectionId),
+    // Every decider of the section sees the possible duplicates and may reuse one on accept (J-J05, #800).
+    candidatePersons(ctx.container, ctx.scope, [...new Set(stored.map((entry) => entry.personId))]),
+  ])
   const groups = reference
     .filter((target) => target.isActive)
     .map((target) => {
@@ -438,6 +473,7 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
         placesLimit: target.placesLimit,
         occupied: todays?.occupied ?? target.occupied,
         ageFit: birthDate ? ageFitOf(birthDate, row.referenceDate, target.fitRule) : 'unknown',
+        fees: fees.get(target.groupId) ?? [],
       }
     })
   return {
@@ -457,8 +493,21 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
     decidedAt: row.decidedAt?.toISOString() ?? null,
     createdAt: row.createdAt.toISOString(),
     anonymized: Boolean(row.anonymizedAt),
-    duplicates: row.duplicateCandidates ?? [],
+    duplicates: stored.map((entry) => {
+      const person = candidates.get(entry.personId)
+      return {
+        ...entry,
+        name: person?.name ?? null,
+        birthDate: person?.birthDate ?? null,
+        hasAccount: person?.hasAccount ?? false,
+      }
+    }),
     groups,
+    today,
+    seasonEndsOn: reference[0]?.seasonEndsOn ?? null,
+    acceptedMembershipId: row.acceptedMembershipId ?? null,
+    acceptedChildPersonId: row.acceptedChildPersonId ?? null,
+    acceptedGuardianPersonId: row.acceptedGuardianPersonId ?? null,
     canDecide: isDecidableState(row.state),
   }
 }
