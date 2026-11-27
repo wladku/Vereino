@@ -1,0 +1,1 @@
+| 2026-11-26 | Close-out V (#842): BT-AC-01…BT-AC-03 ticked with the live evidence of the 2026-11-25 switch-on (runs 45668573457, 45777316212, 45869153312; ruleset 26707580; `MERGE_TRAIN_BATCH_SIZE` 4); Status Implemented; moved to `implemented/`. |

@@ -1,7 +1,7 @@
 # Vereino foundation — reusable backend and frontend primitives, with staff accounts and roles (#38) as the first consumer
 
 **Date**: 2026-10-27
-**Status**: In progress — approved by the product owner on 2026-10-27 (PRs #40, #44) and for phase C on 2026-11-04 (D30); every acceptance criterion ticked (close-out IV #719: REQ-F01…F14 and F16 built, e.g. `foundation/services/{roles,accounts,encrypted-field,errors}.ts`, `packages/ui/src/member/member-shell.tsx`; TEST-F01…F11 and F14 on `main`); left: two phase A2 pieces neither built as specified nor amended — the shared `ConsentToggle` (the consent switch is module-owned in `people` `ClubProfilePage`) and the `vereino:club:header` spot; an owner decision (build, or amend like #586 and #587) moves the spec to `implemented/`
+**Status**: In progress — approved by the product owner on 2026-10-27 (PRs #40, #44) and for phase C on 2026-11-04 (D30); every acceptance criterion ticked (close-out IV #719: REQ-F01…F14 and F16 built, e.g. `foundation/services/{roles,accounts,encrypted-field,errors}.ts`, `packages/ui/src/member/member-shell.tsx`; TEST-F01…F11 and F14 on `main`); left: two phase A2 pieces neither built as specified nor amended — the shared `ConsentToggle` (the consent switch is module-owned in `people` `ClubProfilePage`) and the `vereino:club:header` spot; an owner decision on #857 (build, or amend like #586 and #587) moves the spec to `implemented/`
 
 > Use `om-spec-writing` for every new application, multi-module feature, or other non-trivial business slice. Keep every section below; write `N/A — {reason}` when a section does not apply. Change the status to `Ready for implementation` only after every blocking open question is resolved and the traceability table covers every requirement.
 

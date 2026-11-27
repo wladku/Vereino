@@ -1,4 +1,4 @@
-// BT-TEST-01 (plan) and BT-TEST-02 (judge) of `.ai/specs/2026-11-18-batch-merge-train.md`, phase 1.
+// BT-TEST-01 (plan) and BT-TEST-02 (judge) of `.ai/specs/implemented/2026-11-18-batch-merge-train.md`, phase 1.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {

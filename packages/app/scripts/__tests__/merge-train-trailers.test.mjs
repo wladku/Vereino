@@ -1,4 +1,4 @@
-// BT-TEST-04 of `.ai/specs/2026-11-18-batch-merge-train.md`: the batch trailers round trip, malformed means no batch.
+// BT-TEST-04 of `.ai/specs/implemented/2026-11-18-batch-merge-train.md`: the batch trailers round trip, malformed means no batch.
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {

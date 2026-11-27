@@ -357,19 +357,19 @@ Out of this spec: the chosen module gets its own spec under the boundary rule DD
 ## Acceptance Criteria
 
 - [ ] **AC-E01** — Without the package and without any secret, `yarn install --immutable`, `yarn verify`, the
-  integration suite and the Docker build pass unchanged.
+  integration suite and the Docker build pass unchanged. — gap: #713 (phase 1b, PR #814)
 - [ ] **AC-E02** — With the fixture overlay, the demo module is registered; without it, it is not, and no public file
-  imports `@vereino/enterprise`.
-- [ ] **AC-E03** — A key verifies offline; a key for tenant A enables nothing for tenant B or on another instance;
-  tampered, unknown-`kid` and (outside CI) test-`kid` keys are rejected.
+  imports `@vereino/enterprise`. — gap: #713 (fixture overlay and import rule; the public half is ENT-TEST-02, PR #723)
+- [x] **AC-E03** — A key verifies offline; a key for tenant A enables nothing for tenant B or on another instance;
+  tampered, unknown-`kid` and (outside CI) test-`kid` keys are rejected. — PR #723, `packages/core/src/__tests__/licence.test.mjs`, `foundation/lib/__tests__/licence-verify.test.ts`, `foundation/ENT-TEST-02-licence-status.spec.ts` (close-out V #842)
 - [ ] **AC-E04** — Enterprise code asks only `enterpriseFeatures`; no public file imports the package; the demo module
-  is `on` for A, `off` for B.
+  is `on` for A, `off` for B. — gap: #713 (demo module, ENT-TEST-03)
 - [ ] **AC-E05** — After expiry plus the grace period the feature is read-only (reads work, writes 409) and stays so
-  while the key is installed; the core keeps working.
+  while the key is installed; the core keeps working. — gap: #713 (the `read_only` state is unit-tested; reads and 409 writes need ENT-TEST-03)
 - [ ] **AC-E06** — `licenses:check` and `forbidden-packages:check` pass in both shapes and fail on a non-permissive
-  overlay dependency and on a public import of the package.
-- [ ] **AC-E07** — The boundary rule and the first-module candidates are recorded and approved by the owner.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+  overlay dependency and on a public import of the package. — gap: #713 (ENT-TEST-04, the overlay rule of `licenses:check`)
+- [x] **AC-E07** — The boundary rule and the first-module candidates are recorded and approved by the owner. — PR #660: DD-E09 and *Boundary* in this spec; owner answers in `changelog/2026-11-23-vereino-enterprise-package/2026-11-23-owner-answers-ready.md` (close-out V #842)
+- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes. — gap: #713; phase 2 (private repository, signing key, staging overlay) is #853
 
 ## Final Compliance Report
 
