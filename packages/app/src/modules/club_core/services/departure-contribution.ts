@@ -105,7 +105,10 @@ export const departureContribution: DepartureContributor = {
   async afterCommit(changes, ctx, undo) {
     const ids = changes.filter((change) => change.kind === 'contract').map((change) => change.recordId)
     if (ids.length === 0) return
-    const em = ctx.container.resolve<EntityManager>('em').fork()
+    // Inside the replay transaction on undo/redo: its connection, not a second pooled one (#836).
+    const em = ctx.em
+      ? ctx.em.fork({ keepTransactionContext: true })
+      : ctx.container.resolve<EntityManager>('em').fork()
     const rows = await em.find(Contract, {
       tenantId: ctx.tenantId,
       organizationId: ctx.organizationId,

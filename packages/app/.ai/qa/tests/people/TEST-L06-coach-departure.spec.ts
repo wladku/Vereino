@@ -1,5 +1,5 @@
 import { expect, test, type APIRequestContext, type TestInfo } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
 import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import { addDays, createActivity, listOccurrences, type OccurrenceItem } from '../_fixtures/activities'

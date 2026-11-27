@@ -70,6 +70,7 @@ Also set per environment (not checked at boot, but the feature they serve fails 
 | `DEMO_MODE=false`, `SELF_SERVICE_ONBOARDING_ENABLED=false` | no demo widgets, no self-service tenants |
 | `OM_PASSWORD_MIN_LENGTH=12`, `OM_PASSWORD_REQUIRE_DIGIT=false`, `OM_PASSWORD_REQUIRE_UPPERCASE=false`, `OM_PASSWORD_REQUIRE_SPECIAL=false` | the password policy (#747, see *Password policy* below); app and worker. Unset, the platform default applies: 6 characters with a digit, an upper-case letter and a special character |
 | `OM_INIT_SUPERADMIN_EMAIL`, `OM_INIT_SUPERADMIN_PASSWORD`, `OM_INIT_ADMIN_EMAIL`, `OM_INIT_EMPLOYEE_EMAIL` | only for the one-time initialisation below; remove them afterwards. Unset, `yarn initialize` creates a `superadmin` account at the platform's demo domain `acme.com` with the password `secret` |
+| `VEREINO_STAFF_IDLE_MINUTES=30`, `REMEMBER_ME_DAYS=7` | the session limits of ENG-Q-12 (#737, see *Session lifetime* below); app only. Unset, the staff idle timeout is 30 minutes and "remember me" keeps a member signed in for the platform's 30 days |
 | `VEREINO_CLUB_DOMAIN` | optional; the club domain of an instance with many clubs (see *Club addresses* below). Unset: one club per instance |
 | `RATE_LIMIT_STRATEGY=redis` | the app's request limits (per route, per club) count in Redis, so every app replica shares them; with the default `memory` each process counts alone (many-clubs spec DD-M10, #633) |
 | `VEREINO_CLUB_RATE_LIMIT_POINTS`, `VEREINO_CLUB_RATE_LIMIT_DURATION` | optional; each club's budget of authenticated API requests, default 600 per 60 s; `0` points switch it off. Tune from the capacity report ([`capacity.md`](capacity.md)) |
@@ -316,7 +317,7 @@ The platform checks a new password against four variables (`OM_PASSWORD_*`, tabl
 create and edit, profile and password-reset API routes and `mercato auth set-password`. Production and staging use
 the policy of ASVS 5.0 level 2 (V6.2.1, V6.2.5): **at least 12 characters, no character-class rules**. Set the four variables on the app and the worker of each environment.
 
-On top of them the Vereino password check (#779, `.ai/specs/2026-11-26-vereino-password-check.md`) refuses, on every
+On top of them the Vereino password check (#779, `.ai/specs/implemented/2026-11-26-vereino-password-check.md`) refuses, on every
 API path that sets a password (user create and edit, profile, the reset and invitation link):
 
 - more than 64 characters or 72 bytes (bcrypt reads no further), and a space at the start or the end;
@@ -325,6 +326,52 @@ API path that sets a password (user create and edit, profile, the reset and invi
 
 The root layout hands the same variables to the platform's browser forms, so they state and check what the server
 does. No extra variable; the check needs no configuration. `mercato auth set-password` (shell) is not checked.
+
+### Staff second factor
+
+Club administrators, treasurers and the platform super-admin sign in with Google or with the password and a six-digit
+code e-mailed to the account's address (`.ai/specs/2026-11-26-vereino-staff-second-factor.md`, #736). It holds only
+while these are true:
+
+- **Transactional e-mail works.** The code is the fallback's only channel; while the provider is down the sign-in of
+  staff without Google answers 503 and the logs show `foundation.second_factor.unavailable` (fail closed). The
+  operator's own sign-in needs a working mailbox too.
+- **`OM_AUTOLOGIN_*` stays unset** (variables above): autologin issues a session without any factor.
+- **The smoke account holds no staff role**: a club administrator or treasurer gets a code instead of a session, so
+  the `no-store` check could not sign in.
+
+The release that ships phase 1 (and any environment set up before it) runs, in this order:
+
+1. `yarn mercato foundation sync-role-acls-if-changed` (the [role ACL sync](#role-acl-sync), part of every deploy):
+   the club administrator and treasurer roles of existing clubs get `foundation.second_factor.required` and the
+   administrator `foundation.second_factor.reset`. Until it ran, existing clubs are not challenged.
+2. For each club: `yarn mercato foundation second-factor end-sessions --tenant <tenantId> --org <organizationId>`. It
+   ends the sessions of every user holding the requirement, so a session issued before the release cannot outlive it
+   (Q-2F05); it prints the counts and a repeat finds nothing. The platform super-admin's tenant is one of these runs.
+
+**A lost factor.** A club administrator resets another staff member on the person record (Account → Sign-in
+methods → Reset second factor) after verifying them, for example by calling back the number on the record. For the
+last administrator of a club, or the super-admin, the operator verifies the person by their own procedure and runs:
+
+```bash
+yarn mercato foundation second-factor reset --tenant <tenantId> --org <organizationId> \
+  --email <the person's e-mail> --note "<how the person was verified>"
+```
+
+It removes the person's sign-in identities and ends all their sessions; the note goes to the command log. Record the
+reset, without the person's e-mail, in the run log of the support case.
+
+### Session lifetime
+
+ENG-Q-12 (answered 2026-11-26, #737; engineering standards S8.5). A **staff account** — any role besides member and
+payer, the platform's `superadmin`, `admin` and `employee` included — is signed out after `VEREINO_STAFF_IDLE_MINUTES`
+(30 in staging and production) without input, and never later than 8 hours after sign-in; "remember me" changes nothing
+for it. The server enforces it on the session row: the sign-in sets its expiry to the idle timeout and the app shell's
+activity report (`POST /api/foundation/session/activity`, at most once a minute while the user types or clicks) moves
+it forward. A script or API client that signs in as staff therefore needs a fresh sign-in after the idle timeout. A
+**member** keeps the platform lifetime: 8 hours, or `REMEMBER_ME_DAYS` (7 in staging and production) with "remember
+me". An own login e-mail change needs the current password (the backend profile page asks for it). Staff sessions
+opened before the deploy keep their old expiry until their first activity report narrows it.
 
 ## After every deploy
 

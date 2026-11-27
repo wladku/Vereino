@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
 import { expectNoPageOverflow, prepareForAccessibilityScan, scanBlockingViolations } from '../_fixtures/axe'
 import { birthDateTurning, call, createClub, createSecondOrganization, createStaff, signInAs } from '../_fixtures/club'

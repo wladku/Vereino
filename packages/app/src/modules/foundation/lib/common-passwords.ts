@@ -1,5 +1,5 @@
 // The common and breached password list of the Vereino password check (#779, spec
-// .ai/specs/2026-11-26-vereino-password-check.md, PW-D01): the UK NCSC "100k most used passwords", derived from Have I
+// .ai/specs/implemented/2026-11-26-vereino-password-check.md, PW-D01): the UK NCSC "100k most used passwords", derived from Have I
 // Been Pwned, as published in SecLists (Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt, MIT licence,
 // Copyright (c) 2018 Daniel Miessler). Lower-cased and de-duplicated, most used first; one password per line. Entries
 // that are e-mail addresses are left out (personal data, and `secrets:check` refuses real addresses).

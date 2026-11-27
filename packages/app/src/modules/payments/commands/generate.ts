@@ -215,7 +215,7 @@ const generateChargesCommand: CommandHandler<Record<string, unknown>, ChargeGene
       )
       const { parsed, tenantId, organizationId } = authorized
       const scope = { tenantId, organizationId }
-      const clock = await clubClock(ctx.container, scope)
+      const clock = await clubClock(ctx.container, scope, undefined, em)
       if (!periodInGenerationRange(parsed.period, clock.today)) await paymentsErrors.throw('period_out_of_range')
       if (!(await tryLockGeneration(em, organizationId))) await paymentsErrors.throw('generation_in_progress')
 

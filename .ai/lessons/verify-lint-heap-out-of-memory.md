@@ -1,23 +1,16 @@
 ---
-title: "A lint step that dies of heap exhaustion is the environment, not the change: rerun with a larger heap"
+title: "When `yarn verify` fails at lint with a heap out-of-memory crash, resume with a larger Node heap"
 modules: ["platform"]
-areas: ["testing"]
-topics: ["verify", "lint", "out-of-memory", "node-options"]
+areas: ["testing", "debugging"]
+topics: ["lint", "eslint", "out-of-memory", "verify"]
 ---
 
-# A lint step that dies of heap exhaustion is the environment, not the change: rerun with a larger heap
+# When `yarn verify` fails at lint with a heap out-of-memory crash, resume with a larger Node heap
 
-**Context**: On #833 (2026-11-26, Cezar run on the shared Linux server) `yarn verify` failed at `lint`. The output held
-no lint error, only `FATAL ERROR: Ineffective mark-compacts near heap limit … JavaScript heap out of memory` from
-`eslint .` in `@vereino/app` at about 4 GB, then `The command failed in workspace @vereino/app … exit code 129`. The
-change touched three TypeScript files.
+**Context**: On 2026-11-26 (run for #870, a docs-only change) `yarn verify` failed at `lint` after 102 s with `FATAL ERROR: Ineffective mark-compacts near heap limit Allocation failed - JavaScript heap out of memory` in the `@vereino/app` workspace (exit code 129), on a server with plenty of free RAM. The lint step itself reported no errors before the crash. The same crash hit the run for #833 the same day (`eslint .` in `@vereino/app` at about 4 GB, a change of three TypeScript files), so it does not depend on the diff.
 
-**Problem**: The summary only says `FAIL lint`, so the failure reads like a lint finding. Type-aware ESLint over the
-whole app grows past Node's default old-space limit, and the run fails regardless of the diff.
+**Problem**: The crash looks like a lint failure, but it is Node's default heap limit being reached by ESLint over the whole app workspace; nothing in the change causes it, and retrying with the same settings can fail again.
 
-**Rule**: When `lint` fails, look for `heap out of memory` before looking for findings. If it is there, rerun the
-gate with `NODE_OPTIONS=--max-old-space-size=8192 yarn verify --from lint`, then finish with one full green
-`yarn verify` under the same setting. Never edit the lint configuration or skip the step to get past it, and say in the
-PR that the larger heap was used.
+**Rule**: When `lint` dies with `JavaScript heap out of memory`, resume the gate with a larger heap: `NODE_OPTIONS=--max-old-space-size=8192 yarn verify --from lint`, and report the crash and the rerun in the run log and the PR, and finish with one full green `yarn verify` under the same setting. Never edit the lint configuration or skip the step to get past it. Treat any ESLint error or warning count printed before the crash as real findings; do not raise the heap to hide them.
 
-**Applies to**: `yarn verify` step `lint` (`eslint .` in `packages/app`), local and server runs of autonomous agents.
+**Applies to**: `yarn verify` (`lint` step), `yarn lint`, local and Cezar runs on the shared server.

@@ -61,8 +61,11 @@ export type ClubCoreSettingsService = {
    * runs on the connection the caller holds (#728) — otherwise on a fork of the request's EntityManager.
    */
   get(scope: ClubSettingsScope, em?: EntityManager): Promise<ClubSettingsSnapshot>
-  /** The name of the club's platform organization (`clubName` on B-02, #87), or null when it cannot be read. */
-  organizationName(scope: ClubSettingsScope): Promise<string | null>
+  /**
+   * The name of the club's platform organization (`clubName` on B-02, #87), or null when it cannot be read; `em` as
+   * in `get` (#836).
+   */
+  organizationName(scope: ClubSettingsScope, em?: EntityManager): Promise<string | null>
 }
 
 /** The stored columns of a row, keyed by setting (decimals read as numbers). */
@@ -140,9 +143,9 @@ export async function readClubSettings(em: EntityManager, scope: ClubSettingsSco
 export function createClubCoreSettingsService(getEm: () => EntityManager): ClubCoreSettingsService {
   return {
     get: (scope, em) => readClubSettings(em ? em.fork({ keepTransactionContext: true }) : getEm().fork(), scope),
-    async organizationName(scope) {
+    async organizationName(scope, em) {
       const organization = await findOneWithDecryption(
-        getEm().fork(),
+        em ? em.fork({ keepTransactionContext: true }) : getEm().fork(),
         Organization,
         { id: scope.organizationId, tenant: scope.tenantId, deletedAt: null },
         undefined,

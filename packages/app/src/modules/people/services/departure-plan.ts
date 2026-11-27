@@ -137,7 +137,7 @@ async function clubAdmins(em: EntityManager, container: AwilixContainer, scope: 
       : []
   const active: string[] = []
   for (const person of persons) {
-    if ((await accountView(container, scope, person.userId)).state === 'active') active.push(person.id)
+    if ((await accountView(container, scope, person.userId, em)).state === 'active') active.push(person.id)
   }
   return { clubAdminIds: adminIds, activeAccountAdminIds: active }
 }

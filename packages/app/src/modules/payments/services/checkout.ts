@@ -131,9 +131,16 @@ export function chargeVisibleTo(
   return charge.payerMissing && !!charge.personId && [payer.personId, ...payer.wardIds].includes(charge.personId)
 }
 
-/** The club's `online_fee_*` settings (R13, owned by `club_core`). */
-export async function onlineFeeSettings(container: AwilixContainer, scope: PaymentsScope): Promise<OnlineFeeSettings> {
-  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope)
+/**
+ * The club's `online_fee_*` settings (R13, owned by `club_core`); read with `em` when given (the caller's
+ * transaction, #836).
+ */
+export async function onlineFeeSettings(
+  container: AwilixContainer,
+  scope: PaymentsScope,
+  em?: EntityManager,
+): Promise<OnlineFeeSettings> {
+  const settings = await container.resolve<ClubCoreSettingsService>(CLUB_CORE_SETTINGS).get(scope, em)
   const { onlineFeeMode, onlineFeePercent, onlineFeeFixed } = settings.values
   return { onlineFeeMode, onlineFeePercent, onlineFeeFixed }
 }
@@ -179,7 +186,7 @@ export async function checkedCharges(
     ]),
   )
   const shares = checkoutShares(chargeIds, remaining)
-  const totals = checkoutTotals(shares, await onlineFeeSettings(container, payer.scope))
+  const totals = checkoutTotals(shares, await onlineFeeSettings(container, payer.scope, em))
   return { charges, shares, totals }
 }
 

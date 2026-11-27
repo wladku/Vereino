@@ -217,6 +217,8 @@ Tests live in `packages/app/.ai/qa/tests/foundation/identity/`, are self-contain
 | TEST-S03 | integration | fake Facebook returning no e-mail; a linked Facebook identity | link from the profile; sign-in with the link; deletion callback with a valid and an invalid signature, an oversized and a chunked body | link with `email_at_link` null; `/club` reached; valid → link removed and a confirmation code; invalid → 400 and the link kept; oversized or chunked → 413 and the link kept | REQ-S03 |
 | TEST-S05 | integration (browser) + security | DD-S07: a second app process with `VEREINO_CLUB_DOMAIN` (as TEST-M03 of the many clubs spec); fake Google; clubs A and B with public slugs; identity I linked to a user of A | sign-in with I started on A's address; the hand-off replayed; the hand-off opened on B's address; the hand-off opened in a browser without the state cookie; I started on B's address | the callback runs on `APP_URL` only, the hand-off on A's address, the session cookie is set on A's address (none on `APP_URL`) and the landing path opens there; replayed, foreign-host and other-browser hand-offs → `identity=invalid` without a session; I on B → `identity=unlinked` on B's address, no session on either address | REQ-S01, REQ-S04 |
 | TEST-S04 | UI | account with two links and one; provider disabled | `/login` and `/club/profile` at 375 px, keyboard, dark mode; disabled provider | buttons per enabled provider; the generic sentence announced; disconnect disabled with explanation for the last method; axe clean | REQ-S01, REQ-S02 |
+| TEST-S06 | integration + security | a second app process on the same build and database whose cache cannot write (`jsonfile` below a regular file; #848) | `start` for Google and Facebook; a callback whose state matches its cookie | 503 `identity_unavailable`, no redirect to the provider, no state cookie; the callback → `/login?identity=invalid` without a session cookie; no `auth:user` created | REQ-S04 |
+| TEST-S07 | UI | an administrator with `foundation.identity.manage`; a person with a Google link and a password; a person whose only method is Google (#848) | the person record's Account tab (`person-identities`) at 375 px: list, list failing then "Try again", unlink with a stale version, Escape and Ctrl+Enter in the confirmation, the last method | the link with its e-mail and no "Connect"; the error with retry recovers; 409 announced and the list reloaded; unlink announced and the empty state shown; "Unlink" disabled with the explanation; axe clean in light and dark mode | REQ-S02 |
 
 ## Implementation Phases
 
@@ -253,9 +255,9 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 | Requirement | Journey / surface | Data/API/event contracts | Phase | Tests | Acceptance criterion |
 |---|---|---|---|---|---|
 | REQ-S01 | J-S01, J-S02, `/login` | `vereino_identity_links`, `start`, `callback`, `foundation.identity.signed_in` | 1 | TEST-S01, TEST-S04 | AC-S01 |
-| REQ-S02 | J-S01, `/club/profile`, person record | `me`, `link`, `unlink`, admin list, `identity_last_method`, `identity_already_linked`, `foundation.identity.linked|unlinked`, `foundation:identity-cleanup` | 1 | TEST-S02, TEST-S04 | AC-S02 |
+| REQ-S02 | J-S01, `/club/profile`, person record | `me`, `link`, `unlink`, admin list, `identity_last_method`, `identity_already_linked`, `foundation.identity.linked|unlinked`, `foundation:identity-cleanup` | 1 | TEST-S02, TEST-S04, TEST-S07 | AC-S02 |
 | REQ-S03 | J-S03 | `providers/facebook`, `deletion` route | 2 | TEST-S03 | AC-S03 |
-| REQ-S04 | every sign-in attempt | state marker, PKCE, the generic outcome, `identity_unavailable` | 1 | TEST-S01 | AC-S04 |
+| REQ-S04 | every sign-in attempt | state marker, PKCE, the generic outcome, `identity_unavailable` | 1 | TEST-S01, TEST-S06 | AC-S04 |
 
 ## Rollout, Migration, and Rollback
 
@@ -282,9 +284,9 @@ Validation for every phase: `yarn verify` (single gate), `yarn test:integration:
 - [ ] **AC-S01** — A person with a linked Google identity signs in from `/login` with one click and reaches `/club` with the platform's session; `last_signed_in_at` is updated and the event carries ids only.
 - [ ] **AC-S02** — A signed-in person connects and disconnects providers in `/club/profile`; the last sign-in method cannot be removed (409); the administrator unlinks any person's identity; deleting the `auth` user removes its links.
 - [ ] **AC-S03** — Facebook sign-in and linking work with and without an e-mail; the deletion callback removes the link and returns a confirmation code; a bad signature is refused.
-- [ ] **AC-S04** — A sign-in without a link, a replayed or tampered state, an unreachable state store and a provider failure each end without a session and without an account, showing the same generic sentence; no response reveals whether an identity or an e-mail exists.
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
+- [x] **AC-S04** — A sign-in without a link, a replayed or tampered state, an unreachable state store and a provider failure each end without a session and without an account, showing the same generic sentence; no response reveals whether an identity or an e-mail exists.
+- [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell/components, shared API helpers, semantic tokens, and complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode, and dark-mode states.
+- [x] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
 
 ## Final Compliance Report
 

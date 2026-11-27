@@ -21,8 +21,8 @@ import {
 // token endpoint that times out and an id token for another client all end without a session; a user of another
 // tenant cannot take the subject (generic link failure, nothing revealed); a session without
 // `foundation.identity.self` cannot start a link (403); an unknown provider answers 404; no sign-in route
-// creates a platform user. The state-store-down path (503) is not driven here: a running app's cache cannot be stopped
-// from a test.
+// creates a platform user. The state-store-down path (503) runs in TEST-S06, on a second app process whose cache
+// cannot write: a running app's cache cannot be stopped from a test.
 test.describe.configure({ timeout: 300_000, mode: 'serial' })
 
 type IdentityList = {

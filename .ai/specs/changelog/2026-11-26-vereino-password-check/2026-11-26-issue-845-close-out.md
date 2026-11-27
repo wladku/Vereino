@@ -1,0 +1,1 @@
+| 2026-11-26 | #845: TEST-PW01 also covers `POST /api/auth/users` and every refusal code on `PUT /api/auth/profile`; ASVS rows V6.1.2 and V6.2.12 name the check and TEST-PW01/TEST-PW02; PW-AC-01–03 ticked, status `Implemented`, moved to `implemented/` |
