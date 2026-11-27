@@ -2,7 +2,8 @@
 // view of one person's linked identities, shaped as `me`. The person's account comes from the contact resolver
 // (`vereino.contactResolver`, registered by `people`), so `foundation` reads no `people` table; a person without an
 // account has no links. `secondFactor` (#736) says whether the person signs in with a second factor and whether the
-// caller may reset it.
+// caller may reset it; `unlinkGoogleThroughReset` (#841, phase 2) that the person's Google link is their second factor,
+// so the record's "Unlink Google" opens the reset instead (the plain unlink answers 409 `second_factor_reset_required`).
 import type { OpenApiRouteDoc } from '@open-mercato/shared/lib/openapi'
 import { z } from 'zod'
 import { assertInScope, trustedScopeOf } from '../../services/authorize-scoped'
@@ -41,10 +42,13 @@ export async function GET(request: Request): Promise<Response> {
     // Staff second factor (#736, DD-2F07): whether the person signs in with a second factor and whether this
     // administrator may reset it (never their own; `foundation.second_factor.reset`).
     const required = contact.userId ? await holdsSecondFactorRequirement(ctx.container, contact.userId, scope) : false
-    const canReset =
-      required && contact.userId !== ctx.auth.sub && (await sessionHasFeatures(ctx, ['foundation.second_factor.reset']))
+    const other = required && contact.userId !== ctx.auth.sub
+    const canReset = other && (await sessionHasFeatures(ctx, ['foundation.second_factor.reset']))
     return Response.json(
-      { ...list, secondFactor: { userId: contact.userId ?? null, required, canReset } },
+      {
+        ...list,
+        secondFactor: { userId: contact.userId ?? null, required, canReset, unlinkGoogleThroughReset: other },
+      },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
   } catch (error: unknown) {
@@ -69,6 +73,9 @@ export const openApi: OpenApiRouteDoc = {
               userId: z.uuid().nullable(),
               required: z.boolean().describe('The person signs in with a second factor (#736)'),
               canReset: z.boolean().describe('This administrator may reset it (never their own)'),
+              unlinkGoogleThroughReset: z
+                .boolean()
+                .describe("The person's Google link is their second factor: removed only by the reset (#841)"),
             }),
           }),
         },

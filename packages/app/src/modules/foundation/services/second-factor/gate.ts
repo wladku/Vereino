@@ -3,13 +3,16 @@
 // asks RBAC whether the user holds `foundation.second_factor.required`; if so it never lets the platform's cookies or
 // `refreshToken` through: it opens a challenge for the platform's session, e-mails the code and answers with a
 // provisional `mfa_pending` token for that same session (V-2F01: the platform refuses it everywhere but the two
-// completion routes). Every refusal deletes the platform session first (fail closed, REQ-2F05).
+// completion routes). Every refusal deletes the platform session first (fail closed, REQ-2F05). Phase 2 (#841, DD-2F06,
+// Q-2F01): a required user with a Google identity link must sign in with Google, so the password is refused with
+// `second_factor_use_google` while Google sign-in is enabled (with it disabled the e-mail code stays the way in).
 import { NextResponse } from 'next/server'
 import { signJwt, verifyJwt } from '@open-mercato/shared/lib/auth/jwt'
 import { parseBooleanToken } from '@open-mercato/shared/lib/boolean'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { foundationErrors } from '../../api/errors'
 import { emitFoundationEvent } from '../../events'
+import { identityProviderConfig } from '../../lib/identity'
 import {
   CHALLENGE_TTL_MS,
   SECOND_FACTOR_METHOD,
@@ -24,6 +27,7 @@ import {
   type ChallengeMarker,
 } from '../../lib/second-factor'
 import type { FoundationErrorCode } from '../../lib/error-codes'
+import { ownLinkCount } from '../identity-links'
 import { sessionlessRateLimiter } from '../sessionless-limits'
 import {
   SecondFactorUnavailable,
@@ -58,6 +62,14 @@ async function rememberOf(request: Request): Promise<boolean> {
   } catch {
     return false
   }
+}
+
+/** Google sign-in is enabled (a client id and secret are configured); the gate reads it without the OAuth client. */
+function googleEnabled(): boolean {
+  return (
+    identityProviderConfig('google', process.env, process.env.APP_URL || process.env.NEXT_PUBLIC_APP_URL || null) !==
+    null
+  )
 }
 
 /** The hourly per-user cap: true when allowed; a limiter that could not count refuses (fail closed). */
@@ -117,6 +129,22 @@ export async function withSecondFactor(
     reportSecondFactor('foundation.second_factor.unavailable', { step: 'claims' })
     await endPlatformSession(container, sid)
     return secondFactorRefusal('second_factor_unavailable')
+  }
+
+  // Phase 2 (DD-2F06): a connected Google account is the only way in; the e-mail code would be the weaker path.
+  if (googleEnabled()) {
+    let linked: number
+    try {
+      linked = await ownLinkCount(container, { tenantId: issued.tenantId, organizationId: issued.orgId }, sub, 'google')
+    } catch (error: unknown) {
+      reportSecondFactor('foundation.second_factor.unavailable', { step: 'google_link', err: error })
+      await endPlatformSession(container, sid)
+      return secondFactorRefusal('second_factor_unavailable')
+    }
+    if (linked > 0) {
+      await endPlatformSession(container, sid)
+      return secondFactorRefusal('second_factor_use_google')
+    }
   }
 
   const allowed = await challengeAllowed(request, sub)
