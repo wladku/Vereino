@@ -11,14 +11,16 @@ import {
 } from '../_fixtures/club'
 import { personVersion } from '../_fixtures/medical'
 import { actionLogEntries } from '../_fixtures/people'
-import { markAndConfirm, pictureId, pictureOf, picturePath, pictureScene } from '../_fixtures/pictures'
+import { markAndConfirm, pictureId, pictureOf, picturePath, pictureScene, picturesOf } from '../_fixtures/pictures'
 
 // Event photos spec phase 2 (#872; REQ-I10, REQ-I11, BR-I07, DD-I12, DD-I13, J-I05, AC-I07): TEST-I08 — a former
 // participant is marked by the club administrator on two pictures of "PRZYKŁAD CUP 2026". A
 // third picture marks nobody and staff delete it: its row and bytes are gone at once and the undo of that delete answers
 // 409 `club_event_picture_erased`. Anonymising the former participant deletes both marked pictures, their marks and
 // their bytes, lists the picture ids as tombstones on the erasure's audit entry, and keeps the unmarked live picture;
-// the undo of a picture's marks answers 409 `club_event_picture_erased`. The new tables are in the club's table list (club deletion is covered by TEST-M07).
+// the undo of a picture's marks answers 409 `club_event_picture_erased`. A fourth picture is uploaded and its upload
+// undone: its row is deleted and its bytes released like a staff delete's (#898), and a second undo of that upload
+// answers 409. The new tables are in the club's table list (club deletion is covered by TEST-M07).
 test.describe.configure({ timeout: 420_000 })
 
 type Row = { id: string; attachment_id: string }
@@ -87,6 +89,21 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
     const undoDelete = await undoByToken(request, coordinator, String(deleteLog?.undoToken))
     expect(undoDelete.status(), await undoDelete.text()).toBe(409)
     expect(await undoDelete.text()).toContain('club_event_picture_erased')
+
+    // Undoing a picture's upload deletes it for good and releases its bytes (#898).
+    const undoneUpload = await pictureId(request, coordinator, eventId, { description: 'Złe zdjęcie' })
+    const [undoneRow] = await pictureRows(club, [undoneUpload])
+    const addLog = (await actionLogEntries(request, coordinator, undoneUpload)).find(
+      (entry) => entry.commandId === 'activities.club_event_files.add',
+    )
+    expect(addLog?.undoToken, 'the undo token of the upload').toBeTruthy()
+    const undoAdd = await undoByToken(request, coordinator, String(addLog?.undoToken))
+    expect(undoAdd.status(), await undoAdd.text()).toBe(200)
+    expect(await pictureRows(club, [undoneUpload])).toEqual([])
+    await expect.poll(() => attachmentCount([undoneRow?.attachment_id ?? ''])).toBe(0)
+    expect((await picturesOf(request, coordinator, eventId))?.some((entry) => entry.id === undoneUpload)).toBe(false)
+    const undoAgain = await undoByToken(request, coordinator, String(addLog?.undoToken))
+    expect(undoAgain.status(), await undoAgain.text()).not.toBe(200)
 
     // The erasure of the former participant.
     const marked = await pictureRows(club, [live, second])
