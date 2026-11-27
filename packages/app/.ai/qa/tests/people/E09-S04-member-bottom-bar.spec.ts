@@ -312,6 +312,8 @@ test('E09-S04 the same bottom bar on every member page and every member page rea
       expect.stringMatching(uiText('people.club.nav.clubEvents', { exact: true })),
       // Coaches and coordinators write training outlines (training outlines spec M-O5, #683).
       expect.stringMatching(uiText('people.club.nav.outlines', { exact: true })),
+      // A coordinator reads the declaration share of their sections on the phone (E27-S02, #819).
+      expect.stringMatching(uiText('people.club.nav.declarationShare', { exact: true })),
       // Coaches and coordinators share personal invitation links with families (#868).
       expect.stringMatching(uiText('people.club.nav.invitations', { exact: true })),
       expect.stringMatching(uiText('people.club.nav.backend', { exact: true })),

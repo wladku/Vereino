@@ -825,6 +825,7 @@
   "people.club.nav.clubEvents": "Club events",
   "people.club.nav.outlines": "Training outlines",
   "people.club.nav.invitations": "Invitations",
+  "people.club.nav.declarationShare": "Declarations in Vereino",
   "people.person.formerMember": "Former member",
   "people.errors.anonymize_blocked": "This person cannot be anonymised yet.",
   "people.errors.confirmation_mismatch": "The last name does not match.",
