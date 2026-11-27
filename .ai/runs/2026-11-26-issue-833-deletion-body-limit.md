@@ -61,3 +61,13 @@
 - `NODE_OPTIONS=--max-old-space-size=8192 yarn verify` — `all 24 step(s) passed`.
 - `yarn test:integration:vereino --filter TEST-S03` — `1 passed (1.1m)`.
 - `yarn guard` — no blocking findings.
+
+## 2026-11-27 — second base refresh (om-auto-fix-pr, PR #844)
+
+- Trigger: PR #844 conflicted with `main` again after later merges. Worked on a detached HEAD at the PR head and
+  merged `origin/main` (no force-push, no history rewrite).
+- Conflict: `.ai/lessons/verify-lint-heap-out-of-memory.md` — `main` (run for #832) had rewritten the Context line this
+  branch had also edited. Kept one line naming all three occurrences (#870, #833, #832). Code, tests and spec merged
+  cleanly; the PR's own diff against `main` is unchanged.
+- `NODE_OPTIONS=--max-old-space-size=8192 yarn verify` — `all 24 step(s) passed`.
+- `yarn test:integration:vereino --filter TEST-S03` — 1 expected, 0 unexpected (66.7 s).
