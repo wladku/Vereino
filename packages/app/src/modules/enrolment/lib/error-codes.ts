@@ -18,7 +18,7 @@ export const errorCodes = [
   { code: 'decision_reason_required', status: 422, messageKey: 'enrolment.errors.decision_reason_required' },
   // Accepting (BR-J4, BR-J6, DD-J10, DD-J10a, DD-J11; phase 3, #800).
   { code: 'group_full', status: 409, messageKey: 'enrolment.errors.group_full' },
-  { code: 'membership_overlap', status: 409, messageKey: 'enrolment.errors.membership_overlap' },
+  { code: 'participant_already_in_group', status: 409, messageKey: 'enrolment.errors.participant_already_in_group' },
   { code: 'start_day_invalid', status: 422, messageKey: 'enrolment.errors.start_day_invalid' },
   { code: 'accept_person_invalid', status: 422, messageKey: 'enrolment.errors.accept_person_invalid' },
   {

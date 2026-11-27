@@ -251,7 +251,7 @@ export type AcceptOutcome =
   | { status: 'error' }
 
 /** The 409 codes the accept sheet answers itself; any other 409 is "changed by someone else". */
-const ACCEPT_REFUSALS = new Set(['group_full', 'membership_overlap', 'guardianship_duplicate'])
+const ACCEPT_REFUSALS = new Set(['group_full', 'participant_already_in_group', 'guardianship_duplicate'])
 
 export async function acceptApplication(id: string, request: AcceptRequest): Promise<AcceptOutcome> {
   let call

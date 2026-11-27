@@ -83,7 +83,7 @@ export const openApi: OpenApiRouteDoc = {
         {
           status: 409,
           description:
-            '`group_full`, `membership_overlap`, `guardianship_duplicate`, `application_state_conflict`, `optimistic_lock_conflict`',
+            '`group_full`, `participant_already_in_group`, `guardianship_duplicate`, `application_state_conflict`, `optimistic_lock_conflict`',
           schema: errorSchema,
         },
         {

@@ -9,7 +9,7 @@
 //    (DD-J11); for a child the guardianship is created through `people.guardianships.create` (primary payer when the
 //    child has none) unless the guardian already guards the child;
 // 4. the participant membership from the start day is created through `groups.membershipImporter` (the nested
-//    `groups.memberships.create`, its overlap rule: 409 `membership_overlap`);
+//    `groups.memberships.create`, its overlap rule: 409 `participant_already_in_group`);
 // 5. the application is closed as accepted with the person and membership ids; the note is cleared (*Security* →
 //    Minimisation) and the acceptance e-mail enqueued.
 // The nested commands share the transaction (`transactionalEm`) and defer their events (`bulkImport`, the people
@@ -277,7 +277,7 @@ const acceptCommand: CommandHandler<Record<string, unknown>, AcceptResult> = {
         { key: row.id, personId: participantId, groupId: input.groupId, validFrom: input.startDay },
       ])
       const outcome = run.outcomes.get(row.id)
-      if (outcome?.status === 'existed') return enrolmentErrors.throw('membership_overlap')
+      if (outcome?.status === 'existed') return enrolmentErrors.throw('participant_already_in_group')
       if (outcome?.status !== 'created') return throwFieldError('application_group_invalid', 'groupId')
       written.emitMembership = () => run.emitSideEffects()
 

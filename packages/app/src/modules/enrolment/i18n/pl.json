@@ -212,7 +212,7 @@
   "enrolment.errors.decision_reason_required": "Podaj powód, który zobaczy zgłaszający.",
   "enrolment.errors.group_full": "Grupa jest pełna. Zaznacz „Przyjmij ponad limit”, aby mimo to przyjąć.",
   "enrolment.errors.invitation_birth_date_required": "Podaj datę urodzenia opiekuna albo nie wysyłaj zaproszenia do konta.",
-  "enrolment.errors.membership_overlap": "Ten uczestnik jest już w tej grupie w tym dniu.",
+  "enrolment.errors.participant_already_in_group": "Ten uczestnik jest już w tej grupie w tym dniu.",
   "enrolment.errors.start_day_invalid": "Wybierz dzień rozpoczęcia od dziś do końca sezonu.",
   "enrolment.flags.group_closed": "Grupa zamknięta",
   "enrolment.flags.group_full": "Grupa pełna",

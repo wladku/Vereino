@@ -212,7 +212,7 @@
   "enrolment.errors.decision_reason_required": "Give a reason the applicant will see.",
   "enrolment.errors.group_full": "The group is full. Tick “Accept beyond the limit” to accept anyway.",
   "enrolment.errors.invitation_birth_date_required": "Give the guardian's birth date, or do not send the account invitation.",
-  "enrolment.errors.membership_overlap": "This participant is already in the group on that day.",
+  "enrolment.errors.participant_already_in_group": "This participant is already in the group on that day.",
   "enrolment.errors.start_day_invalid": "Choose a start day from today until the end of the season.",
   "enrolment.flags.group_closed": "Group closed",
   "enrolment.flags.group_full": "Group full",

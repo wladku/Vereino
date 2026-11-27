@@ -21,7 +21,7 @@ import { guardianships } from '../_fixtures/people'
 // guardian, whose birth date the decider gives on the sheet, the account invitation after the commit. A second child of
 // the same guardian (same e-mail) reuses the guardian, so no second guardian is created. A child already in the club
 // (same name and birth date) is reused; accepting it into the group it is already in answers 409
-// `membership_overlap`. Only a possible duplicate may be reused (422), and a coordinator, who cannot create club
+// `participant_already_in_group`. Only a possible duplicate may be reused (422), and a coordinator, who cannot create club
 // persons, gets 403 `accept_requires_admin`.
 test.describe.configure({ timeout: 360_000 })
 
@@ -219,7 +219,7 @@ test('TEST-J07 accept a new family, reuse a guardian and a child', async ({ requ
       updatedAt: zosiaFresh.body?.updatedAt,
     })
     expect(overlap.status, JSON.stringify(overlap.body)).toBe(409)
-    expect(overlap.body?.code).toBe('membership_overlap')
+    expect(overlap.body?.code).toBe('participant_already_in_group')
     // The refused acceptance rolled back: no guardian was created and the application is still open.
     expect((await acceptedRow(club, String(zosiaApp?.id))).state).toBe('new')
     const intoOrliki = await acceptApplication(request, admin, String(zosiaApp?.id), {

@@ -42,7 +42,7 @@ const SHEET_CLASS: Record<SheetSide, string> = {
 
 const KNOWN_PROBLEMS = new Set([
   'group_full',
-  'membership_overlap',
+  'participant_already_in_group',
   'guardianship_duplicate',
   'start_day_invalid',
   'application_group_invalid',

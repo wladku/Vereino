@@ -459,7 +459,10 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
   const stored = row.duplicateCandidates ?? []
   const [fees, candidates] = await Promise.all([
     groupFees(ctx.container, ctx.scope, row.sectionId),
-    candidatePersons(ctx.container, ctx.scope, [...new Set(stored.map((entry) => entry.personId))]),
+    // The names of existing club persons go to the club administrator only, who alone accepts (`accept_requires_admin`).
+    sections === 'all'
+      ? candidatePersons(ctx.container, ctx.scope, [...new Set(stored.map((entry) => entry.personId))])
+      : Promise.resolve(new Map<string, { name: string; birthDate: string | null; hasAccount: boolean }>()),
   ])
   const groups = reference
     .filter((target) => target.isActive)
