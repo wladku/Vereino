@@ -11,7 +11,9 @@
 // the field; below the form, a guardian's "Wards and consents" (each ward's age, account, the "Primary payer" badge
 // (#263), groups with sections — the `groups` widget on the `vereino:club:ward:groups` spot — and the three consents with date and author), a ward's
 // "My guardians" with the consents read-only (R10: consents and payments stay with the guardian), and the link to the
-// platform's change-password page. People life-cycle spec M-10 (#306): an adult member gets the link "Leave the club"
+// member's change-password page `/club/profile/password` (#876; the panel's page before), which returns here with
+// `?password=changed` for the "password changed" message (`PasswordChangedNotice`). People life-cycle spec M-10
+// (#306): an adult member gets the link "Leave the club"
 // to `/club/profile/leave`; a minor does not. People life-cycle spec REQ-L10 (#309): an adult gets "My consents"
 // (`OwnConsentsSection`), and every consent shows the club's own wording when the club changed it, with "given to an
 // earlier wording" for a consent given before the change (DD-L11). Phase L8 (#310): a card before and after the
@@ -19,6 +21,7 @@
 // Social sign-in (#566): below the password, `foundation`'s "Connected accounts" on the `vereino:club:profile:sign-in` spot.
 import * as React from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -26,6 +29,7 @@ import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { normalizeCrudServerError } from '@open-mercato/ui/backend/utils/serverErrors'
 import { apiCallOrThrow, withScopedApiRequestHeaders } from '@open-mercato/ui/backend/utils/apiCall'
 import { buildOptimisticLockHeader } from '@open-mercato/ui/backend/utils/optimisticLock'
+import { Alert } from '@open-mercato/ui/primitives/alert'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { FormField } from '@open-mercato/ui/primitives/form-field'
 import { Input } from '@open-mercato/ui/primitives/input'
@@ -36,6 +40,7 @@ import { useLocale, useSupportedLocales, useT } from '@open-mercato/shared/lib/i
 import { calendarDateInZone } from '@vereino/core'
 import { MemberSwitchField, StatusTag } from '@vereino/ui'
 import { mayFileDepartureRequest } from '../../lib/departure-rules'
+import { hasPasswordChangedMarker, withoutPasswordChangedMarker } from '../../lib/password-change'
 import { publicPersonName } from '../../lib/member-rules'
 import { ClubFrame } from './ClubFrame'
 import { ConsentList, EarlierWording, useConsentLabel } from './ConsentList'
@@ -443,6 +448,33 @@ function GuardiansSection({ profile }: { profile: MemberProfile }) {
   )
 }
 
+/**
+ * "Your password has been changed." after `/club/profile/password` saved (#876): read from `?password=changed` (the
+ * router's search parameters: after a client-side navigation `window.location` still shows the previous page while this
+ * renders), kept once seen, and dropped from the address so a reload does not repeat it. A status region.
+ */
+function PasswordChangedNotice() {
+  const t = useT()
+  const searchParams = useSearchParams()
+  const marked = hasPasswordChangedMarker(`?${searchParams.toString()}`)
+  const [shown, setShown] = React.useState(marked)
+  if (marked && !shown) setShown(true)
+  React.useEffect(() => {
+    if (!marked) return
+    const { pathname, search, hash } = window.location
+    window.history.replaceState(window.history.state, '', `${pathname}${withoutPasswordChangedMarker(search)}${hash}`)
+  }, [marked])
+  return (
+    <div role="status">
+      {shown ? (
+        <Alert style="light" status="success" data-testid="club-profile-password-changed">
+          <p>{t('people.club.profile.password.changed')}</p>
+        </Alert>
+      ) : null}
+    </div>
+  )
+}
+
 function PasswordSection() {
   const t = useT()
   return (
@@ -490,6 +522,7 @@ export function ClubProfilePage() {
     <ClubFrame skeleton="fields">
       {(profile) => (
         <div className="flex flex-col gap-6">
+          <PasswordChangedNotice />
           <OwnLifeCycleNotice profile={profile} />
           <ProfileForm key={profile.person.updatedAt ?? profile.person.id} profile={profile} />
           <OwnConsentsSection profile={profile} />

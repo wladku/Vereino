@@ -1206,6 +1206,24 @@
       "rule": "inline-style",
       "match": "style=",
       "reason": "Facilities parity spec DD-R01 (#276): the day axis is a recorded exception to the shared components; these style props carry only computed geometry (minutes to pixels, lanes), no colours."
+    },
+    {
+      "file": "src/app/app-icon/[size]/route.tsx",
+      "rule": "inline-style",
+      "match": "style",
+      "reason": "The app icon is drawn by next/og (Satori) into a PNG; Satori reads only inline style props, there is no stylesheet or design token in an image (D-045, #873)."
+    },
+    {
+      "file": "src/app/app-icon/[size]/route.tsx",
+      "rule": "inline-style",
+      "match": "style",
+      "reason": "The app icon is drawn by next/og (Satori) into a PNG; Satori reads only inline style props, there is no stylesheet or design token in an image (D-045, #873)."
+    },
+    {
+      "file": "src/app/app-icon/[size]/route.tsx",
+      "rule": "inline-style",
+      "match": "style",
+      "reason": "The app icon is drawn by next/og (Satori) into a PNG; Satori reads only inline style props, there is no stylesheet or design token in an image (D-045, #873)."
     }
   ]
 }

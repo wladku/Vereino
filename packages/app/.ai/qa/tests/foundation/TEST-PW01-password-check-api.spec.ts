@@ -1,11 +1,11 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { call, uniqueSuffix } from '../_fixtures/club'
 import { capturedEmails } from '../_fixtures/members'
 import { createIsolatedTenant, type IsolatedTenant } from '../_fixtures/tenant'
 
-// TEST-PW01 (password check spec, REQ-PW01, REQ-PW03, PW-AC-01; #779): every API path that sets a password — the
-// administrator's `PUT /api/auth/users`, the user's own `PUT /api/auth/profile` and the reset link's
+// TEST-PW01 (password check spec, REQ-PW01, REQ-PW03, PW-AC-01; #779, #845): every API path that sets a password —
+// the administrator's `POST` and `PUT /api/auth/users`, the user's own `PUT /api/auth/profile` and the reset link's
 // `POST /api/auth/reset/confirm` — refuses a common, too long, space-bounded or context-word password with its code and
 // stores nothing; a good passphrase passes; the current password is checked exactly as typed. The integration runner
 // sets the production policy (12 characters, no character classes).
@@ -27,9 +27,10 @@ async function expectSignIn(request: APIRequestContext, email: string, password:
   expect(response.ok(), `sign-in ${String(response.status())}`).toBe(true)
 }
 
-test('TEST-PW01 the password check on the admin, profile and reset-link paths', async ({ request }) => {
+test('TEST-PW01 the password check on the admin create and edit, profile and reset-link paths', async ({ request }) => {
   const superToken = await getAuthToken(request, 'superadmin')
   let tenant: IsolatedTenant | null = null
+  let createdUserId: string | null = null
   try {
     tenant = await createIsolatedTenant(request, 'test-pw01')
     const { email, userId, organizationId, tenantId } = tenant
@@ -43,6 +44,36 @@ test('TEST-PW01 the password check on the admin, profile and reset-link paths', 
       expect(refused.body?.code).toBe(code)
     }
     await expectSignIn(request, email, tenant.password)
+
+    // The administrator creates a user (`POST /api/auth/users`): each refusal answers 422 with its code, no account is
+    // stored and the address cannot sign in; the user's own address is a context word here as well.
+    const newEmail = `test-pw01-new-${uniqueSuffix()}@example.org`
+    const createRefusals = [...REFUSED, { candidate: `${newEmail.split('@')[0]}!!`, code: 'password_context_word' }]
+    for (const { candidate, code } of createRefusals) {
+      const refused = await call(request, 'POST', '/api/auth/users', superToken, {
+        data: { email: newEmail, password: candidate, organizationId, roles: [tenant.roleId] },
+      })
+      expect(refused.status, `create ${code} ${JSON.stringify(refused.body)}`).toBe(422)
+      expect(refused.body?.code).toBe(code)
+    }
+    const listed = await call<{ total: number }>(
+      request,
+      'GET',
+      `/api/auth/users?organizationId=${organizationId}`,
+      superToken,
+    )
+    expect(listed.status, JSON.stringify(listed.body)).toBe(200)
+    expect(listed.body?.total).toBe(1)
+    const refusedSignIn = await request.post('/api/auth/login', { form: { email: newEmail, password: COMMON } })
+    expect(refusedSignIn.ok()).toBe(false)
+    const createdPassword = GOOD()
+    const created = await call<{ id: string }>(request, 'POST', '/api/auth/users', superToken, {
+      data: { email: newEmail, password: createdPassword, organizationId, roles: [tenant.roleId] },
+    })
+    expect(created.status, JSON.stringify(created.body)).toBe(201)
+    createdUserId = created.body?.id ?? null
+    await expectSignIn(request, newEmail, createdPassword)
+
     let current = GOOD()
     const set = await call(request, 'PUT', '/api/auth/users', superToken, { data: { id: userId, password: current } })
     expect(set.status, JSON.stringify(set.body)).toBe(200)
@@ -54,6 +85,27 @@ test('TEST-PW01 the password check on the admin, profile and reset-link paths', 
       data: { currentPassword: `${current} `, password: GOOD() },
     })
     expect(trimmed.status, JSON.stringify(trimmed.body)).toBe(400)
+    await expectSignIn(request, email, current)
+
+    // Every refusal code on the user's own change: 422 with its code, and the current password still signs in. A
+    // password below the policy never reaches the Vereino check here: the platform's profile schema refuses it first
+    // (400 with an issue on `password`), so it is asserted as that refusal.
+    for (const { candidate, code } of REFUSED) {
+      const refused = await call<{ code?: string; issues?: Array<{ path?: unknown[] }> }>(
+        request,
+        'PUT',
+        '/api/auth/profile',
+        token,
+        { data: { currentPassword: current, password: candidate } },
+      )
+      if (code === 'password_policy') {
+        expect(refused.status, `profile ${code} ${JSON.stringify(refused.body)}`).toBe(400)
+        expect(refused.body?.issues?.some((issue) => issue.path?.[0] === 'password')).toBe(true)
+        continue
+      }
+      expect(refused.status, `profile ${code} ${JSON.stringify(refused.body)}`).toBe(422)
+      expect(refused.body?.code).toBe(code)
+    }
     await expectSignIn(request, email, current)
 
     // The user's own address and the club's name are context words on this path.
@@ -109,6 +161,8 @@ test('TEST-PW01 the password check on the admin, profile and reset-link paths', 
     expect(confirmed.status(), await confirmed.text()).toBe(200)
     await expectSignIn(request, email, fresh)
   } finally {
+    if (createdUserId)
+      await call(request, 'DELETE', `/api/auth/users?id=${createdUserId}`, superToken).catch(() => undefined)
     await tenant?.cleanup()
   }
 })

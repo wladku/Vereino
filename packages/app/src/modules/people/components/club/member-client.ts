@@ -8,8 +8,8 @@ export const MEMBER_PROFILE_API = '/api/people/me'
 export const MEMBER_PROFILE_QUERY_KEY = ['people-me'] as const
 /** The member paths come from the one navigation definition of `@vereino/ui` (E06-S19 #101). */
 export { BACKEND_HREF, CLUB_HOME_HREF, CLUB_PROFILE_HREF } from '@vereino/ui'
-/** The platform's change-password page of the `auth` module (README M-10). */
-export const CHANGE_PASSWORD_HREF = '/backend/profile/change-password'
+/** The member's own change-password page in the member app (README M-10; #876, no longer the panel's page). */
+export { MEMBER_PASSWORD_HREF as CHANGE_PASSWORD_HREF } from '../../lib/member-rules'
 /** The member's request to leave the club (people life-cycle spec REQ-L03, #306). */
 export const CLUB_LEAVE_HREF = '/club/profile/leave'
 

@@ -1,0 +1,1 @@
+| 2026-11-26 | Owner answered Q-IL01…Q-IL05 (#868): `qrcode` approved, 7-day links, Vereino token link, migration + lookup exception + routes + feature approved, Google activation deferred; status Ready for implementation |

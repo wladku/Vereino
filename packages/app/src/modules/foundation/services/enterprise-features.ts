@@ -4,11 +4,18 @@
 // an unknown route), every command and write route `assertWritable` (also 409 when `read_only`). Without the package
 // and without keys every feature is `off`. Keys are read and verified once per process (a variable changes only with
 // a restart); the first container registration logs the result.
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+import path from 'node:path'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { featureStatus, type FeatureState, type FeatureStatus } from '@vereino/core'
 import { foundationErrors } from '../api/errors'
-import { buildLicenceRegistry, licenceBootLine, type LicenceRegistry } from '../lib/licence-verify'
+import {
+  CI_TRUST_FILE,
+  buildLicenceRegistry,
+  licenceBootLine,
+  readCiTrust,
+  type LicenceRegistry,
+} from '../lib/licence-verify'
 
 /** The trusted scope of a request or command; the tenant never comes from a payload. */
 export type EnterpriseFeatureScope = { tenantId: string | null | undefined }
@@ -28,10 +35,22 @@ const logger = createLogger('foundation').child({ component: 'licence' })
 
 let processRegistry: LicenceRegistry | null = null
 
+/**
+ * The keys this environment holds now, verified against the compiled public keys plus — in an overlay build run with
+ * `enterprise-overlay.mjs --ci` — the committed test key pair (DD-E11), which is still trusted only with
+ * `VEREINO_CI=true`. `foundation licence-status` reports it; the gate keeps one per process.
+ */
+export function installedLicenceRegistry(env: NodeJS.ProcessEnv = process.env): LicenceRegistry {
+  const readFile = (file: string) => readFileSync(file, 'utf8')
+  const ciTrust = readCiTrust(path.join(process.cwd(), CI_TRUST_FILE), existsSync, readFile)
+  const registry = buildLicenceRegistry({ env, readFile, extra: ciTrust.extra })
+  return { ...registry, warnings: [...ciTrust.warnings, ...registry.warnings] }
+}
+
 /** The keys installed on this process, read and verified on first use; logs warnings and the boot line once. */
 export function licenceRegistry(): LicenceRegistry {
   if (!processRegistry) {
-    const registry = buildLicenceRegistry({ env: process.env, readFile: (path) => readFileSync(path, 'utf8') })
+    const registry = installedLicenceRegistry()
     for (const warning of registry.warnings) logger.warn(warning)
     if (registry.installed > 0) logger.info(licenceBootLine(registry))
     processRegistry = registry

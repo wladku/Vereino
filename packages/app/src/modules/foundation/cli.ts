@@ -29,7 +29,12 @@ import {
   storedRoleAclHash,
 } from './lib/role-acl-defaults'
 import { readInstanceModuleConfigValue } from './data/queries'
-import { buildLicenceRegistry, licenceStatusReport } from './lib/licence-verify'
+import type { CommandBus } from '@open-mercato/shared/lib/commands'
+import type { ResetSecondFactorResult } from './commands/second-factor'
+import { endRequiredUsersSessions, findClubUserByEmail } from './services/second-factor/operator'
+import { jobCommandContext } from './services/authorize-scoped'
+import { licenceStatusReport } from './lib/licence-verify'
+import { installedLicenceRegistry } from './services/enterprise-features'
 import {
   clubJobDeclarations,
   clubJobsStatus,
@@ -142,7 +147,7 @@ const licenceStatus: ModuleCli = {
     const { now, badNow } = readOptions(argv)
     if (badNow) fail('licence-status', '--now must be an ISO instant')
     // Built afresh, not the process registry: the command reports what this environment holds right now.
-    const registry = buildLicenceRegistry({ env: process.env, readFile: (file) => readFileSync(file, 'utf8') })
+    const registry = installedLicenceRegistry()
     process.stdout.write(`${JSON.stringify(licenceStatusReport(registry, now ?? new Date()))}\n`)
     return Promise.resolve()
   },
@@ -215,6 +220,69 @@ const syncRoleAclsIfChanged: ModuleCli = {
   },
 }
 
-const commands: ModuleCli[] = [syncRoleAclsIfChanged, clubJobs, retire, restore, licenceStatus]
+const SECOND_FACTOR_USAGE =
+  'Usage: mercato foundation second-factor <reset --tenant <id> --org <id> --email <e-mail> --note <text> | end-sessions --tenant <id> --org <id>>\n'
+
+/**
+ * `foundation second-factor reset|end-sessions` (staff second factor spec *API, Command, and Error Contracts*,
+ * *Rollout*; DD-2F07, Q-2F05; #736). Shell only.
+ * - `reset --tenant --org --email --note`: the operator's reset, for the last administrator of a club or the platform
+ *   super-admin: the command `foundation.second_factor.reset` with a system actor in the named club. Prints the counts;
+ *   exit 1 when the user is not found.
+ * - `end-sessions --tenant --org`: ends the sessions of every user of the club holding the requirement (the release
+ *   step right after the ACL sync).
+ */
+const secondFactor: ModuleCli = {
+  command: 'second-factor',
+  async run(argv) {
+    const { values, positionals } = parseArgs({
+      args: argv,
+      options: {
+        tenant: { type: 'string' },
+        org: { type: 'string' },
+        email: { type: 'string' },
+        note: { type: 'string' },
+      },
+      strict: false,
+      allowPositionals: true,
+    })
+    const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : null)
+    const tenantId = text(values.tenant)
+    const organizationId = text(values.org)
+    const action = positionals[0]
+    const usage = (message: string): never => {
+      process.stderr.write(`${message}\n${SECOND_FACTOR_USAGE}`)
+      throw new Error('[internal] foundation second-factor: invalid options')
+    }
+    if (!tenantId || !organizationId) return usage('--tenant and --org are required')
+    const scope = { tenantId, organizationId }
+    if (action === 'end-sessions') {
+      const container = await createRequestContainer()
+      process.stdout.write(`${JSON.stringify(await endRequiredUsersSessions(container, scope))}\n`)
+      return
+    }
+    if (action !== 'reset') return usage(action === undefined ? 'Missing action' : `Unknown action ${action}`)
+    const email = text(values.email)
+    const note = text(values.note)
+    if (!email || !note) return usage('--email and --note are required')
+    const container = await createRequestContainer()
+    const user = await findClubUserByEmail(container, scope, email)
+    if (!user) {
+      process.stderr.write('not found\n')
+      throw new Error('[internal] foundation second-factor reset: user not found')
+    }
+    const { result } = await container
+      .resolve<CommandBus>('commandBus')
+      .execute<unknown, ResetSecondFactorResult>('foundation.second_factor.reset', {
+        input: { userId: user.id, note },
+        ctx: jobCommandContext(container, scope),
+      })
+    process.stdout.write(
+      `${JSON.stringify({ userId: result.userId, unlinked: result.unlinked, sessionsEnded: true })}\n`,
+    )
+  },
+}
+
+const commands: ModuleCli[] = [syncRoleAclsIfChanged, clubJobs, retire, restore, licenceStatus, secondFactor]
 
 export default commands

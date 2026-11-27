@@ -29,6 +29,16 @@ export async function register(): Promise<void> {
       nodeProcess.exit(1)
     }
     for (const warning of findBootEnvWarnings(process.env)) process.stderr.write(`[vereino] Warning: ${warning}\n`)
+    // Vereino local patch (enterprise package spec DD-E03, #713): refuse to start when the Enterprise build switch,
+    // the installed `@vereino/enterprise` package and the generated module registry disagree.
+    const { enterpriseBuildFacts } = await import('@/modules/foundation/services/enterprise-build')
+    const { enterpriseBuildProblem } = await import('@/modules/foundation/lib/enterprise-build')
+    const enterpriseProblem = enterpriseBuildProblem(await enterpriseBuildFacts())
+    if (enterpriseProblem !== null) {
+      const nodeProcess = process
+      nodeProcess.stderr.write(`Refusing to start: ${enterpriseProblem}\n`)
+      nodeProcess.exit(1)
+    }
     // Vereino local patch (#738): log an outage of the rate limiter's Redis store, which the platform limiter absorbs
     // silently by counting per process.
     const { watchRateLimitStore } = await import('@/modules/foundation/services/rate-limit-store-watch')

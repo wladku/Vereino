@@ -1082,6 +1082,8 @@
   "payments.cashCustody.history.columns.amount": "Amount",
   "payments.club.nav.clubEvents": "Club events",
   "payments.club.nav.outlines": "Training outlines",
+  "payments.club.nav.invitations": "Invitations",
+  "payments.club.nav.declarationShare": "Declarations in Vereino",
   "payments.audit.cashHandover.send": "Send cash handover",
   "payments.audit.cashHandover.withdraw": "Withdraw cash handover",
   "payments.audit.cashHandover.confirm": "Confirm cash handover",

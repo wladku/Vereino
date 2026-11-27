@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
-import { getAuthToken } from '@open-mercato/core/helpers/integration/api'
+import { getAuthToken } from '../_fixtures/auth'
 import { uniqueSuffix } from '../_fixtures/club'
 import { capturedEmails, signInThroughForm } from '../_fixtures/members'
 import { createIsolatedTenant, type IsolatedTenant } from '../_fixtures/tenant'

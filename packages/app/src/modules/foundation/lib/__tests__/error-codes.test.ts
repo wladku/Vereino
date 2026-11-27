@@ -35,6 +35,31 @@ describe('foundation error codes', () => {
       { code: 'password_policy', status: 422, messageKey: 'foundation.errors.password_policy' },
       { code: 'password_too_common', status: 422, messageKey: 'foundation.errors.password_too_common' },
       { code: 'password_context_word', status: 422, messageKey: 'foundation.errors.password_context_word' },
+      // Staff second factor (#736).
+      { code: 'second_factor_use_google', status: 403, messageKey: 'foundation.errors.second_factor_use_google' },
+      { code: 'second_factor_unavailable', status: 503, messageKey: 'foundation.errors.second_factor_unavailable' },
+      {
+        code: 'second_factor_challenges_limited',
+        status: 429,
+        messageKey: 'foundation.errors.second_factor_challenges_limited',
+      },
+      { code: 'second_factor_code_invalid', status: 400, messageKey: 'foundation.errors.second_factor_code_invalid' },
+      {
+        code: 'second_factor_challenge_expired',
+        status: 401,
+        messageKey: 'foundation.errors.second_factor_challenge_expired',
+      },
+      {
+        code: 'second_factor_resend_limited',
+        status: 429,
+        messageKey: 'foundation.errors.second_factor_resend_limited',
+      },
+      { code: 'second_factor_reset_self', status: 403, messageKey: 'foundation.errors.second_factor_reset_self' },
+      {
+        code: 'second_factor_reset_required',
+        status: 409,
+        messageKey: 'foundation.errors.second_factor_reset_required',
+      },
       {
         code: 'email_change_confirmation_required',
         status: 403,

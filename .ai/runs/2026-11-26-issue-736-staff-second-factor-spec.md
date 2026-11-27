@@ -9,7 +9,7 @@
 1. Claimed #736 (assignee, `in-progress`, 🤖 claim comment naming this worktree and branch); renamed the task branch.
 2. Read the social sign-in spec, the engineering standards (S8.2, ADR-023, ENG-Q-09), the ASVS checklist and requirement rows, the Vereino role catalogue and the integration fixtures.
 3. Read the installed platform: `core/modules/auth/api/login.ts` (after-interceptors, token swap), `session/refresh.ts`, `shared/lib/auth/{jwt,server,mfaPendingAccess}.ts`, `shared/lib/crud/{api-interceptor,interceptor-runner,interceptor-registry}.ts`, `core/helpers/integration/api.ts`, the existing `people.member-landing` login interceptor.
-4. Wrote `.ai/specs/2026-11-26-vereino-staff-second-factor.md` (Draft): an ACL feature as the requirement, a gate issuing an `mfa_pending` token (first drafted as a login after-interceptor, moved to the login wrapper after step 6), an e-mail code challenge in the platform cache, two completion routes registered with the platform's MFA-pending gate, Google required when connected, reset by an administrator or operator CLI; no table, no migration, no dependency.
+4. Wrote `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md` (Draft): an ACL feature as the requirement, a gate issuing an `mfa_pending` token (first drafted as a login after-interceptor, moved to the login wrapper after step 6), an e-mail code challenge in the platform cache, two completion routes registered with the platform's MFA-pending gate, Google required when connected, reset by an administrator or operator CLI; no table, no migration, no dependency.
 5. Recorded the superseding ENG-Q-09 answer (engineering standards row + S8.2 sentence, changelog file); updated the ASVS checklist V6.5–V6.7 rows and the V6.3.3, V6.4.4, V6.5.x, V6.6.2–3, V6.8.4 requirement rows (state unchanged until built).
 6. Fresh-context architectural review of the spec by a subagent (staff-engineer persona, spec path and platform sources only). Findings and what changed:
    - C1, confirmed by reading `interceptor-runner.ts` and `login.ts`: an after-interceptor cannot set a status, and a body without `token` leaks the full cookies. The gate moved to the existing login wrapper `src/app/api/auth/login/route.ts` (#738).
@@ -36,7 +36,7 @@
 
 ## Files changed
 
-- `.ai/specs/2026-11-26-vereino-staff-second-factor.md` (new)
+- `.ai/specs/implemented/2026-11-26-vereino-staff-second-factor.md` (new)
 - `.ai/specs/2026-10-21-engineering-standards-and-patterns.md` (ENG-Q-09 row, S8.2)
 - `.ai/specs/changelog/2026-10-21-engineering-standards-and-patterns/2026-11-26-issue-736-eng-q-09-superseded.md`, `.ai/specs/changelog/2026-11-26-vereino-staff-second-factor/2026-11-26-issue-736-draft.md`
 - `docs/compliance/asvs-checklist.md`, `docs/compliance/asvs-requirements.md`

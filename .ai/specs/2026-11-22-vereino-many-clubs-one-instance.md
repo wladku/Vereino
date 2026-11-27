@@ -53,7 +53,9 @@ joins, and every guardian who opens a link from an e-mail.
 - **Targets on one instance (capacity test, phase 5):** 1,000 clubs, 150,000 participants, 300,000 accounts; p95 of
   member pages under 800 ms at 50 requests per second; a sweep pass over 1,000 clubs with no due work under 5 s; a deploy
   (migrations + ACL sync) under 10 minutes; a club's daily e-mail reaches its first recipient within 10 minutes of its
-  due time while another club sends 5,000 messages.
+  due time while another club sends 5,000 messages. Beyond the measured size these targets hold **per cell**: 1,000
+  clubs are served by cells (DD-M12, `docs/ops/cells.md`), and the 1,000-club figures stay extrapolations (owner
+  decision on #851, 2026-11-26; no paid 1,000-club run).
 - **Baseline:** one club per instance; 19 schedule rows per club; no onboarding or offboarding command. Deploy time
   with 1,000 tenants: unknown — measured in phase 5.
 - **Market / product reference:** hosted club software (for example Spond, SportEasy, Clubee) puts each club at its own
@@ -292,8 +294,10 @@ All migrations are Ask First.
    `BACKWARD_COMPATIBILITY.md` review per platform module (platform-owned tables).
 3. Platform rows keyed by user, not tenant: sessions, password-reset and invitation tokens, user-role links,
    sidebar preferences, API keys — selected through the club's user ids before the users are deleted.
-4. Non-SQL stores: attachment files in storage, search index documents, Redis cache keys and BullMQ jobs carrying the
-   club's tenant id (by key prefix or payload scan), rate-limit counters (expire on their own).
+4. Non-SQL stores: attachment files in storage, search index documents, the club's cache entries (cleared) and its
+   repeatable BullMQ schedules (unregistered); pending one-off BullMQ jobs of the club end on their own (they find no
+   rows), so no queued job is deleted on the shared Redis (owner's decision, 2026-11-26, #850); rate-limit counters
+   (expire on their own).
 5. The tenant's encryption key, only with a key store (Q-M07).
 
 ## API, Command, and Error Contracts
@@ -354,7 +358,7 @@ due or stalled rows, returning ids and scope only (DD-M07 (b)); each found row i
 | TEST-M04 | integration | two clubs, e-mail capture | trigger an invitation and a reminder in each | links use each club's address; sender display name is the club's name | REQ-M03 |
 | TEST-M05 | integration | three clubs in two time zones; job state at known times | run the sweep with a fixed clock across 06:00 local and both DST changes (02:00/03:00 jobs on the spring and autumn dates); hold a per-club job in the queue longer than the enqueue lease | each club's daily job runs once per local day, offset within 0–20 min, gap times moved after the gap, repeated times run once; a club with no work is not enqueued; a second sweep during a lease or a queue backlog enqueues nothing new | REQ-M04 |
 | TEST-M06 | integration | a club with the 19 per-club schedules from the old setup | run `retire-club-schedules`, then the sweeps | no per-club `scheduled_jobs` rows remain; every job type still runs for the club | REQ-M04 |
-| TEST-M07 | integration | a club with data in every module and attachments | `export-club`, then `delete-club` after the notice | archive has a file per module; after deletion every target of *Deletion targets* is empty for the club (tables with `tenant_id`, user-keyed rows, attachment files, search documents, Redis/BullMQ keys); with a key store the key is gone; a second club is untouched | REQ-M06 |
+| TEST-M07 | integration | a club with data in every module and attachments | `export-club`, then `delete-club` after the notice | archive has a file per module; after deletion every target of *Deletion targets* is empty for the club (tables with `tenant_id`, user-keyed rows, attachment files, search documents, the club's cache entries while another club's stay); with a key store the key is gone; a second club is untouched | REQ-M06 |
 | TEST-M08 | integration | two clubs; low per-club limits | club A sends 200 e-mails and starts two imports | club B's e-mail goes out within the bucket's round; A's second import gets 409 | REQ-M07 |
 | TEST-M09 | capacity (not in `yarn verify`) | seed script: 1,000 clubs, 150k participants, 300k accounts | load script against the production build | the targets of *Overview* hold; the report is attached to the PR | REQ-M08 |
 | TEST-M10 | unit + integration | role defaults unchanged / changed | run the pre-deploy wrapper twice | the second run skips the sync; a change runs it | REQ-M09 |
@@ -523,13 +527,19 @@ phases.
 - [ ] **AC-M04** — `scheduled_jobs` holds one row per job type, none per club; every job type runs for every club at
   its local time with a stable offset, once per local day across DST.
 - [ ] **AC-M05** — `create-club` creates a working club in one run and is a no-op on re-run.
-- [ ] **AC-M06** — A club is exported and, after the notice period, deleted from every target of *Deletion targets*
-  (and its key destroyed when a key store exists, Q-M07); another club is untouched.
+- [x] **AC-M06** — A club is exported and, after the notice period, deleted from every target of *Deletion targets*
+  (and its key destroyed when a key store exists, Q-M07, which stays with #740); another club is untouched.
 - [ ] **AC-M07** — A club sending 5,000 e-mails or running an import does not delay another club's e-mail beyond one
   bucket round.
-- [ ] **AC-M08** — The capacity report shows the *Overview* targets met at 1,000 clubs.
-- [ ] **AC-M09** — A deploy with unchanged role defaults skips the ACL sync; deploy time with 1,000 clubs is under
-  10 minutes.
+- [x] **AC-M08** — The capacity report shows the *Overview* targets met per cell at the measured size, and 1,000 clubs
+  are served by cells (amended to the cell model by the owner on #851, 2026-11-26). — `docs/ops/capacity.md` (TEST-M09,
+  PR #726): one cell measured at 124 clubs — member pages p95 < 0.5 s at 100 req/s, the 06:00 burst of 2,356 club
+  jobs drained in ≈ 75 s; where the API missed 800 ms at 100 req/s the report names the limit and the sizing (phase 5
+  exit gate); `docs/ops/cells.md` plans 4 cells of ≈ 250–300 clubs for 1,000; the 1,000-club figures are extrapolations
+- [x] **AC-M09** — A deploy with unchanged role defaults skips the ACL sync; deploy time per cell is under 10 minutes,
+  with the 1,000-club figure kept as an extrapolation (amended to the cell model by the owner on #851, 2026-11-26). —
+  skip: PR #675, `foundation/TEST-M10-role-acl-sync-wrapper.spec.ts`; per cell: pre-deploy 3.9 s, forced ACL sync over
+  124 tenants 23.5 s (`docs/ops/capacity.md` *Deploy*); ≈ 3 min of ACL sync at 1,000 tenants, extrapolated
 - [ ] Every affected API and UI path has self-contained integration coverage and the configured validation gate passes.
 
 ## Final Compliance Report

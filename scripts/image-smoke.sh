@@ -7,6 +7,9 @@
 #   4. worker      `sh ./scripts/railway-worker.sh`;
 #   5. checks      `node scripts/smoke.mjs` (health incl. the Redis probe, sign-in page, headers, an authenticated
 #                  call), one more authenticated call behind an RBAC feature check, and the worker still running.
+# The smoke account is the super-admin, who signs in with an e-mailed code (staff second factor, #736). The app alone
+# runs with `OM_TEST_MODE=1`, which only writes every e-mail to a capture file (a directory of this run, mounted into
+# the container) that `smoke.mjs` reads the code from; the auth limits stay on (no `OM_TEST_AUTH_RATE_LIMIT_MODE`).
 # Exits 0 when every step passes; otherwise prints the containers' logs and exits 1. Every container, the network and
 # the published port are this run's own (random names, a random host port); nothing outlives the run.
 #
@@ -30,6 +33,8 @@ WORKER="$RUN_ID-worker"
 SMOKE_EMAIL="smoke@vereino.test"
 SMOKE_PASSWORD="smoke-$(od -An -N8 -tx1 /dev/urandom | tr -d ' \n')"
 STARTED=()
+CAPTURE_DIR="$(mktemp -d)"
+CAPTURE_FILE="$CAPTURE_DIR/email-capture.jsonl"
 
 log() { printf '[image-smoke] %s\n' "$*"; }
 
@@ -44,6 +49,7 @@ cleanup() {
   for name in "${STARTED[@]}"; do docker rm -f "$name" >/dev/null 2>&1 || true; done
   docker network rm "$NETWORK" >/dev/null 2>&1 || true
   if [ "${SKIP_BUILD:-0}" != "1" ]; then docker image rm "$IMAGE" >/dev/null 2>&1 || true; fi
+  rm -rf "$CAPTURE_DIR" 2>/dev/null || true
   exit "$code"
 }
 trap cleanup EXIT
@@ -94,7 +100,10 @@ docker run --rm --network "$NETWORK" "${ENV_ARGS[@]}" \
   "$IMAGE" yarn initialize --no-examples || fail "yarn initialize failed"
 
 log "app: railway-start.sh (CACHE_STRATEGY defaults to redis)"
+# The container user (uid 1001) writes the capture into this run's directory.
+chmod 0777 "$CAPTURE_DIR"
 docker run -d --name "$APP" --network "$NETWORK" "${ENV_ARGS[@]}" -p 127.0.0.1::3000 \
+  -v "$CAPTURE_DIR:/smoke-capture" -e "OM_TEST_MODE=1" -e "OM_TEST_EMAIL_CAPTURE_PATH=/smoke-capture/email-capture.jsonl" \
   "$IMAGE" sh ./scripts/railway-start.sh >/dev/null
 STARTED+=("$APP")
 
@@ -118,13 +127,20 @@ done
 [ "$healthy" = "1" ] || fail "/api/healthz did not answer 200 within 180 s"
 
 log "smoke checks (scripts/smoke.mjs)"
-VEREINO_SMOKE_EMAIL="$SMOKE_EMAIL" VEREINO_SMOKE_PASSWORD="$SMOKE_PASSWORD" node scripts/smoke.mjs "$BASE_URL" \
-  || fail "scripts/smoke.mjs reported a failed check"
+export VEREINO_SMOKE_EMAIL="$SMOKE_EMAIL" VEREINO_SMOKE_PASSWORD="$SMOKE_PASSWORD" VEREINO_SMOKE_EMAIL_CAPTURE="$CAPTURE_FILE"
+node scripts/smoke.mjs "$BASE_URL" || fail "scripts/smoke.mjs reported a failed check"
 
 log "authenticated call behind a feature check (GET /api/auth/users)"
-TOKEN="$(curl -sf -X POST "$BASE_URL/api/auth/login" \
-  --data-urlencode "email=$SMOKE_EMAIL" --data-urlencode "password=$SMOKE_PASSWORD" \
-  | node -e 'let s="";process.stdin.on("data",(d)=>{s+=d}).on("end",()=>{process.stdout.write(JSON.parse(s).token??"")})')"
+# The same sign-in as `smoke.mjs` (the second factor included); prints the token, or the failure on stderr.
+TOKEN="$(BASE_URL="$BASE_URL" node --input-type=module -e '
+import { captureReader, signIn } from "./scripts/smoke.mjs"
+const env = process.env
+const result = await signIn({
+  baseUrl: env.BASE_URL, fetchImpl: fetch, email: env.VEREINO_SMOKE_EMAIL, password: env.VEREINO_SMOKE_PASSWORD,
+  readCapture: captureReader(env),
+})
+if ("error" in result) { console.error(result.error); process.exitCode = 1 } else process.stdout.write(result.token)
+')" || true
 [ -n "$TOKEN" ] || fail "sign-in returned no token"
 status="$(curl -s -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $TOKEN" "$BASE_URL/api/auth/users?page=1&pageSize=1")"
 [ "$status" = "200" ] || fail "GET /api/auth/users answered $status"
