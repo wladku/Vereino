@@ -294,8 +294,10 @@ All migrations are Ask First.
    `BACKWARD_COMPATIBILITY.md` review per platform module (platform-owned tables).
 3. Platform rows keyed by user, not tenant: sessions, password-reset and invitation tokens, user-role links,
    sidebar preferences, API keys — selected through the club's user ids before the users are deleted.
-4. Non-SQL stores: attachment files in storage, search index documents, Redis cache keys and BullMQ jobs carrying the
-   club's tenant id (by key prefix or payload scan), rate-limit counters (expire on their own).
+4. Non-SQL stores: attachment files in storage, search index documents, the club's cache entries (cleared) and its
+   repeatable BullMQ schedules (unregistered); pending one-off BullMQ jobs of the club end on their own (they find no
+   rows), so no queued job is deleted on the shared Redis (owner's decision, 2026-11-26, #850); rate-limit counters
+   (expire on their own).
 5. The tenant's encryption key, only with a key store (Q-M07).
 
 ## API, Command, and Error Contracts
@@ -356,7 +358,7 @@ due or stalled rows, returning ids and scope only (DD-M07 (b)); each found row i
 | TEST-M04 | integration | two clubs, e-mail capture | trigger an invitation and a reminder in each | links use each club's address; sender display name is the club's name | REQ-M03 |
 | TEST-M05 | integration | three clubs in two time zones; job state at known times | run the sweep with a fixed clock across 06:00 local and both DST changes (02:00/03:00 jobs on the spring and autumn dates); hold a per-club job in the queue longer than the enqueue lease | each club's daily job runs once per local day, offset within 0–20 min, gap times moved after the gap, repeated times run once; a club with no work is not enqueued; a second sweep during a lease or a queue backlog enqueues nothing new | REQ-M04 |
 | TEST-M06 | integration | a club with the 19 per-club schedules from the old setup | run `retire-club-schedules`, then the sweeps | no per-club `scheduled_jobs` rows remain; every job type still runs for the club | REQ-M04 |
-| TEST-M07 | integration | a club with data in every module and attachments | `export-club`, then `delete-club` after the notice | archive has a file per module; after deletion every target of *Deletion targets* is empty for the club (tables with `tenant_id`, user-keyed rows, attachment files, search documents, Redis/BullMQ keys); with a key store the key is gone; a second club is untouched | REQ-M06 |
+| TEST-M07 | integration | a club with data in every module and attachments | `export-club`, then `delete-club` after the notice | archive has a file per module; after deletion every target of *Deletion targets* is empty for the club (tables with `tenant_id`, user-keyed rows, attachment files, search documents, the club's cache entries while another club's stay); with a key store the key is gone; a second club is untouched | REQ-M06 |
 | TEST-M08 | integration | two clubs; low per-club limits | club A sends 200 e-mails and starts two imports | club B's e-mail goes out within the bucket's round; A's second import gets 409 | REQ-M07 |
 | TEST-M09 | capacity (not in `yarn verify`) | seed script: 1,000 clubs, 150k participants, 300k accounts | load script against the production build | the targets of *Overview* hold; the report is attached to the PR | REQ-M08 |
 | TEST-M10 | unit + integration | role defaults unchanged / changed | run the pre-deploy wrapper twice | the second run skips the sync; a change runs it | REQ-M09 |
@@ -525,8 +527,8 @@ phases.
 - [ ] **AC-M04** — `scheduled_jobs` holds one row per job type, none per club; every job type runs for every club at
   its local time with a stable offset, once per local day across DST.
 - [ ] **AC-M05** — `create-club` creates a working club in one run and is a no-op on re-run.
-- [ ] **AC-M06** — A club is exported and, after the notice period, deleted from every target of *Deletion targets*
-  (and its key destroyed when a key store exists, Q-M07); another club is untouched.
+- [x] **AC-M06** — A club is exported and, after the notice period, deleted from every target of *Deletion targets*
+  (and its key destroyed when a key store exists, Q-M07, which stays with #740); another club is untouched.
 - [ ] **AC-M07** — A club sending 5,000 e-mails or running an import does not delay another club's e-mail beyond one
   bucket round.
 - [x] **AC-M08** — The capacity report shows the *Overview* targets met per cell at the measured size, and 1,000 clubs
