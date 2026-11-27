@@ -1,8 +1,8 @@
 ---
 title: "An undo writes the snapshot back past execute's checks; re-run every state invariant in undo, under the same lock"
-modules: ["payments", "platform"]
+modules: ["payments", "activities", "platform"]
 areas: ["module-data"]
-topics: ["commands", "undo-redo", "invariants", "advisory-lock"]
+topics: ["commands", "undo-redo", "invariants", "advisory-lock", "confirmation"]
 ---
 
 # An undo writes the snapshot back past execute's checks; re-run every state invariant in undo, under the same lock
@@ -14,5 +14,7 @@ topics: ["commands", "undo-redo", "invariants", "advisory-lock"]
 **Rule**: Put every invariant that guards a field transition in one helper, and call it from both `execute` and `undo` with the value about to be written (the patch in execute, the snapshot in undo). When the invariant counts rows that another command writes, take that command's lock (here `tryLockGeneration`, answering 409 `generation_in_progress`) before counting. Cover it with an integration case that changes, triggers the dependent write, undoes and expects the coded refusal.
 
 **Also for consents and erasure (#870 spec review, 2026-11-26)**: the same bypass applies to a person's decision. If an administrator undoes a guardian's withdrawal of the `image` consent, the snapshot's grant comes back and a child's photo becomes public again. Replaying the undo or redo of a file command after an erasure relinks the erased person's picture (lesson `undoable-upload-redo-relinks-stored-file`). When you design an undoable command that touches consent or erasable data, state in the spec which transitions undo must never write back: a withdrawal never becomes a grant, and an erased record never returns. Test the undo explicitly (`.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`, BR-I06, BR-I07).
+
+**Also for a person's confirmation (#899, 2026-11-27)**: the undo of `activities.club_event_files.set_people` restored the earlier marks together with their confirmation. After a manager marked a newly recognised child without consent, the undo dropped that mark and brought back the old "everyone is marked" confirmation, so the photo was public again with the child still on it. A confirmation attests to what someone saw at that moment. When an undo removes something that was added after it (here a mark: `undoKeepsConfirmation` in `activities/lib/public-pictures.ts`), restore the data but clear the confirmation.
 
 **Applies to**: `packages/app/src/modules/*/commands/*.ts`, every undoable update whose execute refuses a transition based on dependent records; `payments.fees.update` (`assertPeriodChangeAllowed`); consent commands in `people` (`set_consents`, `set_own_consents`, `guardianships.update|end`) and picture commands in `activities`.
