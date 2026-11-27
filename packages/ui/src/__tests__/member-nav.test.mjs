@@ -44,7 +44,7 @@ const currentOf = (pathname, overrides = {}) => {
 }
 
 test('reads every label from the module prefix, `label` for the navigation name', () => {
-  assert.equal(MEMBER_SHELL_LABEL_KEYS.length, 27)
+  assert.equal(MEMBER_SHELL_LABEL_KEYS.length, 28)
   assert.equal(labels.nav, 't:people.club.nav.label')
   assert.equal(labels.signOut, 't:people.club.nav.signOut')
   assert.equal(labels.acceptCash, 't:people.club.nav.acceptCash')
