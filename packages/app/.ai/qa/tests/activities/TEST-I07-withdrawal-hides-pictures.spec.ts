@@ -66,8 +66,9 @@ test('TEST-I07 a guardian’s withdrawal hides the photos at the next read and t
     await expect
       .poll(
         async () =>
-          (await readNotifications(request, coordinator, `&type=${HELD_BACK}`)).filter((item) => item.type === HELD_BACK)
-            .length,
+          (await readNotifications(request, coordinator, `&type=${HELD_BACK}`)).filter(
+            (item) => item.type === HELD_BACK,
+          ).length,
         { timeout: 90_000, message: 'the held-back notice' },
       )
       .toBe(1)

@@ -97,9 +97,9 @@ test('TEST-I06 the public event page shows only the pictures BR-I01 allows; the 
     const violations: Record<string, unknown> = {}
     const gallery = page.getByTestId('club-event-gallery')
     for (const locale of ['pl', 'en'] as const) {
-      await page.context().addCookies([
-        { name: 'locale', value: locale, url: process.env.BASE_URL || 'http://localhost:3000' },
-      ])
+      await page
+        .context()
+        .addCookies([{ name: 'locale', value: locale, url: process.env.BASE_URL || 'http://localhost:3000' }])
       await page.goto(`/p/${scene.clubSlug}/events/${scene.eventSlug}`)
       await expect(gallery).toBeVisible()
       await expect(gallery.getByTestId('club-event-gallery-item')).toHaveCount(2)

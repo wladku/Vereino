@@ -89,7 +89,7 @@ export function PublicClubEventGallery({ pictures }: { pictures: PublicClubEvent
             <img
               src={shown.url}
               alt={shown.description}
-              className="bg-muted mt-6 max-h-[70vh] w-full rounded-lg object-contain"
+              className="bg-muted mt-6 max-h-svh w-full rounded-lg object-contain"
               onError={() => {
                 markBroken(shown.id)
               }}

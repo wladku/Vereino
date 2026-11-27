@@ -1,7 +1,7 @@
 # Photos and graphics on club events, with the guardian's image consent
 
 **Date**: 2026-11-26
-**Status**: In progress — approved by the product owner on 2026-11-26 (#870 comment 7203995918: Q-I01–Q-I03 decided as recommended, the migrations of *Rollout* approved); the consent wording is under the lawyer's review (OA-I1) and may still change
+**Status**: Implemented — approved by the product owner on 2026-11-26 (#870 comment 7203995918); phase 1 in #896 (#871), phase 2 for #872; the consent and confirmation wording is under the lawyer's review (OA-I1, OA-I2) and may still change
 
 > Design authority: `.ai/specs/product-brief.md` (refresh of 2026-11-26, PR #864) with D-044 (the club page stays a simple club card; only photos and graphics on club events), Q19 (closed 2026-11-26: Vereino collects each child's image consent from the guardian and blocks publishing without it), N06 (no page editor), D-029 (phone first for every role but the administrator) and D-035 (the lawyer items). This spec completes `.ai/specs/implemented/2026-11-18-vereino-club-events-with-parts.md` (REQ-T08, REQ-T09, DD-T10, DD-T11: the poster and funder logos of a club event) and `.ai/specs/implemented/2026-11-14-vereino-people-life-cycle-and-data-entry.md` (REQ-L10, DD-L11, DD-L12: the `image` consent and the consent texts). It does not edit their bodies. Ids carry the letter **I** (`REQ-I01`, `DD-I01`, `BR-I01`, `J-I01`, `TEST-I01`, `AC-I01`, `Q-I01`), which no other spec uses.
 
@@ -386,11 +386,11 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 - **Caching:** the bytes are sent with `private, no-store`; the JSON with `s-maxage=60`. A withdrawal is honoured within 60 s.
 - **Unpublished pictures:** only the event's managers can open them, through `…/files/{fileId}/content`, which runs the manager check. No response carries a picture's attachment id, so the platform route `/api/attachments/image/{id}` (any signed-in user of the organization) is never given one. The public route answers 404.
 - **Encryption:** the staff withdrawal note is encrypted. Marks, consent events and picture descriptions hold no free text about the child, beyond the description staff write; the UI warns "Do not write children's names".
-- **Retention (`docs/compliance/retention.md`, new row R23):** a picture is kept until staff delete it, the club is deleted, or a marked person is anonymised. Consent events are kept until the person is anonymised or the club is deleted (Q-I07).
+- **Retention (`docs/compliance/retention.md`, new row R25; R23 was taken):** a picture is kept until staff delete it, the club is deleted, or a marked person is anonymised. Consent events are kept until the person is anonymised or the club is deleted (Q-I07).
 - **Compliance pack, changed in phase 2:**
   - `ropa.md` A2 adds `people_consent_events`;
   - a new activity A18 "Event photos" (Art. 6(1)(a), categories, recipients: the public);
-  - `dpia.md` D-12 is updated to this design, and a new row D-13 covers "a photo shows a recognisable child of another club";
+  - `dpia.md` D-12 is updated to this design, and a new row D-16 (D-13 was taken) covers "a photo shows a recognisable child of another club";
   - `data-subject-requests.md` gains the export of marks and consent history.
 - **Abuse and failure modes:**
   - File route enumeration answers 404, the same as for unknown ids.
@@ -473,7 +473,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
   - `people.imageUsage.activities` for the ward page count;
   - the club export and delete table lists, and the person data export of marks;
   - isolation inventory rows;
-  - the compliance pack: retention R23, ropa A18, dpia D-12 and D-13, legal-verification items.
+  - the compliance pack: retention R25, ropa A18, dpia D-12 and D-16, legal-verification items.
 - **Independent slices / estimated commits:** (a) metadata stripper (core); (b) migration and commands; (c) public read and gallery; (d) phone and panel UI; (e) subscriber, erasure and exports; (f) compliance docs. About 8 commits.
 - **Requirements closed:** REQ-I01–REQ-I05, REQ-I06 (count), REQ-I09–REQ-I13.
 - **Tests:** TEST-I04–TEST-I11.
@@ -528,7 +528,7 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 | Risk / tradeoff | Impact | Mitigation / detection | Residual risk |
 |---|---|---|---|
 | Staff mark the wrong child or forget one | A child without consent is public | Confirmation recorded with author and time; changing marks clears it; the picker lists the event's participants first; guardians see the count of public photos of their child | Human error remains; the confirmation makes it accountable (DPIA D-12) |
-| A visiting team's child is recognisable | Publication without any consent | DD-I04: the confirmation excludes outsiders; DPIA D-13 | Staff may confirm wrongly |
+| A visiting team's child is recognisable | Publication without any consent | DD-I04: the confirmation excludes outsiders; DPIA D-16 | Staff may confirm wrongly |
 | A withdrawal while a page is open in a browser or in a shared cache | Photo stays visible for up to 60 s, or in a tab already loaded | `no-store` bytes; `s-maxage=60` JSON; the wording says so | Copies saved by others |
 | Veto rule (DD-I05) surprises a parent whose grant is overruled | A photo stays hidden | The history shows both decisions; the owner decided the rule (Q-I01, 2026-11-26) | — |
 | Staff-entered consents no longer count | Fewer publishable photos at first | Phase 1 ships first; the B-09 filter "Needs attention" can list wards without a guardian-given image consent | Slower start for clubs that typed consents in |
@@ -540,16 +540,16 @@ No new scheduled job. The `notifications` type `activities.club_event.pictures_h
 
 ## Acceptance Criteria
 
-- [ ] **AC-I01** — A guardian gives and withdraws a ward's image consent on the ward page at 375 px, in pl and en, light and dark. The history lists every decision with author, date and wording state, and the withdrawal asks for confirmation.
-- [ ] **AC-I02** — Staff cannot grant the image consent (422 `image_consent_subject_only`), one guardian cannot change the other's, and no undo turns a withdrawal back into a grant. A staff withdrawal needs a note and is recorded as staff. A staff-granted legacy consent does not allow publishing.
-- [ ] **AC-I03** — A coordinator adds, describes, marks, confirms and publishes pictures of a club event on the phone and in the panel. The limits and file checks answer their 422 codes, and stale writes answer 409.
-- [ ] **AC-I04** — A stored picture has no EXIF GPS, XMP, IPTC or text metadata, and a phone photo keeps its orientation.
-- [ ] **AC-I05** — The public event page and the file route show only pictures that satisfy BR-I01. No other public page shows pictures.
-- [ ] **AC-I06** — After a withdrawal, the affected photos disappear from the public read and the event's managers get one notification per event without the child's name.
-- [ ] **AC-I07** — Anonymising a person deletes the pictures that mark them, with their bytes, and deletes the person's consent events; no undo or redo brings them back. Club deletion removes the new tables. The person's data export lists marks and consent history.
-- [ ] **AC-I08** — Every new route passes its cross-club probes (club B ids answer 404).
-- [ ] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell and components, the shared API helpers and semantic tokens. Each has complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode and dark-mode states.
-- [ ] Every affected API and UI path has self-contained integration coverage, and `yarn verify` passes.
+- [x] **AC-I01** — A guardian gives and withdraws a ward's image consent on the ward page at 375 px, in pl and en, light and dark. The history lists every decision with author, date and wording state, and the withdrawal asks for confirmation. Evidence: TEST-I01 (#896).
+- [x] **AC-I02** — Staff cannot grant the image consent (422 `image_consent_subject_only`), one guardian cannot change the other's, and no undo turns a withdrawal back into a grant. A staff withdrawal needs a note and is recorded as staff. A staff-granted legacy consent does not allow publishing. Evidence: TEST-I02, TEST-I03 (#896).
+- [x] **AC-I03** — A coordinator adds, describes, marks, confirms and publishes pictures of a club event on the phone and in the panel. The limits and file checks answer their 422 codes, and stale writes answer 409. Evidence: TEST-I05 (#872).
+- [x] **AC-I04** — A stored picture has no EXIF GPS, XMP, IPTC or text metadata, and a phone photo keeps its orientation. Evidence: TEST-I04 (`packages/core/src/__tests__/image-metadata.test.mjs`), TEST-I05 (#872).
+- [x] **AC-I05** — The public event page and the file route show only pictures that satisfy BR-I01. No other public page shows pictures. Evidence: TEST-I06 (#872).
+- [x] **AC-I06** — After a withdrawal, the affected photos disappear from the public read and the event's managers get one notification per event without the child's name. Evidence: TEST-I07 (#872).
+- [x] **AC-I07** — Anonymising a person deletes the pictures that mark them, with their bytes, and deletes the person's consent events; no undo or redo brings them back. Club deletion removes the new tables. The person's data export lists marks and consent history. Evidence: TEST-I08, TEST-I10, `ACTIVITIES_CLUB_TABLES` with TEST-M07 (#872).
+- [x] **AC-I08** — Every new route passes its cross-club probes (club B ids answer 404). Evidence: `route-isolation:check`, ISSUE-628, TEST-I06 public part (#872).
+- [x] Every listed backend surface matches its recorded Open Mercato reference and uses the canonical shell and components, the shared API helpers and semantic tokens. Each has complete loading, empty, error, conflict, keyboard, accessibility, responsive, light-mode and dark-mode states.
+- [x] Every affected API and UI path has self-contained integration coverage, and `yarn verify` passes. Evidence: TEST-I01–I08, TEST-I10; `yarn verify` on #896 and #872.
 
 ## Final Compliance Report
 
@@ -576,7 +576,7 @@ Each question carries the recommended default that this spec applies. The owner 
 | Q-I04 | For a participant aged 13–17, is the guardian's consent enough, or is the young person's own agreement also needed? | lawyer | no | Recommended default: the guardian's consent (BR-I02), as for every minor today; the lawyer's answer may add the young person's own switch later without a schema change (`people_consent_events.by_role = self`). Pending (OA-I1) |
 | Q-I05 | May coaches who do not manage the event upload photos (for the manager to publish)? | Władek Kuć | no | **Decided 2026-11-26 (owner, recommendation accepted): no**, managers only (DD-T06); revisit after the first season |
 | Q-I06 | Should guardians see unpublished photos of their child, or be asked for consent with the photo attached? | Władek Kuć | no | **Decided 2026-11-26 (owner, recommendation accepted): no**; it discloses other children before any consent and could pressure the decision (Non-goals) |
-| Q-I07 | How long are consent decisions kept as proof after the consent ends? | lawyer | no | Recommended default: until the person is anonymised or the club deleted (Security, R23). Pending (OA-I1) |
+| Q-I07 | How long are consent decisions kept as proof after the consent ends? | lawyer | no | Recommended default: until the person is anonymised or the club deleted (Security, R25). Pending (OA-I1) |
 
 ## Changelog
 

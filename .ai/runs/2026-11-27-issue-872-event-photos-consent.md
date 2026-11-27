@@ -3,7 +3,7 @@
 - **Trigger:** cezar task a534a72e (`om-auto-fix-issue 872`), unattended.
 - **Issue / branch:** #872 / `feat/issue-872-event-photos-consent` (claimed: assignee, `in-progress`, 🤖 comment
   7224339178 naming the worktree, branch and start time).
-- **Spec:** `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md`, phase 2 (owner approved the `activities`
+- **Spec:** `.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`, phase 2 (owner approved the `activities`
   migration on #870, comment 7203995918; phase 1 merged in #896).
 
 ## Steps

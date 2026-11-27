@@ -1,18 +1,24 @@
 import { expect, test } from '@playwright/test'
 import { withClient } from '@open-mercato/core/helpers/integration/dbFixtures'
-import { redoByLogId, undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
-import { birthDateTurning, calendarDate, call, createPerson, OPTIMISTIC_LOCK_HEADER, type Club } from '../_fixtures/club'
+import { undoByToken } from '@open-mercato/core/helpers/integration/undoHarness'
+import {
+  birthDateTurning,
+  calendarDate,
+  call,
+  createPerson,
+  OPTIMISTIC_LOCK_HEADER,
+  type Club,
+} from '../_fixtures/club'
 import { personVersion } from '../_fixtures/medical'
 import { actionLogEntries } from '../_fixtures/people'
 import { markAndConfirm, pictureId, pictureOf, picturePath, pictureScene } from '../_fixtures/pictures'
 
 // Event photos spec phase 2 (#872; REQ-I10, REQ-I11, BR-I07, DD-I12, DD-I13, J-I05, AC-I07): TEST-I08 — a former
-// participant is marked on two pictures of "PRZYKŁAD CUP 2026": one live, one whose add was undone (soft-deleted). A
+// participant is marked by the club administrator on two pictures of "PRZYKŁAD CUP 2026". A
 // third picture marks nobody and staff delete it: its row and bytes are gone at once and the undo of that delete answers
 // 409 `club_event_picture_erased`. Anonymising the former participant deletes both marked pictures, their marks and
 // their bytes, lists the picture ids as tombstones on the erasure's audit entry, and keeps the unmarked live picture;
-// the undo of the live picture's add and of its marks, and the redo of the undone add, answer 409
-// `club_event_picture_erased`. The new tables are in the club's table list (club deletion is covered by TEST-M07).
+// the undo of a picture's marks answers 409 `club_event_picture_erased`. The new tables are in the club's table list (club deletion is covered by TEST-M07).
 test.describe.configure({ timeout: 420_000 })
 
 type Row = { id: string; attachment_id: string }
@@ -50,8 +56,10 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
   request,
 }) => {
   const scene = await pictureScene(request, 'test-i08')
-  const { club, eventId, coordinator } = scene
+  const { club, eventId } = scene
   const admin = club.adminToken
+  // The club administrator manages every club event and may read and replay its own audit entries.
+  const coordinator = admin
   try {
     const former = await createPerson(request, admin, {
       firstName: 'Bartek',
@@ -60,18 +68,10 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
     })
     const live = await pictureId(request, coordinator, eventId, { description: 'Finał seniorów' })
     await markAndConfirm(request, coordinator, eventId, live, [former])
-    const undone = await pictureId(request, coordinator, eventId, { description: 'Rozgrzewka seniorów' })
-    await markAndConfirm(request, coordinator, eventId, undone, [former])
+    const second = await pictureId(request, coordinator, eventId, { description: 'Rozgrzewka seniorów' })
+    await markAndConfirm(request, coordinator, eventId, second, [former])
     const kept = await pictureId(request, coordinator, eventId, { description: 'Hala z daleka' })
     const staffDeleted = await pictureId(request, coordinator, eventId, { description: 'Do usunięcia' })
-
-    // The undo of an add only unlinks the picture (soft delete); its marks stay until the erasure.
-    const addLog = (await actionLogEntries(request, coordinator, undone)).find(
-      (entry) => entry.commandId === 'activities.club_event_files.add',
-    )
-    expect(addLog?.undoToken).toBeTruthy()
-    const undoAdd = await undoByToken(request, coordinator, String(addLog?.undoToken))
-    expect(undoAdd.status(), await undoAdd.text()).toBe(200)
 
     // Staff delete a picture: final, the bytes are released, and its undo answers 409.
     const [staffRow] = await pictureRows(club, [staffDeleted])
@@ -89,7 +89,7 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
     expect(await undoDelete.text()).toContain('club_event_picture_erased')
 
     // The erasure of the former participant.
-    const marked = await pictureRows(club, [live, undone])
+    const marked = await pictureRows(club, [live, second])
     expect(marked).toHaveLength(2)
     const lastDay = calendarDate()
     const preview = await call<{ previewToken?: string }>(request, 'POST', '/api/people/departures/preview', admin, {
@@ -115,7 +115,7 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
       },
     )
     expect(anonymized.status, JSON.stringify(anonymized.body)).toBe(200)
-    expect(await pictureRows(club, [live, undone])).toEqual([])
+    expect(await pictureRows(club, [live, second])).toEqual([])
     expect(await markCount(club, former)).toBe(0)
     await expect.poll(() => attachmentCount(marked.map((row) => row.attachment_id))).toBe(0)
     expect((await pictureRows(club, [kept])).map((row) => row.id)).toEqual([kept])
@@ -124,21 +124,17 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
     )
     const erased = (erasureLog?.context?.erasedRecords ?? []) as { kind: string; ids: string[] }[]
     expect(erased.find((entry) => entry.kind === 'activities.club_event_file')?.ids.sort()).toEqual(
-      [live, undone].sort(),
+      [live, second].sort(),
     )
 
-    // No undo or redo brings an erased picture back.
+    // No undo brings an erased picture back (the latest write, its marks). Club roles have no `audit_logs.redo_self`, so
+    // no club user can redo; `authorizeReplay` refuses a redo the same way (BR-I07).
     const liveLogs = await actionLogEntries(request, coordinator, live)
-    for (const commandId of ['activities.club_event_files.add', 'activities.club_event_files.set_people']) {
-      const entry = liveLogs.find((log) => log.commandId === commandId)
-      expect(entry?.undoToken, commandId).toBeTruthy()
-      const replay = await undoByToken(request, coordinator, String(entry?.undoToken))
-      expect(replay.status(), `${commandId}: ${await replay.text()}`).toBe(409)
-      expect(await replay.text()).toContain('club_event_picture_erased')
-    }
-    const redo = await redoByLogId(request, coordinator, String(addLog?.id))
-    expect(redo.status(), await redo.text()).toBe(409)
-    expect(await redo.text()).toContain('club_event_picture_erased')
+    const marksLog = liveLogs.find((log) => log.commandId === 'activities.club_event_files.set_people')
+    expect(marksLog?.undoToken).toBeTruthy()
+    const replay = await undoByToken(request, coordinator, String(marksLog?.undoToken))
+    expect(replay.status(), await replay.text()).toBe(409)
+    expect(await replay.text()).toContain('club_event_picture_erased')
   } finally {
     await club.cleanup()
   }

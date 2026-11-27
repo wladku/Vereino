@@ -83,9 +83,7 @@
             "name": "Probe",
             "type": "tournament",
             "placeId": "$A:place",
-            "invitedExternalTeamIds": [
-              "$B:opponentTeam"
-            ],
+            "invitedExternalTeamIds": ["$B:opponentTeam"],
             "startsOn": "$A:probeDay",
             "startTime": "06:00",
             "endTime": "07:00"
@@ -359,9 +357,7 @@
             "as": "guardian",
             "personId": "$B:childPerson"
           },
-          "expect": [
-            403
-          ],
+          "expect": [403],
           "why": "A personId that is not one of the caller's wards answers 403 scope_denied (calendar.ts memberPersons), a club B person and an unknown id alike."
         }
       ]
@@ -620,9 +616,7 @@
             "x-om-ext-optimistic-lock-expected-updated-at": "$A:activitiesClubEventPictureUpdatedAt"
           },
           "body": {
-            "personIds": [
-              "$B:memberPerson"
-            ],
+            "personIds": ["$B:memberPerson"],
             "confirmed": true
           }
         }
@@ -723,9 +717,7 @@
           "body": {
             "title": "Probe part",
             "groupId": "$A:group",
-            "visitingTeamIds": [
-              "$B:opponentTeam"
-            ],
+            "visitingTeamIds": ["$B:opponentTeam"],
             "startsAt": "$A:probeStartsAt",
             "endsAt": "$A:probeEndsAt"
           }
@@ -823,9 +815,7 @@
       "POST": [
         {
           "probe": "read",
-          "roles": [
-            "anonymous"
-          ],
+          "roles": ["anonymous"],
           "why": "The link request always answers 202 with the same body (no enumeration, REQ-017); a read proves the answer holds nothing of club B for club A's slug with club B's session.",
           "body": {
             "email": "probe-628@example.org",
@@ -835,9 +825,7 @@
         },
         {
           "probe": "read",
-          "roles": [
-            "anonymous"
-          ],
+          "roles": ["anonymous"],
           "why": "The same with club B's slug and club A's session.",
           "body": {
             "email": "probe-628@example.org",
@@ -850,9 +838,7 @@
     "/api/activities/declaration-links/[token]": {
       "GET": {
         "probe": "read",
-        "roles": [
-          "anonymous"
-        ],
+        "roles": ["anonymous"],
         "params": {
           "token": "$A:declarationToken"
         }
@@ -867,9 +853,7 @@
             "personId": "$B:childPerson",
             "declared": "no"
           },
-          "expect": [
-            403
-          ],
+          "expect": [403],
           "why": "The link declares only for the link holder's own children (TEST-017): any other person answers 403 scope_denied, a club B person and an unknown id alike."
         },
         {
@@ -881,9 +865,7 @@
             "personId": "$B:memberPerson",
             "declared": "no"
           },
-          "expect": [
-            403
-          ],
+          "expect": [403],
           "why": "The link declares only for the link holder's own children (TEST-017): any other person answers 403 scope_denied, a club B person and an unknown id alike."
         }
       ]
@@ -1200,9 +1182,7 @@
       "GET": [
         {
           "probe": "read",
-          "roles": [
-            "anonymous"
-          ],
+          "roles": ["anonymous"],
           "params": {
             "clubSlug": "$A:clubSlug",
             "occurrenceId": "$A:occurrence"

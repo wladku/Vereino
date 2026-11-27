@@ -63,18 +63,25 @@ test('TEST-I05 a coordinator adds, marks, confirms and publishes pictures of a c
     expect(bytes.endsWith('\xff\xd9')).toBe(true)
     expect((await pictureOf(request, coordinator, eventId, photo)).url).toBe(picturePath(eventId, photo, '/content'))
     const stored = (await picturesOf(request, coordinator, eventId))?.find((entry) => entry.id === photo) as
-      | { fileName?: string }
-      | undefined
+      { fileName?: string } | undefined
     expect(stored?.fileName).not.toContain('Jas')
 
     // The upload refusals.
     const large = await uploadPicture(request, coordinator, eventId, {
-      file: { name: 'big.png', mimeType: 'image/png', buffer: Buffer.concat([png([1, 2, 3]).buffer, Buffer.alloc(11 * 1024 * 1024)]) },
+      file: {
+        name: 'big.png',
+        mimeType: 'image/png',
+        buffer: Buffer.concat([png([1, 2, 3]).buffer, Buffer.alloc(11 * 1024 * 1024)]),
+      },
     })
     expect(large.status, JSON.stringify(large.body)).toBe(422)
     expect(large.body?.code).toBe('club_event_file_too_large')
     const svg = await uploadPicture(request, coordinator, eventId, {
-      file: { name: 'fake.png', mimeType: 'image/png', buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>') },
+      file: {
+        name: 'fake.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),
+      },
     })
     expect(svg.status, JSON.stringify(svg.body)).toBe(422)
     expect(svg.body?.code).toBe('club_event_file_format_unsupported')
@@ -85,7 +92,10 @@ test('TEST-I05 a coordinator adds, marks, confirms and publishes pictures of a c
     // Marks and confirmations.
     const graphic = await pictureId(request, coordinator, eventId, { kind: 'graphic', description: 'Tablica wyników' })
     const third = await pictureId(request, coordinator, eventId, { description: 'Rozgrzewka' })
-    const unmarked = await pictureCommand(request, coordinator, eventId, photo, 'people', { personIds: [], confirmed: true })
+    const unmarked = await pictureCommand(request, coordinator, eventId, photo, 'people', {
+      personIds: [],
+      confirmed: true,
+    })
     expect(unmarked.status, JSON.stringify(unmarked.body)).toBe(422)
     expect(unmarked.body?.code).toBe('club_event_photo_unmarked')
     const graphicPeople = await pictureCommand(request, coordinator, eventId, graphic, 'people', {
@@ -203,7 +213,9 @@ test('TEST-I05 a coordinator adds, marks, confirms and publishes pictures of a c
     )
 
     // "Who is in the photo?" on the third picture: the other family's child, found by name, confirmed and published.
-    await rowOf(third).getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await rowOf(third)
+      .getByRole('button', { name: uiText('ui.rowActions.openActions') })
+      .click()
     await page
       .getByRole('menuitem', { name: uiText('activities.clubEvents.pictures.actions.people', { exact: true }) })
       .click()
@@ -217,7 +229,9 @@ test('TEST-I05 a coordinator adds, marks, confirms and publishes pictures of a c
     await dialog.getByTestId('club-event-picture-people-confirm').check()
     await dialog.getByTestId('club-event-picture-people-save').click()
     await expect(dialog).toBeHidden()
-    await rowOf(third).getByRole('button', { name: uiText('ui.rowActions.openActions') }).click()
+    await rowOf(third)
+      .getByRole('button', { name: uiText('ui.rowActions.openActions') })
+      .click()
     await page
       .getByRole('menuitem', { name: uiText('activities.clubEvents.pictures.actions.publish', { exact: true }) })
       .click()

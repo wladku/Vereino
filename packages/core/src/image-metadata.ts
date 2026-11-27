@@ -1,5 +1,5 @@
 // Removes the metadata of a stored picture (REQ-I02 and DD-I08 of
-// `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md`): phone photos carry EXIF with the GPS position,
+// `.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md`): phone photos carry EXIF with the GPS position,
 // the device and the time, plus XMP, IPTC and comments. The function walks the file's segments or chunks and copies
 // every one that is not metadata byte for byte, so the image data is never re-encoded and needs no image library.
 // Input is a file already accepted by `checkFileBytes`; anything that does not parse is refused as `malformed`.
