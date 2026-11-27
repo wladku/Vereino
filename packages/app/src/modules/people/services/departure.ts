@@ -20,6 +20,8 @@ export const DEPARTURE_CONTRIBUTOR_MODULES = [
   'club_core',
   'facilities',
   'training',
+  // Erasure only: the applications that became this person are anonymised (sign-up form spec phase 3, #800).
+  'enrolment',
 ] as const
 export type DepartureContributorModule = (typeof DEPARTURE_CONTRIBUTOR_MODULES)[number]
 

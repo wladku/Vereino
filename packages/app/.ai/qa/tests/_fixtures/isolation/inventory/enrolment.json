@@ -1,5 +1,5 @@
 {
-  "$comment": "Cross-club isolation probes of the enrolment routes (#628, #799). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "$comment": "Cross-club isolation probes of the enrolment routes (#628, #799, #800). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
   "routes": {
     "/api/enrolment/applications": {
       "GET": [
@@ -71,6 +71,20 @@
           }
         }
       ]
+    },
+    "/api/enrolment/applications/[id]/accept": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:application"
+        },
+        "body": {
+          "groupId": "$A:enrolmentGroup",
+          "startDay": "2030-01-01",
+          "sendInvitation": false,
+          "updatedAt": "$B:applicationUpdatedAt"
+        }
+      }
     },
     "/api/enrolment/groups/[id]/sign-up-code": {
       "GET": {

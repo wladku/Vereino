@@ -41,7 +41,15 @@ import {
   wardGroupsOf,
 } from '../services/invitation-links'
 import { desiredRolesForPerson } from '../services/role-sync'
-import { inWriteTransaction, loadPersonLocked, personEvents, personIndexer, personTarget } from './shared'
+import {
+  inWriteTransaction,
+  isJobContext,
+  loadPersonLocked,
+  personEvents,
+  personIndexer,
+  personTarget,
+  sessionOrJob,
+} from './shared'
 
 const logger = createLogger('people').child({ component: 'create-account' })
 
@@ -83,8 +91,9 @@ const createAccountCommand: CommandHandler<Record<string, unknown>, CreateAccoun
           {
             input: createAccountSchema,
             resourceKind: RESOURCE_KIND,
-            allowedKinds: ['club_admin'],
-            loadTarget: (parsed, txEm, lock) => loadPersonLocked(txEm, ctx, parsed.id, lock),
+            // A job context: the invitation after the accept of an application (#800).
+            ...sessionOrJob(ctx, ['club_admin'] as const),
+            loadTarget: (parsed, txEm, lock) => loadPersonLocked(txEm, ctx, parsed.id, lock, isJobContext(ctx)),
             resolveTarget: (_parsed, entity) => personTarget(entity as Person),
             lock: 'none',
           },
