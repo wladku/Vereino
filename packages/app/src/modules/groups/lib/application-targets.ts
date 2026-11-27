@@ -27,6 +27,8 @@ export type ApplicationTarget = {
   acceptsApplications: boolean
   isPublic: boolean
   isActive: boolean
+  /** The group's public conditions (what to bring, #801); null for a group that is not public or has none. */
+  publicConditions: string | null
 }
 
 /** The stored group as the target reads it. */
@@ -41,6 +43,7 @@ export type ApplicationTargetGroup = {
   acceptsApplications: boolean
   isPublic: boolean
   isActive: boolean
+  publicConditions?: string | null
 }
 
 /** What the service read for the group besides its row. */
@@ -76,5 +79,6 @@ export function applicationTarget(group: ApplicationTargetGroup, facts: Applicat
     acceptsApplications: group.acceptsApplications,
     isPublic: group.isPublic,
     isActive: group.isActive,
+    publicConditions: group.isPublic ? group.publicConditions?.trim() || null : null,
   }
 }

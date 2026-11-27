@@ -13,6 +13,7 @@ const team: ApplicationTargetGroup = {
   acceptsApplications: true,
   isPublic: true,
   isActive: true,
+  publicConditions: '  Sports shoes and a water bottle.  ',
 }
 
 describe('applicationTarget (sign-up form spec DD-J05)', () => {
@@ -39,6 +40,7 @@ describe('applicationTarget (sign-up form spec DD-J05)', () => {
       acceptsApplications: true,
       isPublic: true,
       isActive: true,
+      publicConditions: 'Sports shoes and a water bottle.',
     })
     expect(fitsRule('2018-12-31', '2026-09-01', target.fitRule)).toBe(true)
     expect(fitsRule('2017-12-31', '2026-09-01', target.fitRule)).toBe(false)
@@ -84,6 +86,20 @@ describe('applicationTarget (sign-up form spec DD-J05)', () => {
       occupied: 2,
       acceptsApplications: false,
       isPublic: false,
+      publicConditions: null,
     })
+  })
+
+  it('shows the conditions of a public group only, and a blank text as none (#801)', () => {
+    const facts = {
+      date: '2026-09-01',
+      referenceSeason: null,
+      categoryRange: null,
+      ageCategoryLabel: null,
+      occupied: 0,
+    }
+    expect(applicationTarget({ ...team, isPublic: false }, facts).publicConditions).toBeNull()
+    expect(applicationTarget({ ...team, publicConditions: '   ' }, facts).publicConditions).toBeNull()
+    expect(applicationTarget({ ...team, publicConditions: null }, facts).publicConditions).toBeNull()
   })
 })

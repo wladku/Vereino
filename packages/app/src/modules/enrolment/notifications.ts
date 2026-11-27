@@ -44,6 +44,19 @@ export const notificationTypes: NotificationTypeDefinition[] = [
     linkHref: '/club/applications',
     actions: [],
   },
+  // Phase 4 (#801): the trial session of an application was cancelled, so it is back in New.
+  {
+    type: 'enrolment.trial_session_cancelled',
+    module: 'enrolment',
+    channels: ['in_app'],
+    titleKey: 'enrolment.notifications.trialSessionCancelled.title',
+    bodyKey: 'enrolment.notifications.trialSessionCancelled.body',
+    icon: 'calendar-x',
+    severity: 'warning',
+    category: 'enrolment',
+    linkHref: '/club/applications',
+    actions: [],
+  },
   {
     type: 'enrolment.applicant_update',
     module: 'enrolment',

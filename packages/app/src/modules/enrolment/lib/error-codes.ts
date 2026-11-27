@@ -26,6 +26,9 @@ export const errorCodes = [
     status: 422,
     messageKey: 'enrolment.errors.invitation_birth_date_required',
   },
+  // The trial session (Trial, DD-J12, Q-J07; phase 4, #801).
+  { code: 'trial_session_invalid', status: 422, messageKey: 'enrolment.errors.trial_session_invalid' },
+  { code: 'trial_session_not_found', status: 404, messageKey: 'enrolment.errors.trial_session_not_found' },
   // The group sign-up QR code (#869): an unknown group, or one of another club (D-034).
   { code: 'group_not_found', status: 404, messageKey: 'enrolment.errors.group_not_found' },
 ] as const satisfies ErrorCodeTable

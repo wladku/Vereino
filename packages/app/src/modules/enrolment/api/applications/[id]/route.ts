@@ -113,6 +113,20 @@ const detailSchema = listItemSchema.extend({
   acceptedChildPersonId: z.uuid().nullable(),
   acceptedGuardianPersonId: z.uuid().nullable(),
   canDecide: z.boolean(),
+  trial: z
+    .object({
+      occurrenceId: z.uuid(),
+      activityName: z.string().nullable(),
+      startAt: z.string(),
+      endAt: z.string(),
+      placeLabel: z.string().nullable(),
+      status: z.string(),
+      outcome: z.enum(['present', 'absent']).nullable(),
+      over: z.boolean(),
+    })
+    .nullable(),
+  canProposeTrial: z.boolean(),
+  canWithdrawTrial: z.boolean(),
 })
 
 export const openApi: OpenApiRouteDoc = {

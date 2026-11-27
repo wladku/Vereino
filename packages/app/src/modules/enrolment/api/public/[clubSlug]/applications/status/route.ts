@@ -49,6 +49,10 @@ const statusSchema = z.object({
   closedAt: z.string().nullable(),
   canWithdraw: z.boolean(),
   answerDays: z.number().int(),
+  trial: z
+    .object({ startAt: z.string(), endAt: z.string(), placeLabel: z.string().nullable(), timeZone: z.string() })
+    .nullable()
+    .describe('The proposed trial session while the application is in `trial` (phase 4)'),
 })
 
 export const openApi: OpenApiRouteDoc = {

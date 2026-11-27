@@ -103,6 +103,30 @@ export async function announceClosedGroup(
 }
 
 /**
+ * A trial session was cancelled (phase 4, #801): the deciders of the section are told that the application is back in
+ * New. The body names the section only (never the applicant); keyed per application so a redelivery refreshes it.
+ */
+export async function announceTrialSessionCancelled(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  input: { applicationId: string; sectionId: string; sectionName: string; today: CalendarDate },
+): Promise<boolean> {
+  const type = notificationTypes.find((entry) => entry.type === 'enrolment.trial_session_cancelled')
+  const userIds = await deciderUserIds(container, scope, input.sectionId, input.today)
+  if (!type || userIds.length === 0) return false
+  const notification = buildBatchNotificationFromType(type, {
+    recipientUserIds: userIds,
+    bodyVariables: { section: input.sectionName },
+    sourceEntityType: 'enrolment:application',
+    sourceEntityId: input.applicationId,
+    linkHref: `/club/applications/${input.applicationId}`,
+    groupKey: `enrolment:trial_cancelled:${input.applicationId}`,
+  })
+  await resolveNotificationService(container).createBatch(notification, scope)
+  return true
+}
+
+/**
  * The membership subscribers' handler (DD-J15): a participant membership of a group changed or was removed, so the
  * group's places are counted again on the club's today. An end date in the future frees nothing yet; the daily job
  * announces it on that day.
