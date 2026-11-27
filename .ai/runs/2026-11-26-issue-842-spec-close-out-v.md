@@ -79,3 +79,8 @@
 
 - `main` brought #862 (#845: PW-AC-01..03 ticked, password check spec moved to `implemented/`) and #863 (#848: TEST-S06, TEST-S07; AC-S04 and the two generic social sign-in criteria ticked). Both conflicted with this PR's acceptance lines.
 - Resolution: the password check criteria take `main`'s version (all ticked, spec in `implemented/`); the social sign-in criteria keep this PR's evidence for AC-S01..S03 and tick AC-S04 and the two generic criteria with the evidence of PR #863. The 2026-11-26 changelog rows above stay as the record of that day; #845 and #848 are no longer open gaps.
+
+## Second merge of main (2026-11-27, PR #861 conflict)
+
+- `main` brought #880 (#851: AC-M08 and AC-M09 of many clubs amended to the cell model and ticked), plus #864, #877 and #878 (no conflict).
+- Resolution: AC-M06 and AC-M07 keep this PR's evidence; AC-M08 and AC-M09 take `main`'s amended, ticked version; the generic coverage criterion now names only #850 as its gap (#851 is closed). The PR body's many clubs row is updated to match.
