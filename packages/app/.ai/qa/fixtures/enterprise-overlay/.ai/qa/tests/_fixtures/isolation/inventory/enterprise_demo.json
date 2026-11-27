@@ -1,0 +1,14 @@
+{
+  "routes": {
+    "/api/enterprise_demo/state": {
+      "GET": {
+        "probe": "exempt",
+        "why": "Names no record: it answers the licence state of the caller's own tenant, taken from the session, never from the request. ENT-TEST-03 checks that club B gets 404 where club A's key holds."
+      },
+      "POST": {
+        "probe": "exempt",
+        "why": "The demo write takes no body and names no record; the tenant comes from the session. ENT-TEST-03 checks 404 for a club without a key and 409 for a read-only one."
+      }
+    }
+  }
+}
