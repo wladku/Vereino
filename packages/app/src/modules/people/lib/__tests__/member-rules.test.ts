@@ -3,6 +3,7 @@ import {
   BACKEND_HOME,
   FACILITY_HOME,
   MEMBER_HOME,
+  MEMBER_PASSWORD_HREF,
   SELF_CONSENT_KINDS,
   applySelfConsent,
   consentAuthorIds,
@@ -12,6 +13,7 @@ import {
   memberLanding,
   memberLocale,
   ownPaymentsAccess,
+  panelPasswordRedirect,
   publicPersonName,
   selfConsentView,
   withConsentAuthors,
@@ -273,5 +275,24 @@ describe('publicPersonName', () => {
   it('shows the first name alone without a last name and nothing without a first name', () => {
     expect(publicPersonName('Anna', '  ')).toBe('Anna')
     expect(publicPersonName('  ', 'Kowalska')).toBeNull()
+  })
+})
+
+describe('panelPasswordRedirect', () => {
+  const base = { linked: true, selfFeature: true, grants: ['self'] }
+
+  it('sends a member to the change-password page of the member app', () => {
+    expect(MEMBER_PASSWORD_HREF).toBe('/club/profile/password')
+    expect(panelPasswordRedirect(base)).toBe(MEMBER_PASSWORD_HREF)
+    expect(panelPasswordRedirect({ ...base, grants: ['self', 'guardian', 'coach', 'coordinator'] })).toBe(
+      MEMBER_PASSWORD_HREF,
+    )
+  })
+
+  it('keeps staff with panel access and users who are no member on the panel page', () => {
+    expect(panelPasswordRedirect({ ...base, grants: ['self', 'club_admin'] })).toBeNull()
+    expect(panelPasswordRedirect({ ...base, grants: ['self', 'treasurer'] })).toBeNull()
+    expect(panelPasswordRedirect({ ...base, linked: false })).toBeNull()
+    expect(panelPasswordRedirect({ ...base, selfFeature: false })).toBeNull()
   })
 })
