@@ -177,7 +177,13 @@ describe('offline page', () => {
   })
 
   it('carries the request nonce on its inline style and script, never an inline handler (#498)', () => {
-    const html = offlinePageHtml({ lang: 'en', title: 'Offline', message: 'No network.', retry: 'Retry', nonce: 'abc+/=' })
+    const html = offlinePageHtml({
+      lang: 'en',
+      title: 'Offline',
+      message: 'No network.',
+      retry: 'Retry',
+      nonce: 'abc+/=',
+    })
     expect(html).toContain('<style nonce="abc+/=">\n')
     expect(html).toContain('<script nonce="abc+/=">')
     expect(html.match(/nonce=/g)).toHaveLength(2)
