@@ -426,6 +426,12 @@ expiry; `expires_at` moved to closing + 30 days when the application closes). Bo
 `application_age_reference_day text not null default '09-01'`, `application_answer_days smallint not null default 7`,
 `application_information text null` (≤ 6000; null = built-in default text).
 
+### `enrolment_trial_read_logs` (new, club tenant, phase 4)
+
+Append-only (P-28): `id`, scope, `created_at`, `actor_user_id`, `acting_role`, `occurrence_id`, `resource_kind`
+(`enrolment:application`), `resource_ids uuid[]`, `purpose` (`trial_card`) — one row per coach read of a session's trial
+participants that returns any (`auditedRead`, DD-J12), ids only. Listed in the club tables (export, deletion).
+
 No other table changes; `activities` and `people` get no migration.
 
 ## API, Command, and Error Contracts
@@ -443,11 +449,11 @@ No other table changes; `activities` and `people` get no migration.
 | `/api/enrolment/applications/[id]` | GET | view | decrypted detail, flags, candidates (refreshed, DD-J11), history; reads by a coordinator go through `auditedRead` (purpose `enrolment.decide`) |
 | `/api/enrolment/applications/[id]/reject` → `enrolment.applications.reject` | POST | decide | `{ reason, updatedAt }` |
 | `/api/enrolment/applications/[id]/waiting` → `enrolment.applications.wait` | POST | decide | `{ groupId, updatedAt }` |
-| `/api/enrolment/applications/[id]/trial` → `enrolment.applications.propose_trial` | POST/DELETE | decide | `{ occurrenceId, updatedAt }`; 422 `trial_session_invalid` |
-| `/api/enrolment/applications/[id]/trial-sessions` | GET | decide | next 10 planned sessions of the target group |
+| `/api/enrolment/applications/[id]/trial` → `enrolment.applications.propose_trial` (POST), `enrolment.applications.withdraw_trial` (DELETE) | POST/DELETE | decide | POST `{ occurrenceId, groupId?, updatedAt }` (`groupId` picks the group for "choose for us"); 422 `trial_session_invalid`; 409 `application_state_conflict` while a trial is still to come (Q-J07). DELETE `{ updatedAt }` before the session starts |
+| `/api/enrolment/applications/[id]/trial-sessions` | GET | decide | next 10 planned sessions of the target group (or `?groupId=`) |
 | `/api/enrolment/applications/[id]/accept` → `enrolment.applications.accept` | POST | decide | `{ groupId, startDay, child: { personId? }, guardian: { personId? }, overLimit?, sendInvitation, updatedAt }`; 409 `group_full`, `membership_overlap`, `guardianship_duplicate`; 422 `start_day_invalid` |
-| `/api/enrolment/trials?occurrenceId=` | GET | `enrolment.trials.mark` | trial participants of a session the caller coaches |
-| `/api/enrolment/trials/[applicationId]` → `enrolment.trials.mark` | PUT | `enrolment.trials.mark` | `{ outcome: present \| absent \| null }` |
+| `/api/enrolment/trials?occurrenceId=` | GET | `enrolment.trials.mark` | trial participants of a session the caller coaches; 404 `trial_session_not_found` |
+| `/api/enrolment/trials/[applicationId]` → `enrolment.trials.mark` | PUT | `enrolment.trials.mark` | `{ outcome: present \| absent \| null, updatedAt }`; from 30 minutes before the start until the session is cancelled (409 otherwise) |
 | `/api/enrolment/overdue` | GET | `enrolment.manage` | count for the dashboard widget |
 | `groups.applicationTargets` (DI) | — | — | DD-J05 |
 | `people.duplicateCandidates` (DI) | — | — | DD-J11 |
@@ -472,7 +478,7 @@ routes with `foreign-id` probes (club B's application id → 404).
 - E-mail templates (`defineEmailTemplate`, en and pl, `optOut: 'never'` because they are transactional for a
   non-member): `enrolment.confirm_email` (link, 1 hour), `enrolment.received` (status link, answer time),
   `enrolment.waiting` (number), `enrolment.trial_proposed` (date, time, place, what to bring = the group's public
-  conditions), `enrolment.accepted` (group, start day, what happens next; the invitation comes separately),
+  conditions), `enrolment.trial_cancelled` (a withdrawn proposal or a cancelled session; phase 4), `enrolment.accepted` (group, start day, what happens next; the invitation comes separately),
   `enrolment.rejected` (reason), `enrolment.withdrawn`, `enrolment.season_closed`, `enrolment.new_link`.
 - `groups.membership.updated|deleted` → `enrolment` subscriber → freed-place notice (DD-J15).
 - `activities.occurrence.cancelled` → `enrolment` subscriber → applications with that trial session go back to `new`,
@@ -676,16 +682,16 @@ Every criterion that names a phone or public page is checked at 375 px, in Engli
 - [ ] **AC-J05** — The status link shows the state and withdraws; a new link replaces the old (TEST-J04). — gap: #799 (TEST-J04)
 - [ ] **AC-J06** — Coordinators see their sections' applications on the phone with tabs, flags and a Today tile; the
   administrator sees every section and the overdue widget (TEST-J05). — gap: #799 (TEST-J05)
-- [ ] **AC-J07** — The four decisions work and each e-mails the applicant (TEST-J06, TEST-J07, TEST-J10). — gap: #799 (reject, waiting list), #800 (accept), #801 (trial)
+- [x] **AC-J07** — The four decisions work and each e-mails the applicant (TEST-J06, TEST-J07, TEST-J10). — PR #830 (reject, waiting list, `enrolment/TEST-J06-reject-and-waiting.spec.ts`), PR #891 (accept, `enrolment/TEST-J07-accept.spec.ts`), #801 (trial, `enrolment/TEST-J10-trial-session.spec.ts`)
 - [ ] **AC-J08** — Accepting creates or reuses persons, relation and membership from the chosen day, sends the
   invitation after commit, and names the fee rule (TEST-J07, TEST-J08). — gap: #800 (TEST-J07, TEST-J08)
 - [ ] **AC-J09** — Waiting lists are numbered per group, freed places are announced once, and accepting beyond the
   limit needs the confirmation (TEST-J09). — gap: #799 (numbering), #800 (freed places, TEST-J09)
-- [ ] **AC-J10** — A trial participant is on the session's attendance page without a membership or a fee, and the
-  existing attendance data and reports are unchanged (TEST-J10). — gap: #801 (TEST-J10)
+- [x] **AC-J10** — A trial participant is on the session's attendance page without a membership or a fee, and the
+  existing attendance data and reports are unchanged (TEST-J10). — #801, `enrolment/TEST-J10-trial-session.spec.ts`
 - [ ] **AC-J11** — Retention, export, erasure and season-end clearing work as specified and the compliance pack lists
   them (TEST-J11). — gap: #799 (retention), #800 (export, erasure, season end; TEST-J11)
-- [ ] **AC-J12** — The cross-club isolation guard passes with every new route (TEST-J12). — gap: #799, #800, #801 (each phase adds its routes to `inventory/enrolment.json`; TEST-J12)
+- [ ] **AC-J12** — The cross-club isolation guard passes with every new route (TEST-J12). — gap: close-out of the whole spec (every phase's routes, #799, #800, #801, are in `inventory/enrolment.json`; TEST-J12 = `ISSUE-628-cross-club-isolation`)
 - [ ] Every affected API and UI path has self-contained integration coverage; `yarn verify` is green. — gap: #799, #800, #801
 
 ## Final Compliance Report

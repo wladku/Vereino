@@ -183,7 +183,8 @@ async function enqueueTrialCancelled(
   return enqueueApplicantMail(ctx.container, em, scope, {
     applicationId: row.id,
     template: 'trial_cancelled',
-    event: `trial_cancelled:${session?.id ?? 'none'}`,
+    // One e-mail per proposal that ends: a withdrawn proposal and a later cancellation of the same session both send.
+    event: `trial_cancelled:${session?.id ?? 'none'}:${reason}:${String(row.updatedAt.getTime())}`,
     params: {
       applicationId: row.id,
       clubSlug: settings.publicSlug,

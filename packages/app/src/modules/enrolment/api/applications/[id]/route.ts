@@ -105,6 +105,7 @@ const detailSchema = listItemSchema.extend({
           siblingDiscountPercent: z.number().int().nullable(),
         }),
       ),
+      nextSessionDay: z.string().nullable().describe("The day of the group's next planned session (phase 4)"),
     }),
   ),
   today: z.string(),

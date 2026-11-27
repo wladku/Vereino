@@ -180,7 +180,9 @@ export async function statusView(container: AwilixContainer, clubSlug: string, t
         })
       : Promise.resolve([]),
     waitingNumberFor(em, scope, row),
-    row.state === 'trial' ? sessionFacts(container, scope, [row.trialOccurrenceId]) : Promise.resolve(new Map()),
+    row.state === 'trial'
+      ? sessionFacts(container, scope, [row.trialOccurrenceId])
+      : Promise.resolve(new Map<string, OccurrenceFact>()),
   ])
   const session: OccurrenceFact | undefined = row.trialOccurrenceId ? sessions.get(row.trialOccurrenceId) : undefined
   return {
@@ -448,6 +450,8 @@ export type ApplicationDetail = ApplicationListItem & {
     ageFit: string
     /** The group's fees valid today (Q-J06); empty when the group is not public or has none. */
     fees: GroupFee[]
+    /** The day of the group's next planned session (the accept sheet's default start day, M-J3); null without one. */
+    nextSessionDay: string | null
   }[]
   /** The club's today: the earliest start day of an acceptance (BR-J6). */
   today: string
@@ -523,20 +527,29 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
     sessionFacts(ctx.container, ctx.scope, [row.trialOccurrenceId]),
   ])
   const session = row.trialOccurrenceId ? sessions.get(row.trialOccurrenceId) : undefined
-  const groups = reference
-    .filter((target) => target.isActive)
-    .map((target) => {
-      const todays = facts.targets.get(target.groupId)
-      return {
-        id: target.groupId,
-        name: target.name,
-        full: todays ? isGroupFull(todays) : false,
-        placesLimit: target.placesLimit,
-        occupied: todays?.occupied ?? target.occupied,
-        ageFit: birthDate ? ageFitOf(birthDate, row.referenceDate, target.fitRule) : 'unknown',
-        fees: fees.get(target.groupId) ?? [],
-      }
-    })
+  const active = reference.filter((target) => target.isActive)
+  const nextSessions = isDecidableState(row.state)
+    ? await Promise.all(
+        active.map(async (target) => {
+          const next = await upcomingGroupSessions(ctx.container, ctx.scope, target.groupId, now, 1)
+          return [target.groupId, next.at(0)?.occurrenceDate ?? null] as const
+        }),
+      )
+    : []
+  const nextSessionDays = new Map<string, string | null>(nextSessions)
+  const groups = active.map((target) => {
+    const todays = facts.targets.get(target.groupId)
+    return {
+      id: target.groupId,
+      name: target.name,
+      full: todays ? isGroupFull(todays) : false,
+      placesLimit: target.placesLimit,
+      occupied: todays?.occupied ?? target.occupied,
+      ageFit: birthDate ? ageFitOf(birthDate, row.referenceDate, target.fitRule) : 'unknown',
+      fees: fees.get(target.groupId) ?? [],
+      nextSessionDay: nextSessionDays.get(target.groupId) ?? null,
+    }
+  })
   return {
     ...item,
     participantFirstName: row.participantFirstName ?? null,

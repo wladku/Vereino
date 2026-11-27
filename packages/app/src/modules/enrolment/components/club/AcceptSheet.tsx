@@ -1,7 +1,7 @@
 'use client'
 // The accept sheet (sign-up form spec M-J3, BR-J4, BR-J6, DD-J10, DD-J11, Q-J06, Q-J08; phase 3, #800): the group (the
-// chosen one preselected; each with "x / limit", the age fit and "full"), the start day (today at the earliest, never
-// after the season the application counts for), the child (or the adult) and the guardian as a new person or a
+// chosen one preselected; each with "x / limit", the age fit and "full"), the start day (by default the group's next
+// session day, phase 4 #801; today at the earliest, never after the season the application counts for), the child (or the adult) and the guardian as a new person or a
 // possible duplicate the club already has, the fee line of the group (the fee valid today and the rule that the
 // existing schedule charges from the start day, no part-month reduction), the account invitation (on; off when the
 // person already has an account; a new guardian's birth date, which an account needs) and, for a full group, the
@@ -129,7 +129,15 @@ export function AcceptSheet({ application, open, side, onOpenChange, onOutcome }
       ? application.groupId
       : (application.groups[0]?.id ?? null)
   const [groupId, setGroupId] = React.useState<string | null>(initialGroup)
-  const [startDay, setStartDay] = React.useState(application.today)
+  // The group's next session day while the decider has not picked a day (phase 4, `upcomingSessionsOfGroup`).
+  const defaultStart = (target: string | null): string => {
+    const next = application.groups.find((group) => group.id === target)?.nextSessionDay
+    const inSeason =
+      !application.seasonEndsOn || (next !== null && next !== undefined && next <= application.seasonEndsOn)
+    return next && next >= application.today && inSeason ? next : application.today
+  }
+  const [startDay, setStartDay] = React.useState(() => defaultStart(initialGroup))
+  const [startTouched, setStartTouched] = React.useState(false)
   const [childId, setChildId] = React.useState<string | null>(null)
   const [guardianId, setGuardianId] = React.useState<string | null>(null)
   const [guardianBirthDate, setGuardianBirthDate] = React.useState('')
@@ -233,6 +241,7 @@ export function AcceptSheet({ application, open, side, onOpenChange, onOutcome }
                         checked={checked}
                         onChange={() => {
                           setGroupId(entry.id)
+                          if (!startTouched) setStartDay(defaultStart(entry.id))
                           setOverLimit(false)
                           setProblem(null)
                         }}
@@ -313,6 +322,7 @@ export function AcceptSheet({ application, open, side, onOpenChange, onOutcome }
               required
               onChange={(event) => {
                 setStartDay(event.target.value)
+                setStartTouched(true)
                 setProblem(null)
               }}
               data-testid="enrolment-accept-start-day"
