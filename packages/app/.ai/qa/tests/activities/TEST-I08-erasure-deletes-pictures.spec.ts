@@ -80,7 +80,7 @@ test('TEST-I08 anonymising a person deletes the pictures marking them for good; 
     })
     expect(deleted.status, JSON.stringify(deleted.body)).toBe(200)
     expect(await pictureRows(club, [staffDeleted])).toEqual([])
-    await expect.poll(() => attachmentCount([String(staffRow?.attachment_id)])).toBe(0)
+    await expect.poll(() => attachmentCount([staffRow?.attachment_id ?? ''])).toBe(0)
     const deleteLog = (await actionLogEntries(request, coordinator, staffDeleted)).find(
       (entry) => entry.commandId === 'activities.club_event_files.delete',
     )
