@@ -8,7 +8,12 @@ import type { Scope } from '@vereino/core'
 import type { ClubCoreSettingsService } from '../../club_core/services/settings'
 import { Activity, Attendance, ClubEvent, ClubEventFile, ClubEventPart, Occurrence } from '../data/entities'
 import { pastClubEventIds } from '../data/queries'
-import { sortClubEventFiles, staffImageUrl, type ClubEventFileKind } from '../lib/club-event-files'
+import {
+  CLUB_EVENT_DOCUMENT_KINDS,
+  sortClubEventFiles,
+  staffImageUrl,
+  type ClubEventFileKind,
+} from '../lib/club-event-files'
 import { clubEventDates, clubEventPublicPath, partKind } from '../lib/club-events'
 import { gatheringIso } from '../lib/gathering'
 import { confirmByIso } from '../lib/confirm-by'
@@ -341,6 +346,12 @@ export async function clubEventFileViews(
   const rows = await container
     .resolve<EntityManager>('em')
     .fork()
-    .find(ClubEventFile, { ...scope, clubEventId: eventId, deletedAt: null })
+    .find(ClubEventFile, {
+      ...scope,
+      clubEventId: eventId,
+      // Never a picture: its attachment id must not reach the platform image route (event photos spec DD-I12).
+      kind: { $in: [...CLUB_EVENT_DOCUMENT_KINDS] },
+      deletedAt: null,
+    })
   return sortClubEventFiles(rows).map(clubEventFileView)
 }

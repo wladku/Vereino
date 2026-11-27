@@ -17,6 +17,7 @@ import { activityAudienceProvider, occurrenceAudienceProvider } from './services
 import { ACTIVITIES_DECLARATION_LINKS } from './services/declaration-links'
 import { ACTIVITIES_DATA_EXPORT_CONTRIBUTOR, createDataExportContribution } from './services/data-export-contribution'
 import { ACTIVITIES_DEPARTURE_CONTRIBUTOR, createDepartureContribution } from './services/departure-contribution'
+import { publicPhotosOf } from './services/club-event-pictures'
 import { ACTIVITIES_GROUP_USAGE, groupUsage } from './services/group-usage'
 import { ACTIVITIES_OCCURRENCE_FACTS, createOccurrenceFacts } from './services/occurrence-facts'
 import { ACTIVITIES_PLACE_SESSIONS, createPlaceSessions } from './services/place-sessions'
@@ -28,6 +29,9 @@ import { ACTIVITIES_SEASON_CONTRIBUTOR, seasonContribution } from './services/se
 import { ACTIVITIES_SHARE_TEXT, createShareText } from './services/share-text'
 import { ACTIVITIES_CLUB_JOBS } from './lib/club-jobs'
 import { ACTIVITIES_CLUB_TABLES } from './lib/club-tables'
+
+/** The token `people` reads (`IMAGE_USAGE_TOKEN` in `people/services/image-history.ts`). */
+const ACTIVITIES_IMAGE_USAGE = 'people.imageUsage.activities'
 
 /**
  * `vereino.audience.activity` and `vereino.audience.occurrence` (foundation III P-29, DD-M05; #71): the audience
@@ -112,5 +116,12 @@ export function register(container: AppContainer) {
     // in the caller's organization, which `training` reads with `hasRegistration` (attach scope, the 72-hour lock,
     // series copies, the print header). Read only.
     [ACTIVITIES_OCCURRENCE_FACTS]: asFunction(() => createOccurrenceFacts(container)).scoped(),
+    // `people.imageUsage.activities` (event photos spec REQ-I06, #872): the public photos that show a person now,
+    // counted with their events' public pages, for the guardian's image consent row. `people` reads it with
+    // `hasRegistration`; read only, in the caller's scope.
+    [ACTIVITIES_IMAGE_USAGE]: asValue({
+      publicPhotos: (scope: { tenantId: string; organizationId: string }, personId: string, em?: EntityManager) =>
+        publicPhotosOf(container, scope, personId, em),
+    }),
   })
 }

@@ -271,6 +271,16 @@ export async function coachNeededHandlerIds(
   return coordinators.length > 0 ? coordinators : directory.roleHolderIdsOn(scope, 'club_admin', date, em)
 }
 
+/** The club administrators on `date` (event photos spec REQ-I09: the managers of every club event). */
+export function clubAdminIds(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  date: CalendarDate,
+  em?: EntityManager,
+): Promise<string[]> {
+  return personDirectory(container).roleHolderIdsOn(scope, 'club_admin', date, em)
+}
+
 /** The persons among `ids` who consented to showing their wards' presence to other guardians (REQ-006, #32). */
 export function presenceConsents(
   container: AwilixContainer,
@@ -314,6 +324,34 @@ export async function consentFlags(
   const directory = personDirectory(container)
   if (typeof directory.consentFlags !== 'function') return new Map()
   return directory.consentFlags(scope, ids, today, em)
+}
+
+/**
+ * Whether the image of each person among `ids` may be published on `today` (event photos spec BR-I02, BR-I03; #872):
+ * one boolean per live person. Fails closed: an empty map (no person publishable) when the installed `people` does not
+ * offer the contract.
+ */
+export async function imagePublishable(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  ids: readonly string[],
+  today: CalendarDate,
+  em?: EntityManager,
+): Promise<Map<string, boolean>> {
+  if (ids.length === 0) return new Map()
+  const directory = personDirectory(container)
+  if (typeof directory.imagePublishable !== 'function') return new Map()
+  return directory.imagePublishable(scope, [...new Set(ids)], today, em)
+}
+
+/** The live persons of the club whose name matches `term` (people search), or null for no filter. */
+export function searchPersonIds(
+  container: AwilixContainer,
+  scope: ActivitiesScope,
+  term: string,
+  em?: EntityManager,
+): Promise<Set<string> | null> {
+  return personDirectory(container).searchPersonIds(scope, term, em)
 }
 
 /**

@@ -121,6 +121,31 @@ export const seedActivities: ModuleSeed = async ({ request, seeded, api, admin }
   seeded.responses.push(posterBody)
   expect(poster.status(), `club ${seeded.label}: poster upload ${JSON.stringify(posterBody)}`).toBe(201)
   refs.activitiesClubEventFile = String(posterBody?.id)
+  // A picture of the event (event photos spec, #872): the picture routes' probes address it.
+  const picture = await request.fetch(
+    `${process.env.BASE_URL ?? ''}/api/activities/club-events/${refs.activitiesClubEvent}/files`,
+    {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${admin}` },
+      multipart: {
+        kind: 'photo',
+        description: 'Isolation probe picture',
+        file: {
+          name: 'picture.png',
+          mimeType: 'image/png',
+          buffer: Buffer.from(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            'base64',
+          ),
+        },
+      },
+    },
+  )
+  const pictureBody = (await picture.json().catch(() => null)) as (Created & { updatedAt?: string }) | null
+  seeded.responses.push(pictureBody)
+  expect(picture.status(), `club ${seeded.label}: picture upload ${JSON.stringify(pictureBody)}`).toBe(201)
+  refs.activitiesClubEventPicture = String(pictureBody?.id)
+  refs.activitiesClubEventPictureUpdatedAt = String(pictureBody?.updatedAt)
 
   // A free slot for the create probes: two days after the first session, early in the morning.
   const probeDay = addDays(day, 2)

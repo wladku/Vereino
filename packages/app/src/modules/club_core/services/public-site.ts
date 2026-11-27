@@ -110,6 +110,8 @@ export type PublicFileRef = {
   assignment: { type: string; id: string }
   /** The type checked by its bytes at upload (materials); the platform serves non-inline types as octet-stream. */
   mimeType?: string
+  /** Served `private, no-store` (a club event picture, event photos spec DD-I11). */
+  noStore?: boolean
 }
 
 /** The trusted scope of a club found by its public slug and the header of its public pages. */
@@ -181,9 +183,11 @@ export type PublicClubEventPage = {
     accent: ClubAccent | null
     nav: PublicClubNav
   }
-  event: Omit<PublicClubEvent, 'posterFileId' | 'funders' | 'days'> & {
+  event: Omit<PublicClubEvent, 'posterFileId' | 'funders' | 'days' | 'pictures'> & {
     poster: { url: string } | null
     funders: { name: string; logoUrl: string }[]
+    /** The pictures BR-I01 allows now (event photos spec REQ-I05; #872); `description` is the alternative text. */
+    pictures: { id: string; description: string; kind: 'photo' | 'graphic'; url: string }[]
     days: {
       date: string
       parts: (Omit<PublicClubEventPart, 'ourTeam'> & { ourTeam: PublicClubEventOurTeam })[]
@@ -789,7 +793,7 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
       if (!event) return notFound
       const sectionNames = new Map(sections.map((section) => [section.publicSlug as string, section.name]))
       const fileUrl = (fileId: string) => publicClubEventFilePath(club.slug, event.slug, fileId)
-      const { posterFileId, funders, days, ...facts } = event
+      const { posterFileId, funders, days, pictures, ...facts } = event
       return {
         status: 'ok',
         value: {
@@ -798,6 +802,12 @@ export function createClubCorePublicSite(getEm: () => EntityManager, container: 
             ...facts,
             poster: posterFileId ? { url: fileUrl(posterFileId) } : null,
             funders: funders.map((funder) => ({ name: funder.name, logoUrl: fileUrl(funder.fileId) })),
+            pictures: (pictures ?? []).map((picture) => ({
+              id: picture.fileId,
+              description: picture.description,
+              kind: picture.kind,
+              url: fileUrl(picture.fileId),
+            })),
             days: days.map((day) => ({
               date: day.date,
               parts: day.parts.map(({ ourTeam, ...part }) => {

@@ -3,7 +3,7 @@
 - **Goal and trigger:** cezar task (`om-auto-fix-issue` 870, label `cezar`). Story E30-S01 of epic #866 asks for a spec under `.ai/specs/`, written with `om-spec-writing`, that is ready for the two build stories #871 and #872.
 - **Route:** the issue is a feature story whose deliverable is documentation, so it took the feature route, spec only (`om-auto-write-spec` → `om-spec-writing --autonomous`). Building is out of scope (issue *Scope*).
 - **Branch:** `docs/issue-870-photo-image-consent-spec` (renamed from `cez/870`), Cezar worktree.
-- **Spec:** `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md` (Status Draft).
+- **Spec:** `.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md` (Status Draft).
 
 ## Steps
 
@@ -42,7 +42,7 @@
 
 ## Files changed
 
-- `.ai/specs/2026-11-26-vereino-event-photos-and-image-consent.md` (new)
+- `.ai/specs/implemented/2026-11-26-vereino-event-photos-and-image-consent.md` (new)
 - `.ai/specs/changelog/2026-11-26-vereino-event-photos-and-image-consent/2026-11-26-issue-870-spec-created.md`, `…-issue-870-review-fixes.md` (new)
 - `.ai/lessons/undo-rechecks-execute-invariants.md` (extended)
 - this run log

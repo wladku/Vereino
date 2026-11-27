@@ -90,6 +90,18 @@ const clubEventPageSchema = z.object({
     poster: z.object({ url: z.string() }).nullable(),
     funders: z.array(z.object({ name: z.string(), logoUrl: z.string() })).describe('In upload order'),
     days: z.array(z.object({ date: z.string(), parts: z.array(partSchema) })).describe('In date order'),
+    pictures: z
+      .array(
+        z.object({
+          id: z.uuid(),
+          description: z.string().describe('The alternative text'),
+          kind: z.enum(['photo', 'graphic']),
+          url: z.string(),
+        }),
+      )
+      .describe(
+        'The pictures public now (event photos spec BR-I01): a graphic, or a photo whose every marked person consents',
+      ),
   }),
 })
 
