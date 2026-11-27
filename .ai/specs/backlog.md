@@ -44,6 +44,15 @@ Last filed: 2026-11-26
 | E27-S03 | [#820](https://github.com/wladku/Vereino/issues/820) | An administrator sees the pilot's leading indicators next to the declaration share | #816 | E27-S01 | no |
 | E28 | [#817](https://github.com/wladku/Vereino/issues/817) | E28 — vereino.org e-mail: club e-mails sent from a verified sending subdomain | — | — | no |
 | E28-S01 | [#821](https://github.com/wladku/Vereino/issues/821) | Club e-mails reach guardians from a verified vereino.org sending subdomain that passes SPF, DKIM and DMARC | #817 | owner actions | no |
+| E29 | [#865](https://github.com/wladku/Vereino/issues/865) | E29 — Reaching guardians: invitation links and QR codes | — | — | no |
+| E29-S01 | [#868](https://github.com/wladku/Vereino/issues/868) | A coach or coordinator shares a family's personal invitation as a link or QR code, and the guardian activates the account from it | #865 | — | no |
+| E29-S02 | [#869](https://github.com/wladku/Vereino/issues/869) | A coach shares a group's QR code that leads new children to the section sign-up form | #865 | #799 | no |
+| E30 | [#866](https://github.com/wladku/Vereino/issues/866) | E30 — Photos and graphics on club events, with the guardian's image consent | — | — | no |
+| E30-S01 | [#870](https://github.com/wladku/Vereino/issues/870) | Spec: photos and graphics on club events with the guardian's image consent | #866 | — | no |
+| E30-S02 | [#871](https://github.com/wladku/Vereino/issues/871) | A guardian gives or withdraws image consent for each child on the phone | #866 | E30-S01 | no |
+| E30-S03 | [#872](https://github.com/wladku/Vereino/issues/872) | Staff add photos and graphics to a club event, and a photo of a child appears publicly only with consent | #866 | E30-S01, E30-S02 | no |
+| E31 | [#867](https://github.com/wladku/Vereino/issues/867) | E31 — Installable web app with the club's name and logo | — | — | no |
+| E31-S01 | [#873](https://github.com/wladku/Vereino/issues/873) | A guardian installs the club's Vereino from the browser and opens it from the home screen with the club's name and logo | #867 | — | no |
 
 ## docs/ux-concept/README.md
 Backlog source: docs/ux-concept/README.md
