@@ -127,9 +127,13 @@ jobs:
       - name: Install Playwright browser
         working-directory: packages/app
         # A self-hosted runner has no sudo: its system libraries come from `scripts/ci-runner-setup.sh`.
+        # On a GitHub-hosted runner the image's Microsoft apt source sometimes answers 403, which fails `apt-get
+        # update` (exit 100) before any test runs (#889). Playwright needs nothing from it, so drop it first.
         env:
           WITH_DEPS: ${{ runner.environment == 'github-hosted' && '--with-deps' || '' }}
-        run: npx playwright install $WITH_DEPS chromium
+        run: |
+          if [ -n "$WITH_DEPS" ]; then sudo rm -f /etc/apt/sources.list.d/microsoft-prod.*; fi
+          npx playwright install $WITH_DEPS chromium
       # Vereino runner: Testcontainers PostgreSQL 17 (pgvector), yarn initialize, production build, Playwright.
       - run: yarn test:integration:vereino --shard ${{ matrix.shard }}/${{ strategy.job-total }}
       - name: Upload Playwright report
@@ -291,7 +295,10 @@ jobs:
           yarn i18n:check-hardcoded --strict --modules-root ../enterprise/src/modules
       - name: Install Playwright browser
         working-directory: packages/app
-        run: npx playwright install --with-deps chromium
+        # The image's Microsoft apt source sometimes answers 403 and fails `apt-get update` (#889); drop it first.
+        run: |
+          sudo rm -f /etc/apt/sources.list.d/microsoft-prod.*
+          npx playwright install --with-deps chromium
       # The production build of the overlay shape, then ENT-TEST-03 (skipped by every public run).
       - run: yarn test:integration:vereino --filter ENT-TEST-03
       - name: Upload Playwright report
