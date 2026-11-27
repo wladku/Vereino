@@ -15,7 +15,6 @@ import { BrowserTelemetry } from '@open-mercato/telemetry/browser'
 import { resolveBrowserTelemetryConfig } from '@open-mercato/telemetry/browser/server'
 import { DemoFeedbackWidget } from '@/components/DemoFeedbackWidget'
 import { BackendHeaderChrome } from '@/components/BackendHeaderChrome'
-import { SidebarNavBadges } from '@/components/SidebarNavBadges'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { ClubTimeZone } from '@/components/ClubTimeZone'
 import { PlatformA11yRepairs } from '@/components/PlatformA11yRepairs'
@@ -213,7 +212,6 @@ export default async function BackendLayout({
         </ClubTimeZone>
         {demoModeEnabled ? <DemoFeedbackWidget demoModeEnabled={demoModeEnabled} /> : null}
         <BrowserTelemetry config={browserTelemetryConfig} />
-        <SidebarNavBadges />
         <PlatformA11yRepairs />
         {/* The staff idle timeout (S8.5, ENG-Q-12; #737). */}
         {auth && !auth.isApiKey && isStaffAccount(auth.roles) ? (

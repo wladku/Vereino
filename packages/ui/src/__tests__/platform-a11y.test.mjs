@@ -7,6 +7,8 @@ import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   BREADCRUMB_PAGE_SELECTOR,
+  LOOKUP_SELECTION_SELECTOR,
+  PLATFORM_LABEL_ATTRIBUTE,
   SEARCH_INPUT_SELECTOR,
   SHELL_LINK_SELECTOR,
   WATCHED_ATTRIBUTES,
@@ -14,6 +16,7 @@ import {
   browserRepairRoot,
   labelSearchInput,
   matchLinkName,
+  matchSelectionName,
   platformA11yEffect,
   repairPlatformA11y,
   roleBreadcrumbPage,
@@ -84,6 +87,31 @@ test('a shell link name starts with its visible text when the label leaves it ou
   assert.equal(matchLinkName(el('a', { attributes: { 'aria-label': 'Open SETTINGS' }, text: 'Settings' })), false)
 })
 
+test('a LookupSelect selection name starts with the chosen item and follows a new item and a new locale', () => {
+  const item = el('span', { text: 'Żaki' })
+  const button = el('button', { attributes: { 'aria-label': 'Change' }, children: [item] })
+  assert.equal(matchSelectionName(button), true)
+  assert.equal(button.getAttribute('aria-label'), 'Żaki – Change')
+  assert.equal(button.getAttribute(PLATFORM_LABEL_ATTRIBUTE), 'Change')
+  assert.equal(matchSelectionName(button), false)
+  // Another item: the name is rebuilt from the kept platform label, not stacked.
+  item.text = 'Orliki'
+  assert.equal(matchSelectionName(button), true)
+  assert.equal(button.getAttribute('aria-label'), 'Orliki – Change')
+  // React writes the label again in another locale: that label becomes the platform label.
+  button.setAttribute('aria-label', 'Zmień')
+  assert.equal(matchSelectionName(button), true)
+  assert.equal(button.getAttribute('aria-label'), 'Orliki – Zmień')
+  assert.equal(button.getAttribute(PLATFORM_LABEL_ATTRIBUTE), 'Zmień')
+  // A label that already holds the visible text is kept as it is; no text or no label: nothing to do.
+  const named = el('button', { attributes: { 'aria-label': 'Change Żaki' }, text: 'Żaki' })
+  assert.equal(matchSelectionName(named), true)
+  assert.equal(named.getAttribute('aria-label'), 'Change Żaki')
+  assert.equal(matchSelectionName(named), false)
+  assert.equal(matchSelectionName(el('button', { attributes: { 'aria-label': 'Clear' } })), false)
+  assert.equal(matchSelectionName(el('button', { text: 'Żaki' })), false)
+})
+
 test('a full pass repairs each kind and counts the changes; the second pass changes nothing', () => {
   const page = root({
     [SEARCH_INPUT_SELECTOR]: [
@@ -92,8 +120,9 @@ test('a full pass repairs each kind and counts the changes; the second pass chan
     ],
     [BREADCRUMB_PAGE_SELECTOR]: [el('span', { attributes: { 'aria-label': 'Dashboard' } })],
     [SHELL_LINK_SELECTOR]: [el('a', { attributes: { 'aria-label': 'Back to Main' }, text: 'Settings' })],
+    [LOOKUP_SELECTION_SELECTOR]: [el('button', { attributes: { 'aria-label': 'Change' }, text: 'Żaki' })],
   })
-  assert.equal(repairPlatformA11y(page), 3)
+  assert.equal(repairPlatformA11y(page), 4)
   assert.equal(repairPlatformA11y(page), 0)
 })
 
@@ -122,6 +151,7 @@ test('the watcher repairs at once, then once per batch of changes, and stops on 
   assert.deepEqual(state.observed.options, {
     childList: true,
     subtree: true,
+    characterData: true,
     attributes: true,
     attributeFilter: WATCHED_ATTRIBUTES,
   })

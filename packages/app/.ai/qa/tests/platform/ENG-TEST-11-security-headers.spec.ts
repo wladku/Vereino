@@ -84,6 +84,11 @@ test('ENG-TEST-11 pages carry HSTS, Permissions-Policy and a CSP without unsafe-
     expect(directive(csp, 'script-src-attr'), pathname).toBe("script-src-attr 'none'")
     expect(directive(csp, 'connect-src').split(' '), pathname).not.toContain('https:')
     expect(csp, pathname).not.toContain('unsafe-eval')
+    // Inline <style> elements: the nonce, plus the one fixed stylesheet of the Radix select viewport by its hash.
+    const styleSrc = directive(csp, 'style-src')
+    expect(styleSrc, pathname).toMatch(
+      /^style-src 'self' 'nonce-[A-Za-z0-9+/]+={0,2}' 'sha256-441zG27rExd4\/il\+NvIqyL8zFx5XmyNQtE381kSkUJk='$/,
+    )
     nonces.add(/'nonce-([^']+)'/.exec(scriptSrc)?.[1] ?? '')
     expect(headers['x-content-type-options'], pathname).toBe('nosniff')
     expect(headers['x-frame-options'], pathname).toBe('SAMEORIGIN')

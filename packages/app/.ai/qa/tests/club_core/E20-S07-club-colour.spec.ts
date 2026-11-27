@@ -257,7 +257,12 @@ test('E20-S07 club colour: setting, computed text colour, header, hero, fallback
       const { background, text } = await colours(bar)
       expect(contrast(background, text), scheme).toBeGreaterThanOrEqual(4.5)
       // The evidence shot hides the platform's flash toast, which sits over the header (a separate E20 story).
-      await page.addStyleTag({ content: '.z-toast { display: none !important; }' })
+      // Through the CSSOM: the nonce-based CSP of Open Mercato 0.10 blocks an injected <style> (#498).
+      await page
+        .locator('.z-toast')
+        .evaluateAll((toasts) =>
+          toasts.forEach((toast) => (toast as HTMLElement).style.setProperty('display', 'none', 'important')),
+        )
       await shot(page, testInfo, `navy-member-today-375-${scheme}`)
     })
     Object.assign(

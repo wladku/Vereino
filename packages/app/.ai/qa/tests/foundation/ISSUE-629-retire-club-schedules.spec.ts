@@ -53,12 +53,19 @@ function setUpOldWay(club: Club) {
     mercato([moduleId, 'set-up-club', ...scopeArgs(club)])
 }
 
+/**
+ * The Vereino modules that schedule club jobs. Since Open Mercato 0.10 the platform modules `integrations`,
+ * `communication_channels` and `payment_gateways` add per-organization schedules of their own; `retire-club-schedules`
+ * does not own them (#498).
+ */
+const VEREINO_SCHEDULE_MODULES = ['activities', 'enrolment', 'facilities', 'foundation', 'payments', 'people']
+
 async function perClubSchedules(club: Club): Promise<string[]> {
   return withClient(async (client) => {
     const { rows } = await client.query<{ name: string }>(
       `select name from scheduled_jobs where organization_id = $1 and scope_type = 'organization'
-         and source_type = 'module' and deleted_at is null order by name`,
-      [club.tenant.organizationId],
+         and source_type = 'module' and source_module = any($2::text[]) and deleted_at is null order by name`,
+      [club.tenant.organizationId, VEREINO_SCHEDULE_MODULES],
     )
     return rows.map((row) => row.name)
   })

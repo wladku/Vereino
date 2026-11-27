@@ -3,7 +3,7 @@
 // Each repair adds or corrects one ARIA attribute on a rendered element; none removes or moves a node, so React's own
 // rendering is left intact. They are idempotent: a second pass over a repaired page changes nothing, so the mutation
 // observer that re-runs them after every render settles at once. Remove a repair when an upgrade of `@open-mercato/ui`
-// fixes its gap (the upstream reports are linked from #497). The `CrudForm` label repair went with 0.10.1 (#498):
+// fixes its gap (the upstream reports are linked from #497). The `LookupSelect` selection name repair is new with 0.10.1. The `CrudForm` label repair went with 0.10.1 (#498):
 // `CrudForm` now ties each label to its control (`htmlFor`), and E20-S18 finds no `label` or `button-name` violation.
 
 /** The part of a DOM element the repairs read and write (a real `Element` satisfies it). */
@@ -23,6 +23,13 @@ export const SEARCH_INPUT_SELECTOR = '[data-slot="search-input-wrapper"] input'
 export const BREADCRUMB_PAGE_SELECTOR = '[data-slot="breadcrumb-page"][aria-label]:not([role])'
 /** `AppShell` links whose `aria-label` differs from their visible text: the brand link and the section back link. */
 export const SHELL_LINK_SELECTOR = 'a[href="/backend"][aria-label], a[data-testid^="appshell-"][aria-label]'
+/**
+ * The button of a `LookupSelect` (0.10.1) that shows the chosen item and reopens the search: its `aria-label` is
+ * "Change" while its visible text is the item (the clear button next to it shows no text).
+ */
+export const LOOKUP_SELECTION_SELECTOR = '[data-testid="lookup-select-selected"] > button[aria-label]'
+/** Where `matchSelectionName` keeps the platform's own label, so a new selection does not stack names. */
+export const PLATFORM_LABEL_ATTRIBUTE = 'data-vereino-platform-label'
 
 const collapse = (text: string | null | undefined): string => (text ?? '').replace(/\s+/g, ' ').trim()
 
@@ -64,6 +71,24 @@ export function matchLinkName(link: RepairElement): boolean {
   return true
 }
 
+/**
+ * Starts the name of a `LookupSelect` selection button with the item it shows (axe `label-content-name-mismatch`,
+ * WCAG 2.5.3): "Żaki – Change". The item changes while the platform label stays, so the name is rebuilt from the
+ * platform label kept in {@link PLATFORM_LABEL_ATTRIBUTE}; a label React wrote again (a new locale) replaces it.
+ */
+export function matchSelectionName(button: RepairElement): boolean {
+  const visible = collapse(button.textContent)
+  const current = collapse(button.getAttribute('aria-label'))
+  const kept = collapse(button.getAttribute(PLATFORM_LABEL_ATTRIBUTE))
+  const platform = kept !== '' && (current === kept || current.endsWith(` – ${kept}`)) ? kept : current
+  if (visible === '' || platform === '') return false
+  const name = platform.toLowerCase().includes(visible.toLowerCase()) ? platform : `${visible} – ${platform}`
+  if (kept === platform && current === name) return false
+  button.setAttribute(PLATFORM_LABEL_ATTRIBUTE, platform)
+  button.setAttribute('aria-label', name)
+  return true
+}
+
 /** Runs every repair over `root`; returns how many elements it changed. */
 export function repairPlatformA11y(root: RepairRoot): number {
   let changed = 0
@@ -73,6 +98,7 @@ export function repairPlatformA11y(root: RepairRoot): number {
   each(SEARCH_INPUT_SELECTOR, labelSearchInput)
   each(BREADCRUMB_PAGE_SELECTOR, roleBreadcrumbPage)
   each(SHELL_LINK_SELECTOR, matchLinkName)
+  each(LOOKUP_SELECTION_SELECTOR, matchSelectionName)
   return changed
 }
 
@@ -102,7 +128,14 @@ export function watchPlatformA11y(
       if (active) repairPlatformA11y(root)
     })
   })
-  observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: WATCHED_ATTRIBUTES })
+  // `characterData`: a new selection changes only the text of a `LookupSelect` button.
+  observer.observe(root, {
+    childList: true,
+    subtree: true,
+    characterData: true,
+    attributes: true,
+    attributeFilter: WATCHED_ATTRIBUTES,
+  })
   return () => {
     active = false
     observer.disconnect()

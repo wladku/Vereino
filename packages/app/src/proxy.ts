@@ -6,7 +6,12 @@ import {
 } from '@open-mercato/shared/lib/security/contentSecurityPolicy'
 import { stripeContentSecurityPolicy } from '@open-mercato/gateway-stripe/contentSecurityPolicy'
 import { resolveDocumentsCollaborationCspOrigins } from '@open-mercato/documents/contentSecurityPolicy'
-import { CROSS_SITE_REQUEST_ERROR_CODE, crossSiteApiVerdict } from '@vereino/core'
+import {
+  CROSS_SITE_REQUEST_ERROR_CODE,
+  RADIX_SELECT_VIEWPORT_STYLE_HASH,
+  crossSiteApiVerdict,
+  withStyleHashes,
+} from '@vereino/core'
 
 // Do NOT import bootstrap here — proxy runs in the Edge runtime and
 // cannot use Node.js-only modules like MikroORM. Bootstrap runs in layouts.
@@ -38,7 +43,9 @@ export function proxy(req: NextRequest) {
   })
   requestHeaders.set('x-next-url', req.nextUrl.pathname)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  response.headers.set('Content-Security-Policy', contentSecurityPolicy)
+  // The fixed stylesheet of Radix `Select.Viewport` gets its hash: the platform `SelectContent` passes it no nonce (#498).
+  const policy = withStyleHashes(contentSecurityPolicy, [RADIX_SELECT_VIEWPORT_STYLE_HASH])
+  response.headers.set('Content-Security-Policy', policy)
   return response
 }
 

@@ -1,0 +1,1 @@
+| 2026-11-27 | #887 (#498): `@open-mercato/ui@0.10.1` renders `setNavBadge` counts on the main sidebar items, so the `SidebarNavBadges` bridge of #413 is removed (it drew a second chip; CI `TEST-N04 UI`). REQ-N03 and DD-N05 are unchanged |

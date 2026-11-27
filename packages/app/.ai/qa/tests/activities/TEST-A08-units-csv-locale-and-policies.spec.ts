@@ -51,8 +51,10 @@ async function unitsCsv(
   return { text: await response.text(), contentType: response.headers()['content-type'] ?? '' }
 }
 
-/** The index of the column whose header matches `pattern`. */
+/** The index of the column whose header matches `pattern`, once the table has rendered its headers. */
 async function columnIndex(page: Page, pattern: RegExp): Promise<number> {
+  // `allInnerTexts` does not wait, and the list can still be loading after `goto` (an empty header list).
+  await expect(page.getByRole('columnheader').filter({ hasText: pattern }).first()).toBeVisible()
   const headers = (await page.getByRole('columnheader').allInnerTexts()).map((text) => text.trim())
   const index = headers.findIndex((text) => pattern.test(text))
   expect(index, JSON.stringify(headers)).toBeGreaterThanOrEqual(0)
