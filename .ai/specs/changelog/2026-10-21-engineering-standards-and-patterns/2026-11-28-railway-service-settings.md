@@ -1,0 +1,1 @@
+| 2026-11-28 | S15.4: Railway no longer reads `railway.toml` (config as code deprecated, seen 2026-11-27), so the health check and the other service settings are set on each service; `docs/ops/deploy.md` gains *Railway service settings*, *PostgreSQL* (17 with pgvector) and the Redis start command. The three toml files stay as the reference for the values |

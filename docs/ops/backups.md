@@ -9,7 +9,7 @@ back after data loss, and the RPO and RTO in this file stand.
 |---|---|
 | What | `pg_dump --format=custom` of the production database, encrypted with [age](https://age-encryption.org) |
 | Where to | an S3-compatible bucket at a second EU provider (ENG-Q-04) |
-| When | every night at 02:30 UTC (`railway.backup.toml`) |
+| When | every night at 02:30 UTC (cron of the backup service; values in `railway.backup.toml`) |
 | Kept | 30 daily copies (`daily/vereino-YYYY-MM-DD.dump.age`) and 12 monthly copies (`monthly/vereino-YYYY-MM.dump.age`, the first dump of each month) |
 | RPO | ≤ 24 hours (no PITR): everything written after the last successful dump can be lost |
 | RTO target | ≤ 60 minutes from the decision to restore to the app serving again |
@@ -71,8 +71,9 @@ tool messages are cut to their headline with URLs and passwords redacted.
 3. Put the printed public key (`age1…`) on its own line in `docker/backup/age-recipients.txt` through a pull request.
    To rotate the key, add the new public key, keep the old private key until the last copy encrypted to it has
    expired (12 months), then remove the old public key.
-4. In the Railway project add a service from this repository with the config file `railway.backup.toml` and the
-   variables above, including `VEREINO_OPS_BACKUP_HEARTBEAT_URL` once the heartbeat check exists
+4. In the Railway project add a service from this repository with the settings of `railway.backup.toml` set on the
+   service itself (Railway no longer reads the file: [`deploy.md` -> *Railway service settings*](deploy.md#railway-service-settings))
+   and the variables above, including `VEREINO_OPS_BACKUP_HEARTBEAT_URL` once the heartbeat check exists
    (`docs/ops/monitoring.md` → *Owner setup*). Run it once by hand ("Run now") and check the log for
    `backup.dump.succeeded` and the check for its first success ping.
 

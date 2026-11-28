@@ -22,10 +22,70 @@ trigger ([`edge-proxy.md`](edge-proxy.md)) have their own runbooks.
 | `staging` | Railway project (Pro plan, EU West; D-039), environment `staging` | every commit on `main`, automatically | synthetic only |
 | `production` | the same Railway project, environment `production` | a maintainer deploys a release tag by hand, inside the release window; never automatic | the real data of every club, plus the maintainers' demo club (synthetic) |
 
-Each Railway environment has four services: **app** (`railway.toml`), **worker** (`railway.worker.toml`), **PostgreSQL**
-and **Redis** (Railway templates). The owner runs and pays for the project (ENG-Q-03) on the Pro plan (D-039, superseding
+Each Railway environment has four services: **app**, **worker**, **PostgreSQL** (PostgreSQL 17 with pgvector) and
+**Redis**, all in **EU West** (D-039), set as in [Railway service settings](#railway-service-settings). The owner runs and pays for the project (ENG-Q-03) on the Pro plan (D-039, superseding
 Hobby). Volume backups and point-in-time recovery are turned on if Pro offers them; until a PITR restore is drilled,
 recovery rests on the nightly off-site dump (RPO ≤ 24 h; E18-S03).
+
+### Railway service settings
+
+**Railway no longer reads `railway.toml`.** Since its move to infrastructure as code (`.railway/railway.ts`), a new
+service built from this repository ignores the config files, and the API refuses to point a service at one ("Config as
+Code (railway.json/railway.toml) is deprecated"; seen on 2026-11-27). Without the settings below a service builds with
+Railpack instead of the `Dockerfile`, skips the pre-deploy step (no migrations) and has no health check.
+`railway.toml`, `railway.worker.toml` and `railway.backup.toml` stay in the repository as the **reference for the
+values**; set them on each service, per environment, in the service's *Settings* or with the CLI (below). Moving them
+to `.railway/railway.ts` is a later change.
+
+| Service | Source | Settings |
+|---|---|---|
+| **app** | this repository, branch `main` | Dockerfile path `Dockerfile`; pre-deploy `sh ./scripts/railway-predeploy.sh`; start `sh ./scripts/railway-start.sh`; health check `/api/healthz`, timeout 60 s; restart on failure, 3 retries; a public domain |
+| **worker** | this repository, branch `main` | Dockerfile path `Dockerfile`; start `sh ./scripts/railway-worker.sh`; restart on failure, 3 retries; no public domain |
+| **backup** (production only) | this repository, branch `main` | Dockerfile path `docker/backup/Dockerfile`; start `node scripts/backup-dump.mjs`; cron `30 2 * * *`; restart never ([`backups.md`](backups.md)) |
+| **PostgreSQL** | image `pgvector/pgvector:pg17-trixie` | volume at `/var/lib/postgresql/data`; `PGDATA=/var/lib/postgresql/data/pg17-data`; no public TCP proxy (L-1) |
+| **Redis** | Railway's Redis template | volume at `/data`; start command in *Redis* below; no public TCP proxy (L-1) |
+
+Every service runs in **EU West** (`europe-west4-drams3a`, Amsterdam). A new service may start in US East; move it
+before it holds data: `railway service scale --service <name> --environment <env> europe-west4-drams3a=1 iad=0` (a
+volume moves with it; `iad` is the id Railway gives US East in older projects, `us-east` in newer ones).
+
+**With the CLI** (logged in as a workspace member, from a folder linked with `railway link`). The settings are not
+secret, so a JSON file is fine:
+
+```json
+{"s":"<service id>","e":"<environment id>","i":{"dockerfilePath":"Dockerfile",
+ "preDeployCommand":["sh ./scripts/railway-predeploy.sh"],"startCommand":"sh ./scripts/railway-start.sh",
+ "healthcheckPath":"/api/healthz","healthcheckTimeout":60,"restartPolicyType":"ON_FAILURE","restartPolicyMaxRetries":3}}
+```
+
+```bash
+railway api 'mutation($s:String!,$e:String!,$i:ServiceInstanceUpdateInput!){serviceInstanceUpdate(serviceId:$s,environmentId:$e,input:$i)}' --variables @app.json
+railway api 'mutation($s:String!,$e:String!){serviceInstanceDeployV2(serviceId:$s,environmentId:$e)}' --raw-var s=<service id> --raw-var e=<environment id>
+```
+
+Service and environment ids come from `railway service list --json` and `railway environment list --json`. Deploy
+with `serviceInstanceDeployV2` (or *Deploy* in the panel): `railway service redeploy` repeats the previous deployment
+with its old settings and image. `builder` takes no `DOCKERFILE` value; the Dockerfile path alone selects the
+Dockerfile build. Check the build log (`railway logs --build`): the stages of the `Dockerfile` appear. In Git Bash on
+Windows set `MSYS_NO_PATHCONV=1` first, or a value that starts with `/` is turned into a Windows path.
+`railway environment edit --service-config` answered "No changes to apply" for every change on 2026-11-27; use the
+API call above.
+
+### PostgreSQL
+
+Vereino needs PostgreSQL **17** with the **pgvector** extension (`CREATE EXTENSION vector` in the platform's
+migrations; CI and local runs use `pgvector/pgvector:pg17-trixie`), and the nightly backup runs `pg_dump` 17, which
+cannot dump a newer server. Railway's PostgreSQL template is version 18 without pgvector, so:
+
+1. Add the PostgreSQL template (it brings the volume and the variables `DATABASE_URL`, `PGUSER`, `POSTGRES_PASSWORD`,
+   ...) and move it to EU West.
+2. **Before any other deploy**, set `PGDATA=/var/lib/postgresql/data/pg17-data` and the source image
+   `pgvector/pgvector:pg17-trixie` (`serviceInstanceUpdate` with `{"source":{"image":"pgvector/pgvector:pg17-trixie"}}`),
+   then deploy with `serviceInstanceDeployV2`. The template's first deploy left a version 18 cluster in
+   `/var/lib/postgresql/data/pgdata`; the new directory starts clean.
+3. The log shows `starting PostgreSQL 17.x`. A `postgresql.conf contains errors` with `autovacuum_worker_slots` means
+   the directory was initialised by version 18 (for example by a `service redeploy` that still ran the old image):
+   point `PGDATA` at another new directory while the database is empty.
 
 ### Redis
 
@@ -33,10 +93,15 @@ BullMQ keeps the queue (`QUEUE_STRATEGY=async`) and the scheduler's jobs in Redi
 restart:
 
 - attach a **volume** to the Redis service (Railway's Redis template mounts one at `/data`);
-- enable append-only persistence: start Redis with `--appendonly yes --appendfsync everysec` (or set them with
-  `CONFIG SET` and `CONFIG REWRITE`), keeping the template's RDB snapshots as well;
-- set `--maxmemory-policy noeviction`: BullMQ refuses to work reliably with an eviction policy, and evicting a job
-  key loses a job silently;
+- enable append-only persistence and set `noeviction` **in the start command**. The template starts Redis without a
+  config file, so `CONFIG REWRITE` cannot keep a `CONFIG SET` across restarts. Start command:
+
+  ```sh
+  /bin/sh -c "rm -rf $RAILWAY_VOLUME_MOUNT_PATH/lost+found/ && exec docker-entrypoint.sh redis-server --requirepass $REDIS_PASSWORD --save 60 1 --appendonly yes --appendfsync everysec --maxmemory-policy noeviction --dir $RAILWAY_VOLUME_MOUNT_PATH"
+  ```
+
+  It keeps the template's RDB snapshots (`--save 60 1`). BullMQ refuses to work reliably with an eviction policy, and
+  evicting a job key loses a job silently;
 - the app and the worker reach Redis through `REDIS_URL` (private network URL).
 
 ## Variables
@@ -221,7 +286,8 @@ step after the deploy.
 Every deploy of the **app** service runs, in this order (ADR-013, S14.5):
 
 1. **Build** the `Dockerfile` (`runner` stage; production build of the app).
-2. **Pre-deploy** `sh ./scripts/railway-predeploy.sh` (`preDeployCommand` in `railway.toml`): the boot check, then
+2. **Pre-deploy** `sh ./scripts/railway-predeploy.sh` (the service's pre-deploy command, see
+   [Railway service settings](#railway-service-settings)): the boot check, then
    `yarn db:migrate`, then `yarn mercato foundation sync-role-acls-if-changed` ([role ACL sync](#role-acl-sync)). It
    runs once per deploy, never per replica. Any failure fails the deploy and the previous release keeps serving.
 3. **Start** `sh ./scripts/railway-start.sh`: the boot check, then `yarn start`. It never migrates and never runs
