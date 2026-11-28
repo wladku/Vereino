@@ -72,3 +72,13 @@ export function heldBackCount(
       picture.personIds.includes(personId) && pictureState(picture, publishable, true) === 'waiting_for_consent',
   ).length
 }
+
+/**
+ * Whether an undo of a picture's marks may bring its earlier confirmation back (#899, BR-I01): only when the restored
+ * set drops nobody marked now. A person marked now is on the picture whatever the earlier marks said, so an undo that
+ * removes a mark restores the marks without the confirmation and a manager has to look at the picture again.
+ */
+export function undoKeepsConfirmation(currentIds: readonly string[], restoredIds: readonly string[]): boolean {
+  const restored = new Set(restoredIds)
+  return currentIds.every((id) => restored.has(id))
+}
