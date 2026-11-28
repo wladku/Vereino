@@ -6,6 +6,12 @@
 //
 // It reads no secret: only public DNS and the from-addresses (`--from`, else `NOTIFICATIONS_EMAIL_FROM` and
 // `EMAIL_FROM` of the environment).
+//
+// Two provider setups are accepted for the Return-Path host (`send.<subdomain>`):
+// - current Resend (seen 2026-11-27): CNAME `send.<subdomain>` and `rsend.<subdomain>` to hosts under `rmta.net`,
+//   which publish the SPF and bounce records themselves;
+// - earlier Resend: TXT `v=spf1 include:amazonses.com ~all` and MX `feedback-smtp.<region>.amazonses.com` there.
+// A CNAME on the Return-Path host selects the first; otherwise the second is checked.
 // Usage: node scripts/check-mail-dns.mjs <sending subdomain> [--from <address>]... [--return-path <label>]
 //          [--dkim-selector <selector>] [--region <provider region>] [--policy none|quarantine|reject]
 import { Resolver } from 'node:dns/promises'
@@ -29,6 +35,8 @@ const LABEL_PATTERN = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/
 const REGION_PATTERN = /^[a-z]{2}-[a-z]+-\d$/
 // A public key of at least 20 base64 characters: an empty `p=` is a revoked key.
 const DKIM_KEY_PATTERN = /(?:^|;)\s*p=([A-Za-z0-9+/=]{20,})\s*(?:;|$)/
+// The provider's relay hosts that the CNAME setup points at.
+const RELAY_SUFFIX = '.rmta.net'
 // `+all` lets anyone send and `?all` asserts nothing; only `~all` and `-all` protect the domain.
 const SPF_ALL_PATTERN = /\s[~-]all$/
 
@@ -102,6 +110,32 @@ export async function lookupMx(resolver, name) {
     if (NOT_FOUND_CODES.has(error?.code)) return []
     throw error
   }
+}
+
+export async function lookupCname(resolver, name) {
+  try {
+    return await resolver.resolveCname(name)
+  } catch (error) {
+    if (NOT_FOUND_CODES.has(error?.code)) return []
+    throw error
+  }
+}
+
+const onRelay = (target) => target.toLowerCase().replace(/\.$/, '').endsWith(RELAY_SUFFIX)
+
+// Current Resend setup: the Return-Path host and its `r`-prefixed sibling are CNAMEs to the provider's relay.
+export function checkRelayCnames(returnPathName, returnPathTargets, relayName, relayTargets) {
+  const problems = []
+  for (const [name, targets] of [[returnPathName, returnPathTargets], [relayName, relayTargets]]) {
+    if (targets.length === 0) {
+      problems.push(`SPF: no CNAME at ${name}; add the CNAME the provider shows (a host under rmta.net).`)
+    } else if (!targets.every(onRelay)) {
+      // A DNS panel that reads the value as relative appends the zone: `send.forge.rmta.net.vereino.org`.
+      const zoneAppended = targets.some((target) => /\.rmta\.net\.[a-z0-9.-]+$/i.test(target.replace(/\.$/, '')))
+      problems.push(`SPF: the CNAME at ${name} points at ${targets.join(', ')}, expected a host under rmta.net; copy the value the provider shows${zoneAppended ? ' and end it with a dot (send.forge.rmta.net.), or the DNS panel appends your domain' : ''}.`)
+    }
+  }
+  return problems
 }
 
 export function checkDkim(name, records) {
@@ -188,13 +222,27 @@ export async function checkMailDns(parsed, { resolver, env }) {
       dmarcRecords = orgRecords
     }
   }
-  return [
-    ...checkDkim(dkimName, await lookupTxt(resolver, dkimName)),
-    ...checkSpf(returnPathName, await lookupTxt(resolver, returnPathName)),
-    ...checkMx(returnPathName, await lookupMx(resolver, returnPathName), parsed.region),
-    ...checkDmarc(dmarcName, dmarcRecords, parsed.policy),
-    ...checkFrom(domain, fromAddresses(parsed, env)),
-  ]
+  const returnPathCnames = await lookupCname(resolver, returnPathName)
+  let returnPathProblems
+  if (returnPathCnames.length > 0) {
+    const relayName = `r${parsed.returnPath}.${domain}`
+    returnPathProblems = checkRelayCnames(returnPathName, returnPathCnames, relayName, await lookupCname(resolver, relayName))
+  } else {
+    const spfRecords = await lookupTxt(resolver, returnPathName)
+    const mxRecords = await lookupMx(resolver, returnPathName)
+    returnPathProblems = spfRecords.length === 0 && mxRecords.length === 0
+      ? [`SPF: nothing at ${returnPathName} (the custom Return-Path); add the records the provider shows: today two CNAMEs, ${returnPathName} and r${parsed.returnPath}.${domain}, to hosts under rmta.net.`]
+      : [...checkSpf(returnPathName, spfRecords), ...checkMx(returnPathName, mxRecords, parsed.region)]
+  }
+  return {
+    setup: returnPathCnames.length > 0 ? 'relay' : 'amazonses',
+    problems: [
+      ...checkDkim(dkimName, await lookupTxt(resolver, dkimName)),
+      ...returnPathProblems,
+      ...checkDmarc(dmarcName, dmarcRecords, parsed.policy),
+      ...checkFrom(domain, fromAddresses(parsed, env)),
+    ],
+  }
 }
 
 export async function main({ args, env, resolver, log, logError }) {
@@ -206,8 +254,9 @@ export async function main({ args, env, resolver, log, logError }) {
     return 2
   }
   let problems
+  let setup
   try {
-    problems = await checkMailDns(parsed, { resolver, env })
+    ;({ problems, setup } = await checkMailDns(parsed, { resolver, env }))
   } catch (error) {
     logError(`DNS lookup failed (${String(error?.code ?? error?.message)}); check the network and run again.`)
     return 2
@@ -217,7 +266,10 @@ export async function main({ args, env, resolver, log, logError }) {
     logError(`${String(problems.length)} problem(s) with ${parsed.domain}; see docs/ops/email.md.`)
     return 1
   }
-  log(`${parsed.domain}: DKIM, SPF (Return-Path ${parsed.returnPath}), MX (${parsed.region}), DMARC and the from-address are right.`)
+  const returnPath = setup === 'relay'
+    ? `SPF (Return-Path ${parsed.returnPath} and r${parsed.returnPath}, CNAME to the provider)`
+    : `SPF (Return-Path ${parsed.returnPath}), MX (${parsed.region})`
+  log(`${parsed.domain}: DKIM, ${returnPath}, DMARC and the from-address are right.`)
   return 0
 }
 

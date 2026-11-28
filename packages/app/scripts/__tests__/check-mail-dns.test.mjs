@@ -9,8 +9,10 @@ import {
   checkFrom,
   checkMailDns,
   checkMx,
+  checkRelayCnames,
   checkSpf,
   fromAddresses,
+  lookupCname,
   lookupMx,
   lookupTxt,
   main,
@@ -42,10 +44,29 @@ function zone(overrides = {}) {
   }
 }
 
-function resolverFor({ txt, mx }) {
+// The current Resend setup: the Return-Path host and its sibling are CNAMEs; no TXT or MX of our own there.
+function relayZone(overrides = {}) {
+  const base = zone({ txt: { [`send.${DOMAIN}`]: undefined }, mx: { [`send.${DOMAIN}`]: undefined } })
+  return {
+    ...base,
+    cname: {
+      [`send.${DOMAIN}`]: ['send.forge.rmta.net'],
+      [`rsend.${DOMAIN}`]: ['rsend-euw1.forge.rmta.net'],
+      ...overrides.cname,
+    },
+  }
+}
+
+function resolverFor({ txt, mx, cname = {} }) {
   const lookups = []
   return {
     lookups,
+    async resolveCname(name) {
+      lookups.push(`CNAME ${name}`)
+      if (cname[name] instanceof Error) throw cname[name]
+      if (!cname[name]) throw notFound()
+      return cname[name]
+    },
     async resolveTxt(name) {
       lookups.push(`TXT ${name}`)
       if (txt[name] instanceof Error) throw txt[name]
@@ -237,17 +258,75 @@ test('checkFrom wants every from-address on the verified domain', () => {
 
 test('checkMailDns falls back to the organizational DMARC record, and only when the subdomain has none', async () => {
   const records = zone({ txt: { [`_dmarc.${DOMAIN}`]: undefined, '_dmarc.example.org': [['v=DMARC1; p=reject']] } })
-  const problems = await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), { resolver: resolverFor(records), env: {} })
+  const { problems } = await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), {
+    resolver: resolverFor(records),
+    env: {},
+  })
   assert.deepEqual(problems, ['DMARC: the record at _dmarc.example.org has no rua=mailto: report address.'])
 
   const none = zone({ txt: { [`_dmarc.${DOMAIN}`]: undefined } })
-  assert.deepEqual(await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), { resolver: resolverFor(none), env: {} }), [
-    `DMARC: no "v=DMARC1" TXT record at _dmarc.${DOMAIN}.`,
-  ])
+  assert.deepEqual(
+    (await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), { resolver: resolverFor(none), env: {} })).problems,
+    [`DMARC: no "v=DMARC1" TXT record at _dmarc.${DOMAIN}.`],
+  )
 
   const apex = resolverFor({ txt: {}, mx: {} })
   await checkMailDns(parseArgs(['example.org', '--from', `x${at}example.org`]), { resolver: apex, env: {} })
   assert.equal(apex.lookups.filter((lookup) => lookup.startsWith('TXT _dmarc')).length, 1)
+})
+
+test('lookupCname turns "no record" into an empty list and passes other errors on', async () => {
+  assert.deepEqual(await lookupCname(resolverFor({ txt: {}, mx: {} }), 'x.example.org'), [])
+  await assert.rejects(
+    lookupCname(resolverFor({ txt: {}, mx: {}, cname: { 'x.example.org': notFound('ESERVFAIL') } }), 'x.example.org'),
+    /ESERVFAIL/,
+  )
+})
+
+test('checkRelayCnames wants both CNAMEs on hosts under rmta.net', () => {
+  const ok = checkRelayCnames('send.d', ['send.forge.rmta.net.'], 'rsend.d', ['rsend-euw1.forge.rmta.net'])
+  assert.deepEqual(ok, [])
+  assert.deepEqual(checkRelayCnames('send.d', ['send.forge.rmta.net'], 'rsend.d', []), [
+    'SPF: no CNAME at rsend.d; add the CNAME the provider shows (a host under rmta.net).',
+  ])
+  assert.deepEqual(checkRelayCnames('send.d', ['elsewhere.example.com'], 'rsend.d', ['rsend-euw1.forge.rmta.net']), [
+    'SPF: the CNAME at send.d points at elsewhere.example.com, expected a host under rmta.net; copy the value the provider shows.',
+  ])
+  assert.deepEqual(
+    checkRelayCnames('send.d', ['send.forge.rmta.net.vereino.org'], 'rsend.d', ['rsend-euw1.forge.rmta.net']),
+    [
+      'SPF: the CNAME at send.d points at send.forge.rmta.net.vereino.org, expected a host under rmta.net; copy the value the provider shows and end it with a dot (send.forge.rmta.net.), or the DNS panel appends your domain.',
+    ],
+  )
+})
+
+test('checkMailDns takes the CNAME setup when the Return-Path host is a CNAME, and asks for it when nothing is there', async () => {
+  const relay = await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), { resolver: resolverFor(relayZone()), env: {} })
+  assert.deepEqual(relay, { setup: 'relay', problems: [] })
+
+  const missingSibling = relayZone({ cname: { [`rsend.${DOMAIN}`]: undefined } })
+  assert.deepEqual(
+    (await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), { resolver: resolverFor(missingSibling), env: {} }))
+      .problems,
+    [`SPF: no CNAME at rsend.${DOMAIN}; add the CNAME the provider shows (a host under rmta.net).`],
+  )
+
+  const empty = zone({ txt: { [`send.${DOMAIN}`]: undefined }, mx: { [`send.${DOMAIN}`]: undefined } })
+  const result = await checkMailDns(parseArgs([DOMAIN, '--from', FROM]), { resolver: resolverFor(empty), env: {} })
+  assert.equal(result.setup, 'amazonses')
+  assert.deepEqual(result.problems, [
+    `SPF: nothing at send.${DOMAIN} (the custom Return-Path); add the records the provider shows: today two CNAMEs, send.${DOMAIN} and rsend.${DOMAIN}, to hosts under rmta.net.`,
+  ])
+})
+
+test('main exits 0 and names the CNAME setup when it is right', async () => {
+  const { code, out, err } = await run([DOMAIN, '--from', FROM], relayZone())
+  assert.equal(code, 0)
+  assert.deepEqual(err, [])
+  assert.match(
+    out[0],
+    /DKIM, SPF \(Return-Path send and rsend, CNAME to the provider\), DMARC and the from-address are right/,
+  )
 })
 
 test('main exits 0 and says so when everything is right', async () => {
