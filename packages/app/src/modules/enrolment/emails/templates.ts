@@ -1,6 +1,6 @@
 // The e-mail templates of `enrolment` (foundation III P-31; sign-up form spec *Events, Jobs, Notifications*, DD-J06,
 // DD-J07, DD-J13; #799): the confirmation link, "received" with the status link, the waiting-list number, the
-// rejection with its reason, the withdrawal and a new status link. All go to the bare address the applicant typed (no
+// rejection with its reason, the withdrawal and a new status link; the trial session proposed and cancelled (#801). All go to the bare address the applicant typed (no
 // person record), in the form's language, with `optOut: 'never'` (transactional answers to the applicant's own
 // request). A raw token reaches a template only through the delivery's secret (`ctx.secrets.token`) and becomes the
 // button's link; it is never a param. The params carry no applicant name. On the dispatch worker's import graph, so it
@@ -305,6 +305,111 @@ export const seasonClosedTemplate = template<SeasonClosedParams>({
   },
 })
 
+// --- The trial session (M-J3, DD-J12, phase 4, #801) ---
+
+const instant = z.iso.datetime({ offset: true })
+
+/** The session's start in the applicant's language and the club's zone, e.g. "Thursday, 3 December 2026, 17:00". */
+export function sessionDateLabel(startAt: string, timeZone: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { dateStyle: 'full', timeStyle: 'short', timeZone }).format(new Date(startAt))
+}
+
+/** The session's end time, e.g. "18:00". */
+export function sessionEndLabel(endAt: string, timeZone: string, locale: string): string {
+  return new Intl.DateTimeFormat(locale, { timeStyle: 'short', timeZone }).format(new Date(endAt))
+}
+
+const trialProposedParams = z
+  .object({
+    ...base,
+    groupName: z.string().min(1).max(200),
+    startAt: instant,
+    endAt: instant,
+    timeZone: z.string().min(1).max(64),
+    placeLabel: z.string().max(300).nullable(),
+    /** The group's public conditions (what to bring). */
+    conditions: z.string().max(2000).nullable(),
+  })
+  .strict()
+export type TrialProposedParams = z.output<typeof trialProposedParams>
+
+/** `enrolment.trial_proposed`: the date, time and place of the trial session and what to bring; free of charge. */
+export const trialProposedTemplate = template<TrialProposedParams>({
+  id: 'enrolment.trial_proposed',
+  params: trialProposedParams,
+  copy: (t, params, ctx) => {
+    const values = {
+      section: params.sectionName,
+      group: params.groupName,
+      date: sessionDateLabel(params.startAt, params.timeZone, ctx.locale),
+      end: sessionEndLabel(params.endAt, params.timeZone, ctx.locale),
+    }
+    return {
+      subject: t('enrolment.email.trialProposed.subject', 'Trial session: {group}, {date}', values),
+      lead: t(
+        'enrolment.email.trialProposed.lead',
+        'We invite you to a free trial session of {group} ({section}) on {date}–{end}.',
+        values,
+      ),
+      lines: [
+        params.placeLabel
+          ? t('enrolment.email.trialProposed.place', 'Place: {place}', { place: params.placeLabel })
+          : null,
+        params.conditions
+          ? t('enrolment.email.trialProposed.bring', 'What to bring: {conditions}', { conditions: params.conditions })
+          : null,
+        t(
+          'enrolment.email.trialProposed.free',
+          'The trial session is free and does not make you a member. After it the coordinator will contact you.',
+        ),
+      ],
+    }
+  },
+})
+
+const trialCancelledParams = z
+  .object({
+    ...base,
+    startAt: instant.nullable(),
+    timeZone: z.string().min(1).max(64),
+    reason: z.enum(['withdrawn', 'cancelled']),
+  })
+  .strict()
+export type TrialCancelledParams = z.output<typeof trialCancelledParams>
+
+/** `enrolment.trial_cancelled`: the proposed trial session will not take place; the application stays open. */
+export const trialCancelledTemplate = template<TrialCancelledParams>({
+  id: 'enrolment.trial_cancelled',
+  params: trialCancelledParams,
+  copy: (t, params, ctx) => {
+    const date = params.startAt ? sessionDateLabel(params.startAt, params.timeZone, ctx.locale) : null
+    const values = { section: params.sectionName, date: date ?? '' }
+    return {
+      subject: t('enrolment.email.trialCancelled.subject', 'Trial session cancelled: {section}', values),
+      lead: date
+        ? t(
+            'enrolment.email.trialCancelled.lead',
+            'The trial session on {date} ({section}) will not take place.',
+            values,
+          )
+        : t(
+            'enrolment.email.trialCancelled.leadNoDate',
+            'The proposed trial session ({section}) will not take place.',
+            values,
+          ),
+      lines: [
+        params.reason === 'cancelled'
+          ? t('enrolment.email.trialCancelled.cancelled', 'The club cancelled the session.')
+          : t('enrolment.email.trialCancelled.withdrawn', 'The club withdrew the proposal.'),
+        t(
+          'enrolment.email.trialCancelled.next',
+          'Your application stays open: the coordinator will contact you about another date.',
+        ),
+      ],
+    }
+  },
+})
+
 export const ENROLMENT_EMAIL_TEMPLATES = [
   confirmEmailTemplate,
   receivedTemplate,
@@ -314,4 +419,6 @@ export const ENROLMENT_EMAIL_TEMPLATES = [
   newLinkTemplate,
   acceptedTemplate,
   seasonClosedTemplate,
+  trialProposedTemplate,
+  trialCancelledTemplate,
 ] as const

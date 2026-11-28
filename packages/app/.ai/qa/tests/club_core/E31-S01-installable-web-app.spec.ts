@@ -12,6 +12,8 @@ import { uiText } from '../_fixtures/ui-text'
 // member menu offers "Install" while the browser offers installation. Without network the installed app shows the
 // offline page. The service worker keeps only that page (no API response, no member page) and no notification
 // permission is asked for (N02). Safari on an iPhone shows the "Add to Home Screen" hint once per device.
+// E31-S02 (#906): the manifest also offers maskable icons whose logo stays inside the safe zone, every page carries the
+// address's theme colour in `<meta name="theme-color">`, and the worker enables navigation preload.
 test.describe.configure({ mode: 'serial', timeout: 600_000 })
 
 const IPHONE_SAFARI =
@@ -55,6 +57,34 @@ async function iconAt(base: string, src: string): Promise<Buffer> {
   expect(response.status, src).toBe(200)
   expect(response.headers.get('content-type')).toBe('image/png')
   return Buffer.from(await response.arrayBuffer())
+}
+
+/**
+ * The RGB colour of one pixel of an icon, read by the browser on a page of the icon's origin (PNG decoding stays in the
+ * browser; the test adds no image library).
+ */
+async function iconPixel(page: Page, src: string, x: number, y: number): Promise<[number, number, number]> {
+  return page.evaluate(
+    async ({ src, x, y }) => {
+      const image = new Image()
+      image.src = src
+      await image.decode()
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth
+      canvas.height = image.naturalHeight
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('no 2d context')
+      context.drawImage(image, 0, 0)
+      const [r, g, b] = context.getImageData(x, y, 1, 1).data
+      return [r, g, b] as [number, number, number]
+    },
+    { src, x, y },
+  )
+}
+
+/** Whether a colour is the logo's red (200, 30, 30), allowing for scaling and compression. */
+function isLogoRed([r, g, b]: [number, number, number]): boolean {
+  return r > 150 && g < 90 && b < 90
 }
 
 async function signInAtClub(page: Page): Promise<void> {
@@ -126,6 +156,8 @@ test('E31-S01 the manifest and icons of a club address, and Vereino elsewhere', 
   expect(manifest.body.icons.map((icon) => [icon.sizes, icon.type, icon.purpose])).toEqual([
     ['192x192', 'image/png', 'any'],
     ['512x512', 'image/png', 'any'],
+    ['192x192', 'image/png', 'maskable'],
+    ['512x512', 'image/png', 'maskable'],
   ])
   const clubIcons: Buffer[] = []
   for (const icon of manifest.body.icons) {
@@ -155,11 +187,27 @@ test('E31-S01 the manifest and icons of a club address, and Vereino elsewhere', 
   // The iPhone home screen icon; any other size is not found.
   expect(pngSize(await iconAt(origin, '/app-icon/180'))).toEqual([180, 180])
   expect((await fetch(`${origin}/app-icon/999`)).status).toBe(404)
+  // The touch icon has no maskable variant (#906).
+  expect((await fetch(`${origin}/app-icon/maskable-180`)).status).toBe(404)
 
-  // Every page links the manifest and the touch icon.
+  // Every page links the manifest and the touch icon, and carries the club's colour as the theme colour (#906).
   await page.goto(`${origin}/login`)
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest')
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/app-icon/180')
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', ACCENT)
+
+  // The maskable icon keeps the logo inside the safe zone (#906): 60 px from the edge of the 512 px icon the `any` icon
+  // already shows the logo (it fills 80 %), the maskable one still its white padding; both show it in the centre.
+  const [anyIcon, maskableIcon] = [manifest.body.icons[1].src, manifest.body.icons[3].src]
+  expect(maskableIcon).toMatch(/^\/app-icon\/maskable-512\?v=/)
+  expect(isLogoRed(await iconPixel(page, anyIcon, 60, 256))).toBe(true)
+  expect(await iconPixel(page, maskableIcon, 60, 256)).toEqual([255, 255, 255])
+  expect(await iconPixel(page, maskableIcon, 0, 0)).toEqual([255, 255, 255])
+  expect(isLogoRed(await iconPixel(page, maskableIcon, 256, 256))).toBe(true)
+
+  // Vereino's colour on the instance's own address.
+  await page.goto(`${app.appUrl}/login`)
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#171717')
 })
 
 test('E31-S01 installable in Chromium, Install in the menu, the offline page and nothing personal cached', async ({
@@ -196,9 +244,12 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
     })
   })
   await signInAtClub(page)
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready
+  // The worker enables navigation preload where the browser supports it (Chromium does; #906).
+  const preload = await page.evaluate(async () => {
+    const registration = await navigator.serviceWorker.ready
+    return registration.navigationPreload.getState()
   })
+  expect(preload.enabled).toBe(true)
 
   // The browser's own installability check (what Lighthouse's PWA installability audit reported).
   const cdp = await page.context().newCDPSession(page)
@@ -291,14 +342,18 @@ test('E31-S01 Safari on an iPhone shows the Add to Home Screen hint once per dev
   await page.context().close()
 })
 
-test('E31-S01 a club that stops publishing its page is installed as Vereino', async ({ request }) => {
+test('E31-S01 a club that stops publishing its page is installed as Vereino', async ({ request, page }) => {
   const result = await putSettings(request, club.adminToken, { publication: { enabled: false } })
   expect(result.status, JSON.stringify(result.body)).toBe(200)
   const manifest = await manifestAt(origin)
   expect(manifest.body).toMatchObject({ name: 'Vereino', theme_color: '#171717' })
   expect(manifest.body.icons[0].src).toBe('/app-icon/192?v=mark')
+  expect(manifest.body.icons[2].src).toBe('/app-icon/maskable-192?v=mark')
   // Its icons no longer show its logo: the same mark as the instance's own address.
   const mark = await iconAt(app.appUrl, '/app-icon/192?v=mark')
   for (const src of ['/app-icon/192?v=mark', '/app-icon/192'])
     expect((await iconAt(origin, src)).equals(mark)).toBe(true)
+  // Its pages carry Vereino's theme colour again (#906).
+  await page.goto(`${origin}/login`)
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute('content', '#171717')
 })

@@ -5,12 +5,15 @@
 // wish, the experience, the note behind "Show", the flags, the possible duplicates (role and reason; a link to the person
 // where the shell has a person page), the history and the reject reason. A sticky bar offers the phase-2 decisions
 // **Waiting list** and **Reject** while the application is open and the caller may decide, and **Accept** for a club
-// administrator (phase 3, #800; Trial session comes with phase 4); an accepted application links to its person where
+// administrator (phase 3, #800). Phase 4 (#801): **Trial session** proposes one of the group's next sessions (one at a
+// time, Q-J07), the proposed session shows with its place and the coach's mark, and "Withdraw the trial session" drops
+// it before it starts (with a confirmation); an accepted application links to its person where
 // the shell has a person page. States: loading, not found (404, also another section's application), error with retry, and
 // "changed by someone else — reload" after a 409.
 import * as React from 'react'
 import Link from 'next/link'
 import { useQueryClient } from '@tanstack/react-query'
+import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { Alert, AlertDescription, AlertTitle } from '@open-mercato/ui/primitives/alert'
@@ -19,13 +22,15 @@ import { useLocale, useT } from '@open-mercato/shared/lib/i18n/context'
 import { MemberSkeleton, browserTimeZone, useClubTimeZone, useGrantedFeatures } from '@vereino/ui'
 import { FlagTags, StateTag, ageLabel, groupLabel } from './ApplicationParts'
 import { AcceptSheet } from './AcceptSheet'
-import { RejectSheet, WaitingSheet, type SheetSide } from './DecisionSheets'
+import { RejectSheet, TrialSheet, WaitingSheet, type SheetSide } from './DecisionSheets'
 import {
   APPLICATIONS_QUERY_KEY,
   APPLICATION_QUERY_KEY,
   calendarDateLabel,
   instantDateTimeLabel,
+  sessionLabel,
   useApplication,
+  withdrawTrial,
   type AcceptOutcome,
   type ApplicationDetail,
   type DecisionOutcome,
@@ -46,6 +51,8 @@ export type ApplicationViewProps = {
 type Notice =
   | { kind: 'waiting'; number: number | null }
   | { kind: 'rejected' }
+  | { kind: 'trial' }
+  | { kind: 'trialWithdrawn' }
   | { kind: 'accepted'; invitation: 'sent' | 'skipped' | 'failed' }
   | { kind: 'conflict' }
   | null
@@ -171,6 +178,34 @@ function Details({
         </div>
       </section>
 
+      {application.trial ? (
+        <section aria-labelledby={`${noteId}-trial`} className="flex flex-col gap-2">
+          <h2 id={`${noteId}-trial`} className="text-lg font-semibold">
+            {t('enrolment.club.trial.heading')}
+          </h2>
+          <dl
+            className="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2"
+            data-testid="enrolment-trial-info"
+            data-outcome={application.trial.outcome ?? 'none'}
+            data-over={application.trial.over ? 'true' : 'false'}
+          >
+            <Fact label={t('enrolment.club.trial.when')}>{sessionLabel(application.trial, locale, timeZone)}</Fact>
+            <Fact label={t('enrolment.club.trial.place')}>{application.trial.placeLabel ?? empty}</Fact>
+            <Fact label={t('enrolment.club.trial.outcome')}>
+              {application.trial.status === 'cancelled'
+                ? t('enrolment.club.trial.cancelled')
+                : t(
+                    application.trial.outcome === 'present'
+                      ? 'enrolment.club.trial.outcomePresent'
+                      : application.trial.outcome === 'absent'
+                        ? 'enrolment.club.trial.outcomeAbsent'
+                        : 'enrolment.club.trial.outcomeNone',
+                  )}
+            </Fact>
+          </dl>
+        </section>
+      ) : null}
+
       {application.duplicates.length > 0 ? (
         <section aria-labelledby={`${noteId}-duplicates`} className="flex flex-col gap-2">
           <h2 id={`${noteId}-duplicates`} className="text-lg font-semibold">
@@ -248,7 +283,9 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
   const queryClient = useQueryClient()
   const query = useApplication(id)
   const grants = useGrantedFeatures(DECIDE_FEATURES, apiCall)
-  const [sheet, setSheet] = React.useState<'accept' | 'waiting' | 'reject' | null>(null)
+  const { confirm, ConfirmDialogElement } = useConfirmDialog()
+  const [sheet, setSheet] = React.useState<'accept' | 'waiting' | 'reject' | 'trial' | null>(null)
+  const [withdrawing, setWithdrawing] = React.useState(false)
   const [notice, setNotice] = React.useState<Notice>(null)
   const side: SheetSide = shell === 'member' ? 'bottom' : 'right'
 
@@ -315,6 +352,8 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
     if (outcome.status !== 'ok') return
     if (decided === 'waiting') {
       setNotice({ kind: 'waiting', number: outcome.waitingNumber })
+    } else if (decided === 'trial') {
+      setNotice({ kind: 'trial' })
     } else {
       setNotice({ kind: 'rejected' })
     }
@@ -336,6 +375,38 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
     }
     if (outcome.status !== 'ok') return
     setNotice({ kind: 'accepted', invitation: outcome.invitation })
+    void Promise.all([
+      queryClient.invalidateQueries({ queryKey: [APPLICATION_QUERY_KEY, id] }),
+      queryClient.invalidateQueries({ queryKey: [APPLICATIONS_QUERY_KEY] }),
+    ])
+  }
+
+  const onWithdrawTrial = async () => {
+    if (withdrawing) return
+    const confirmed = await confirm({
+      title: t('enrolment.club.trial.withdrawTitle'),
+      text: t('enrolment.club.trial.withdrawText'),
+      confirmText: t('enrolment.club.trial.withdraw'),
+      cancelText: t('enrolment.club.actions.cancel'),
+    })
+    if (!confirmed) return
+    setWithdrawing(true)
+    setNotice(null)
+    const outcome = await withdrawTrial(application.id, application.updatedAt)
+    setWithdrawing(false)
+    if (outcome.status === 'conflict') {
+      setNotice({ kind: 'conflict' })
+      return
+    }
+    if (outcome.status === 'not_found') {
+      void reload()
+      return
+    }
+    if (outcome.status !== 'ok') {
+      setNotice({ kind: 'conflict' })
+      return
+    }
+    setNotice({ kind: 'trialWithdrawn' })
     void Promise.all([
       queryClient.invalidateQueries({ queryKey: [APPLICATION_QUERY_KEY, id] }),
       queryClient.invalidateQueries({ queryKey: [APPLICATIONS_QUERY_KEY] }),
@@ -393,6 +464,13 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
           <AlertDescription>{t(`enrolment.club.accept.done.${notice.invitation}`)}</AlertDescription>
         </Alert>
       ) : null}
+      {notice?.kind === 'trial' || notice?.kind === 'trialWithdrawn' ? (
+        <Alert style="light" status="success" data-testid="enrolment-decision-done">
+          <AlertDescription>
+            {t(notice.kind === 'trial' ? 'enrolment.club.trial.done' : 'enrolment.club.trial.withdrawn')}
+          </AlertDescription>
+        </Alert>
+      ) : null}
       {notice?.kind === 'rejected' ? (
         <Alert style="light" status="success" data-testid="enrolment-decision-done">
           <AlertDescription>{t('enrolment.club.reject.done')}</AlertDescription>
@@ -414,6 +492,32 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
               }}
             >
               {t('enrolment.club.actions.accept')}
+            </Button>
+          ) : null}
+          {application.canProposeTrial ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
+              data-testid="enrolment-action-trial"
+              onClick={() => {
+                setNotice(null)
+                setSheet('trial')
+              }}
+            >
+              {t('enrolment.club.actions.trial')}
+            </Button>
+          ) : null}
+          {application.canWithdrawTrial ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11 flex-1 sm:flex-none"
+              disabled={withdrawing}
+              data-testid="enrolment-action-withdraw-trial"
+              onClick={() => void onWithdrawTrial()}
+            >
+              {t('enrolment.club.trial.withdraw')}
             </Button>
           ) : null}
           <Button
@@ -467,6 +571,18 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
           onOutcome={onOutcome}
         />
       ) : null}
+      {sheet === 'trial' ? (
+        <TrialSheet
+          key={`trial-${application.updatedAt}`}
+          application={application}
+          open
+          side={side}
+          onOpenChange={(open) => {
+            if (!open) setSheet(null)
+          }}
+          onOutcome={onOutcome}
+        />
+      ) : null}
       {sheet === 'reject' ? (
         <RejectSheet
           key={`reject-${application.updatedAt}`}
@@ -479,6 +595,7 @@ export function ApplicationView({ id, listHref, personHref, shell }: Application
           onOutcome={onOutcome}
         />
       ) : null}
+      {ConfirmDialogElement}
     </article>
   )
 }

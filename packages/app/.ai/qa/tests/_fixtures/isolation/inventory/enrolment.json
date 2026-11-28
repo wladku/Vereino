@@ -1,5 +1,5 @@
 {
-  "$comment": "Cross-club isolation probes of the enrolment routes (#628, #799, #800). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
+  "$comment": "Cross-club isolation probes of the enrolment routes (#628, #799, #800, #801). Format and probe kinds: _fixtures/isolation/probe.ts; completeness: yarn route-isolation:check.",
   "routes": {
     "/api/enrolment/applications": {
       "GET": [
@@ -82,6 +82,68 @@
           "groupId": "$A:enrolmentGroup",
           "startDay": "2030-01-01",
           "sendInvitation": false,
+          "updatedAt": "$B:applicationUpdatedAt"
+        }
+      }
+    },
+    "/api/enrolment/applications/[id]/trial": {
+      "POST": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:application"
+        },
+        "body": {
+          "occurrenceId": "$A:occurrence",
+          "updatedAt": "$B:applicationUpdatedAt"
+        }
+      },
+      "DELETE": {
+        "probe": "foreign-id",
+        "params": {
+          "id": "$B:application"
+        },
+        "body": {
+          "updatedAt": "$B:applicationUpdatedAt"
+        }
+      }
+    },
+    "/api/enrolment/applications/[id]/trial-sessions": {
+      "GET": [
+        {
+          "probe": "foreign-id",
+          "params": {
+            "id": "$B:application"
+          }
+        },
+        {
+          "probe": "foreign-ref",
+          "params": {
+            "id": "$A:application"
+          },
+          "query": {
+            "groupId": "$B:enrolmentGroup"
+          },
+          "expect": [404, 422],
+          "why": "Club B's group named for club A's application is no group of its section: 422 application_group_invalid, as for an unknown group id."
+        }
+      ]
+    },
+    "/api/enrolment/trials": {
+      "GET": {
+        "probe": "foreign-id",
+        "query": {
+          "occurrenceId": "$B:occurrence"
+        }
+      }
+    },
+    "/api/enrolment/trials/[applicationId]": {
+      "PUT": {
+        "probe": "foreign-id",
+        "params": {
+          "applicationId": "$B:application"
+        },
+        "body": {
+          "outcome": "present",
           "updatedAt": "$B:applicationUpdatedAt"
         }
       }

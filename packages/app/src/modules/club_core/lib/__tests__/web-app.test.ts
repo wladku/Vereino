@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals'
 import {
   APPLE_TOUCH_ICON_SIZE,
+  MASKABLE_SAFE_ZONE,
   VEREINO_THEME_COLOR,
   WEB_APP_BACKGROUND,
   WEB_APP_START_URL,
@@ -13,9 +14,14 @@ import {
   shouldShowIosInstallHint,
   vereinoIdentity,
   webAppIconCacheControl,
+  webAppClubSlug,
   webAppIconPath,
+  webAppIconRequest,
   webAppIconSize,
+  webAppInitialFontSize,
+  webAppLogoSide,
   webAppManifest,
+  webAppThemeColor,
 } from '../web-app'
 
 const IPHONE_SAFARI =
@@ -82,6 +88,35 @@ describe('icons', () => {
   it('the path carries the version', () => {
     expect(webAppIconPath(192, 'mark-1b8f3a')).toBe('/app-icon/192?v=mark-1b8f3a')
     expect(webAppIconPath(512, 'a b')).toBe('/app-icon/512?v=a%20b')
+    expect(webAppIconPath(512, 'mark', 'maskable')).toBe('/app-icon/maskable-512?v=mark')
+  })
+
+  it('names an any icon by its size and a maskable one by maskable-<manifest size>', () => {
+    expect(webAppIconRequest('192')).toEqual({ size: 192, purpose: 'any' })
+    expect(webAppIconRequest('180')).toEqual({ size: 180, purpose: 'any' })
+    expect(webAppIconRequest('maskable-192')).toEqual({ size: 192, purpose: 'maskable' })
+    expect(webAppIconRequest('maskable-512')).toEqual({ size: 512, purpose: 'maskable' })
+    // The touch icon has no maskable variant; any other value names no icon.
+    expect(webAppIconRequest('maskable-180')).toBeNull()
+    expect(webAppIconRequest('maskable-256')).toBeNull()
+    expect(webAppIconRequest('maskable-')).toBeNull()
+    expect(webAppIconRequest('256')).toBeNull()
+    expect(webAppIconRequest('512-maskable')).toBeNull()
+  })
+
+  it("keeps a maskable icon's logo square inside the safe zone's circle", () => {
+    expect(webAppLogoSide(512, 'any')).toBe(410)
+    expect(webAppLogoSide(512, 'maskable')).toBe(289)
+    for (const size of [192, 512]) {
+      const side = webAppLogoSide(size, 'maskable')
+      // Half the square's diagonal is at most the safe zone's radius.
+      expect((side * Math.SQRT2) / 2).toBeLessThanOrEqual((size * MASKABLE_SAFE_ZONE) / 2)
+    }
+  })
+
+  it("draws a maskable icon's initial smaller", () => {
+    expect(webAppInitialFontSize(512, 'any')).toBe(282)
+    expect(webAppInitialFontSize(512, 'maskable')).toBe(205)
   })
 
   it('a current versioned URL is kept a day, anything else 5 minutes', () => {
@@ -111,12 +146,30 @@ describe('webAppManifest', () => {
       icons: [
         { src: '/app-icon/192?v=abcdef01-1b8f3a', sizes: '192x192', type: 'image/png', purpose: 'any' },
         { src: '/app-icon/512?v=abcdef01-1b8f3a', sizes: '512x512', type: 'image/png', purpose: 'any' },
+        { src: '/app-icon/maskable-192?v=abcdef01-1b8f3a', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
+        { src: '/app-icon/maskable-512?v=abcdef01-1b8f3a', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
       ],
     })
   })
 
   it("uses Vereino's colour without a club colour", () => {
     expect(webAppManifest(vereinoIdentity('Vereino'), 'en').theme_color).toBe(VEREINO_THEME_COLOR)
+  })
+})
+
+describe('theme colour and club slug', () => {
+  it("is the club's colour, else Vereino's", () => {
+    expect(webAppThemeColor({ accentColor: '#1b8f3a' })).toBe('#1b8f3a')
+    expect(webAppThemeColor({ accentColor: null })).toBe(VEREINO_THEME_COLOR)
+  })
+
+  it('installs the club of a club address, the home club of a one-club instance, and no club elsewhere', () => {
+    const env = { VEREINO_HOME_CLUB_SLUG: 'ks-orzel' }
+    expect(webAppClubSlug({ kind: 'club', slug: 'lks-wisla' }, env)).toBe('lks-wisla')
+    expect(webAppClubSlug({ kind: 'single' }, env)).toBe('ks-orzel')
+    expect(webAppClubSlug({ kind: 'single' }, {})).toBeNull()
+    expect(webAppClubSlug({ kind: 'instance' }, env)).toBeNull()
+    expect(webAppClubSlug({ kind: 'unknown' }, env)).toBeNull()
   })
 })
 

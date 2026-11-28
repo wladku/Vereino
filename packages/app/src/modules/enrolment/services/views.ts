@@ -28,6 +28,7 @@ import {
   type ApplicationTab,
 } from '../lib/applications'
 import { isDecidableState } from '../lib/states'
+import { TRIAL_SESSIONS_LIMIT, canProposeTrial, canWithdrawTrial, trialOver } from '../lib/trials'
 import {
   applicationTargets,
   candidatePersons,
@@ -38,7 +39,10 @@ import {
   isOfferedGroup,
   publicSite,
   sectionNames,
+  sessionFacts,
+  upcomingGroupSessions,
   type EnrolmentScope,
+  type OccurrenceFact,
 } from './directory'
 import { applicationLinks } from './links'
 
@@ -137,6 +141,8 @@ export type StatusView = {
   closedAt: string | null
   canWithdraw: boolean
   answerDays: number
+  /** The proposed trial session while the application is in `trial` (P-J4, phase 4). */
+  trial: { startAt: string; endAt: string; placeLabel: string | null; timeZone: string } | null
 }
 
 export type StatusResult =
@@ -164,7 +170,7 @@ export async function statusView(container: AwilixContainer, clubSlug: string, t
   ).at(0)
   if (!row || row.state === 'unconfirmed') return { status: 'unknown' }
   const settings = await enrolmentSettings(container, scope)
-  const [names, groups, number] = await Promise.all([
+  const [names, groups, number, sessions] = await Promise.all([
     sectionNames(container, scope, [row.sectionId], em),
     row.groupId
       ? applicationTargets(container, scope, {
@@ -174,7 +180,11 @@ export async function statusView(container: AwilixContainer, clubSlug: string, t
         })
       : Promise.resolve([]),
     waitingNumberFor(em, scope, row),
+    row.state === 'trial'
+      ? sessionFacts(container, scope, [row.trialOccurrenceId])
+      : Promise.resolve(new Map<string, OccurrenceFact>()),
   ])
+  const session: OccurrenceFact | undefined = row.trialOccurrenceId ? sessions.get(row.trialOccurrenceId) : undefined
   return {
     status: 'ok',
     value: {
@@ -190,6 +200,15 @@ export async function statusView(container: AwilixContainer, clubSlug: string, t
       closedAt: row.closedAt?.toISOString() ?? null,
       canWithdraw: isDecidableState(row.state),
       answerDays: settings.answerDays,
+      trial:
+        session && session.status !== 'cancelled'
+          ? {
+              startAt: session.startAt,
+              endAt: session.endAt,
+              placeLabel: session.placeLabel,
+              timeZone: settings.timeZone,
+            }
+          : null,
     },
   }
 }
@@ -257,8 +276,12 @@ function participantName(row: Application): string {
 async function listFacts(ctx: ListContext, em: EntityManager, rows: readonly Application[], today: CalendarDate) {
   const sectionIds = [...new Set(rows.map((row) => row.sectionId))]
   const groupIds = [...new Set(rows.flatMap((row) => (row.groupId ? [row.groupId] : [])))]
-  const [names, waiting, ...targetLists] = await Promise.all([
+  const trialIds = rows.flatMap((row) =>
+    row.state === 'trial' && row.trialOccurrenceId ? [row.trialOccurrenceId] : [],
+  )
+  const [names, sessions, waiting, ...targetLists] = await Promise.all([
     sectionNames(ctx.container, ctx.scope, sectionIds, em),
+    sessionFacts(ctx.container, ctx.scope, trialIds),
     groupIds.length > 0
       ? em.find(
           Application,
@@ -276,7 +299,7 @@ async function listFacts(ctx: ListContext, em: EntityManager, rows: readonly App
       waitingSince: entry.waitingSince ?? null,
     })),
   )
-  return { names, targets, numbers }
+  return { names, targets, numbers, sessions }
 }
 
 function listItem(
@@ -286,7 +309,14 @@ function listItem(
   now: Date,
 ): ApplicationListItem {
   const target = row.groupId ? facts.targets.get(row.groupId) : undefined
-  const overdue = isOverdue({ state: row.state, confirmedAt: row.confirmedAt ?? null }, answerDays, now)
+  // A trial whose session is over (or cancelled, or gone) waits for the coordinator's decision again (M-J2).
+  const over =
+    row.state === 'trial' && trialOver(row.trialOccurrenceId ? facts.sessions.get(row.trialOccurrenceId) : null, now)
+  const overdue = isOverdue(
+    { state: row.state, confirmedAt: row.confirmedAt ?? null, trialOver: over },
+    answerDays,
+    now,
+  )
   return {
     id: row.id,
     sectionId: row.sectionId,
@@ -296,7 +326,7 @@ function listItem(
     chooseForUs: !row.groupId,
     kind: row.kind,
     state: row.state,
-    tab: tabOf(row.state, false),
+    tab: tabOf(row.state, over),
     participantName: participantName(row),
     age:
       row.participantBirthDate && !row.anonymizedAt
@@ -420,6 +450,8 @@ export type ApplicationDetail = ApplicationListItem & {
     ageFit: string
     /** The group's fees valid today (Q-J06); empty when the group is not public or has none. */
     fees: GroupFee[]
+    /** The day of the group's next planned session (the accept sheet's default start day, M-J3); null without one. */
+    nextSessionDay: string | null
   }[]
   /** The club's today: the earliest start day of an acceptance (BR-J6). */
   today: string
@@ -430,6 +462,37 @@ export type ApplicationDetail = ApplicationListItem & {
   acceptedChildPersonId: string | null
   acceptedGuardianPersonId: string | null
   canDecide: boolean
+  /** The proposed trial session and its outcome (phase 4, #801); null when none was proposed. */
+  trial: TrialSessionView | null
+  /** Q-J07: a trial session may be proposed now (one at a time). */
+  canProposeTrial: boolean
+  /** The proposed session has not started yet, so the coordinator may withdraw it. */
+  canWithdrawTrial: boolean
+}
+
+/** A session as the trial sheet and the application show it. */
+export type TrialSessionView = {
+  occurrenceId: string
+  activityName: string | null
+  startAt: string
+  endAt: string
+  placeLabel: string | null
+  status: string
+  outcome: 'present' | 'absent' | null
+  over: boolean
+}
+
+function trialSessionView(fact: OccurrenceFact, outcome: 'present' | 'absent' | null, now: Date): TrialSessionView {
+  return {
+    occurrenceId: fact.id,
+    activityName: fact.activityName,
+    startAt: fact.startAt,
+    endAt: fact.endAt,
+    placeLabel: fact.placeLabel,
+    status: fact.status,
+    outcome,
+    over: trialOver(fact, now),
+  }
 }
 
 /** M-J3: one application of a section the caller decides; null for any other (404, BR-J5). */
@@ -457,25 +520,36 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
   })
   const birthDate = row.anonymizedAt ? null : (row.participantBirthDate ?? null)
   const stored = row.duplicateCandidates ?? []
-  const [fees, candidates] = await Promise.all([
+  const [fees, candidates, sessions] = await Promise.all([
     groupFees(ctx.container, ctx.scope, row.sectionId),
     // Every decider of the section sees the possible duplicates and may reuse one on accept (J-J05, #800).
     candidatePersons(ctx.container, ctx.scope, [...new Set(stored.map((entry) => entry.personId))]),
+    sessionFacts(ctx.container, ctx.scope, [row.trialOccurrenceId]),
   ])
-  const groups = reference
-    .filter((target) => target.isActive)
-    .map((target) => {
-      const todays = facts.targets.get(target.groupId)
-      return {
-        id: target.groupId,
-        name: target.name,
-        full: todays ? isGroupFull(todays) : false,
-        placesLimit: target.placesLimit,
-        occupied: todays?.occupied ?? target.occupied,
-        ageFit: birthDate ? ageFitOf(birthDate, row.referenceDate, target.fitRule) : 'unknown',
-        fees: fees.get(target.groupId) ?? [],
-      }
-    })
+  const session = row.trialOccurrenceId ? sessions.get(row.trialOccurrenceId) : undefined
+  const active = reference.filter((target) => target.isActive)
+  const nextSessions = isDecidableState(row.state)
+    ? await Promise.all(
+        active.map(async (target) => {
+          const next = await upcomingGroupSessions(ctx.container, ctx.scope, target.groupId, now, 1)
+          return [target.groupId, next.at(0)?.occurrenceDate ?? null] as const
+        }),
+      )
+    : []
+  const nextSessionDays = new Map<string, string | null>(nextSessions)
+  const groups = active.map((target) => {
+    const todays = facts.targets.get(target.groupId)
+    return {
+      id: target.groupId,
+      name: target.name,
+      full: todays ? isGroupFull(todays) : false,
+      placesLimit: target.placesLimit,
+      occupied: todays?.occupied ?? target.occupied,
+      ageFit: birthDate ? ageFitOf(birthDate, row.referenceDate, target.fitRule) : 'unknown',
+      fees: fees.get(target.groupId) ?? [],
+      nextSessionDay: nextSessionDays.get(target.groupId) ?? null,
+    }
+  })
   return {
     ...item,
     participantFirstName: row.participantFirstName ?? null,
@@ -509,7 +583,60 @@ export async function applicationDetail(ctx: ListContext, id: string): Promise<A
     acceptedChildPersonId: row.acceptedChildPersonId ?? null,
     acceptedGuardianPersonId: row.acceptedGuardianPersonId ?? null,
     canDecide: isDecidableState(row.state),
+    trial: session ? trialSessionView(session, row.trialOutcome ?? null, now) : null,
+    canProposeTrial:
+      !row.anonymizedAt && canProposeTrial(row.state, row.state === 'trial' ? (session ?? null) : null, now),
+    canWithdrawTrial: canWithdrawTrial(row.state, session ?? null, now),
   }
+}
+
+// --- The trial-session picker (M-J3 Trial sheet, phase 4) ---
+
+export type TrialSessionOptions = {
+  groupId: string | null
+  items: TrialSessionView[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
+
+/**
+ * The next planned sessions of the application's group — or of `groupId`, a live group of its section — for the trial
+ * sheet; null for an application the caller does not decide (404, BR-J5), `'group_invalid'` for another group.
+ */
+export async function trialSessionOptions(
+  ctx: ListContext,
+  id: string,
+  groupId?: string,
+): Promise<TrialSessionOptions | 'group_invalid' | null> {
+  const now = ctx.now ?? new Date()
+  const sections = deciderSections(ctx.grants)
+  const em = ctx.container.resolve<EntityManager>('em').fork()
+  const row = await em.findOne(
+    Application,
+    { id, ...ctx.scope, deletedAt: null, state: { $ne: 'unconfirmed' } },
+    { fields: ['id', 'sectionId', 'groupId', 'referenceDate'] },
+  )
+  if (!row || (sections !== 'all' && !sections.includes(row.sectionId))) return null
+  const target = groupId ?? row.groupId ?? null
+  const page = (items: TrialSessionView[]) => ({
+    groupId: target,
+    items,
+    total: items.length,
+    page: 1,
+    pageSize: TRIAL_SESSIONS_LIMIT,
+    totalPages: items.length > 0 ? 1 : 0,
+  })
+  if (!target) return page([])
+  const live = await applicationTargets(ctx.container, ctx.scope, {
+    sectionId: row.sectionId,
+    date: row.referenceDate,
+    groupIds: [target],
+  })
+  if (!live.at(0)?.isActive) return 'group_invalid'
+  const sessions = await upcomingGroupSessions(ctx.container, ctx.scope, target, now, TRIAL_SESSIONS_LIMIT)
+  return page(sessions.filter((fact) => fact.groupId === target).map((fact) => trialSessionView(fact, null, now)))
 }
 
 /** REQ-J17: the club's overdue applications (the administrator's dashboard widget). */
