@@ -26,3 +26,11 @@ Full gate, integration suite and browser smoke in CI on the pull request. No loc
 - **Review of the diff:** the resolution, the `CONTRIBUTING.md` row and the lockfile agree (the `sanitize-html@npm:2.17.5` entry and its now-unused ranges are gone; one 2.18.1 copy remains). No code change was made.
 - **Outcome:** a PR comment asks the owner to add `guard-approved` and rerun the `gate` job. The run did not add or remove the label and did not merge.
 - **CI on `ca6d4213`:** every job passed except `gate` (guard finding only). Integration shard 2/6 was cancelled with no failing test and passed on a rerun. Because of the `ci-<ref>` concurrency group, that rerun of the old run cancelled the CI run on the owner's newer head `f2b403a4` (merge of `main`). The run on the new head was rerun, and the pitfall is recorded in `.ai/lessons/rerun-of-a-superseded-ci-run-cancels-the-current-one.md`.
+
+## Follow-up run: gate still red on `5a67ec09` (om-auto-fix-pr, 2026-11-28)
+
+- **Trigger:** `merge-train-failed` stays on the PR; `gate` of CI run 46089019974 failed.
+- **Cause:** unchanged. All 24 `yarn verify` steps passed; `yarn guard` blocks only on `package.json:85` [new-dependency] `sanitize-html` added to `resolutions`, the intended P6 override. No `guard-approved` label is on the PR yet.
+- **Base:** `origin/main` (`73f247fa`) is already in the branch; no merge needed, no conflicts.
+- **CI on `5a67ec09`:** every other job passed, including all six integration shards, browser smoke, image smoke and perf.
+- **Outcome:** no code change. The owner adds `guard-approved` and reruns `gate` (or lets this run-log commit's CI run pick the label up). The run did not touch the label and did not merge.
