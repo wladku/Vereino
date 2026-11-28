@@ -229,11 +229,20 @@ export function escapeHtml(value: string): string {
 
 /**
  * The offline page: a self-contained HTML document (inline styles, a reload button) that names no person and no club,
- * so one copy can be kept for every user of the device.
+ * so one copy can be kept for every user of the device. The production CSP of Open Mercato 0.10 admits an inline
+ * `<style>` or `<script>` only with the request's nonce and no inline event handler (`script-src-attr 'none'`), so the
+ * button gets its listener from a nonced script; the service worker keeps the page with the response's CSP (#498).
  */
-export function offlinePageHtml(input: { lang: string; title: string; message: string; retry: string }): string {
+export function offlinePageHtml(input: {
+  lang: string
+  title: string
+  message: string
+  retry: string
+  nonce?: string
+}): string {
   const lang = escapeHtml(input.lang)
   const title = escapeHtml(input.title)
+  const nonce = input.nonce ? ` nonce="${escapeHtml(input.nonce)}"` : ''
   return `<!doctype html>
 <html lang="${lang}">
 <head>
@@ -241,7 +250,7 @@ export function offlinePageHtml(input: { lang: string; title: string; message: s
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>${title}</title>
-<style>
+<style${nonce}>
 body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:#fff;color:#171717}
 main{max-width:28rem;padding:1.5rem;text-align:center}
 h1{font-size:1.25rem;margin:0 0 .75rem}
@@ -255,8 +264,9 @@ button:focus-visible{outline:3px solid #2563eb;outline-offset:2px}
 <main data-testid="web-app-offline">
 <h1>${title}</h1>
 <p>${escapeHtml(input.message)}</p>
-<button type="button" onclick="location.reload()">${escapeHtml(input.retry)}</button>
+<button type="button" id="web-app-offline-retry">${escapeHtml(input.retry)}</button>
 </main>
+<script${nonce}>document.getElementById('web-app-offline-retry').addEventListener('click',function(){location.reload()})</script>
 </body>
 </html>
 `

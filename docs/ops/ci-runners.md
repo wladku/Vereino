@@ -6,7 +6,7 @@ The switch is off until the owner turns it on, and it can be turned off at any t
 
 ## What runs where
 
-| Event | `gate`, `integration (shard N/6)`, `browser-smoke`, `image-smoke`, `perf` | Every other job |
+| Event | `gate`, `integration (shard N/8)`, `browser-smoke`, `image-smoke`, `perf` | Every other job |
 |---|---|---|
 | `push` to `main` or `merge-train/**`, with `CI_SELF_HOSTED=true` | self-hosted, label `vereino-ci` | `ubuntu-latest` |
 | `pull_request` whose head branch is in `wladku/Vereino`, with `CI_SELF_HOSTED=true` | self-hosted, label `vereino-ci` | `ubuntu-latest` |

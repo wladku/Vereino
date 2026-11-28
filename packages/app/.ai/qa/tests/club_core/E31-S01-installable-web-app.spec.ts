@@ -288,7 +288,14 @@ test('E31-S01 installable in Chromium, Install in the menu, the offline page and
   const offline = page.getByTestId('web-app-offline')
   await expect(offline).toBeVisible()
   await expect(offline.locator('h1')).toHaveText(uiText('club_core.webApp.offline.title'))
+  // The production CSP admits the page's inline style and its retry script only by nonce, and no inline handler (#498):
+  // the style applies and the button reloads the page once the network is back.
+  const retry = offline.getByRole('button', { name: uiText('club_core.webApp.offline.retry', { exact: true }) })
+  await expect(retry).toHaveCSS('min-height', '44px')
   await page.context().setOffline(false)
+  await retry.click()
+  await expect(page.getByTestId('web-app-offline')).toHaveCount(0)
+  await expect(page).toHaveURL(/\/club\/calendar/)
 
   // Signed out on the same device: no cache serves the member page. Offline it is the offline page, without any member
   // content; online the server sends the visitor to the sign-in page.

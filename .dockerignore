@@ -11,9 +11,8 @@ coverage
 dist
 .turbo
 
-.env
-.env.local
-.env.*.local
+**/.env*
+!**/.env.example
 *.log
 
 packages/app/.mercato/generated

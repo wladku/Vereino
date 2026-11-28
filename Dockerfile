@@ -116,6 +116,7 @@ COPY . .
 
 COPY docker/scripts/dev-entrypoint.sh /app/docker/scripts/dev-entrypoint.sh
 COPY docker/scripts/init-or-migrate.sh /app/docker/scripts/init-or-migrate.sh
+COPY packages/app/scripts/dev-encryption-preflight.mjs /app/docker/scripts/encryption-preflight.mjs
 COPY docker/scripts/mcp-entrypoint.sh /app/docker/scripts/mcp-entrypoint.sh
 RUN chmod +x /app/docker/scripts/dev-entrypoint.sh
 RUN chmod +x /app/docker/scripts/init-or-migrate.sh
@@ -203,6 +204,7 @@ COPY --from=builder /app/packages/db/src ./packages/db/src
 COPY --from=builder /app/packages/ui/src ./packages/ui/src
 COPY --from=builder /app/scripts ./scripts
 COPY docker/scripts/init-or-migrate.sh /app/docker/scripts/init-or-migrate.sh
+COPY packages/app/scripts/dev-encryption-preflight.mjs /app/docker/scripts/encryption-preflight.mjs
 # Used by the optional `mcp` service (compose profile `agents`).
 COPY docker/scripts/mcp-entrypoint.sh /app/docker/scripts/mcp-entrypoint.sh
 RUN chmod +x /app/docker/scripts/init-or-migrate.sh

@@ -9,12 +9,13 @@ export type BlockingViolation = { id: string; impact: string; nodes: number }
 
 type ScannedNode = { html: string; target: unknown[] }
 
-// Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0), not by Vereino code: the schedule family
+// Violations raised by platform-owned markup (`@open-mercato/ui` 0.9.0; kept for 0.10.1, #498), not by Vereino code: the schedule family
 // (`ScheduleView`, react-big-calendar) nests grid roles and labels its date-range trigger differently from its text;
 // `LookupSelect` points its search combobox at a listbox it has not rendered yet; `StepIndicator` puts
 // `aria-orientation` on its list.
 // The AppShell sidebar's low-contrast group headings are fixed by a Vereino override in `globals.css` since #481.
-// `CrudForm` labels and select names, table search boxes, the AppShell breadcrumb and its brand and back links are no
+// `CrudForm` labels and select names (fixed in `@open-mercato/ui` 0.10.1, #498), table search boxes, the AppShell
+// breadcrumb and its brand and back links are no
 // longer listed: `PlatformA11yRepairs` (`@vereino/ui`, mounted in the backend and frontend layouts) repairs them on the page (E20-S18,
 // #497), so a scan that finds them again fails.
 // Each entry is matched by rule and node, so the same rule on Vereino markup still fails.

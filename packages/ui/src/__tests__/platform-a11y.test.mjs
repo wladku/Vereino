@@ -1,23 +1,21 @@
-// E20-S18 (#497): the accessibility repairs of platform markup name CrudForm controls by their labels, table search
-// boxes by their placeholders, give the breadcrumb's icon page a role and start AppShell link names with their text —
-// and change nothing on a second pass.
+// E20-S18 (#497): the accessibility repairs of platform markup name table search boxes by their placeholders, give the
+// breadcrumb's icon page a role and start AppShell link names with their text — and change nothing on a second pass.
+// (The CrudForm label repair went with Open Mercato 0.10.1, #498.)
 import assert from 'node:assert/strict'
 import { afterEach, test } from 'node:test'
 import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import {
   BREADCRUMB_PAGE_SELECTOR,
-  CRUD_CONTROL_SELECTOR,
-  CRUD_FIELD_SELECTOR,
+  LOOKUP_SELECTION_SELECTOR,
   SEARCH_INPUT_SELECTOR,
   SHELL_LINK_SELECTOR,
   WATCHED_ATTRIBUTES,
   browserObserver,
   browserRepairRoot,
-  createRepairIds,
-  labelCrudField,
   labelSearchInput,
   matchLinkName,
+  nameSelectionByContent,
   platformA11yEffect,
   repairPlatformA11y,
   roleBreadcrumbPage,
@@ -25,23 +23,15 @@ import {
 } from '../admin/platform-a11y.ts'
 import { PlatformA11yRepairs } from '../admin/platform-a11y-repairs.tsx'
 
-// A minimal element: attributes, children, `contains` over the child tree, `closest('label')` over the parent chain and
-// `querySelector(CRUD_CONTROL_SELECTOR)` as the first descendant marked `control`.
+// A minimal element: attributes, children for `textContent`, and `closest('label')` over the parent chain.
 class FakeElement {
-  constructor(tagName, { attributes = {}, text = '', children = [], control = false } = {}) {
+  constructor(tagName, { attributes = {}, text = '', children = [] } = {}) {
     this.tagName = tagName.toUpperCase()
     this.attributes = new Map(Object.entries(attributes))
     this.text = text
     this.children = children
-    this.control = control
     this.parent = null
     for (const child of children) child.parent = this
-  }
-  get id() {
-    return this.attributes.get('id') ?? ''
-  }
-  set id(value) {
-    this.attributes.set('id', value)
   }
   get textContent() {
     return [this.text, ...this.children.map((child) => child.textContent)].join('')
@@ -52,79 +42,18 @@ class FakeElement {
   setAttribute(name, value) {
     this.attributes.set(name, value)
   }
-  contains(other) {
-    return other === this || this.children.some((child) => child.contains(other))
+  removeAttribute(name) {
+    this.attributes.delete(name)
   }
   closest(selector) {
     assert.equal(selector, 'label')
     for (let node = this; node; node = node.parent) if (node.tagName === 'LABEL') return node
     return null
   }
-  querySelector(selector) {
-    assert.equal(selector, CRUD_CONTROL_SELECTOR)
-    for (const child of this.children) {
-      if (child.control) return child
-      const found = child.querySelector(selector)
-      if (found) return found
-    }
-    return null
-  }
 }
 const el = (tagName, options) => new FakeElement(tagName, options)
 const root = (bySelector) => ({ querySelectorAll: (selector) => bySelector[selector] ?? [] })
-
-const crudField = ({ label = 'Name *', control = el('input', { control: true }), wrapLabel = false } = {}) => {
-  const labelElement = el('label', { text: label, children: wrapLabel ? [control] : [] })
-  return {
-    field: el('div', { children: wrapLabel ? [labelElement] : [labelElement, control] }),
-    label: labelElement,
-    control,
-  }
-}
-
-test('a CrudForm control is named by its field label, once', () => {
-  const ids = createRepairIds('t')
-  const { field, label, control } = crudField()
-  assert.equal(labelCrudField(field, ids), true)
-  assert.equal(label.id, 't-1')
-  assert.equal(control.getAttribute('aria-labelledby'), 't-1')
-  assert.equal(labelCrudField(field, ids), false)
-})
-
-test('a label that already has an id keeps it; an empty select trigger is named by the label', () => {
-  const trigger = el('button', { attributes: { role: 'combobox' }, control: true })
-  const { field, label } = crudField({ control: el('div', { children: [trigger] }) })
-  label.id = 'own'
-  assert.equal(labelCrudField(field, createRepairIds()), true)
-  assert.equal(trigger.getAttribute('aria-labelledby'), 'own')
-})
-
-test('a control showing text is named by the label and its own text, keeping an id it has', () => {
-  const ids = createRepairIds('t')
-  const trigger = el('button', { attributes: { role: 'combobox' }, text: ' Active ', control: true })
-  const { field } = crudField({ control: trigger })
-  assert.equal(labelCrudField(field, ids), true)
-  assert.equal(trigger.getAttribute('aria-labelledby'), 't-1 t-2')
-  assert.equal(trigger.id, 't-2')
-  const owned = el('button', { attributes: { id: 'picker' }, text: '12.05.2026', control: true })
-  assert.equal(labelCrudField(crudField({ control: owned }).field, ids), true)
-  assert.equal(owned.getAttribute('aria-labelledby'), 't-3 picker')
-})
-
-test('fields without a label, with an empty label, without a control or with a named control are left alone', () => {
-  const ids = createRepairIds()
-  assert.equal(labelCrudField(el('div', { children: [el('input', { control: true })] }), ids), false)
-  assert.equal(labelCrudField(crudField({ label: '  ' }).field, ids), false)
-  assert.equal(labelCrudField(el('div', { children: [el('label', { text: 'Name' })] }), ids), false)
-  assert.equal(labelCrudField(crudField({ wrapLabel: true }).field, ids), false)
-  const named = el('input', { attributes: { 'aria-label': 'Date of birth' }, control: true })
-  assert.equal(labelCrudField(crudField({ control: named }).field, ids), false)
-  const labelled = el('input', { attributes: { 'aria-labelledby': 'x' }, control: true })
-  assert.equal(labelCrudField(crudField({ control: labelled }).field, ids), false)
-  const inOwnLabel = el('input', { control: true })
-  const ownLabel = el('label', { text: 'Agree', children: [inOwnLabel] })
-  assert.equal(labelCrudField(crudField({ control: el('span', { children: [ownLabel] }) }).field, ids), false)
-})
+const searchBox = () => el('input', { attributes: { placeholder: 'Search' } })
 
 test('a search box is named by its placeholder unless it has a name or no placeholder', () => {
   const search = el('input', { attributes: { placeholder: ' Search  people ' } })
@@ -132,6 +61,11 @@ test('a search box is named by its placeholder unless it has a name or no placeh
   assert.equal(search.getAttribute('aria-label'), 'Search people')
   assert.equal(labelSearchInput(search), false)
   assert.equal(labelSearchInput(el('input')), false)
+  const labelled = el('input', { attributes: { placeholder: 'Search', 'aria-labelledby': 'x' } })
+  assert.equal(labelSearchInput(labelled), false)
+  const inLabel = el('input', { attributes: { placeholder: 'Search' } })
+  el('label', { text: 'Find', children: [inLabel] })
+  assert.equal(labelSearchInput(inLabel), false)
 })
 
 test('the breadcrumb icon page gets the img role only when it has a label and no role', () => {
@@ -155,17 +89,37 @@ test('a shell link name starts with its visible text when the label leaves it ou
   assert.equal(matchLinkName(el('a', { attributes: { 'aria-label': 'Open SETTINGS' }, text: 'Settings' })), false)
 })
 
+test('a LookupSelect selection button is named by its content: the Change label goes, the title stays', () => {
+  const button = el('button', {
+    attributes: { 'aria-label': 'Change', title: 'Change' },
+    children: [el('span', { text: 'Żaki' }), el('span', { text: 'Akademia' })],
+  })
+  assert.equal(nameSelectionByContent(button), true)
+  assert.equal(button.getAttribute('aria-label'), null)
+  assert.equal(button.getAttribute('title'), 'Change')
+  assert.equal(nameSelectionByContent(button), false)
+  // React writes the label again (another locale): the next pass drops it again.
+  button.setAttribute('aria-label', 'Zmień')
+  assert.equal(nameSelectionByContent(button), true)
+  assert.equal(button.getAttribute('aria-label'), null)
+  // A button that shows no text keeps its label.
+  const empty = el('button', { attributes: { 'aria-label': 'Change' } })
+  assert.equal(nameSelectionByContent(empty), false)
+  assert.equal(empty.getAttribute('aria-label'), 'Change')
+})
+
 test('a full pass repairs each kind and counts the changes; the second pass changes nothing', () => {
   const page = root({
-    [CRUD_FIELD_SELECTOR]: [crudField().field, crudField({ wrapLabel: true }).field],
-    [SEARCH_INPUT_SELECTOR]: [el('input', { attributes: { placeholder: 'Search' } })],
+    [SEARCH_INPUT_SELECTOR]: [
+      searchBox(),
+      el('input', { attributes: { placeholder: 'Search', 'aria-label': 'Find' } }),
+    ],
     [BREADCRUMB_PAGE_SELECTOR]: [el('span', { attributes: { 'aria-label': 'Dashboard' } })],
     [SHELL_LINK_SELECTOR]: [el('a', { attributes: { 'aria-label': 'Back to Main' }, text: 'Settings' })],
+    [LOOKUP_SELECTION_SELECTOR]: [el('button', { attributes: { 'aria-label': 'Change' }, text: 'Żaki' })],
   })
-  const ids = createRepairIds()
-  assert.equal(repairPlatformA11y(page, ids), 4)
-  assert.equal(repairPlatformA11y(page, ids), 0)
-  assert.equal(createRepairIds()(), 'vereino-a11y-1')
+  assert.equal(repairPlatformA11y(page), 4)
+  assert.equal(repairPlatformA11y(page), 0)
 })
 
 const fakeObserver = () => {
@@ -185,8 +139,8 @@ const fakeObserver = () => {
 }
 
 test('the watcher repairs at once, then once per batch of changes, and stops on cleanup', () => {
-  const fields = []
-  const page = root({ [CRUD_FIELD_SELECTOR]: fields })
+  const boxes = []
+  const page = root({ [SEARCH_INPUT_SELECTOR]: boxes })
   const queued = []
   const { state, create } = fakeObserver()
   const stop = watchPlatformA11y(page, create, (run) => queued.push(run))
@@ -197,31 +151,31 @@ test('the watcher repairs at once, then once per batch of changes, and stops on 
     attributeFilter: WATCHED_ATTRIBUTES,
   })
   assert.equal(state.observed.target, page)
-  const { field, control } = crudField()
-  fields.push(field)
+  const box = searchBox()
+  boxes.push(box)
   state.callback()
   state.callback()
   assert.equal(queued.length, 1)
   queued.shift()()
-  assert.equal(control.getAttribute('aria-labelledby'), 'vereino-a11y-1')
-  const late = crudField()
-  fields.push(late.field)
+  assert.equal(box.getAttribute('aria-label'), 'Search')
+  const late = searchBox()
+  boxes.push(late)
   state.callback()
   stop()
   queued.shift()()
-  assert.equal(late.control.getAttribute('aria-labelledby'), null)
+  assert.equal(late.getAttribute('aria-label'), null)
   assert.equal(state.disconnected, true)
 })
 
 test('the watcher batches on a microtask by default', async () => {
-  const fields = []
+  const boxes = []
   const { state, create } = fakeObserver()
-  watchPlatformA11y(root({ [CRUD_FIELD_SELECTOR]: fields }), create)
-  const { field, control } = crudField()
-  fields.push(field)
+  watchPlatformA11y(root({ [SEARCH_INPUT_SELECTOR]: boxes }), create)
+  const box = searchBox()
+  boxes.push(box)
   state.callback()
   await Promise.resolve()
-  assert.equal(control.getAttribute('aria-labelledby'), 'vereino-a11y-1')
+  assert.equal(box.getAttribute('aria-label'), 'Search')
 })
 
 afterEach(() => {

@@ -1,7 +1,15 @@
 import type { NextConfig } from 'next'
 import { builtinModules } from 'node:module'
 import { resolveAllowedDevOrigins } from './src/lib/dev-origins'
+import { PHASE_DEVELOPMENT_SERVER } from 'next/constants'
 import { telemetryServerExternalPackages } from '@open-mercato/telemetry/nextjs-config'
+import {
+  createContentSecurityPolicy,
+  devServerLoopbackFrameAncestorOrigins,
+} from '@open-mercato/shared/lib/security/contentSecurityPolicy'
+import { stripeContentSecurityPolicy } from '@open-mercato/gateway-stripe/contentSecurityPolicy'
+import { resolveDocumentsCollaborationCspOrigins } from '@open-mercato/documents/contentSecurityPolicy'
+import { openMercatoServerExternalPackages } from '@open-mercato/shared/lib/nextjs/server-external-packages'
 import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 
 const isDevelopment = process.env.NODE_ENV !== 'production'
@@ -23,23 +31,20 @@ const nodeProtocolResolveAlias = Object.fromEntries(
     .map((name) => [`node:${name}`, name]),
 )
 
-// Local patch (engineering standards S8.4, #463): the production CSP drops `'unsafe-eval'` — the production build and
-// the integration suite run without it. Development keeps it, because React's development build and Fast Refresh
-// evaluate code at runtime; `src/instrumentation-client.ts` turns off zod's eval probe in the browser. A nonce-based
-// CSP (no `'unsafe-inline'`) is deferred: it forces dynamic rendering.
-const contentSecurityPolicy = [
-  "default-src 'self'",
-  "base-uri 'self'",
-  "font-src 'self' data: https:",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-  "frame-src 'self' https://js.stripe.com https://hooks.stripe.com",
-  "img-src 'self' data: blob: https:",
-  "object-src 'none'",
-  `script-src 'self' 'unsafe-inline'${isDevelopment ? " 'unsafe-eval'" : ''} https://js.stripe.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https: ws: wss:",
-].join('; ')
+// The CSP comes from the platform (Open Mercato 0.10): production allows no inline script, no eval and no other
+// origin beyond the Stripe ones; `src/proxy.ts` re-emits it on every page with a per-request nonce, which the root
+// layout hands to its inline scripts. Development keeps `'unsafe-inline'` and `'unsafe-eval'` (React's development
+// build and Fast Refresh). Extra origins come from `OM_CSP_*_ORIGINS` at build and run time. The local patch of S8.4
+// (#463, production CSP without `'unsafe-eval'`) is upstream now; `src/instrumentation-client.ts` still turns off zod's
+// eval probe in the browser.
+function contentSecurityPolicyFor(allowLoopbackFraming: boolean): string {
+  return createContentSecurityPolicy({
+    env: process.env,
+    ...stripeContentSecurityPolicy,
+    connectOrigins: [...stripeContentSecurityPolicy.connectOrigins, ...resolveDocumentsCollaborationCspOrigins()],
+    frameAncestorOrigins: allowLoopbackFraming ? devServerLoopbackFrameAncestorOrigins : [],
+  })
+}
 
 // S8.4 headers added on top of the scaffold's. HSTS only in production: a browser ignores it over plain HTTP, but a
 // development server behind local HTTPS would pin `localhost` for two years. `preload` waits for the production domain
@@ -142,28 +147,37 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
     'puppeteer-core',
     'jszip',
     'yjs',
+    'pdfjs-dist',
     // Telemetry: the OTEL SDK + instrumentations must run as real Node modules,
     // not be bundled — the auto-instrumentations (pg/undici) monkey-patch the
     // underlying drivers at runtime. The full list is owned by
     // @open-mercato/telemetry so it can never drift into a partial (silently
     // "emits nothing") copy.
     ...telemetryServerExternalPackages,
+    ...openMercatoServerExternalPackages,
   ],
   // Mirror server-only env vars that client components must observe. Keep this
   // list minimal — anything added here is inlined into the client bundle.
   env: {
     OM_SEARCH_MIN_LEN: process.env.OM_SEARCH_MIN_LEN,
+    OM_DEV_SERVER_LOOPBACK_FRAMING: '',
   },
   async headers() {
+    return buildSecurityHeaders(false)
+  },
+}
+
+function buildSecurityHeaders(allowLoopbackFraming: boolean) {
     const originHeaderName = (process.env.CUSTOMER_DOMAIN_ORIGIN_HEADER ?? 'X-Open-Mercato-Origin').trim()
+    const globalFrameOptionsHeaders = allowLoopbackFraming ? [] : [{ key: 'X-Frame-Options', value: 'SAMEORIGIN' }]
     return [
       {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: contentSecurityPolicy },
+          { key: 'Content-Security-Policy', value: contentSecurityPolicyFor(allowLoopbackFraming) },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          ...globalFrameOptionsHeaders,
           { key: 'Permissions-Policy', value: permissionsPolicy },
           ...(isDevelopment ? [] : [{ key: 'Strict-Transport-Security', value: strictTransportSecurity }]),
         ],
@@ -238,7 +252,20 @@ const nextConfig: NextConfig & { agentRules?: boolean } = {
         headers: [{ key: originHeaderName, value: '1' }],
       },
     ]
-  },
 }
 
-export default nextConfig
+// The Next.js phase, not NODE_ENV, decides the frame policy: `mercato server dev`
+// runs `next dev` with NODE_ENV=production, and `next build` writes these headers
+// into the routes manifest that `next start` serves. Only the development server
+// lets local tools on another loopback port (for example the Cezar cockpit's
+// Preview panel) frame the app. The phase-inlined OM_DEV_SERVER_LOOPBACK_FRAMING
+// flag hands the same decision to src/proxy.ts, which re-emits the page CSP with
+// a per-request nonce.
+export default function resolveNextConfig(phase: string): typeof nextConfig {
+  if (phase !== PHASE_DEVELOPMENT_SERVER) return nextConfig
+  return {
+    ...nextConfig,
+    env: { ...nextConfig.env, OM_DEV_SERVER_LOOPBACK_FRAMING: '1' },
+    headers: async () => buildSecurityHeaders(true),
+  }
+}

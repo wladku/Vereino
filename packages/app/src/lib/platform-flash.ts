@@ -1,8 +1,10 @@
 // The platform's own toasts that Open Mercato 0.9.0 writes in English only (`@open-mercato/ui`
 // `backend/utils/api.ts`: `formatForbiddenAccessMessage`, `redirectToSessionRefresh`; #483, epic #479 owner decision 7).
 // `platformFlashText` recognizes those exact texts and names the catalog key (with its values) that replaces them, so
-// `PlatformFlashTranslator` shows the toast in the page language. Any other text is left alone. Remove together with
-// the translator once the platform translates the toasts itself (upstream report: E20-S18).
+// `PlatformFlashTranslator` shows the toast in the page language. Any other text is left alone. Since Open Mercato
+// 0.10 the platform translates these toasts itself through `ui.auth.accessDenied.*` and `ui.auth.sessionExpired`; the
+// app catalogs set those keys to the `vereino.flash.*` wording (#498), so this matcher only covers the English fallback
+// the platform shows before a translator is registered.
 
 export type PlatformFlashText = { key: string; params?: Record<string, string> }
 

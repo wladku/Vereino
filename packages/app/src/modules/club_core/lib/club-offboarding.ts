@@ -49,7 +49,7 @@ function platform(module: string, kind: ClubTableKind, tables: string[], key: Cl
 
 /**
  * Platform tables that hold a club's rows (*Deletion targets* steps 2 and 3), grouped by the platform module that owns
- * them. The installed table names were read from the catalogue of `@open-mercato/*` 0.9.0; a table the platform adds
+ * them. The installed table names were read from the catalogue of `@open-mercato/*` 0.9.0 and rechecked for 0.10.1 (#498); a table the platform adds
  * later is not covered until it is listed here, and `export-club` and `delete-club` refuse to run until then
  * (`uncoveredTables`). Reviewed against `.ai/guides/upstream/BACKWARD_COMPATIBILITY.md`: the rows are deleted by their
  * tenant or user key only, never by a change to a platform table.
@@ -64,7 +64,12 @@ export const PLATFORM_CLUB_TABLES: readonly ClubTable[] = [
   ...platform('api_keys', 'secret', ['api_keys']),
   ...platform('audit_logs', 'data', ['action_logs', 'access_logs']),
   ...platform('attachments', 'data', ['attachments', 'attachment_partitions']),
-  ...platform('attachments', 'derived', ['attachment_quota_reservations']),
+  // The document text extracted from attachments and its sections (Open Mercato 0.10, #498): rebuilt from the files.
+  ...platform('attachments', 'derived', [
+    'attachment_quota_reservations',
+    'attachment_document_extractions',
+    'attachment_document_sections',
+  ]),
   ...platform('entities', 'data', [
     'encryption_maps',
     'custom_entities',

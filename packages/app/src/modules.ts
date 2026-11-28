@@ -4,7 +4,13 @@
 import type { ModuleOverrides } from '@open-mercato/shared/modules/overrides'
 import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 
-export type ModuleEntry = { id: string; from?: '@open-mercato/core' | '@app' | string; overrides?: ModuleOverrides }
+export type ModuleEntry = {
+  id: string
+  from?: '@open-mercato/core' | '@app' | string
+  locator?: string
+  packageName?: string
+  overrides?: ModuleOverrides
+}
 
 export const enabledModules: ModuleEntry[] = [
   { id: 'auth', from: '@open-mercato/core' },

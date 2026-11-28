@@ -223,7 +223,23 @@ describe('offline page', () => {
     expect(html).toContain('<title>Brak &#60;połączenia&#62;</title>')
     expect(html).toContain('<main data-testid="web-app-offline">')
     expect(html).toContain('<p>Sprawdź sieć.</p>')
-    expect(html).toContain('<button type="button" onclick="location.reload()">Spróbuj</button>')
-    expect(html).not.toMatch(/<script|<link|src=/)
+    expect(html).toContain('<button type="button" id="web-app-offline-retry">Spróbuj</button>')
+    expect(html).toContain('<style>\n')
+    expect(html).toContain("<script>document.getElementById('web-app-offline-retry').addEventListener('click',")
+    expect(html).not.toMatch(/onclick=|<link|src=/)
+  })
+
+  it('carries the request nonce on its inline style and script, never an inline handler (#498)', () => {
+    const html = offlinePageHtml({
+      lang: 'en',
+      title: 'Offline',
+      message: 'No network.',
+      retry: 'Retry',
+      nonce: 'abc+/=',
+    })
+    expect(html).toContain('<style nonce="abc+/=">\n')
+    expect(html).toContain('<script nonce="abc+/=">')
+    expect(html.match(/nonce=/g)).toHaveLength(2)
+    expect(html).not.toContain('onclick=')
   })
 })

@@ -13,6 +13,7 @@ import { ClientBootstrapProvider, resolveClientBootstrapProfile } from '@/compon
 import { GlobalNoticeBars } from '@/components/GlobalNoticeBars'
 import { ComponentOverridesBootstrap } from '@/components/ComponentOverridesBootstrap'
 import { PlatformFlashTranslator } from '@/components/PlatformFlashTranslator'
+import { ContentSecurityPolicyProvider } from '@open-mercato/ui/theme/ContentSecurityPolicyProvider'
 import { WebAppClient } from '@/modules/club_core/components/WebAppClient'
 
 type AppProvidersProps = {
@@ -23,26 +24,29 @@ type AppProvidersProps = {
   supportedLocales: readonly Locale[]
   demoModeEnabled: boolean
   noticeBarsEnabled: boolean
+  nonce?: string
 }
 
-export function AppProviders({ children, locale, dict, localeLocked, supportedLocales, demoModeEnabled, noticeBarsEnabled }: AppProvidersProps) {
+export function AppProviders({ children, locale, dict, localeLocked, supportedLocales, demoModeEnabled, noticeBarsEnabled, nonce }: AppProvidersProps) {
   const pathname = usePathname()
   const profile = resolveClientBootstrapProfile(pathname)
   return (
-    <I18nProvider locale={locale} dict={dict} localeLocked={localeLocked} supportedLocales={supportedLocales}>
-      <ClientBootstrapProvider profile={profile}>
-        <ComponentOverridesBootstrap profile={profile}>
-          <ThemeProvider>
-            <QueryProvider>
-              <PlatformFlashTranslator />
-              <WebAppClient pathname={pathname}>
-                <FrontendLayout footer={<AuthFooter />}>{children}</FrontendLayout>
-              </WebAppClient>
-              {noticeBarsEnabled ? <GlobalNoticeBars demoModeEnabled={demoModeEnabled} /> : null}
-            </QueryProvider>
-          </ThemeProvider>
-        </ComponentOverridesBootstrap>
-      </ClientBootstrapProvider>
-    </I18nProvider>
+    <ContentSecurityPolicyProvider nonce={nonce}>
+      <I18nProvider locale={locale} dict={dict} localeLocked={localeLocked} supportedLocales={supportedLocales}>
+        <ClientBootstrapProvider profile={profile}>
+          <ComponentOverridesBootstrap profile={profile}>
+            <ThemeProvider>
+              <QueryProvider>
+                <PlatformFlashTranslator />
+                <WebAppClient pathname={pathname}>
+                  <FrontendLayout footer={<AuthFooter />}>{children}</FrontendLayout>
+                </WebAppClient>
+                {noticeBarsEnabled ? <GlobalNoticeBars demoModeEnabled={demoModeEnabled} /> : null}
+              </QueryProvider>
+            </ThemeProvider>
+          </ComponentOverridesBootstrap>
+        </ClientBootstrapProvider>
+      </I18nProvider>
+    </ContentSecurityPolicyProvider>
   )
 }
