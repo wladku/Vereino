@@ -314,7 +314,7 @@ read 2026-11-25. The ASVS is © OWASP Foundation under CC BY-SA 4.0; this file c
 | V13.2.5 | 2 | Server-level egress allowlist | No egress restriction on the Railway services; none documented in `docs/ops/deploy.md` | gap | #735 |
 | V13.3.1 | 2 | Secrets in a managed store | Sealed Railway variables (`docs/ops/deploy.md`, D-039 in unmerged PR #725); per-club keys derived from one master secret, no key store yet (`docs/compliance/retention.md`, Q-M07) | partial | #740 |
 | V13.3.2 | 2 | Least privilege on secrets | Designed: sealed variables, production access limited to maintainers (S8.10); no token or member inventory collected | to verify | #735 |
-| V13.4.1 | 1 | No source-control metadata deployed | `.dockerignore` excludes `.git`; the image is built from `Dockerfile` (`railway.toml` builder `DOCKERFILE`) | met | — |
+| V13.4.1 | 1 | No source-control metadata deployed | `.dockerignore` excludes `.git`; the image is built from `Dockerfile` (the app service's Dockerfile path, `docs/ops/deploy.md` → *Railway service settings*; formerly `railway.toml` builder `DOCKERFILE`) | met | — |
 | V13.4.2 | 2 | Debug modes off in production | Runner stage of `Dockerfile` sets `NODE_ENV=production`; platform dev-runtime routes (`packages/app/src/app/api/dev-runtime/`) answer 404 unless enabled; not checked on a deployed environment | to verify | #735 |
 | V13.4.3 | 2 | No directory listings | Next.js serves only routes and `public/`; platform behaviour, not tested | to verify | #743 |
 | V13.4.4 | 2 | HTTP TRACE refused | Not checked at the Railway edge or in Next.js | to verify | #739 |

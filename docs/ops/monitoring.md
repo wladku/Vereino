@@ -55,7 +55,7 @@ running at all stops the worker heartbeat only when it is `foundation:dispatch-s
 
 | Check | URL | Interval | Passes when | Notes |
 |---|---|---|---|---|
-| Health | `https://<host>/api/healthz` | 1 min | HTTP 200, body contains `"status":"ok"` | `railway.toml` uses the same path for deploy health (S15.4) |
+| Health | `https://<host>/api/healthz` | 1 min | HTTP 200, body contains `"status":"ok"` | the app service's deploy health check uses the same path (S15.4) |
 | Public club page | `https://<host>/p/<club-slug>` | 5 min | HTTP 200 | staging: the seeded demonstration club; production: the pilot club |
 | Sign-in page | `https://<host>/login` | 5 min | HTTP 200 | proves the app renders pages, not only the health route |
 
