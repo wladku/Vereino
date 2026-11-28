@@ -17,11 +17,18 @@
 // the route, and their own attachment owner (`activities:club_event_picture`, record = the picture) as the only
 // assignment. Deleting a picture is final: the row and its marks are deleted and the bytes released after the commit,
 // so an undo answers 409 `club_event_picture_erased`, as does an undo or redo of an `add` of a picture that no longer
-// exists. The undo of a picture's `add` only unlinks it, like a logo's; its redo links it again.
+// exists. The undo of a picture's `add` is final too (#898): a manager who uploads the wrong photo and clicks Undo
+// expects it gone, so the row and its marks are deleted and the bytes released once the undo commits; its redo answers
+// 409 `club_event_picture_erased`.
 import { randomUUID } from 'node:crypto'
 import type { EntityManager } from '@mikro-orm/postgresql'
 import type { AttachmentService } from '@open-mercato/core/modules/attachments'
-import { registerCommand, type CommandHandler, type CommandRuntimeContext } from '@open-mercato/shared/lib/commands'
+import {
+  onTransactionLifetimeComplete,
+  registerCommand,
+  type CommandHandler,
+  type CommandRuntimeContext,
+} from '@open-mercato/shared/lib/commands'
 import { CrudHttpError } from '@open-mercato/shared/lib/crud/errors'
 import type { ActingRole } from '@vereino/core'
 import { z } from 'zod'
@@ -376,12 +383,24 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
   async authorizeReplay({ ctx, logEntry }) {
     await authorizeFileReplay(ctx, logEntry.snapshotAfter as ClubEventFileSnapshot | null)
   },
-  /** Removes the new link and, when it is still the poster that replaced another, puts the replaced one back. */
+  /**
+   * Removes the new link and, when it is still the poster that replaced another, puts the replaced one back. A picture
+   * is deleted for good, like a staff delete (also on a cancelled event), and its bytes released after the replay
+   * commits (#898); nothing is released when the replay rolls back.
+   */
   async undo({ ctx, logEntry }) {
     const after = logEntry.snapshotAfter as ClubEventFileSnapshot | null | undefined
     const { file, event } = await authorizeFileReplay(ctx, after)
-    await assertClubEventOpen(event)
     const em = ctx.transactionalEm as EntityManager
+    if (isPictureKind(file.kind)) {
+      const scope = scopeOf(file)
+      const released = await deletePictureRows(em, scope, [file.id])
+      onTransactionLifetimeComplete(em, async (outcome) => {
+        if (outcome === 'committed') await releasePictureFiles(ctx, scope, released)
+      })
+      return
+    }
+    await assertClubEventOpen(event)
     if (file.deletedAt) return
     const now = new Date()
     file.deletedAt = now
@@ -395,7 +414,10 @@ const addClubEventFileCommand: CommandHandler<Record<string, unknown>, ClubEvent
     })
     if (replaced) await relink(em, replaced)
   },
-  /** Links the same stored file again (the bytes are not in the stored input); a poster replaces the live one. */
+  /**
+   * Links the same stored file again (the bytes are not in the stored input); a poster replaces the live one. A picture
+   * is gone after its undo, so its redo answers 409 `club_event_picture_erased` (`authorizeFileReplay`).
+   */
   async redo({ ctx, logEntry }) {
     const after = logEntry.snapshotAfter as ClubEventFileSnapshot | null | undefined
     return inWriteTransaction(ctx, 'activities.club_event_files.add.redo', async (em) => {
