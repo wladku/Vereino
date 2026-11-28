@@ -34,3 +34,12 @@ Full gate, integration suite and browser smoke in CI on the pull request. No loc
 - **Base:** `origin/main` (`73f247fa`) is already in the branch; no merge needed, no conflicts.
 - **CI on `5a67ec09`:** every other job passed, including all six integration shards, browser smoke, image smoke and perf.
 - **Outcome:** no code change. The owner adds `guard-approved` and reruns `gate` (or lets this run-log commit's CI run pick the label up). The run did not touch the label and did not merge.
+
+## Follow-up run: gate and shard 4/6 on `1424e3b2` (om-auto-fix-pr, 2026-11-28)
+
+- **Trigger:** `merge-train-failed` stays on the PR; in CI run 46121570339 `gate` failed and `integration (shard 4/6)` was cancelled at its 45-minute timeout, so the aggregate `integration` check failed.
+- **`gate`:** unchanged cause. All 24 `yarn verify` steps passed; `yarn guard` blocks only on `package.json:85` [new-dependency] `sanitize-html` added to `resolutions`, the intended P6 override. No `guard-approved` label is on the PR.
+- **Shard 4/6:** 75 of its 78 tests passed and none failed; the job ran out of time before the last three (from `payments/E07-S09` on). The same shard took 30 to 42 minutes on `main` that night (runs on `06ab4160`, `f7244b15`, `32226b07`), so it sits close to the limit on every branch. This PR changes only a dependency resolution and no test or page code, so the timeout is not caused by it. The 8-shard change of #887 was not copied here.
+- **Base:** `origin/main` (`06ab4160`) is already in the branch (0 commits behind); no merge needed.
+- **Local gate:** `yarn verify` on this head: all 24 steps passed. `yarn guard --base origin/main` reports the same single blocking finding.
+- **Outcome:** no code change; this run-log commit starts a fresh CI run. The owner adds `guard-approved` for `gate` to pass. The run did not touch the label and did not merge.
