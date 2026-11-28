@@ -5,7 +5,8 @@
 // - `activities.club_event_files.set_people` (undoable): the marked persons of a photo as a set, and the manager's
 //   confirmation ("every recognisable person is marked, nobody outside the club is recognisable"; for a graphic, "no
 //   person can be recognised"), with who confirmed and when. Marks are club persons only (another club's id answers
-//   404). A change of the set without a new confirmation clears it.
+//   404). A change of the set without a new confirmation clears it. An undo that drops a person marked now restores the
+//   marks without the earlier confirmation (#899).
 // - `activities.club_event_files.publish` / `unpublish` (undoable): the manager's publication. A picture needs its
 //   people confirmed to be published (422 `club_event_people_unconfirmed`). Whether it is public is decided on every
 //   read (BR-I01), never here.
@@ -33,7 +34,7 @@ import {
   reorderedPositions,
   type ClubEventPictureKind,
 } from '../lib/club-event-files'
-import { peopleConfirmed } from '../lib/public-pictures'
+import { peopleConfirmed, undoKeepsConfirmation } from '../lib/public-pictures'
 import { CLUB_EVENT_MANAGE_KINDS, clubEventTarget } from '../services/club-event-scope'
 import { markedPersonIds } from '../services/club-event-pictures'
 import { findPersons } from '../services/directory'
@@ -291,8 +292,12 @@ const setPeopleCommand: CommandHandler<Record<string, unknown>, PictureCommandRe
     const { file, em } = await authorizePictureReplay(ctx, before)
     if (!before) return
     await assertClubPersons(ctx, em, scopeOf(file), before.personIds, true)
+    // An undo that drops a person marked now restores the marks without the earlier confirmation (#899, BR-I01).
+    const keepConfirmation = undoKeepsConfirmation(await markedPersonIds(em, scopeOf(file), file.id), before.personIds)
     await restore(em, file, {
       ...before,
+      peopleConfirmedAt: keepConfirmation ? before.peopleConfirmedAt : null,
+      peopleConfirmedByPersonId: keepConfirmation ? before.peopleConfirmedByPersonId : null,
       publishedAt: file.publishedAt?.toISOString() ?? null,
       publishedByPersonId: file.publishedByPersonId ?? null,
     })
