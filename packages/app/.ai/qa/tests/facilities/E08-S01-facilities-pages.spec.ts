@@ -137,3 +137,53 @@ test('E08-S01 facility pages: accessibility, reflow, booking availability dialog
     await club.cleanup()
   }
 })
+
+// Issue #908: the calendar without `range` opens on Week at 1280 px and switches to Day only when the media query's
+// `change` event re-renders it after the resize. Between 00:00 and 01:00 club time that re-render came after the
+// reflow check had measured, so the Week grid still widened the page by 427 px. The browser clock is pinned to
+// 00:30 club time on today's date, so this case runs every time, not only in that hour.
+test('E08-S01 calendar reflow right after the resize from Week to Day at 00:30 club time (#908)', async ({
+  page,
+  request,
+}) => {
+  const club = await createClub(request, 'e08-s01-reflow')
+  try {
+    const admin = club.adminToken
+    const today = calendarDate()
+    const pitch = await create(request, admin, 'places', { name: 'Boisko piłkarskie', kind: 'pitch' })
+    await setOpeningHours(request, admin, pitch, ORLIK_HOURS)
+    const zone = await postZoneRule(request, admin, {
+      placeId: pitch,
+      weekdays: [1, 2, 3, 4, 5],
+      timeFrom: '08:00',
+      timeTo: '22:00',
+      zone: 'public_free',
+      priority: 1,
+      validFrom: today,
+    })
+    expect(zone.status, JSON.stringify(zone.body)).toBe(201)
+
+    await signInBrowserContext(page.request, club.tenant.email, club.tenant.password)
+    await page.clock.setFixedTime(warsawHalfPastMidnight(today))
+    await page.setViewportSize({ width: 1280, height: 720 })
+    await page.goto('/backend/facilities/calendar')
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('facilities-week-axes')).toBeVisible()
+    await expectNoPageOverflow(page)
+    await expect(page.getByTestId('facilities-week-axes')).toHaveCount(0)
+    await expect(page.getByTestId('facilities-day-axis')).toHaveCount(1)
+  } finally {
+    await club.cleanup()
+  }
+})
+
+// 00:30 in Europe/Warsaw on `date`, in winter (+01:00) or summer time (+02:00).
+function warsawHalfPastMidnight(date: string): Date {
+  const winter = new Date(`${date}T00:30:00+01:00`)
+  const hour = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Warsaw',
+    hour: '2-digit',
+    hourCycle: 'h23',
+  }).format(winter)
+  return hour === '00' ? winter : new Date(`${date}T00:30:00+02:00`)
+}

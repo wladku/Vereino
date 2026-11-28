@@ -63,12 +63,23 @@ export async function prepareForAccessibilityScan(page: Page): Promise<void> {
 // Reflow at 320 CSS px (WCAG 1.4.10, S7.4): resizes the viewport and fails when the page itself scrolls
 // sideways. Tables, timelines and maps that scroll inside their own container do not widen the page. `width` checks
 // another viewport the same way (the 768 px tablet of #495), which a layout switching at `md` can break on its own.
+// A page that picks its layout from a media query (the calendars' Week on a wide screen, Day on a phone; DD-W03) still
+// shows the wide layout for a moment after the resize, until the `change` event re-renders it, so the check waits for
+// the overflow to clear (up to `REFLOW_SETTLE_MS`) instead of measuring once: measured once, E08-S01 failed whenever
+// the re-render came late (#908; every time at 00:30 club time). An overflow that lasts still fails.
+const REFLOW_SETTLE_MS = 5_000
+
 export async function expectNoPageOverflow(page: Page, width = 320): Promise<void> {
   await page.setViewportSize({ width, height: width < 768 ? 640 : 1024 })
   await page.waitForLoadState('networkidle')
-  const overflow = await page.evaluate(
-    () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
-  )
+  const measure = () => page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  let overflow = await measure()
+  if (overflow > 0) {
+    await expect
+      .poll(async () => (overflow = await measure()), { timeout: REFLOW_SETTLE_MS })
+      .toBeLessThanOrEqual(0)
+      .catch(() => undefined)
+  }
   // On failure, name the innermost elements that stick out past the viewport (outside any scroll container), so a CI
   // log shows the culprit without a local browser (#293).
   const offenders =

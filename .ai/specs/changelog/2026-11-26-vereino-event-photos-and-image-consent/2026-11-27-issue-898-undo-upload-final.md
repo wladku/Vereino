@@ -1,0 +1,1 @@
+| 2026-11-27 | #898 (follow-up of #897): the undo of a picture's `add` is final like a staff delete — the row and its marks are deleted and the bytes released once the undo commits; its redo answers 409 `club_event_picture_erased`. DD-I12, the retention summary and retention row R25 updated; TEST-I08 covers it. No soft-deleted picture rows remain |
