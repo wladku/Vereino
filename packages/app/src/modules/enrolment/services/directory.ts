@@ -13,6 +13,7 @@ import type { GroupDirectory, GroupDirectoryEntry } from '../../groups/services/
 import type { DuplicateCandidatesService, DuplicateQuery } from '../../people/services/duplicate-candidates'
 import type { PersonDirectory } from '../../people/services/person-directory'
 import type { PublicBlockProvider } from '../../club_core/services/public-blocks'
+import type { OccurrenceFact, OccurrenceFactsContract } from '../../activities/services/occurrence-facts'
 import type { PublicPricesBlock } from '../../payments/lib/public-prices'
 import { DEFAULT_REFERENCE_DAY, parseReferenceDay } from '../lib/age'
 
@@ -26,6 +27,7 @@ const GROUPS_DIRECTORY = 'groups.directory'
 const PEOPLE_PERSON_DIRECTORY = 'people.personDirectory'
 const PEOPLE_DUPLICATE_CANDIDATES = 'people.duplicateCandidates'
 const PAYMENTS_PUBLIC_PRICES = 'payments.publicPrices'
+const ACTIVITIES_OCCURRENCE_FACTS = 'activities.occurrenceFacts'
 
 function required(container: AwilixContainer, token: string): AwilixContainer {
   if (!container.hasRegistration(token)) throw new Error('[internal] enrolment requires the DI service ' + token)
@@ -92,6 +94,37 @@ export function applicationTargets(
   return required(container, GROUPS_APPLICATION_TARGETS)
     .resolve<ApplicationTargetsService>(GROUPS_APPLICATION_TARGETS)
     .applicationTargets(scope, query)
+}
+
+export type { OccurrenceFact } from '../../activities/services/occurrence-facts'
+
+/**
+ * The sessions among `ids` by id (`activities.occurrenceFacts`, DD-J12; phase 4, #801): a removed session or one of
+ * another club is missing; without `activities` every session is missing, so a trial counts as over.
+ */
+export async function sessionFacts(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  ids: readonly (string | null | undefined)[],
+  em?: EntityManager,
+): Promise<Map<string, OccurrenceFact>> {
+  const wanted = [...new Set(ids.filter((id): id is string => Boolean(id)))]
+  if (wanted.length === 0 || !container.hasRegistration(ACTIVITIES_OCCURRENCE_FACTS)) return new Map()
+  return container.resolve<OccurrenceFactsContract>(ACTIVITIES_OCCURRENCE_FACTS).occurrences(scope, wanted, em)
+}
+
+/** The next planned sessions of a group from `from` (the trial-session picker, M-J3); none without `activities`. */
+export async function upcomingGroupSessions(
+  container: AwilixContainer,
+  scope: EnrolmentScope,
+  groupId: string,
+  from: Date,
+  limit: number,
+): Promise<OccurrenceFact[]> {
+  if (!container.hasRegistration(ACTIVITIES_OCCURRENCE_FACTS)) return []
+  return container
+    .resolve<OccurrenceFactsContract>(ACTIVITIES_OCCURRENCE_FACTS)
+    .upcomingSessionsOfGroup(scope, groupId, from, limit)
 }
 
 /** A group an applicant may choose: public, active and accepting applications. */

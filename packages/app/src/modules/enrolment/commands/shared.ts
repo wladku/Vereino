@@ -33,6 +33,9 @@ export type ApplicationSnapshot = {
   decidedAt: string | null
   decidedByUserId: string | null
   closedAt: string | null
+  /** The proposed trial session and its outcome (phase 4, #801); absent in entries written before. */
+  trialOccurrenceId: string | null
+  trialOutcome: string | null
   updatedAt: string
 }
 
@@ -51,6 +54,8 @@ export function applicationSnapshot(row: Application): ApplicationSnapshot {
     decidedAt: iso(row.decidedAt),
     decidedByUserId: row.decidedByUserId ?? null,
     closedAt: iso(row.closedAt),
+    trialOccurrenceId: row.trialOccurrenceId ?? null,
+    trialOutcome: row.trialOutcome ?? null,
     updatedAt: row.updatedAt.toISOString(),
   }
 }

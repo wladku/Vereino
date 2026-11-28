@@ -97,7 +97,11 @@ async function clubScopeOrNull(ctx: CommandRuntimeContext, clubSlug: string): Pr
 }
 
 /** The application's decrypted contact data, read on a fork so the transactional row keeps its stored columns. */
-async function decryptedApplication(em: EntityManager, scope: EnrolmentScope, id: string): Promise<Application | null> {
+export async function decryptedApplication(
+  em: EntityManager,
+  scope: EnrolmentScope,
+  id: string,
+): Promise<Application | null> {
   return findOneWithDecryption(em.fork(), Application, { id, ...scope, deletedAt: null }, {}, scope)
 }
 
@@ -120,7 +124,7 @@ export async function waitingNumberOf(
   )
 }
 
-async function sectionNameOf(
+export async function sectionNameOf(
   ctx: CommandRuntimeContext,
   scope: EnrolmentScope,
   sectionId: string,
@@ -600,7 +604,7 @@ const rejectCommand: CommandHandler<Record<string, unknown>, ApplicationCommandR
 }
 
 /** Undo of a decision: the previous state and decision columns come back; e-mails already sent stay sent. */
-async function restoreDecided(
+export async function restoreDecided(
   em: EntityManager,
   row: Application,
   before: {
@@ -611,6 +615,8 @@ async function restoreDecided(
     decidedByUserId?: string | null
     closedAt?: string | null
     ageFit?: string
+    trialOccurrenceId?: string | null
+    trialOutcome?: string | null
   },
 ): Promise<void> {
   const now = new Date()
@@ -622,6 +628,9 @@ async function restoreDecided(
   row.decidedByUserId = before.decidedByUserId ?? null
   row.closedAt = date(before.closedAt)
   if (before.ageFit) row.ageFit = before.ageFit as Application['ageFit']
+  // Entries written before phase 4 carry no trial columns; the row keeps its own then.
+  if ('trialOccurrenceId' in before) row.trialOccurrenceId = before.trialOccurrenceId ?? null
+  if ('trialOutcome' in before) row.trialOutcome = (before.trialOutcome ?? null) as Application['trialOutcome']
   row.decisionReason = null
   row.updatedAt = now
   await em.flush()

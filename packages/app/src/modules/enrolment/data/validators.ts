@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { isCalendarDate } from '@vereino/core'
 import { APPLICATION_TABS, EMAIL_MAX, NAME_MAX, NOTE_MAX, REASON_MAX, normalizePhone } from '../lib/applications'
 import { APPLICATION_KINDS, EXPERIENCE_LEVELS } from '../lib/states'
+import { TRIAL_OUTCOMES } from '../lib/trials'
 
 const name = z.string().trim().min(1).max(NAME_MAX)
 const calendarDate = z.string().refine(isCalendarDate, { message: 'Expected a date as YYYY-MM-DD' })
@@ -67,6 +68,25 @@ export const rejectSchema = z
   .strict()
 
 export const waitSchema = z.object({ id: z.uuid(), groupId: z.uuid(), updatedAt: z.string().optional() }).strict()
+
+/**
+ * `enrolment.applications.propose_trial` (DD-J12, Q-J07; phase 4, #801): a session of the application's group, or of
+ * `groupId` (the group the coordinator picks for "choose a group for us", or another group of the section).
+ */
+export const proposeTrialSchema = z
+  .object({ id: z.uuid(), occurrenceId: z.uuid(), groupId: z.uuid().optional(), updatedAt: z.string().optional() })
+  .strict()
+
+/** `enrolment.applications.withdraw_trial`: the proposed session is dropped before it starts. */
+export const withdrawTrialSchema = z.object({ id: z.uuid(), updatedAt: z.string().optional() }).strict()
+
+/** `enrolment.trials.mark` (REQ-J16): the coach marks a trial participant present or absent, or clears the mark. */
+export const markTrialSchema = z
+  .object({ id: z.uuid(), outcome: z.enum(TRIAL_OUTCOMES).nullable(), updatedAt: z.string().optional() })
+  .strict()
+
+/** `enrolment.applications.trial_session_cancelled` (the `activities.occurrence.cancelled` subscriber). */
+export const trialSessionCancelledSchema = z.object({ occurrenceId: z.uuid() }).strict()
 
 /** `enrolment.applications.accept` (BR-J6, DD-J10, Q-J08; phase 3, #800). A person id reuses a possible duplicate. */
 export const acceptSchema = z

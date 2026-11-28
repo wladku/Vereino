@@ -5,4 +5,5 @@ export const ENROLMENT_CLUB_TABLES: readonly string[] = [
   'enrolment_applications',
   'enrolment_confirmation_links',
   'enrolment_application_links',
+  'enrolment_trial_read_logs',
 ]

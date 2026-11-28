@@ -1,14 +1,18 @@
 import { OptionalProps } from '@mikro-orm/core'
 import { Entity, Index, PrimaryKey, Property } from '@mikro-orm/decorators/legacy'
 import {
+  AppendOnlyEntityBase,
   ScopedEntityBase,
+  decorateAppendOnlyEntityBase,
   decorateScopedEntityBase,
   tokenLinkColumns,
+  type AppendOnlyEntityOptionalProps,
   type ScopedEntityOptionalProps,
 } from '@vereino/db'
 import type { AgeFit, ApplicationKind, ApplicationState, Experience } from '../lib/states'
 
 decorateScopedEntityBase({ PrimaryKey, Property })
+decorateAppendOnlyEntityBase({ PrimaryKey, Property })
 
 /** A possible duplicate stored on an application (DD-J11): scalar person ids only. */
 export type StoredDuplicateCandidate = {
@@ -245,4 +249,42 @@ export class ApplicationLink extends ScopedEntityBase {
 
   @Property({ name: 'application_id', type: 'uuid' })
   applicationId!: string
+}
+
+/**
+ * One read of a session's trial participants by its coach (sign-up form spec DD-J12, *Security* → A17 recipients;
+ * foundation II P-27, P-28; phase 4, #801): who read, in which role, for which session and which applications — ids
+ * only, never the name, age or phone read. Append-only: written by `auditedRead` and committed before the card's data
+ * is read; the `foundation` guard refuses an update or a delete (409 `append_only`).
+ */
+@Entity({ tableName: 'enrolment_trial_read_logs' })
+@Index({
+  name: 'enrolment_trial_read_logs_org_occurrence_created_idx',
+  properties: ['organizationId', 'occurrenceId', 'createdAt'],
+})
+@Index({ name: 'enrolment_trial_read_logs_tenant_org_idx', properties: ['tenantId', 'organizationId'] })
+export class TrialReadLog extends AppendOnlyEntityBase {
+  [OptionalProps]?: AppendOnlyEntityOptionalProps
+
+  @Property({ name: 'actor_user_id', type: 'uuid' })
+  actorUserId!: string
+
+  /** The acting role of the read (`coach`, `club_admin`). */
+  @Property({ name: 'acting_role', type: 'text' })
+  actingRole!: string
+
+  @Property({ name: 'occurrence_id', type: 'uuid' })
+  occurrenceId!: string
+
+  /** `enrolment:application`. */
+  @Property({ name: 'resource_kind', type: 'text' })
+  resourceKind!: string
+
+  /** The trial applications the read returned. */
+  @Property({ name: 'resource_ids', type: 'text[]', columnType: 'uuid[]' })
+  resourceIds!: string[]
+
+  /** `trial_card`. */
+  @Property({ name: 'purpose', type: 'text' })
+  purpose!: string
 }
