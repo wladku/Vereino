@@ -11,7 +11,7 @@ DD-M12). When a cell reaches the limits of the capacity report ([`capacity.md`](
 | Part | Same in every cell | Own per cell |
 |---|---|---|
 | Code | the same Docker image and release tag, deployed by the same pipeline ([`deploy.md`](deploy.md)) | — |
-| Services | app, worker, PostgreSQL, Redis (Railway templates, the settings of `deploy.md`) | the Railway environment and its variables |
+| Services | app, worker, PostgreSQL, Redis (the settings of `deploy.md` -> *Railway service settings*) | the Railway environment and its variables |
 | Database | the same migrations | its own PostgreSQL, its own backups ([`backups.md`](backups.md)) |
 | Secrets | — | `JWT_SECRET`, `AUTH_SECRET`, `TENANT_DATA_ENCRYPTION_FALLBACK_KEY` (or its key store) |
 | Addresses | the address scheme `<public_slug>.<club domain>` | its own club domain, e.g. `c2.vereino.org` (`VEREINO_CLUB_DOMAIN`) and `APP_URL` |
