@@ -5,6 +5,7 @@ import {
   missingConsentIds,
   peopleConfirmed,
   pictureState,
+  undoKeepsConfirmation,
   type PictureFacts,
 } from '../public-pictures'
 
@@ -74,5 +75,18 @@ describe('BR-I01 — public pictures (event photos spec, #872)', () => {
     expect(heldBackCount(pictures, JAS, withdrawn)).toBe(2)
     expect(heldBackCount(pictures, OLA, withdrawn)).toBe(1)
     expect(heldBackCount(pictures, JAS, both)).toBe(0)
+  })
+})
+
+describe('undo of the marks (#899, BR-I01)', () => {
+  const MAX = 'person-max'
+  it('keeps the confirmation when the restored set drops nobody marked now', () => {
+    expect(undoKeepsConfirmation([JAS], [JAS, OLA])).toBe(true)
+    expect(undoKeepsConfirmation([JAS, OLA], [OLA, JAS])).toBe(true)
+    expect(undoKeepsConfirmation([], [])).toBe(true)
+  })
+  it('clears it when the restored set drops a person marked now', () => {
+    expect(undoKeepsConfirmation([JAS, OLA, MAX], [JAS, OLA])).toBe(false)
+    expect(undoKeepsConfirmation([MAX], [JAS])).toBe(false)
   })
 })
