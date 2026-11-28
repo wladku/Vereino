@@ -1,9 +1,10 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import '@/lib/i18n/register-dictionary-loader'
 import { AppProviders } from '@/components/AppProviders'
 import { resolveLocalizedAppMetadata } from '@/lib/metadata'
 import { APPLE_TOUCH_ICON_SIZE, WEB_APP_ICON_PATH } from '@/modules/club_core/lib/web-app'
+import { requestThemeColor } from '@/modules/club_core/services/request-club'
 import { EARLY_INSTALL_OFFER_SCRIPT } from '@vereino/core'
 import { parseBooleanWithDefault } from '@open-mercato/shared/lib/boolean'
 import { getPasswordPolicy } from '@open-mercato/shared/lib/auth/passwordPolicy'
@@ -25,6 +26,12 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: { icon: '/vereino-mark.svg', apple: `${WEB_APP_ICON_PATH}/${String(APPLE_TOUCH_ICON_SIZE)}` },
     appleWebApp: { capable: true, statusBarStyle: 'default' },
   }
+}
+
+// The browser bar takes the address's theme colour before the app is installed: the club's colour while the club
+// publishes its page, as in its manifest, else Vereino's (#906).
+export async function generateViewport(): Promise<Viewport> {
+  return { themeColor: await requestThemeColor() }
 }
 
 export default async function RootLayout({

@@ -2,6 +2,8 @@
 // error. It keeps exactly one response, the offline page (`/offline`), which names no person and no club. Every
 // navigation goes to the network first and is never stored; API calls, assets and every other request are not handled
 // here at all, so the browser loads them as without a service worker. No push: there is no `push` handler (N02).
+// Navigation preload (#906): where the browser supports it, a navigation's network request starts while the worker
+// boots, and the worker answers with that preloaded response. It is used once and never stored, like any navigation.
 const OFFLINE_CACHE_PREFIX = 'vereino-offline-'
 const OFFLINE_CACHE = `${OFFLINE_CACHE_PREFIX}v1`
 const OFFLINE_URL = '/offline'
@@ -26,6 +28,7 @@ self.addEventListener('activate', (event) => {
             .map((key) => caches.delete(key)),
         ),
       )
+      .then(() => (self.registration.navigationPreload ? self.registration.navigationPreload.enable() : undefined))
       .then(() => self.clients.claim()),
   )
 })
@@ -34,8 +37,10 @@ self.addEventListener('fetch', (event) => {
   const request = event.request
   if (request.mode !== 'navigate' || request.method !== 'GET') return
   event.respondWith(
-    fetch(request).catch(() =>
-      caches.match(OFFLINE_URL, { cacheName: OFFLINE_CACHE }).then((offline) => offline ?? Response.error()),
-    ),
+    Promise.resolve(event.preloadResponse)
+      .then((preloaded) => preloaded ?? fetch(request))
+      .catch(() =>
+        caches.match(OFFLINE_URL, { cacheName: OFFLINE_CACHE }).then((offline) => offline ?? Response.error()),
+      ),
   )
 })

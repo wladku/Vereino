@@ -16,12 +16,15 @@
 // expected participants — and says why when nothing is left to fill; the list opens 30 minutes before the start
 // (DD-A13) and says when. Training outlines and medical expiry spec M-O2 (#682): for a reader holding
 // `people.medical.view` each person carries the medical certificate chip, and "Medical: not valid" narrows the list to
-// the red ones (the marks of the hidden rows stay as they are).
+// the red ones (the marks of the hidden rows stay as they are). Sign-up form spec DD-J12 (#801): below the list the
+// spot `vereino:club:occurrence:attendance:extra` lets another module add a block about the session (`enrolment`'s
+// "Trial participants" card); the context names the session only, and the widget reads and saves its own data.
 import * as React from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useQueryClient } from '@tanstack/react-query'
 import { useConfirmDialog } from '@open-mercato/ui/backend/confirm-dialog'
+import { InjectionSpot } from '@open-mercato/ui/backend/injection/InjectionSpot'
 import { surfaceRecordConflict } from '@open-mercato/ui/backend/conflicts'
 import { ErrorMessage } from '@open-mercato/ui/backend/detail'
 import { flash } from '@open-mercato/ui/backend/FlashMessages'
@@ -72,6 +75,9 @@ import {
   type AttendanceRow,
   type Expectation,
 } from './club-client'
+
+/** The spot below the attendance list (DD-J12): blocks of other modules about this session. */
+export const ATTENDANCE_EXTRA_SPOT = 'vereino:club:occurrence:attendance:extra'
 
 /** The badge tone of what the declarations say about a person. */
 const EXPECTATION_VARIANT: Record<Expectation, 'neutral' | 'success' | 'warning'> = {
@@ -538,6 +544,21 @@ function AttendanceSheet({ id, list, selfPersonId }: { id: string; list: Attenda
           {announcement}
         </p>
       </section>
+      <InjectionSpot
+        spotId={ATTENDANCE_EXTRA_SPOT}
+        context={{
+          occurrence: {
+            id: occurrence.id,
+            groupId: occurrence.groupId,
+            status: occurrence.status,
+            occurrenceDate: occurrence.occurrenceDate,
+            startAt: occurrence.startAt,
+            endAt: occurrence.endAt,
+          },
+          actingRole: list.actingRole,
+          timeZone: list.timeZone,
+        }}
+      />
       {editable ? (
         // On a phone the actions stay in view above the fixed bottom navigation (README M-05 "bottom action bar"); 6 rem
         // clears the navigation's 4 rem and a phone's safe area.

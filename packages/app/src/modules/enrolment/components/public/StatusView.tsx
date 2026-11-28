@@ -164,6 +164,16 @@ function Details({ view }: { view: ApplicationStatus }) {
   if (view.waitingNumber !== null) {
     rows.push(['waiting', t('enrolment.public.status.waitingNumber'), String(view.waitingNumber)])
   }
+  if (view.trial) {
+    // Phase 4 (#801): the proposed trial session in the club's zone, with the place.
+    const when = new Intl.DateTimeFormat(locale, {
+      dateStyle: 'full',
+      timeStyle: 'short',
+      timeZone: view.trial.timeZone,
+    }).format(new Date(view.trial.startAt))
+    rows.push(['trial', t('enrolment.public.status.trial'), when])
+    if (view.trial.placeLabel) rows.push(['trialPlace', t('enrolment.public.status.trialPlace'), view.trial.placeLabel])
+  }
   if (view.confirmedAt) {
     rows.push(['confirmed', t('enrolment.public.status.confirmedAt'), formatInstantDate(view.confirmedAt, locale)])
   }

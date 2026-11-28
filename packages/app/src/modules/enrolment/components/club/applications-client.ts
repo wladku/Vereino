@@ -8,9 +8,16 @@ import { useQuery } from '@tanstack/react-query'
 import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
 import { grantsFeature } from '@vereino/ui'
 import type { ApplicationTab } from '../../lib/applications'
-import type { ApplicationDetail, ApplicationList, ApplicationListItem } from '../../services/views'
+import type {
+  ApplicationDetail,
+  ApplicationList,
+  ApplicationListItem,
+  TrialSessionOptions,
+  TrialSessionView,
+} from '../../services/views'
+import type { TrialCard, TrialParticipant } from '../../services/trials'
 
-export type { ApplicationDetail, ApplicationList, ApplicationListItem }
+export type { ApplicationDetail, ApplicationList, ApplicationListItem, TrialSessionView, TrialCard, TrialParticipant }
 export type { ApplicationFlag, ApplicationTab } from '../../lib/applications'
 
 export type Translate = (key: string, params?: Record<string, string | number>) => string
@@ -206,6 +213,10 @@ async function decide(
   } catch {
     return { status: 'error' }
   }
+  return decisionOutcome(call)
+}
+
+function decisionOutcome(call: { ok: boolean; status: number; result?: DecisionAnswer | null }): DecisionOutcome {
   const result = call.result
   if (call.ok && result?.state && result.updatedAt) {
     return {
@@ -227,6 +238,107 @@ export function rejectApplication(id: string, reason: string, updatedAt: string)
 
 export function waitApplication(id: string, groupId: string, updatedAt: string): Promise<DecisionOutcome> {
   return decide(id, 'waiting', { groupId, updatedAt })
+}
+
+// --- The trial session (phase 4, #801) ---
+
+export const TRIAL_SESSIONS_QUERY_KEY = 'enrolment-trial-sessions'
+
+/** The next planned sessions of the application's group, or of `groupId` (the Trial sheet, M-J3). */
+export function useTrialSessions(id: string, groupId: string | null) {
+  return useQuery({
+    queryKey: [TRIAL_SESSIONS_QUERY_KEY, id, groupId],
+    enabled: Boolean(groupId),
+    queryFn: async (): Promise<TrialSessionOptions> => {
+      const params = groupId ? `?groupId=${encodeURIComponent(groupId)}` : ''
+      const call = await apiCall<TrialSessionOptions>(
+        `${APPLICATIONS_API}/${encodeURIComponent(id)}/trial-sessions${params}`,
+      )
+      if (!call.ok || !call.result || !Array.isArray(call.result.items)) throw new Error(String(call.status))
+      return call.result
+    },
+  })
+}
+
+async function trialCall(
+  id: string,
+  method: 'POST' | 'DELETE',
+  body: Record<string, string>,
+): Promise<DecisionOutcome> {
+  let call
+  try {
+    call = await apiCall<DecisionAnswer>(`${APPLICATIONS_API}/${encodeURIComponent(id)}/trial`, {
+      method,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch {
+    return { status: 'error' }
+  }
+  return decisionOutcome(call)
+}
+
+export function proposeTrial(
+  id: string,
+  request: { occurrenceId: string; groupId: string | null; updatedAt: string },
+): Promise<DecisionOutcome> {
+  return trialCall(id, 'POST', {
+    occurrenceId: request.occurrenceId,
+    ...(request.groupId ? { groupId: request.groupId } : {}),
+    updatedAt: request.updatedAt,
+  })
+}
+
+export function withdrawTrial(id: string, updatedAt: string): Promise<DecisionOutcome> {
+  return trialCall(id, 'DELETE', { updatedAt })
+}
+
+// --- The coach's "Trial participants" card (M-J4) ---
+
+export const TRIAL_CARD_QUERY_KEY = 'enrolment-trial-card'
+
+/** The trial participants of a session; null when the caller may not see them (404) or the module is off. */
+export function useTrialCard(occurrenceId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [TRIAL_CARD_QUERY_KEY, occurrenceId],
+    enabled: enabled && Boolean(occurrenceId),
+    queryFn: async (): Promise<TrialCard | null> => {
+      const call = await apiCall<TrialCard>(`/api/enrolment/trials?occurrenceId=${encodeURIComponent(occurrenceId)}`)
+      if (call.status === 404 || call.status === 403) return null
+      if (!call.ok || !call.result || !Array.isArray(call.result.items)) throw new Error(String(call.status))
+      return call.result
+    },
+  })
+}
+
+export type MarkOutcome =
+  | { status: 'ok'; outcome: 'present' | 'absent' | null; updatedAt: string }
+  | { status: 'conflict' }
+  | { status: 'error' }
+
+export async function markTrial(
+  applicationId: string,
+  outcome: 'present' | 'absent' | null,
+  updatedAt: string,
+): Promise<MarkOutcome> {
+  let call
+  try {
+    call = await apiCall<{ ok?: boolean; outcome?: 'present' | 'absent' | null; updatedAt?: string }>(
+      `/api/enrolment/trials/${encodeURIComponent(applicationId)}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ outcome, updatedAt }),
+      },
+    )
+  } catch {
+    return { status: 'error' }
+  }
+  if (call.ok && call.result?.ok && call.result.updatedAt) {
+    return { status: 'ok', outcome: call.result.outcome ?? null, updatedAt: call.result.updatedAt }
+  }
+  if (call.status === 409 || call.status === 404) return { status: 'conflict' }
+  return { status: 'error' }
 }
 
 // --- Accept (phase 3, #800) ---
@@ -315,4 +427,24 @@ export function instantDateTimeLabel(value: string | null, locale: string, timeZ
   const parsed = new Date(value)
   if (Number.isNaN(parsed.getTime())) return ''
   return new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short', timeZone }).format(parsed)
+}
+
+/** A session as "Thu, 3 Dec 2026, 17:00–18:00" in the reader's language and the club's zone. */
+export function sessionLabel(
+  session: Pick<TrialSessionView, 'startAt' | 'endAt'>,
+  locale: string,
+  timeZone: string,
+): string {
+  const start = new Date(session.startAt)
+  const end = new Date(session.endAt)
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return ''
+  const day = new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone,
+  }).format(start)
+  const time = new Intl.DateTimeFormat(locale, { hour: '2-digit', minute: '2-digit', timeZone })
+  return `${day}, ${time.format(start)}–${time.format(end)}`
 }

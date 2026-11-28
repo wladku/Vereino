@@ -11,8 +11,7 @@ import type { AttachmentService } from '@open-mercato/core/modules/attachments'
 import { createRequestContainer } from '@open-mercato/shared/lib/di/container'
 import { createLogger } from '@open-mercato/shared/lib/logger'
 import { requestHost } from '../lib/club-host'
-import { homeClubSlug } from '../lib/home-route'
-import { clubIdentity, publicLogoVersion, vereinoIdentity, type WebAppIdentity } from '../lib/web-app'
+import { clubIdentity, publicLogoVersion, vereinoIdentity, webAppClubSlug, type WebAppIdentity } from '../lib/web-app'
 import type { ClubCorePublicSite } from './public-site'
 
 const logger = createLogger('club_core.web-app')
@@ -31,10 +30,7 @@ const NO_LOGO = (): Promise<WebAppLogo | null> => Promise.resolve(null)
 
 /** The public slug the request's address names: the host's club label, or the one-club instance's configured club. */
 async function requestSlug(): Promise<string | null> {
-  const host = requestHost((await headers()).get('host'), process.env)
-  if (host.kind === 'club') return host.slug
-  if (host.kind === 'single') return homeClubSlug(process.env)
-  return null
+  return webAppClubSlug(requestHost((await headers()).get('host'), process.env), process.env)
 }
 
 /** The club logo's bytes through the platform attachment service, in the found club's scope; null on any failure. */
